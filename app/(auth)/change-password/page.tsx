@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { apiFetch } from '@/lib/api';
 import { Alert, AlertIcon, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,19 +18,17 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { LoaderCircleIcon } from 'lucide-react';
+import { createClientOrNull } from '@/lib/supabase/client';
+import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase/env';
 import {
   ChangePasswordSchemaType,
   getChangePasswordSchema,
 } from '../forms/change-password-schema';
-import Link from 'next/link';
 
 export default function Page() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams?.get('token') || null;
-
-  const [verifyingToken, setVerifyingToken] = useState(false);
-  const [isValidToken, setIsValidToken] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [hasRecoverySession, setHasRecoverySession] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,35 +45,43 @@ export default function Page() {
   });
 
   useEffect(() => {
-    const verifyToken = async () => {
-      try {
-        setVerifyingToken(true);
+    let cancelled = false;
 
-        const response = await apiFetch('/api/auth/reset-password-verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-
-        if (response.ok) {
-          setIsValidToken(true);
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Invalid or expired token.');
+    async function checkSession() {
+      const supabase = createClientOrNull();
+      if (!supabase) {
+        if (!cancelled) {
+          setError(SUPABASE_CONFIG_ERROR);
+          setCheckingSession(false);
         }
-      } catch {
-        setError('Unable to verify the reset token.');
-      } finally {
-        setVerifyingToken(false);
+        return;
       }
-    };
 
-    if (token) {
-      verifyToken();
-    } else {
-      setError('No reset token provided.');
+      const {
+        data: { user },
+        error: sessionError,
+      } = await supabase.auth.getUser();
+
+      if (cancelled) return;
+
+      if (sessionError || !user) {
+        setError(
+          'Your reset link is invalid or has expired. Request a new password reset email.',
+        );
+        setHasRecoverySession(false);
+      } else {
+        setHasRecoverySession(true);
+      }
+
+      setCheckingSession(false);
     }
-  }, [token]);
+
+    void checkSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function onSubmit(values: ChangePasswordSchemaType) {
     setIsProcessing(true);
@@ -83,19 +89,28 @@ export default function Page() {
     setSuccessMessage(null);
 
     try {
-      const response = await apiFetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword: values.newPassword }),
+      const supabase = createClientOrNull();
+      if (!supabase) {
+        setError(SUPABASE_CONFIG_ERROR);
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: values.newPassword,
       });
 
-      if (response.ok) {
-        setSuccessMessage('Password reset successful! Redirecting to login...');
-        setTimeout(() => router.push('/signin'), 3000);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Password reset failed.');
+      if (updateError) {
+        setError(
+          updateError.message.includes('same')
+            ? 'Choose a password that is different from your current one.'
+            : 'Unable to update your password. Request a new reset link and try again.',
+        );
+        return;
       }
+
+      await supabase.auth.signOut();
+      setSuccessMessage('Password updated. Redirecting to sign in…');
+      setTimeout(() => router.push('/signin'), 2000);
     } catch {
       setError('An error occurred while resetting the password.');
     } finally {
@@ -111,15 +126,24 @@ export default function Page() {
       >
         <div className="text-center space-y-1 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Reset Password
+            Set a new password
           </h1>
           <p className="text-sm text-muted-foreground">
             Enter your new password below.
           </p>
         </div>
 
-        {error && (
-          <div className="text-center space-y-6">
+        {checkingSession && (
+          <Alert>
+            <AlertIcon>
+              <LoaderCircleIcon className="size-4 animate-spin" />
+            </AlertIcon>
+            <AlertTitle>Verifying your reset link…</AlertTitle>
+          </Alert>
+        )}
+
+        {error && !checkingSession && (
+          <div className="space-y-4 text-center">
             <Alert variant="destructive">
               <AlertIcon>
                 <AlertCircle />
@@ -127,9 +151,10 @@ export default function Page() {
               <AlertTitle>{error}</AlertTitle>
             </Alert>
             <Button asChild>
-              <Link href="/signin" className="text-primary">
-                Go back to Login
-              </Link>
+              <Link href="/reset-password">Request a new reset link</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/signin">Back to sign in</Link>
             </Button>
           </div>
         )}
@@ -143,101 +168,99 @@ export default function Page() {
           </Alert>
         )}
 
-        {verifyingToken && (
-          <Alert>
-            <AlertIcon>
-              <LoaderCircleIcon className="size-4 animate-spin" />
-            </AlertIcon>
-            <AlertTitle>Verifing...</AlertTitle>
-          </Alert>
-        )}
+        {hasRecoverySession &&
+          !successMessage &&
+          !checkingSession &&
+          !error && (
+            <>
+              <FormField
+                control={form.control}
+                name="newPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Password</FormLabel>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type={passwordVisible ? 'text' : 'password'}
+                          placeholder="Enter new password"
+                          {...field}
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        mode="icon"
+                        onClick={() => setPasswordVisible(!passwordVisible)}
+                        className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
+                        aria-label={
+                          passwordVisible ? 'Hide password' : 'Show password'
+                        }
+                      >
+                        {passwordVisible ? (
+                          <EyeOff className="text-muted-foreground" />
+                        ) : (
+                          <Eye className="text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        {isValidToken && !successMessage && !verifyingToken && (
-          <>
-            <FormField
-              control={form.control}
-              name="newPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input
-                        type={passwordVisible ? 'text' : 'password'}
-                        placeholder="Enter new password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      mode="icon"
-                      onClick={() => setPasswordVisible(!passwordVisible)}
-                      className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
-                      aria-label={
-                        passwordVisible ? 'Hide password' : 'Show password'
-                      }
-                    >
-                      {passwordVisible ? (
-                        <EyeOff className="text-muted-foreground" />
-                      ) : (
-                        <Eye className="text-muted-foreground" />
-                      )}
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm New Password</FormLabel>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type={
+                            passwordConfirmationVisible ? 'text' : 'password'
+                          }
+                          placeholder="Confirm new password"
+                          {...field}
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        mode="icon"
+                        onClick={() =>
+                          setPasswordConfirmationVisible(
+                            !passwordConfirmationVisible,
+                          )
+                        }
+                        className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
+                        aria-label={
+                          passwordConfirmationVisible
+                            ? 'Hide password confirmation'
+                            : 'Show password confirmation'
+                        }
+                      >
+                        {passwordConfirmationVisible ? (
+                          <EyeOff className="text-muted-foreground" />
+                        ) : (
+                          <Eye className="text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input
-                        type={passwordConfirmationVisible ? 'text' : 'password'}
-                        placeholder="Confirm new password"
-                        {...field}
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      mode="icon"
-                      onClick={() =>
-                        setPasswordConfirmationVisible(
-                          !passwordConfirmationVisible,
-                        )
-                      }
-                      className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
-                      aria-label={
-                        passwordConfirmationVisible
-                          ? 'Hide password confirmation'
-                          : 'Show password confirmation'
-                      }
-                    >
-                      {passwordConfirmationVisible ? (
-                        <EyeOff className="text-muted-foreground" />
-                      ) : (
-                        <Eye className="text-muted-foreground" />
-                      )}
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button type="submit" disabled={isProcessing} className="w-full">
-              {isProcessing && <LoaderCircleIcon className="size-4 animate-spin" />}
-              Reset Password
-            </Button>
-          </>
-        )}
+              <Button type="submit" disabled={isProcessing} className="w-full">
+                {isProcessing && (
+                  <LoaderCircleIcon className="size-4 animate-spin" />
+                )}
+                Update password
+              </Button>
+            </>
+          )}
       </form>
     </Form>
   );

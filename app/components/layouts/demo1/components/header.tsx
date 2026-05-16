@@ -16,6 +16,7 @@ import {
   Search,
   SquareChevronRight,
 } from 'lucide-react';
+import { TenantLogo } from '@/components/acadia/tenant-logo';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -62,11 +63,7 @@ export function Header() {
         {/* HeaderLogo */}
         <div className="flex gap-1 lg:hidden items-center gap-2.5">
           <Link href="/" className="shrink-0">
-            <img
-              src={toAbsoluteUrl('/media/app/mini-logo.svg')}
-              className="h-[25px] w-full"
-              alt="mini-logo"
-            />
+            <TenantLogo variant="mini" className="h-[25px] w-full" />
           </Link>
           <div className="flex items-center">
             {mobileMode && (

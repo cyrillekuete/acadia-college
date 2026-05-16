@@ -2,6 +2,7 @@
 
 import type { User } from '@supabase/supabase-js';
 import { useQuery } from '@tanstack/react-query';
+import { validateAcadiaProfile } from '@/lib/auth/acadia-profile-gate';
 import { createClientOrNull } from '@/lib/supabase/client';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
 import { fetchAcadiaUserProfile } from '@/lib/supabase/queries/user';
@@ -12,6 +13,8 @@ export type AcadiaCollegeSession = {
   profile: AcadiaUserProfile | null;
   roleSlug: string | null;
   tenantId: string | null;
+  /** Profile query failed (network/RLS), distinct from a missing row. */
+  profileLoadFailed: boolean;
 };
 
 export const EMPTY_ACADIA_SESSION: AcadiaCollegeSession = {
@@ -19,6 +22,7 @@ export const EMPTY_ACADIA_SESSION: AcadiaCollegeSession = {
   profile: null,
   roleSlug: null,
   tenantId: null,
+  profileLoadFailed: false,
 };
 
 /** Session fetch finished and user has a linked Acadia profile. */
@@ -32,7 +36,9 @@ export function isAcadiaSessionReady(
     !isError &&
     !!session?.authUser &&
     !!session.profile &&
-    !!session.roleSlug
+    !!session.roleSlug &&
+    !!session.tenantId &&
+    !session.profileLoadFailed
   );
 }
 
@@ -77,13 +83,38 @@ export function useAcadiaCollegeSession() {
         return EMPTY_ACADIA_SESSION;
       }
 
-      const profile = await fetchAcadiaUserProfile(supabase, user.id);
+      const fetchResult = await fetchAcadiaUserProfile(supabase, user.id);
+
+      if (fetchResult.status === 'error') {
+        return {
+          authUser: user,
+          profile: null,
+          roleSlug: null,
+          tenantId: null,
+          profileLoadFailed: true,
+        };
+      }
+
+      const profile =
+        fetchResult.status === 'ok' ? fetchResult.profile : null;
+      const gate = validateAcadiaProfile(profile);
+
+      if (!gate.ok) {
+        return {
+          authUser: user,
+          profile: profile ?? null,
+          roleSlug: null,
+          tenantId: profile?.tenantId ?? null,
+          profileLoadFailed: false,
+        };
+      }
 
       return {
         authUser: user,
-        profile,
-        roleSlug: profile?.UserRole?.slug ?? null,
-        tenantId: profile?.tenantId ?? null,
+        profile: gate.profile,
+        roleSlug: gate.roleSlug,
+        tenantId: gate.profile.tenantId,
+        profileLoadFailed: false,
       };
     },
     staleTime: 60_000,

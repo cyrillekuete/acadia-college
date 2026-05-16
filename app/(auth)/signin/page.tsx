@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { RiErrorWarningFill } from '@remixicon/react';
 import { AlertCircle, Eye, EyeOff, LoaderCircleIcon } from 'lucide-react';
@@ -19,39 +19,87 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { createClientOrNull } from '@/lib/supabase/client';
-import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase/env';
-import { fetchAcadiaUserProfile } from '@/lib/supabase/queries/user';
 import { getAuthCallbackErrorMessage } from '@/lib/auth/auth-callback-errors';
+import { completeAcadiaSignIn } from '@/lib/auth/complete-acadia-sign-in';
+import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
+import { normalizeSignInError } from '@/lib/auth/sign-in-errors';
+import { checkSupabaseAuthReachable } from '@/lib/supabase/connectivity';
+import { createSignInClient } from '@/lib/supabase/client';
 import {
-  getDashboardPathForRole,
-  isKnownAcadiaRole,
-} from '@/lib/auth/dashboard-routes';
+  getConfiguredSupabaseProjectMismatch,
+  getSupabaseEnvOrNull,
+  SUPABASE_CONFIG_ERROR,
+} from '@/lib/supabase/env';
 import { getSigninSchema, SigninSchemaType } from '../forms/signin-schema';
 
 export default function Page() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const nextDestination = getSafeRedirectPath(
+    searchParams.get('next'),
+    '',
+  );
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('error');
+    const code = searchParams.get('error');
     if (!code) return;
 
     setError(
-      getAuthCallbackErrorMessage(code, params.get('error_description')),
+      getAuthCallbackErrorMessage(code, searchParams.get('error_description')),
     );
+  }, [searchParams]);
 
-    params.delete('error');
-    params.delete('error_description');
-    const query = params.toString();
-    const nextUrl = query
-      ? `${window.location.pathname}?${query}`
-      : window.location.pathname;
-    window.history.replaceState({}, '', nextUrl);
+  useEffect(() => {
+    const mismatch = getConfiguredSupabaseProjectMismatch();
+    if (mismatch) {
+      setError(mismatch);
+      return;
+    }
+
+    const env = getSupabaseEnvOrNull();
+    if (!env) return;
+
+    let cancelled = false;
+
+    void checkSupabaseAuthReachable(env.url).then((result) => {
+      if (cancelled || result.ok) return;
+      setError(result.reason);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function redirectIfSignedIn() {
+      const supabase = createSignInClient(true);
+      if (!supabase) return;
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || cancelled) return;
+
+      const gate = await completeAcadiaSignIn(supabase, user.id);
+      if (cancelled || !gate.ok) return;
+
+      router.replace(nextDestination || gate.dashboardPath);
+    }
+
+    void redirectIfSignedIn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router, nextDestination]);
 
   const form = useForm<SigninSchemaType>({
     resolver: zodResolver(getSigninSchema()),
@@ -67,19 +115,21 @@ export default function Page() {
     setError(null);
 
     try {
-      const supabase = createClientOrNull();
+      const supabase = createSignInClient(values.rememberMe ?? false);
       if (!supabase) {
         setError(SUPABASE_CONFIG_ERROR);
         return;
       }
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
-      });
+      const { data, error: signInError } = await supabase.auth.signInWithPassword(
+        {
+          email: values.email,
+          password: values.password,
+        },
+      );
 
       if (signInError) {
-        setError(signInError.message);
+        setError(normalizeSignInError(signInError));
         return;
       }
 
@@ -88,31 +138,22 @@ export default function Page() {
         return;
       }
 
-      const profile = await fetchAcadiaUserProfile(supabase, data.user.id);
-      const roleSlug = profile?.UserRole?.slug ?? null;
+      const gate = await completeAcadiaSignIn(supabase, data.user.id);
 
-      if (!profile || !roleSlug || !isKnownAcadiaRole(roleSlug)) {
-        await supabase.auth.signOut();
-        setError(
-          'Your account is not linked to an Acadia College profile or role. Contact an administrator.',
-        );
+      if (!gate.ok) {
+        if (gate.shouldSignOut) {
+          await supabase.auth.signOut();
+        }
+        setError(gate.message);
         return;
       }
 
-      const dashboardPath = getDashboardPathForRole(roleSlug);
-      if (!dashboardPath) {
-        await supabase.auth.signOut();
-        setError(
-          'Your role is not configured for dashboard access. Contact an administrator.',
-        );
-        return;
-      }
-
-      router.push(dashboardPath);
+      router.push(nextDestination || gate.dashboardPath);
+      router.refresh();
     } catch (err) {
       setError(
         err instanceof Error
-          ? err.message
+          ? normalizeSignInError(err)
           : 'An unexpected error occurred. Please try again.',
       );
     } finally {
@@ -186,11 +227,13 @@ export default function Page() {
                 </Link>
               </div>
               <div className="relative">
-                <Input
-                  placeholder="Your password"
-                  type={passwordVisible ? 'text' : 'password'}
-                  {...field}
-                />
+                <FormControl>
+                  <Input
+                    placeholder="Your password"
+                    type={passwordVisible ? 'text' : 'password'}
+                    {...field}
+                  />
+                </FormControl>
                 <Button
                   type="button"
                   variant="ghost"

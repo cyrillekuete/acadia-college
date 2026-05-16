@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import {
-  buildSignInErrorRedirectUrl,
-} from '@/lib/auth/auth-callback-errors';
+import { buildSignInErrorRedirectUrl } from '@/lib/auth/auth-callback-errors';
+import { completeAcadiaSignIn } from '@/lib/auth/complete-acadia-sign-in';
 import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
 import { createClientOrNull } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = getSafeRedirectPath(searchParams.get('next'), '/');
+  const nextParam = searchParams.get('next');
 
   const oauthError = searchParams.get('error');
   if (oauthError) {
@@ -54,5 +53,39 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.redirect(
+      buildSignInErrorRedirectUrl(
+        origin,
+        'exchange',
+        'Sign-in session could not be established.',
+      ),
+    );
+  }
+
+  const recoveryDestination = getSafeRedirectPath(nextParam, '');
+  if (recoveryDestination === '/change-password') {
+    return NextResponse.redirect(`${origin}/change-password`);
+  }
+
+  const gate = await completeAcadiaSignIn(supabase, user.id);
+  if (!gate.ok) {
+    if (gate.shouldSignOut) {
+      await supabase.auth.signOut();
+    }
+    return NextResponse.redirect(
+      buildSignInErrorRedirectUrl(origin, gate.errorCode, gate.message),
+    );
+  }
+
+  const destination = getSafeRedirectPath(
+    nextParam,
+    gate.dashboardPath,
+  );
+
+  return NextResponse.redirect(`${origin}${destination}`);
 }

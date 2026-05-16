@@ -27,12 +27,12 @@ export default function AccountApiKeysPage() {
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Central Hub for Personal Customization
+                Tenant API keys from Supabase (prefixes only, never secrets)
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
               <Button variant="outline" asChild>
-                <Link href="#">Privacy Settings</Link>
+                <Link href="/account/home/settings-sidebar">Settings</Link>
               </Button>
             </ToolbarActions>
           </Toolbar>

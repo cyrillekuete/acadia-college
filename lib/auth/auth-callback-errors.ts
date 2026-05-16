@@ -3,6 +3,21 @@ const AUTH_CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   missing_code: 'Sign-in could not be completed. Please try again.',
   config: 'Authentication is not configured. Contact an administrator.',
   exchange: 'Sign-in session could not be established. Please try again.',
+  profile_missing:
+    'Your account is not linked to an Acadia College profile. Contact an administrator.',
+  profile_query:
+    'Could not load your Acadia College profile. Check your connection and try again.',
+  profile_trashed: 'This account has been deactivated. Contact an administrator.',
+  profile_blocked: 'This account has been blocked. Contact an administrator.',
+  profile_inactive:
+    'This account is not active yet. Contact an administrator if you need access.',
+  profile_status: 'This account cannot sign in. Contact an administrator.',
+  profile_no_tenant:
+    'Your account is not assigned to an institution. Contact an administrator.',
+  profile_role:
+    'Your account is not linked to a valid Acadia College role. Contact an administrator.',
+  profile_dashboard:
+    'Your role is not configured for dashboard access. Contact an administrator.',
 };
 
 export function buildSignInErrorRedirectUrl(

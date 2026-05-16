@@ -2,6 +2,7 @@ import {
   resolveSupabaseKey,
   resolveSupabaseUrl,
 } from '@/lib/supabase/project';
+import { getSupabaseProjectRefMismatchMessage } from '@/lib/supabase/project-ref';
 
 export const SUPABASE_CONFIG_ERROR =
   'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.';
@@ -41,4 +42,17 @@ export function getSupabaseEnvOrNull(): SupabaseEnv | null {
 
 export function isSupabaseConfigured(): boolean {
   return getSupabaseEnvOrNull() !== null;
+}
+
+/** Dev helper: returns a message when API URL and DATABASE_URL point at different projects. */
+export function getConfiguredSupabaseProjectMismatch(): string | null {
+  const env = getSupabaseEnvOrNull();
+  if (!env) {
+    return null;
+  }
+
+  return getSupabaseProjectRefMismatchMessage(
+    env.url,
+    process.env.DATABASE_URL,
+  );
 }

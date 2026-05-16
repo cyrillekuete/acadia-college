@@ -8,7 +8,7 @@ const { loadEnvConfig } = nextEnv;
 
 // Last-resort dev defaults when env files are missing (publishable key is client-public).
 // Prefer NEXT_PUBLIC_* in .env.local / .env.development / platform env.
-const FALLBACK_SUPABASE_URL = 'https://gydbuqwtwolrxzrrksmx.supabase.co';
+const FALLBACK_SUPABASE_URL = 'https://mjjulujygiibfndtapud.supabase.co';
 const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
   'sb_publishable_87O3SVDsaqTc0whwjoYvNg_opwwdNwW';
 

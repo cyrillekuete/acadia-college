@@ -1,9 +1,31 @@
 'use client';
 
-import { ScreenLoader } from '@/components/common/screen-loader';
-import { useOnceRedirect } from '@/hooks/use-once-redirect';
+import { ColumnDef } from '@tanstack/react-table';
+import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 
-export default function Page() {
-  useOnceRedirect('/account/members/roles');
-  return <ScreenLoader />;
+type Row = Record<string, unknown>;
+
+const columns: ColumnDef<Row>[] = [
+  { accessorKey: 'slug', header: 'Slug' },
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'description', header: 'Description' },
+  { accessorKey: 'isDefault', header: 'Default' },
+];
+
+export default function AdminRolesPage() {
+  return (
+    <AcadiaPageShell
+      title="Acadia College — Roles"
+      description="User roles from Supabase UserRole table."
+    >
+      <SupabaseTableList
+        table="UserRole"
+        title="UserRole"
+        select="id, slug, name, description, isDefault, isProtected, createdAt"
+        columns={columns}
+        searchKeys={['slug', 'name']}
+      />
+    </AcadiaPageShell>
+  );
 }

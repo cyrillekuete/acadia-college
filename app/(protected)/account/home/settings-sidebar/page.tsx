@@ -27,15 +27,15 @@ export default function AccountSettingsSidebarPage() {
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Intuitive Access to In-Depth Customization
+                Tenant and account settings loaded from Supabase
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <Button variant="outline">
-                <Link href="#">Public Profile</Link>
+              <Button variant="outline" asChild>
+                <Link href="/account/home/company-profile">Institution</Link>
               </Button>
-              <Button>
-                <Link href="#">Get Started</Link>
+              <Button asChild>
+                <Link href="/account/home/get-started">Get started</Link>
               </Button>
             </ToolbarActions>
           </Toolbar>

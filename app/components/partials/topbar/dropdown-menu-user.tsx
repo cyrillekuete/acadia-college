@@ -14,8 +14,9 @@ import {
   UserCircle,
   Users,
 } from 'lucide-react';
-import { signOut, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { useAcadiaSignOut } from '@/hooks/use-acadia-sign-out';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { useLanguage } from '@/providers/i18n-provider';
 import { Badge } from '@/components/ui/badge';
@@ -35,9 +36,17 @@ import {
 import { Switch } from '@/components/ui/switch';
 
 export function DropdownMenuUser({ trigger }: { trigger: ReactNode }) {
-  const { data: session } = useSession();
+  const { data: acadiaSession } = useAcadiaCollegeSession();
+  const signOut = useAcadiaSignOut();
   const { changeLanguage, language } = useLanguage();
   const { theme, setTheme } = useTheme();
+
+  const displayName =
+    acadiaSession?.profile?.name ??
+    acadiaSession?.authUser?.email?.split('@')[0] ??
+    '';
+  const displayEmail =
+    acadiaSession?.profile?.email ?? acadiaSession?.authUser?.email ?? '';
 
   const handleLanguage = (lang: Language) => {
     changeLanguage(lang.code);
@@ -57,7 +66,7 @@ export function DropdownMenuUser({ trigger }: { trigger: ReactNode }) {
             <img
               className="w-9 h-9 rounded-full border border-border"
               src={toAbsoluteUrl(
-                session?.user.avatar || '/media/avatars/300-2.png',
+                '/media/avatars/300-2.png',
               )}
               alt="User avatar"
             />
@@ -66,13 +75,13 @@ export function DropdownMenuUser({ trigger }: { trigger: ReactNode }) {
                 href="/account/home/get-started"
                 className="text-sm text-mono hover:text-primary font-semibold"
               >
-                {session?.user.name || ''}
+                {displayName}
               </Link>
               <Link
                 href="mailto:c.fisher@gmail.com"
                 className="text-xs text-muted-foreground hover:text-primary"
               >
-                {session?.user.email || ''}
+                {displayEmail}
               </Link>
             </div>
           </div>
@@ -246,7 +255,7 @@ export function DropdownMenuUser({ trigger }: { trigger: ReactNode }) {
             variant="outline"
             size="sm"
             className="w-full"
-            onClick={() => signOut()}
+            onClick={() => void signOut()}
           >
             Logout
           </Button>

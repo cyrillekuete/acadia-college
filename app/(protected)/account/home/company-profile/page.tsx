@@ -27,15 +27,12 @@ export default function AccountCompanyProfilePage() {
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Central Hub for Personal Customization
+                Acadia College institution profile from Supabase
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <Button variant="outline">
-                <Link href="#">Public Profile</Link>
-              </Button>
-              <Button>
-                <Link href="#">Billing</Link>
+              <Button variant="outline" asChild>
+                <Link href="/account/home/settings-sidebar">System settings</Link>
               </Button>
             </ToolbarActions>
           </Toolbar>

@@ -21,6 +21,27 @@ export function createClient(): SupabaseClient {
   return createBrowserClient(url, key);
 }
 
+/**
+ * Browser client for sign-in only — honors “Remember me” via localStorage vs sessionStorage.
+ */
+export function createSignInClient(rememberMe: boolean): SupabaseClient | null {
+  const env = getSupabaseEnvOrNull();
+  if (!env) {
+    return null;
+  }
+
+  if (typeof window === 'undefined') {
+    return createBrowserClient(env.url, env.key);
+  }
+
+  return createBrowserClient(env.url, env.key, {
+    auth: {
+      persistSession: true,
+      storage: rememberMe ? window.localStorage : window.sessionStorage,
+    },
+  });
+}
+
 /** For React Query `queryFn` — returns a client or throws a handled configuration error. */
 export function requireBrowserClient(): SupabaseClient {
   const client = createClientOrNull();

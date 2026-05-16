@@ -3,6 +3,8 @@ import {
   Book,
   Building,
   CalendarCheck,
+  ClipboardList,
+  FileCheck,
   FileText,
   GraduationCap,
   LayoutGrid,
@@ -75,6 +77,16 @@ export const MENU_ACADIA: MenuConfig = [
     icon: ScrollText,
     path: '/marks',
   },
+  {
+    title: 'Coursework',
+    icon: ClipboardList,
+    path: '/coursework',
+  },
+  {
+    title: 'Exams',
+    icon: FileCheck,
+    path: '/exams',
+  },
   { heading: 'Finance & records' },
   {
     title: 'Finance',
@@ -104,6 +116,7 @@ export const MENU_ACADIA: MenuConfig = [
     children: [
       { title: 'Users', path: '/admin/users' },
       { title: 'Roles', path: '/admin/roles' },
+      { title: 'API keys', path: '/account/api-keys' },
       { title: 'System log', path: '/admin/logs' },
     ],
   },
@@ -115,6 +128,7 @@ export const MENU_ACADIA: MenuConfig = [
       { title: 'Institution', path: '/account/home/company-profile' },
       { title: 'Settings', path: '/account/home/settings-sidebar' },
       { title: 'Notifications', path: '/account/notifications' },
+      { title: 'API keys', path: '/account/api-keys' },
       { title: 'Get started', path: '/account/home/get-started' },
     ],
   },
@@ -126,6 +140,7 @@ const STUDENT_MENU: MenuConfig = [
   { title: 'Timetable', icon: CalendarCheck, path: '/timetable' },
   { title: 'Attendance', icon: CalendarCheck, path: '/attendance' },
   { title: 'Marks', icon: ScrollText, path: '/marks' },
+  { title: 'Coursework', icon: ClipboardList, path: '/coursework' },
   { title: 'Fees', icon: Wallet, path: '/finance/fees' },
   { title: 'Messages', icon: MessageSquare, path: '/messages' },
   {
@@ -145,6 +160,8 @@ const STAFF_MENU: MenuConfig = [
   { title: 'Timetable', icon: CalendarCheck, path: '/timetable' },
   { title: 'Attendance', icon: CalendarCheck, path: '/attendance' },
   { title: 'Marks', icon: ScrollText, path: '/marks' },
+  { title: 'Coursework', icon: ClipboardList, path: '/coursework' },
+  { title: 'Exams', icon: FileCheck, path: '/exams' },
   { title: 'Messages', icon: MessageSquare, path: '/messages' },
   {
     title: 'My account',

@@ -3,11 +3,12 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { detailLinkColumn } from '@/lib/acadia/list-columns';
 
-type Row = Record<string, unknown>;
+type Row = { id: string; staffCode?: string } & Record<string, unknown>;
 
 const columns: ColumnDef<Row>[] = [
-  { accessorKey: 'staffCode', header: 'Code' },
+  detailLinkColumn<Row>('/staff', 'staffCode', 'Code'),
   { accessorKey: 'title', header: 'Title' },
   { accessorKey: 'employmentType', header: 'Employment' },
   { accessorKey: 'isActive', header: 'Active' },

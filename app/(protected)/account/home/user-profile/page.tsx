@@ -27,15 +27,15 @@ export default function AccountUserProfilePage() {
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Central Hub for Personal Customization
+                Your Acadia College user profile
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
-              <Button variant="outline">
-                <Link href="#">Public Profile</Link>
+              <Button variant="outline" asChild>
+                <Link href="/account/notifications">Notifications</Link>
               </Button>
-              <Button>
-                <Link href="#">Account Settings</Link>
+              <Button asChild>
+                <Link href="/account/home/settings-sidebar">Settings</Link>
               </Button>
             </ToolbarActions>
           </Toolbar>

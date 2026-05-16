@@ -1,3 +1,8 @@
+/**
+ * Legacy Metronic user-management + NextAuth only.
+ * Acadia College school data lives in Supabase — do not import `prisma` from
+ * `app/(protected)/**` pages or `components/acadia/**`.
+ */
 import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };

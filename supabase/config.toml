@@ -1,0 +1,9 @@
+# Supabase local config (remote projects linked via CLI)
+project_id = "mjjulujygiibfndtapud"
+
+[api]
+enabled = true
+
+[db]
+port = 54322
+major_version = 17
