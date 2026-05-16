@@ -7,9 +7,14 @@ const ADMIN_ROLES = new Set([
 
 const STAFF_ROLES = new Set(['lecturer', 'staff', 'teacher']);
 
-const KNOWN_ROLE_SLUGS = new Set([
-  ...ADMIN_ROLES,
-  ...STAFF_ROLES,
+const KNOWN_ROLE_SLUGS = new Set<string>([
+  'admin',
+  'super-admin',
+  'financial-director',
+  'registrar',
+  'lecturer',
+  'staff',
+  'teacher',
   'student',
   'guardian',
 ]);
