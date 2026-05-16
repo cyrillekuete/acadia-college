@@ -1,3 +1,5 @@
+const SUPABASE_HOST_PATTERN = /^[a-z0-9]+\.supabase\.co$/i;
+
 /** Normalize Supabase URL from env (trim, strip trailing slash). */
 export function resolveSupabaseUrl(envUrl: string | undefined): string {
   const trimmed = typeof envUrl === 'string' ? envUrl.trim() : '';
@@ -8,6 +10,9 @@ export function resolveSupabaseUrl(envUrl: string | undefined): string {
   try {
     const url = new URL(trimmed);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '';
+    }
+    if (!SUPABASE_HOST_PATTERN.test(url.hostname)) {
       return '';
     }
   } catch {
