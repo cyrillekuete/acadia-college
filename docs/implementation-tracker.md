@@ -3,7 +3,7 @@
 **Purpose:** Single source of truth for what has been built vs not built. Update this file whenever a feature is started, completed, or blocked.
 
 **Last updated:** 2026-05-16  
-**Overall progress:** 0 / 52 features complete (0%)
+**Overall progress:** 1 / 52 features complete (~2%)
 
 ### Status legend
 
@@ -35,8 +35,8 @@
 | P0-03 | Seed tenant, roles, test users | `not_started` | `supabase/seed.sql` | — | Acadia College tenant |
 | P0-04 | `@supabase/ssr` clients (browser, server, middleware) | `not_started` | `lib/supabase/` | — | |
 | P0-05 | Env vars documented (local + Vercel) | `not_started` | `.env.example` | — | |
-| P0-06 | Vercel link + `vercel env pull` | `not_started` | Vercel project | — | bootstrap skill |
-| P0-07 | GitHub → Vercel preview deploy | `not_started` | Preview URL | — | deployments-cicd |
+| P0-06 | Vercel link + `vercel env pull` | `done` | [acadia-college](https://vercel.com) | — | Project linked; add `DATABASE_URL`, `NEXTAUTH_*` in Vercel dashboard |
+| P0-07 | GitHub → Vercel preview deploy | `done` | https://acadia-college.vercel.app | — | Production deploy via GitHub + `vercel deploy --prod` |
 
 ---
 
