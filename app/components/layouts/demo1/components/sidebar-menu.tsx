@@ -3,7 +3,8 @@
 import { JSX, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MENU_SIDEBAR } from '@/config/menu.config';
+import { getMenuForRole } from '@/config/menu.acadia';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { MenuConfig, MenuItem } from '@/config/types';
 import { cn } from '@/lib/utils';
 import {
@@ -20,6 +21,8 @@ import { Badge } from '@/components/ui/badge';
 
 export function SidebarMenu() {
   const pathname = usePathname();
+  const { data: session } = useAcadiaCollegeSession();
+  const menuItems = getMenuForRole(session?.roleSlug);
 
   // Memoize matchPath to prevent unnecessary re-renders
   const matchPath = useCallback(
@@ -219,7 +222,7 @@ export function SidebarMenu() {
         collapsible
         classNames={classNames}
       >
-        {buildMenu(MENU_SIDEBAR)}
+        {buildMenu(menuItems)}
       </AccordionMenu>
     </div>
   );

@@ -1,101 +1,60 @@
 'use client';
 
-import { Fragment } from 'react';
-import Link from 'next/link';
 import {
-  Bell,
-  Boxes,
+  Book,
+  CalendarCheck,
   FileText,
-  IdCard,
-  KeySquare,
-  LineChart,
-  MonitorSmartphone,
-  MousePointerSquareDashed,
-  Palette,
-  ShieldCheck,
+  Settings,
   Users,
+  Wallet,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { IOptionsItems, Options } from './components';
+import { Options, IOptionsItems } from './components';
 
 export function AccountGetStartedContent() {
   const items: IOptionsItems = [
     {
-      icon: IdCard,
-      title: 'Personal info',
-      desc: "We're open to partnerships, guest posts, promo bannersand more.",
-      path: '/account/members/team-info',
-    },
-    {
-      icon: ShieldCheck,
-      title: 'Login & Security',
-      desc: 'Safeguarding your information with strong authentication measures.',
-      path: '/account/security/security-log',
-    },
-    {
-      icon: FileText,
-      title: 'Billing & Payments',
-      desc: 'Simplify payments today with secure, user-friendly transaction processes.',
-      path: 'account/billing/basic',
-    },
-    {
-      icon: Bell,
-      title: 'Notifications',
-      desc: 'Keep updated with important notices and event reminders.',
-      path: '/account/notifications',
-    },
-    {
-      icon: Boxes,
-      title: 'Integrations',
-      desc: 'Enhance Workflows with Advanced Integrations.',
-      path: '/account/integrations',
+      icon: Users,
+      title: 'Students',
+      desc: 'Manage student profiles and matricules.',
+      path: '/students',
     },
     {
       icon: Users,
-      title: 'Members, Teams & Roles',
-      desc: 'Efficient management of members, teams, and roles.',
-      path: '/account/members/roles',
+      title: 'Staff',
+      desc: 'Manage staff profiles and departments.',
+      path: '/staff',
     },
     {
-      icon: KeySquare,
-      title: 'API Keys',
-      desc: 'Secure and manage Your API Keys effectively and efficiently.',
-      path: '/account/api-keys',
+      icon: Book,
+      title: 'Courses',
+      desc: 'Course catalog and assignments.',
+      path: '/courses',
     },
     {
-      icon: MousePointerSquareDashed,
-      title: 'Appearance',
-      desc: 'Transforming your online presence with flawless appearance.',
-      path: '/account/appearance',
+      icon: FileText,
+      title: 'Enrollment',
+      desc: 'Applications and student enrollments.',
+      path: '/enrollment/applications',
     },
     {
-      icon: MonitorSmartphone,
-      title: 'Devices',
-      desc: 'Stay ahead with the latest devices and innovations news',
-      path: '#',
+      icon: CalendarCheck,
+      title: 'Attendance',
+      desc: 'Sessions and attendance records.',
+      path: '/attendance',
     },
     {
-      icon: Palette,
-      title: 'Brand',
-      desc: 'Trending brand designs, identities, and logos.',
-      path: '/account/invite-a-friend',
+      icon: Wallet,
+      title: 'Student fees',
+      desc: 'Fee accounts and installments.',
+      path: '/finance/fees',
     },
     {
-      icon: LineChart,
-      title: 'Activity',
-      desc: 'Central Hub for Personal Customization.',
-      path: '/account/activity',
+      icon: Settings,
+      title: 'Institution settings',
+      desc: 'Acadia College tenant and system preferences.',
+      path: '/account/home/company-profile',
     },
   ];
 
-  return (
-    <Fragment>
-      <Options items={items} dropdown={true} />
-      <div className="flex grow justify-center pt-5 lg:pt-7.5">
-        <Button mode="link" underlined="dashed" asChild>
-          <Link href="/account/members/team-info">More Account Options</Link>
-        </Button>
-      </div>
-    </Fragment>
-  );
+  return <Options items={items} dropdown={false} />;
 }

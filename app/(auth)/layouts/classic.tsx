@@ -22,7 +22,7 @@ export function ClassicLayout({ children }: { children: ReactNode }) {
             <img
               src={toAbsoluteUrl('/media/app/mini-logo.svg')}
               className="h-[35px] max-w-none"
-              alt=""
+              alt="Acadia College"
             />
           </Link>
         </div>

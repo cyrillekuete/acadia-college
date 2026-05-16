@@ -2,27 +2,32 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { ScreenLoader } from '@/components/common/screen-loader';
 import { Demo1Layout } from '../components/layouts/demo1/layout';
+import {
+  isAcadiaSessionReady,
+  useAcadiaCollegeSession,
+} from '@/hooks/use-acadia-college-session';
 
 export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
+  const { replace } = useRouter();
+  const isAuthenticated = isAcadiaSessionReady(isLoading, isError, session);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/signin');
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      replace('/signin');
     }
-  }, [status, router]);
+  }, [isLoading, isAuthenticated, replace]);
 
-  if (status === 'loading') {
+  if (isLoading || !isAuthenticated) {
     return <ScreenLoader />;
   }
 
-  return session ? <Demo1Layout>{children}</Demo1Layout> : null;
+  return <Demo1Layout>{children}</Demo1Layout>;
 }

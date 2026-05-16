@@ -5,7 +5,6 @@ import { SettingsProvider } from '@/providers/settings-provider';
 import { TooltipsProvider } from '@/providers/tooltips-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { Metadata } from 'next';
-import { AuthProvider } from '@/providers/auth-provider';
 import { I18nProvider } from '@/providers/i18n-provider';
 import { ModulesProvider } from '@/providers/modules-provider';
 import { QueryProvider } from '@/providers/query-provider';
@@ -37,20 +36,18 @@ export default async function RootLayout({
         )}
       >
         <QueryProvider>
-          <AuthProvider>
-            <SettingsProvider>
-              <ThemeProvider>
-                <I18nProvider>
-                  <TooltipsProvider>
-                    <ModulesProvider>
-                      <Suspense>{children}</Suspense>
-                      <Toaster />
-                    </ModulesProvider>
-                  </TooltipsProvider>
-                </I18nProvider>
-              </ThemeProvider>
-            </SettingsProvider>
-          </AuthProvider>
+          <SettingsProvider>
+            <ThemeProvider>
+              <I18nProvider>
+                <TooltipsProvider>
+                  <ModulesProvider>
+                    <Suspense>{children}</Suspense>
+                    <Toaster />
+                  </ModulesProvider>
+                </TooltipsProvider>
+              </I18nProvider>
+            </ThemeProvider>
+          </SettingsProvider>
         </QueryProvider>
       </body>
     </html>

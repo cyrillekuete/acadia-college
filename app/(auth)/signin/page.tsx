@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { RiErrorWarningFill } from '@remixicon/react';
-import { AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { signIn } from 'next-auth/react';
+import { AlertCircle, Eye, EyeOff, LoaderCircleIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Alert, AlertIcon, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -20,8 +19,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { LoaderCircleIcon } from 'lucide-react';
-import { Icons } from '@/components/common/icons';
+import { createClientOrNull } from '@/lib/supabase/client';
+import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase/env';
+import { fetchAcadiaUserProfile } from '@/lib/supabase/queries/user';
+import { getAuthCallbackErrorMessage } from '@/lib/auth/auth-callback-errors';
+import {
+  getDashboardPathForRole,
+  isKnownAcadiaRole,
+} from '@/lib/auth/dashboard-routes';
 import { getSigninSchema, SigninSchemaType } from '../forms/signin-schema';
 
 export default function Page() {
@@ -30,11 +35,29 @@ export default function Page() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('error');
+    if (!code) return;
+
+    setError(
+      getAuthCallbackErrorMessage(code, params.get('error_description')),
+    );
+
+    params.delete('error');
+    params.delete('error_description');
+    const query = params.toString();
+    const nextUrl = query
+      ? `${window.location.pathname}?${query}`
+      : window.location.pathname;
+    window.history.replaceState({}, '', nextUrl);
+  }, []);
+
   const form = useForm<SigninSchemaType>({
     resolver: zodResolver(getSigninSchema()),
     defaultValues: {
-      email: 'demo@kt.com',
-      password: 'demo123',
+      email: '',
+      password: '',
       rememberMe: false,
     },
   });
@@ -44,19 +67,48 @@ export default function Page() {
     setError(null);
 
     try {
-      const response = await signIn('credentials', {
-        redirect: false,
+      const supabase = createClientOrNull();
+      if (!supabase) {
+        setError(SUPABASE_CONFIG_ERROR);
+        return;
+      }
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
-        rememberMe: values.rememberMe,
       });
 
-      if (response?.error) {
-        const errorData = JSON.parse(response.error);
-        setError(errorData.message);
-      } else {
-        router.push('/');
+      if (signInError) {
+        setError(signInError.message);
+        return;
       }
+
+      if (!data.user) {
+        setError('Sign-in failed. Please try again.');
+        return;
+      }
+
+      const profile = await fetchAcadiaUserProfile(supabase, data.user.id);
+      const roleSlug = profile?.UserRole?.slug ?? null;
+
+      if (!profile || !roleSlug || !isKnownAcadiaRole(roleSlug)) {
+        await supabase.auth.signOut();
+        setError(
+          'Your account is not linked to an Acadia College profile or role. Contact an administrator.',
+        );
+        return;
+      }
+
+      const dashboardPath = getDashboardPathForRole(roleSlug);
+      if (!dashboardPath) {
+        await supabase.auth.signOut();
+        setError(
+          'Your role is not configured for dashboard access. Contact an administrator.',
+        );
+        return;
+      }
+
+      router.push(dashboardPath);
     } catch (err) {
       setError(
         err instanceof Error
@@ -76,7 +128,7 @@ export default function Page() {
       >
         <div className="space-y-1.5 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight text-center">
-            Sign in to Metronic
+            Sign in to Acadia College
           </h1>
         </div>
 
@@ -85,32 +137,16 @@ export default function Page() {
             <RiErrorWarningFill className="text-primary" />
           </AlertIcon>
           <AlertTitle className="text-accent-foreground">
-            Use <span className="text-mono font-semibold">demo@kt.com</span>{' '}
-            username and{' '}
-            <span className="text-mono font-semibold">demo123</span> for demo
-            access.
+            Dev accounts (password{' '}
+            <span className="font-mono text-xs">Acadia2026!</span>): admin{' '}
+            <span className="font-mono text-xs">admin@acadia-college.edu</span>
+            , staff{' '}
+            <span className="font-mono text-xs">staff@acadia-college.edu</span>,
+            student{' '}
+            <span className="font-mono text-xs">student@acadia-college.edu</span>
+            . Role redirects after sign-in.
           </AlertTitle>
         </Alert>
-
-        <div className="flex flex-col gap-3.5">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => signIn('google', { callbackUrl: '/' })}
-          >
-            <Icons.googleColorful className="size-5! opacity-100!" /> Sign in
-            with Google
-          </Button>
-        </div>
-
-        <div className="relative py-1.5">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
-          </div>
-        </div>
 
         {error && (
           <Alert variant="destructive">
@@ -128,7 +164,7 @@ export default function Page() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="Your email" {...field} />
+                <Input placeholder="you@acadia.edu" type="email" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -152,7 +188,7 @@ export default function Page() {
               <div className="relative">
                 <Input
                   placeholder="Your password"
-                  type={passwordVisible ? 'text' : 'password'} // Toggle input type
+                  type={passwordVisible ? 'text' : 'password'}
                   {...field}
                 />
                 <Button
@@ -160,7 +196,7 @@ export default function Page() {
                   variant="ghost"
                   mode="icon"
                   size="sm"
-                  onClick={() => setPasswordVisible(!passwordVisible)} // Toggle visibility
+                  onClick={() => setPasswordVisible(!passwordVisible)}
                   className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
                   aria-label={
                     passwordVisible ? 'Hide password' : 'Show password'
@@ -200,22 +236,12 @@ export default function Page() {
           />
         </div>
 
-        <div className="flex flex-col gap-2.5">
-          <Button type="submit" disabled={isProcessing}>
-            {isProcessing ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-            Continue
-          </Button>
-        </div>
-
-        <p className="text-sm text-muted-foreground text-center">
-          Don&apos;t have an account?{' '}
-          <Link
-            href="/signup"
-            className="text-sm font-semibold text-foreground hover:text-primary"
-          >
-            Sign Up
-          </Link>
-        </p>
+        <Button type="submit" disabled={isProcessing} className="w-full">
+          {isProcessing ? (
+            <LoaderCircleIcon className="size-4 animate-spin" />
+          ) : null}
+          Sign in
+        </Button>
       </form>
     </Form>
   );

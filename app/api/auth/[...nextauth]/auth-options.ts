@@ -1,4 +1,3 @@
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import bcrypt from 'bcrypt';
 import { NextAuthOptions, Session, User } from 'next-auth';
 import { JWT } from 'next-auth/jwt';
@@ -7,7 +6,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import prisma from '@/lib/prisma';
 
 const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // JWT sessions only — PrismaAdapter breaks /api/auth/session when DB is not wired.
   providers: [
     CredentialsProvider({
       name: 'Credentials',

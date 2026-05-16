@@ -24,12 +24,12 @@ export function SidebarHeader() {
           <img
             src={toAbsoluteUrl('/media/app/default-logo.svg')}
             className="default-logo h-[22px] max-w-none"
-            alt="Default Logo"
+            alt="Acadia College"
           />
           <img
             src={toAbsoluteUrl('/media/app/mini-logo.svg')}
             className="small-logo h-[22px] max-w-none"
-            alt="Mini Logo"
+            alt="Acadia College"
           />
         </div>
         <div className="hidden dark:block">
@@ -41,7 +41,7 @@ export function SidebarHeader() {
           <img
             src={toAbsoluteUrl('/media/app/mini-logo.svg')}
             className="small-logo h-[22px] max-w-none"
-            alt="Mini Logo"
+            alt="Acadia College"
           />
         </div>
       </Link>
