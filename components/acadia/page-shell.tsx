@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import { Container } from '@/components/common/container';
 import {
   Toolbar,
+  ToolbarActions,
   ToolbarDescription,
   ToolbarHeading,
   ToolbarPageTitle,
@@ -12,10 +13,12 @@ import {
 export function AcadiaPageShell({
   title,
   description,
+  actions,
   children,
 }: {
   title: string;
   description?: string;
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -27,6 +30,7 @@ export function AcadiaPageShell({
             <ToolbarDescription>{description}</ToolbarDescription>
           ) : null}
         </ToolbarHeading>
+        {actions ? <ToolbarActions>{actions}</ToolbarActions> : null}
       </Toolbar>
       {children}
     </Container>

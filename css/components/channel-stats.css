@@ -1,0 +1,12 @@
+@layer components {
+  .channel-stats-bg {
+    background-image: url('/media/illustrations/28.svg');
+    background-size: 8rem;
+    background-position: right -1.7rem top -1.7rem;
+    background-repeat: no-repeat;
+  }
+
+  .dark .channel-stats-bg {
+    background-image: url('/media/illustrations/28-dark.svg');
+  }
+}

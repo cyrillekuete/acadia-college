@@ -4,7 +4,7 @@ Acadia College uses **Supabase Auth** and **Postgres** (`database.sql` schema) f
 
 - Browser client: `lib/supabase/client.ts`
 - Server client: `lib/supabase/server.ts`
-- Session refresh: `middleware.ts` + `lib/supabase/middleware.ts`
+- Session refresh: `proxy.ts` + `lib/supabase/proxy.ts`
 - Tenant logos: `lib/supabase/storage.ts` → public `tenant-assets` bucket
 - RLS helpers: migration `20260516130000_acadia_tenant_rls_and_storage.sql`
 

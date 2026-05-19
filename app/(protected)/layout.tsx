@@ -6,8 +6,8 @@ import { AlertCircle } from 'lucide-react';
 import { ScreenLoader } from '@/components/common/screen-loader';
 import { Alert, AlertIcon, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { buildSignInErrorPath } from '@/lib/auth/auth-callback-errors';
 import { buildRequestPath, buildSignInUrl } from '@/lib/auth/routes';
-import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
 import {
   isAcadiaSessionReady,
   useAcadiaCollegeSession,
@@ -29,12 +29,11 @@ export default function ProtectedLayout({
   const signOut = useAcadiaSignOut();
 
   const isAuthenticated = isAcadiaSessionReady(isLoading, isError, session);
-  const hasOrphanAuth =
+  const mustSignOutForGate =
     !isLoading &&
     !isError &&
     !!session?.authUser &&
-    !session.profileLoadFailed &&
-    !session.profile;
+    !!session.gateFailure?.shouldSignOut;
 
   useEffect(() => {
     if (isLoading) return;
@@ -43,9 +42,10 @@ export default function ProtectedLayout({
       return;
     }
 
-    if (hasOrphanAuth) {
+    if (mustSignOutForGate && session?.gateFailure) {
+      const errorPath = buildSignInErrorPath(session.gateFailure.errorCode);
       void signOut().then(() => {
-        replace(buildSignInUrl(getSafeRedirectPath(pathname, '/')));
+        replace(errorPath);
       });
       return;
     }
@@ -58,7 +58,8 @@ export default function ProtectedLayout({
     isLoading,
     isError,
     isAuthenticated,
-    hasOrphanAuth,
+    mustSignOutForGate,
+    session?.gateFailure,
     session?.profileLoadFailed,
     pathname,
     searchParams,
@@ -76,7 +77,7 @@ export default function ProtectedLayout({
     );
   }
 
-  if (isLoading || hasOrphanAuth || !isAuthenticated) {
+  if (isLoading || mustSignOutForGate || !isAuthenticated) {
     return <ScreenLoader />;
   }
 

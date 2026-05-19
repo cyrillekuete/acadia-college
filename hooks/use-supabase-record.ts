@@ -11,12 +11,13 @@ export function useSupabaseRecord<T extends Record<string, unknown>>(
   table: string,
   id: string | undefined,
   select: string,
+  tenantColumn = 'tenantId',
 ) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
 
   return useQuery({
-    queryKey: ['supabase-record', table, id, tenantId, select],
+    queryKey: ['supabase-record', table, id, tenantId, select, tenantColumn],
     queryFn: async () => {
       if (!tenantId || !id) {
         throw new Error('Record context is required');
@@ -25,7 +26,7 @@ export function useSupabaseRecord<T extends Record<string, unknown>>(
       const { data, error } = await supabase
         .from(table)
         .select(select)
-        .eq('tenantId', tenantId)
+        .eq(tenantColumn, tenantId)
         .eq('id', id)
         .maybeSingle();
       if (error) {

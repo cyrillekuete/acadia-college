@@ -45,6 +45,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   searchKeys = [],
   rowFilter,
   toolbarExtra,
+  tenantColumn = 'tenantId',
 }: {
   table: string;
   title: string;
@@ -53,10 +54,12 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   searchKeys?: (keyof T)[];
   rowFilter?: (row: T) => boolean;
   toolbarExtra?: ReactNode;
+  tenantColumn?: string;
 }) {
   const { data = [], isLoading, isError, error } = useSupabaseTableList<T>(
     table,
     select,
+    tenantColumn,
   );
   const [search, setSearch] = useState('');
 

@@ -20,7 +20,7 @@ async function createServerClientFromEnv(
             cookieStore.set(name, value, options),
           );
         } catch {
-          // Called from Server Component — middleware handles refresh.
+          // Called from Server Component — proxy handles refresh.
         }
       },
     },

@@ -3,6 +3,7 @@ const ADMIN_ROLES = new Set([
   'super-admin',
   'financial-director',
   'registrar',
+  'bursar',
 ]);
 
 const STAFF_ROLES = new Set(['lecturer', 'staff', 'teacher']);
@@ -27,10 +28,16 @@ export function canManageInstitution(roleSlug: string | null | undefined): boole
   return isAdmin(roleSlug);
 }
 
-/** User CRUD and role assignment (administrators only — not bursar). */
+/** User CRUD and role assignment (admin and registrar only — excludes bursar and financial-director). */
 export function canManageUsers(roleSlug: string | null | undefined): boolean {
   const slug = normalizeRole(roleSlug);
   return slug === 'admin' || slug === 'super-admin' || slug === 'registrar';
+}
+
+/** Guardian / parent roles — accepts both new-schema 'parent' and legacy 'guardian'. */
+export function isGuardian(roleSlug: string | null | undefined): boolean {
+  const slug = normalizeRole(roleSlug);
+  return slug === 'guardian' || slug === 'parent';
 }
 
 export function isFinancialDirector(roleSlug: string | null | undefined): boolean {

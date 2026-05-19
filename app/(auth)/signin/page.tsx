@@ -24,6 +24,7 @@ import { completeAcadiaSignIn } from '@/lib/auth/complete-acadia-sign-in';
 import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
 import { normalizeSignInError } from '@/lib/auth/sign-in-errors';
 import { checkSupabaseAuthReachable } from '@/lib/supabase/connectivity';
+import { getBrowserAuthSession } from '@/lib/auth/browser-auth-session';
 import { createSignInClient } from '@/lib/supabase/client';
 import {
   getConfiguredSupabaseProjectMismatch,
@@ -79,14 +80,10 @@ export default function Page() {
     let cancelled = false;
 
     async function redirectIfSignedIn() {
-      const supabase = createSignInClient(true);
-      if (!supabase) return;
+      const authSession = await getBrowserAuthSession();
+      if (!authSession || cancelled) return;
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user || cancelled) return;
+      const { user, supabase } = authSession;
 
       const gate = await completeAcadiaSignIn(supabase, user.id);
       if (cancelled || !gate.ok) return;

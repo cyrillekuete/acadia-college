@@ -14,6 +14,7 @@ export type SystemLogEvent =
   | 'enrollment.application_updated'
   | 'enrollment.application_approved'
   | 'enrollment.application_rejected'
+  | 'student.created'
   | 'student.profile_updated'
   | 'student.class_migrated'
   | 'exam_session.created'
@@ -47,6 +48,9 @@ export type SystemLogEvent =
   | 'resource.request_reviewed'
   | 'room.maintenance_scheduled';
 
+/**
+ * Best-effort audit log. Never throws — callers must not fail primary work when logging fails.
+ */
 export async function appendSystemLog(
   supabase: SupabaseClient,
   input: {
@@ -58,17 +62,21 @@ export async function appendSystemLog(
     meta?: Record<string, unknown>;
   },
 ): Promise<void> {
-  const { error } = await supabase.from('SystemLog').insert({
-    id: generateAcadiaId('log'),
-    userId: input.userId,
-    event: input.event,
-    description: input.description ?? null,
-    entityId: input.entityId ?? null,
-    entityType: input.entityType ?? null,
-    meta: input.meta ? JSON.stringify(input.meta) : null,
-  });
+  try {
+    const { error } = await supabase.from('SystemLog').insert({
+      id: generateAcadiaId('log'),
+      userId: input.userId,
+      event: input.event,
+      description: input.description ?? null,
+      entityId: input.entityId ?? null,
+      entityType: input.entityType ?? null,
+      meta: input.meta ? JSON.stringify(input.meta) : null,
+    });
 
-  if (error) {
-    console.error('[appendSystemLog]', error.message);
+    if (error) {
+      console.error('[appendSystemLog]', error.message);
+    }
+  } catch (error) {
+    console.error('[appendSystemLog]', error);
   }
 }

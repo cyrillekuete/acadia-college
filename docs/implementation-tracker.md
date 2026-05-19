@@ -3,7 +3,7 @@
 **Purpose:** Single source of truth for what has been built vs not built. Update this file whenever a feature is started, completed, or blocked.
 
 **Last updated:** 2026-05-19  
-**Overall progress:** 129 / 129 features complete (100%) — Phase 7A–7K done
+**Overall progress:** 131 / 131 features complete — Phase 8 (new-schema migration + Add Student) done
 
 ### Status legend
 
@@ -377,6 +377,24 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7I: automatic promotion, manual overrides, year rollover, data retention (F-108–F-111) |
 | 2026-05-19 | — | Phase 7J: messaging, group threads, notifications, preferences, announcements (F-112–F-118) |
 | 2026-05-19 | — | Phase 7K: learning materials, resource inventory/requests, room usage & maintenance (F-119–F-125) |
+
+---
+
+## Phase 8 — New-schema migration + Add Student
+
+| ID | Feature | Status | Route / artifact | Notes |
+|----|---------|--------|------------------|-------|
+| P8-01 | Supabase migration: new snake_case tables (`users`, `students`, `parents`, `classes`, `class_students`, `emergency_contacts`, `medical_info`, `user_profiles`) | `done` | `supabase/migrations/20260519210000_new_tables_baseline.sql` | Mirrors `database.sql`; adds `tenant_id` FK for multi-tenant compat; RLS via `acadia_is_admin()` |
+| P8-02 | Seed dev accounts into new `users` table | `done` | `supabase/migrations/20260519210001_new_tables_seed_users.sql` | Same UUIDs as legacy `User` rows |
+| P8-03 | Auth bridge: dual-table profile fetch (`users` first, legacy `User` fallback) | `done` | `lib/supabase/queries/user.ts` | Login form unchanged; no role selector |
+| P8-04 | Dashboard routes: add `parent` + `bursar` slugs | `done` | `lib/auth/dashboard-routes.ts`, `lib/acadia/roles.ts` | `parent` → `/dashboard/guardian`; `bursar` → admin |
+| P8-05 | ID generators: `generateStudentId`, `generateParentCode` | `done` | `lib/acadia/ids.ts` | Format: `STU-YYYY-NNNNN`, `PAR-YYYY-NNNNN` |
+| P8-06 | `StudentCreateInput` Zod schema (all `database.sql` fields) | `done` | `lib/acadia/student-create-schemas.ts` | Validates student+parent emails differ |
+| P8-07 | Provisioning helper: `provisionStudentAndParent` | `done` | `lib/acadia/provision-accounts.ts` | auth + users + students + parents rows; create-or-link parent by email; rollback on failure |
+| F-077 | POST `/api/acadia/students` — admin-only add student API | `done` | `app/api/acadia/students/route.ts` | Returns `studentId`, `studentUuid`, `parentCode` |
+| F-078 | Student registry rewritten to `students` table | `done` | `app/(protected)/students/page.tsx` | Add student toolbar button (admin only); tenant_id column |
+| F-079 | Student detail rewritten to new schema | `done` | `app/(protected)/students/[id]/page.tsx` | Tabs: Overview, Contact, Academic, Parents |
+| F-080 | Add student form (`/students/new`) | `done` | `app/(protected)/students/new/page.tsx`, `components/acadia/student/student-create-form.tsx` | 5 sections; success → redirect to student detail |
 
 ---
 

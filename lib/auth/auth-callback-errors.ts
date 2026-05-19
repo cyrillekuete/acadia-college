@@ -11,6 +11,8 @@ const AUTH_CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   profile_blocked: 'This account has been blocked. Contact an administrator.',
   profile_inactive:
     'This account is not active yet. Contact an administrator if you need access.',
+  profile_suspended:
+    'This account has been suspended. Contact an administrator.',
   profile_status: 'This account cannot sign in. Contact an administrator.',
   profile_no_tenant:
     'Your account is not assigned to an institution. Contact an administrator.',
@@ -32,16 +34,23 @@ export function buildSignInErrorRedirectUrl(
   return `${origin}/signin?${params.toString()}`;
 }
 
+export function buildSignInErrorPath(code: string): string {
+  return `/signin?${new URLSearchParams({ error: code }).toString()}`;
+}
+
 export function getAuthCallbackErrorMessage(
   code: string,
   description?: string | null,
 ): string {
+  const mapped = AUTH_CALLBACK_ERROR_MESSAGES[code];
+  if (mapped) {
+    return mapped;
+  }
+
   const trimmed = description?.trim();
   if (trimmed) {
     return trimmed;
   }
-  return (
-    AUTH_CALLBACK_ERROR_MESSAGES[code] ??
-    'Sign-in failed. Please try again.'
-  );
+
+  return 'Sign-in failed. Please try again.';
 }

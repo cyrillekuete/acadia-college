@@ -20,13 +20,56 @@ export type FetchAcadiaProfileResult =
   | { status: 'not_found' }
   | { status: 'error' };
 
-const USER_PROFILE_SELECT =
-  'id, email, name, tenantId, status, roleId, isTrashed, UserRole(slug, name, isTrashed)';
-
+/**
+ * Fetch user profile for auth gate and session hook.
+ *
+ * Strategy (dual-table during migration):
+ *  1. Check new `users` table (database.sql schema, role column).
+ *  2. Fall back to legacy `User` + `UserRole` join for accounts not yet
+ *     migrated.
+ * Once all existing users have rows in `users`, the fallback branch can
+ * be removed in a follow-up PR.
+ */
 export async function fetchAcadiaUserProfile(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<FetchAcadiaProfileResult> {
+  // ── New users table (snake_case, database.sql) ──────────────────────────
+  const { data: newRow, error: newError } = await supabase
+    .from('users')
+    .select('id, email, name, tenant_id, status, role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (newError) {
+    // Table may not exist yet in this environment; fall through to legacy.
+    if (!newError.message?.includes('relation') && !newError.message?.includes('does not exist')) {
+      return { status: 'error' };
+    }
+  }
+
+  if (newRow) {
+    const row = newRow as Record<string, unknown>;
+    const roleSlug = String(row.role ?? '');
+    return {
+      status: 'ok',
+      profile: {
+        id: String(row.id),
+        email: String(row.email ?? ''),
+        name: row.name != null ? String(row.name) : null,
+        tenantId: row.tenant_id != null ? String(row.tenant_id) : null,
+        status: String(row.status ?? 'active').toUpperCase(),
+        roleId: String(row.id),
+        isTrashed: false,
+        UserRole: roleSlug ? { slug: roleSlug, name: roleSlug } : null,
+      },
+    };
+  }
+
+  // ── Legacy User + UserRole join (PascalCase tables) ─────────────────────
+  const USER_PROFILE_SELECT =
+    'id, email, name, tenantId, status, roleId, isTrashed, UserRole(slug, name, isTrashed)';
+
   const { data, error } = await supabase
     .from('User')
     .select(USER_PROFILE_SELECT)

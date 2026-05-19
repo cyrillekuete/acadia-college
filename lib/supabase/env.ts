@@ -29,7 +29,7 @@ export function getSupabaseEnv(): SupabaseEnv {
   return env;
 }
 
-/** Returns null when env vars are missing (e.g. middleware passthrough). */
+/** Returns null when env vars are missing (e.g. proxy passthrough). */
 export function getSupabaseEnvOrNull(): SupabaseEnv | null {
   const env = getResolvedSupabaseEnv();
 

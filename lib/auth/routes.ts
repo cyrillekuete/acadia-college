@@ -2,7 +2,7 @@ import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
 
 export const SIGN_IN_PATH = '/signin';
 
-/** Paths that do not require a Supabase session (middleware + client guards). */
+/** Paths that do not require a Supabase session (proxy + client guards). */
 export const PUBLIC_AUTH_PATHS = [
   '/signin',
   '/signup',

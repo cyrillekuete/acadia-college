@@ -10,12 +10,20 @@ import {
 
 export type CompleteAcadiaSignInResult = AcadiaProfileGateResult;
 
+/** Profile fetch + gate only (no last-sign-in side effects). Safe for proxy. */
+export async function resolveAcadiaProfileGate(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<AcadiaProfileGateResult> {
+  const fetchResult = await fetchAcadiaUserProfile(supabase, userId);
+  return mapFetchToGate(fetchResult);
+}
+
 export async function completeAcadiaSignIn(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<CompleteAcadiaSignInResult> {
-  const fetchResult = await fetchAcadiaUserProfile(supabase, userId);
-  const gate = mapFetchToGate(fetchResult);
+  const gate = await resolveAcadiaProfileGate(supabase, userId);
 
   if (gate.ok) {
     void touchLastSignIn(supabase, userId);
@@ -33,13 +41,28 @@ function mapFetchToGate(fetchResult: FetchAcadiaProfileResult): AcadiaProfileGat
   );
 }
 
+/** Best-effort: updates new `users.last_login` and legacy `User.lastSignInAt`. */
 async function touchLastSignIn(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<void> {
   const now = new Date().toISOString();
-  await supabase
+
+  const { error: newUsersError } = await supabase
+    .from('users')
+    .update({ last_login: now, updated_at: now })
+    .eq('id', userId);
+
+  if (newUsersError) {
+    console.error('[touchLastSignIn] users:', newUsersError.message);
+  }
+
+  const { error: legacyError } = await supabase
     .from('User')
     .update({ lastSignInAt: now, updatedAt: now })
     .eq('id', userId);
+
+  if (legacyError) {
+    console.error('[touchLastSignIn] User:', legacyError.message);
+  }
 }

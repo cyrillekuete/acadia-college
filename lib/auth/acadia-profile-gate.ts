@@ -75,6 +75,16 @@ export function validateAcadiaProfile(
     };
   }
 
+  if (profile.status === 'SUSPENDED') {
+    return {
+      ok: false,
+      errorCode: 'profile_suspended',
+      message:
+        'This account has been suspended. Contact an administrator.',
+      shouldSignOut: true,
+    };
+  }
+
   if (profile.status !== UserStatus.ACTIVE) {
     return {
       ok: false,

@@ -3,20 +3,27 @@ const ADMIN_ROLES = new Set([
   'super-admin',
   'financial-director',
   'registrar',
+  'bursar',
 ]);
 
 const STAFF_ROLES = new Set(['lecturer', 'staff', 'teacher']);
+
+// 'parent' is the new-schema value; 'guardian' is the legacy slug kept
+// for backward compat during the migration window.
+const GUARDIAN_ROLES = new Set(['guardian', 'parent']);
 
 const KNOWN_ROLE_SLUGS = new Set<string>([
   'admin',
   'super-admin',
   'financial-director',
   'registrar',
+  'bursar',
   'lecturer',
   'staff',
   'teacher',
   'student',
   'guardian',
+  'parent',
 ]);
 
 /** Safe fallback when a role slug is missing or not mapped to a dashboard. */
@@ -51,7 +58,7 @@ export function getDashboardPathForRole(
   if (slug === 'student') {
     return '/dashboard/student';
   }
-  if (slug === 'guardian') {
+  if (GUARDIAN_ROLES.has(slug)) {
     return '/dashboard/guardian';
   }
 

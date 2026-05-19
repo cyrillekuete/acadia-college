@@ -8,6 +8,12 @@ import { isSupabaseConfigured } from '@/lib/supabase/env';
 import { fetchAcadiaUserProfile } from '@/lib/supabase/queries/user';
 import type { AcadiaUserProfile } from '@/lib/supabase/queries/user';
 
+export type AcadiaGateFailure = {
+  errorCode: string;
+  message: string;
+  shouldSignOut: boolean;
+};
+
 export type AcadiaCollegeSession = {
   authUser: User | null;
   profile: AcadiaUserProfile | null;
@@ -15,6 +21,8 @@ export type AcadiaCollegeSession = {
   tenantId: string | null;
   /** Profile query failed (network/RLS), distinct from a missing row. */
   profileLoadFailed: boolean;
+  /** Set when the profile gate rejects the account (blocked, missing role, etc.). */
+  gateFailure: AcadiaGateFailure | null;
 };
 
 export const EMPTY_ACADIA_SESSION: AcadiaCollegeSession = {
@@ -23,6 +31,7 @@ export const EMPTY_ACADIA_SESSION: AcadiaCollegeSession = {
   roleSlug: null,
   tenantId: null,
   profileLoadFailed: false,
+  gateFailure: null,
 };
 
 /** Session fetch finished and user has a linked Acadia profile. */
@@ -38,7 +47,8 @@ export function isAcadiaSessionReady(
     !!session.profile &&
     !!session.roleSlug &&
     !!session.tenantId &&
-    !session.profileLoadFailed
+    !session.profileLoadFailed &&
+    !session.gateFailure
   );
 }
 
@@ -92,6 +102,7 @@ export function useAcadiaCollegeSession() {
           roleSlug: null,
           tenantId: null,
           profileLoadFailed: true,
+          gateFailure: null,
         };
       }
 
@@ -106,6 +117,11 @@ export function useAcadiaCollegeSession() {
           roleSlug: null,
           tenantId: profile?.tenantId ?? null,
           profileLoadFailed: false,
+          gateFailure: {
+            errorCode: gate.errorCode,
+            message: gate.message,
+            shouldSignOut: gate.shouldSignOut,
+          },
         };
       }
 
@@ -115,6 +131,7 @@ export function useAcadiaCollegeSession() {
         roleSlug: gate.roleSlug,
         tenantId: gate.profile.tenantId,
         profileLoadFailed: false,
+        gateFailure: null,
       };
     },
     staleTime: 60_000,
