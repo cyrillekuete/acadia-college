@@ -1,8 +1,13 @@
 /**
  * Lightweight reachability check for Supabase Auth (browser or server).
+ *
+ * The `supabaseKey` (anon / publishable key) is required by Supabase's Kong
+ * gateway on every request — including the health endpoint — otherwise the
+ * gateway returns 401 before the request even reaches the auth service.
  */
 export async function checkSupabaseAuthReachable(
   supabaseUrl: string,
+  supabaseKey?: string,
   timeoutMs = 8000,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const base = supabaseUrl.replace(/\/$/, '');
@@ -11,11 +16,17 @@ export async function checkSupabaseAuthReachable(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  const headers: Record<string, string> = {};
+  if (supabaseKey) {
+    headers['apikey'] = supabaseKey;
+  }
+
   try {
     const res = await fetch(healthUrl, {
       method: 'GET',
       signal: controller.signal,
       cache: 'no-store',
+      headers,
     });
 
     if (!res.ok) {

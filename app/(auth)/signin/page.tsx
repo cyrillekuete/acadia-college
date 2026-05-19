@@ -65,7 +65,7 @@ export default function Page() {
 
     let cancelled = false;
 
-    void checkSupabaseAuthReachable(env.url).then((result) => {
+    void checkSupabaseAuthReachable(env.url, env.key).then((result) => {
       if (cancelled || result.ok) return;
       setError(result.reason);
     });
