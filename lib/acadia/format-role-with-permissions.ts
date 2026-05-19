@@ -1,7 +1,9 @@
-import type { UserPermission, UserRolePermission } from '@/app/models/user';
+type RolePermissionJoin = {
+  permission?: { id: string; name: string; slug: string } | null;
+};
 
 type RoleWithNestedPermissions = {
-  permissions?: UserRolePermission[];
+  permissions?: RolePermissionJoin[];
   [key: string]: unknown;
 };
 
@@ -15,7 +17,10 @@ export function formatRoleWithPermissions<T extends RoleWithNestedPermissions>(
     permissions:
       rolePermissions
         ?.map((entry) => entry.permission)
-        .filter((permission): permission is UserPermission => Boolean(permission))
+        .filter(
+          (permission): permission is { id: string; name: string; slug: string } =>
+            Boolean(permission),
+        )
         .map(({ id, name, slug }) => ({ id, name, slug })) ?? [],
   };
 }
