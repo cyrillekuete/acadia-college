@@ -17,7 +17,7 @@ export function TenantLogoUpload() {
   if (!canUpload) {
     return (
       <p className="text-sm text-muted-foreground">
-        Only administrators and registrars can upload the institution logo.
+        Only administrators can upload the institution logo.
       </p>
     );
   }

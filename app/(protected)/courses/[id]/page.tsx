@@ -9,7 +9,7 @@ import {
   formatDateTime,
   formatRecordValue,
   levelLabel,
-  semesterLabel,
+  termLabel,
   specialtyLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
@@ -26,7 +26,7 @@ const COURSE_SELECT = `
   updatedAt,
   Specialty:specialtyId ( code, nameEn, nameFr ),
   Level:levelId ( number ),
-  Semester:semesterId ( number )
+  Term:termId ( number )
 `;
 
 type CourseDetail = {
@@ -41,7 +41,7 @@ type CourseDetail = {
   updatedAt: string;
   Specialty: unknown;
   Level: unknown;
-  Semester: unknown;
+  Term: unknown;
 };
 
 export default function CourseDetailPage({
@@ -60,7 +60,7 @@ export default function CourseDetailPage({
     data?.Specialty,
   );
   const level = unwrapRelation<{ number?: number }>(data?.Level);
-  const semester = unwrapRelation<{ number?: number }>(data?.Semester);
+  const term = unwrapRelation<{ number?: number }>(data?.Term);
 
   const isActive = !data?.deactivatedAt;
   const title = data?.code ? `Course — ${data.code}` : 'Course detail';
@@ -106,7 +106,7 @@ export default function CourseDetailPage({
             fields={[
               { label: 'Specialty', value: specialtyLabel(specialty) },
               { label: 'Level', value: levelLabel(level) },
-              { label: 'Semester', value: semesterLabel(semester) },
+              { label: 'Term', value: termLabel(term) },
             ]}
           />
         </div>

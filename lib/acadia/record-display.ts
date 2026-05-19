@@ -58,11 +58,29 @@ export function levelLabel(level: { number?: number } | null): string {
   return `Level ${level.number}`;
 }
 
-export function semesterLabel(semester: { number?: number } | null): string {
-  if (!semester || semester.number === undefined) {
+const TERM_ORDINALS = ['1st', '2nd', '3rd'] as const;
+
+export function termLabel(term: { number?: number } | null): string {
+  if (!term || term.number === undefined) {
     return '—';
   }
-  return `Semester ${semester.number}`;
+  const ordinal = TERM_ORDINALS[term.number - 1];
+  return ordinal ? `${ordinal} Term` : `Term ${term.number}`;
+}
+
+/** @deprecated Use {@link termLabel} */
+export const semesterLabel = termLabel;
+
+export function sequenceLabel(
+  sequence: { number?: number; numberInTerm?: number } | null,
+): string {
+  if (!sequence || sequence.number === undefined) {
+    return '—';
+  }
+  if (sequence.numberInTerm !== undefined) {
+    return `Sequence ${sequence.number} (term seq. ${sequence.numberInTerm})`;
+  }
+  return `Sequence ${sequence.number}`;
 }
 
 export function formatStringArray(value: unknown): string {

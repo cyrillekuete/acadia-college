@@ -5,10 +5,11 @@
 | Field | Value |
 |-------|-------|
 | **Product name** | Acadia College |
-| **Document version** | 1.2 |
+| **Document version** | 1.3 |
 | **Build tracker** | [implementation-tracker.md](implementation-tracker.md) |
+| **Stakeholder PRD** | [product-requirements-document.md](product-requirements-document.md) |
 | **Status** | Draft |
-| **Last updated** | May 16, 2026 |
+| **Last updated** | May 19, 2026 |
 | **UI shell** | Metronic 9 — Demo 1 layout |
 | **Backend** | Supabase (Postgres, Auth, RLS) |
 | **Hosting** | Vercel |
@@ -82,7 +83,9 @@ All implementation work **must** be reflected in **[docs/implementation-tracker.
 
 ## 1. Executive summary
 
-**Acadia College** is a school management web application for running day-to-day academic and administrative operations: student and staff records, courses, enrollment, attendance, grades, fees, transcripts, and messaging. The product is built on the existing Metronic Next.js template (Demo 1 layout) using **only components already present in the template**, with Supabase as the database and authentication backend.
+**Acadia College** is a school management web application for **Cameroon secondary schools**, supporting day-to-day academic and administrative operations: student and staff records, courses, enrollment, attendance, grades, fees, transcripts, and messaging. The product models the Cameroon calendar (academic years, three terms, six sequences) and bilingual English/French sub-systems. For detailed stakeholder requirements on sub-systems, branches, and assessment, see [product-requirements-document.md](product-requirements-document.md).
+
+The product is built on the existing Metronic Next.js template (Demo 1 layout) using **only components already present in the template**, with Supabase as the database and authentication backend.
 
 Users sign in with **email and password only**—there is no role selector on the login screen. After authentication, the system reads their role from the database and routes them to the correct dashboard and navigation for their user type.
 
@@ -112,11 +115,78 @@ Users sign in with **email and password only**—there is no role selector on th
 
 | Persona | Role slug(s) | Primary needs |
 |---------|--------------|---------------|
-| **Administrator** | `admin` | Full tenant oversight, users, settings, reports |
-| **Registrar** | `registrar` | Enrollment, academic structure, student records |
-| **Staff / Teacher** | `staff`, `teacher` | Courses, attendance, marks, timetable |
+| **Administrator** | `admin`, `super-admin`, `registrar` (legacy) | Full tenant oversight, users, settings, reports, enrollment, academic structure, student records |
+| **Bursar / financial director** | `financial-director` | Fee collection, financial reporting, payment processing (admin dashboard + finance modules) |
+| **Staff / Teacher** | `staff`, `teacher`, `lecturer` | Courses, attendance, marks, timetable |
 | **Student** | `student` | Own enrollment, schedule, grades, fees, messages |
-| **Guardian** | `guardian` | Linked students’ attendance, marks, fees |
+| **Guardian (parent)** | `guardian` | Linked students’ attendance, marks, fees, school communications |
+
+### 3.1 Cameroon academic calendar
+
+Acadia College uses a **year → term → sequence** hierarchy aligned with Cameroon secondary schools:
+
+| Level | Count | Notes |
+|-------|-------|-------|
+| **Academic year** | 1 per school year | e.g. 2025–2026; enrollment and timetable scope |
+| **Term** | 3 per year | 1st, 2nd, and 3rd term; term report cards |
+| **Sequence** | 6 per year | 2 sequences per term; sequence exam results |
+
+Assessment is recorded at **sequence** boundaries (end-of-sequence marks) and **term** boundaries (term report cards). Promotion uses term/year averages (see product requirements for automatic migration rules).
+
+Data model: `AcademicYear`, `Term`, `AcademicSequence` (replacing legacy `Semester` naming).
+
+### 3.2 Cameroon educational system (English and French sub-systems)
+
+Acadia College must support Cameroon's **dual sub-system** structure and the three academic **branches** used in both sub-systems.
+
+#### English sub-system
+
+| Cycle | Duration | Levels | Exit examination |
+|-------|----------|--------|-------------------|
+| **First cycle** | 5 years | Form 1 → Form 5 | GCE Ordinary Level (Form 5) |
+| **Second cycle** | 2 years | Lower Sixth, Upper Sixth | GCE Advanced Level (Upper Sixth) |
+
+#### French sub-system
+
+| Cycle | Duration | Levels | Exit examination |
+|-------|----------|--------|-------------------|
+| **First cycle** | 4 years | Sixième → Troisième | BEPC (Troisième) |
+| **Second cycle** | 3 years | Seconde, Première, Terminale | Probatoire (Première), Baccalauréat (Terminale) |
+
+#### Academic branches (both sub-systems)
+
+| Branch | Focus |
+|--------|--------|
+| **Grammar** | General academic subjects |
+| **Technical** | Vocational training and practical skills |
+| **Commercial** | Business-related fields |
+
+Enrollment, class organization, and subject catalogs must respect **sub-system** (English/French) and **branch** selection. Schema fields such as `Specialty`, `Level`, and bilingual `nameEn` / `nameFr` labels support this model.
+
+#### Promotion and migration
+
+- **Automatic promotion:** Students with a **term or year average of 10 or above** migrate to the next class automatically (see [product-requirements-document.md](product-requirements-document.md) § Data Management).
+- **Manual promotion:** Administrators may override or process exceptional cases.
+- **Academic year transitions:** End-of-year rollover updates enrollments, terms, and sequences for the new year.
+
+### 3.3 User roles and permissions
+
+Role-based access is enforced via `UserRole.slug`, RLS policies, and sidebar filtering. The table below maps stakeholder personas to implementation slugs and summarizes responsibilities (from stakeholder requirements).
+
+| Persona | Role slug(s) | Access level | Primary responsibilities |
+|---------|--------------|--------------|---------------------------|
+| **Administrator** | `admin`, `super-admin`, `registrar` (legacy) | Full tenant | User management and role assignment; system and institution settings; data management and reporting; academic calendar (years, terms, sequences); financial oversight |
+| **Bursar** | `financial-director` | Financial + admin dashboard | Fee collection and tracking; financial reporting; payment processing; budget management |
+| **Teacher** | `teacher`, `staff`, `lecturer` | Subject/class scope | Class and student management; grade entry and assessment; attendance tracking; student performance monitoring; parent/guardian communication |
+| **Student** | `student` | Personal records only | View academic records and schedules; access learning resources; track personal performance |
+| **Guardian (parent)** | `guardian` | Linked children only | Monitor child's academic progress; view attendance; access school communications; participate in school activities |
+
+**Authorization rules (implementation):**
+
+- Administrators (`isAdmin`) manage institution settings, registry writes, and user/role administration.
+- Staff and teachers (`canWriteOperations`) manage attendance, marks, coursework, and operational records within tenant scope.
+- Students and guardians have read-focused access to their own or linked records; writes limited to submissions and messaging where applicable.
+- Do not use `user_metadata` for authorization; use `public.User` + `UserRole` (see §7.3).
 
 ---
 
@@ -133,6 +203,8 @@ Users sign in with **email and password only**—there is no role selector on th
 - Module UIs for registry, academics, curriculum, enrollment, attendance, finance, records, messaging, and administration (phased)—each built by **adapting an existing template page**, not greenfield UI.
 - Account/settings pages repurposed for institution profile, user profile, notifications, roles, and fees (same routes, same component tree, new data).
 - Bilingual-ready display (EN primary, FR secondary where schema provides `nameEn` / `nameFr`).
+- Cameroon educational model: English and French sub-systems, Grammar/Technical/Commercial branches, three terms and six sequences per year (§3.1–3.2).
+- Stakeholder functional requirements catalogue (§10.6) traced to [product-requirements-document.md](product-requirements-document.md).
 
 ### 4.2 Out of scope (initial phases)
 
@@ -234,8 +306,8 @@ Do not rebrand third-party template credits in code comments—only user-visible
 
 | Role slug | Dashboard route | Focus |
 |-----------|-----------------|-------|
-| `admin`, `registrar` | `/dashboard/admin` | Tenant KPIs, enrollments, applications, fees, system log |
-| `staff`, `teacher` | `/dashboard/staff` | My courses, timetable, attendance sessions, grading |
+| `admin`, `super-admin`, `financial-director`, `registrar` (legacy) | `/dashboard/admin` | Tenant KPIs, enrollment, academic structure, student records, users, settings, reports, fees, system log |
+| `staff`, `teacher`, `lecturer` | `/dashboard/staff` | My courses, timetable, attendance sessions, grading |
 | `student` | `/dashboard/student` | Enrollment, timetable, attendance, marks, fees, messages |
 | `guardian` | `/dashboard/guardian` | Linked students, child attendance/marks/fees |
 
@@ -303,6 +375,7 @@ flowchart TB
 - **Auth link:** `User.id = auth.users.id` (UUID); `roleId`, `tenantId`, `status` on `User`.
 - **Multi-tenancy:** All school tables include `tenantId`; RLS filters by signed-in user’s tenant.
 - **Credentials:** Stored in Supabase Auth, not `User.password`.
+- **Academic calendar:** `AcademicYear` → `Term` (3 per year, scoped by `academicYearId`) → `AcademicSequence` (6 per year, 2 per term). Legacy `Semester` table renamed to `Term` in migrations.
 
 ### 8.4 Data access pattern
 
@@ -340,7 +413,7 @@ Sidebar (`config/menu.config.tsx`) uses **Lucide icons only** (template conventi
 | Dashboard | Role-specific home | Aggregates by role |
 | Students | `/students`, `/students/[id]` | `StudentProfile`, `StudentEnrollment` |
 | Staff | `/staff`, `/staff/[id]` | `StaffProfile`, `Department` |
-| Academics | `/academics/*` | `AcademicYear`, `Semester`, `Department`, `Level`, `Specialty`, `Room`, `AcademicCalendarMilestone` |
+| Academics | `/academics/*` | `AcademicYear`, `Term`, `AcademicSequence`, `Department`, `Level`, `Specialty`, `Room`, `AcademicCalendarMilestone` |
 | Curriculum | `/courses`, `/courses/[id]`, `/timetable` | `Course`, `CourseAssignment`, `TimetableSlot` |
 | Enrollment | `/enrollment/applications`, `/enrollment/enrollments` | `EnrollmentApplication`, `StudentEnrollment` |
 | Attendance & grades | `/attendance`, `/marks`, `/coursework`, `/exams` | `AttendanceSession`, `AttendanceRecord`, `CourseMark`, `CourseworkTask`, `ExamSession` |
@@ -375,7 +448,7 @@ Sidebar (`config/menu.config.tsx`) uses **Lucide icons only** (template conventi
 | F-010 | Students list (search, filter, pagination) | P1 | `not_started` |
 | F-011 | Student detail profile | P1 | `not_started` |
 | F-012 | Staff list and detail | P1 | `not_started` |
-| F-013 | Academic structure CRUD (years, semesters, departments, levels, specialties, rooms) | P1 | `not_started` |
+| F-013 | Academic structure CRUD (years, terms, sequences, departments, levels, specialties, rooms) | P1 | `not_started` |
 | F-014 | Courses list and detail | P1 | `not_started` |
 | F-015 | Academic calendar milestones view | P2 | `not_started` |
 
@@ -410,6 +483,125 @@ Sidebar (`config/menu.config.tsx`) uses **Lucide icons only** (template conventi
 | F-043 | User profile and notifications | P1 | `not_started` |
 | F-044 | API keys (`TenantApiKey`) | P3 | `not_started` |
 | F-045 | System log view | P2 | `not_started` |
+
+### 10.6 Stakeholder functional requirements catalogue
+
+The following **FR-*** requirements are the stakeholder-level specification from [product-requirements-document.md](product-requirements-document.md). They inform and extend the module IDs in §10.1–10.5. **Implementation tracker:** each FR maps to **F-050+** rows in [implementation-tracker.md](implementation-tracker.md) § Phase 7 (see FR coverage index at end of that section).
+
+#### 10.6.1 User management
+
+| ID | Requirement |
+|----|-------------|
+| FR-1.1.1 | Create user accounts with role-based permissions |
+| FR-1.1.2 | Edit user profiles and contact information |
+| FR-1.1.3 | Activate/deactivate user accounts |
+| FR-1.1.4 | Reset user passwords |
+| FR-1.1.5 | Assign and modify user roles |
+| FR-1.1.6 | Track user activity logs |
+| FR-1.2.1 | Secure login with role-based access |
+| FR-1.2.2 | Session management and timeout |
+| FR-1.2.3 | Password policy enforcement |
+| FR-1.2.4 | Multi-factor authentication support (future) |
+
+#### 10.6.2 Student management
+
+| ID | Requirement |
+|----|-------------|
+| FR-2.1.1 | Support enrollment in both English and French sub-systems |
+| FR-2.1.2 | Enable branch selection (Grammar, Technical, Commercial) |
+| FR-2.1.3 | Capture student demographics and academic history |
+| FR-2.1.4 | Generate enrollment confirmations |
+| FR-2.2.1 | Maintain comprehensive student profiles |
+| FR-2.2.2 | Track academic progress across terms |
+| FR-2.2.3 | Record examination results and certificates |
+| FR-2.2.4 | Manage student migration between classes |
+
+#### 10.6.3 Class and subject management
+
+| ID | Requirement |
+|----|-------------|
+| FR-3.1.1 | Create classes for each year and branch |
+| FR-3.1.2 | Assign teachers to classes and subjects |
+| FR-3.1.3 | Manage class rosters and student lists |
+| FR-3.1.4 | Schedule classes and activities |
+| FR-3.2.1 | Define subjects for each branch and level |
+| FR-3.2.2 | Assign subjects to teachers |
+| FR-3.2.3 | Manage subject-specific resources |
+
+#### 10.6.4 Academic assessment
+
+| ID | Requirement |
+|----|-------------|
+| FR-4.1.1 | Enter and edit student grades |
+| FR-4.1.2 | Calculate averages and rankings |
+| FR-4.1.3 | Generate grade reports |
+| FR-4.1.4 | Track grade history and changes |
+| FR-4.2.1 | Create and manage examinations |
+| FR-4.2.2 | Support major exams (GCE, BEPC, Probatoire, Baccalauréat) |
+| FR-4.2.3 | Generate examination schedules |
+| FR-4.2.4 | Process examination results |
+| FR-4.3.1 | Generate sequence results |
+| FR-4.3.2 | Create term report cards |
+| FR-4.3.3 | Produce annual academic summaries |
+| FR-4.3.4 | Generate promotion/admission statements |
+
+#### 10.6.5 Attendance management
+
+| ID | Requirement |
+|----|-------------|
+| FR-5.1.1 | Record daily student attendance |
+| FR-5.1.2 | Track tardiness and absences |
+| FR-5.1.3 | Generate attendance reports |
+| FR-5.1.4 | Send attendance notifications |
+| FR-5.2.1 | Calculate attendance percentages |
+| FR-5.2.2 | Identify attendance patterns |
+| FR-5.2.3 | Generate attendance summaries |
+
+#### 10.6.6 Financial management
+
+| ID | Requirement |
+|----|-------------|
+| FR-6.1.1 | Set and manage tuition fees |
+| FR-6.1.2 | Track payment status |
+| FR-6.1.3 | Generate invoices and receipts |
+| FR-6.1.4 | Manage outstanding balances |
+| FR-6.2.1 | Generate financial summaries |
+| FR-6.2.2 | Track income and expenses |
+| FR-6.2.3 | Create budget reports |
+| FR-6.2.4 | Produce year-end financial statements |
+
+#### 10.6.7 Communication
+
+| ID | Requirement |
+|----|-------------|
+| FR-7.1.1 | Enable inter-user messaging |
+| FR-7.1.2 | Support group communications |
+| FR-7.1.3 | Send notifications and alerts |
+| FR-7.1.4 | Manage communication preferences |
+| FR-7.2.1 | Broadcast school announcements |
+| FR-7.2.2 | Send event notifications |
+| FR-7.2.3 | Manage announcement scheduling |
+
+#### 10.6.8 Resource management
+
+| ID | Requirement |
+|----|-------------|
+| FR-8.1.1 | Manage learning materials |
+| FR-8.1.2 | Track resource allocation |
+| FR-8.1.3 | Monitor resource usage |
+| FR-8.1.4 | Handle resource requests |
+| FR-8.2.1 | Manage classroom assignments |
+| FR-8.2.2 | Track facility usage |
+| FR-8.2.3 | Schedule maintenance activities |
+
+#### 10.6.9 Data migration and lifecycle
+
+| ID | Requirement |
+|----|-------------|
+| FR-DM-1 | Automatic student promotion with 10+ average |
+| FR-DM-2 | Manual promotion by administrators |
+| FR-DM-3 | Academic year transitions |
+| FR-DM-4 | Data archival and retention |
 
 ---
 

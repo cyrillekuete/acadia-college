@@ -8,7 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { Card, CardHeader, CardTable, CardFooter } from '@/components/ui/card';
 import { DataGrid } from '@/components/ui/data-grid';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
@@ -43,12 +43,16 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   columns,
   select = '*',
   searchKeys = [],
+  rowFilter,
+  toolbarExtra,
 }: {
   table: string;
   title: string;
   columns: ColumnDef<T>[];
   select?: string;
   searchKeys?: (keyof T)[];
+  rowFilter?: (row: T) => boolean;
+  toolbarExtra?: ReactNode;
 }) {
   const { data = [], isLoading, isError, error } = useSupabaseTableList<T>(
     table,
@@ -57,18 +61,19 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
+    let rows = rowFilter ? data.filter(rowFilter) : data;
     if (!search.trim() || searchKeys.length === 0) {
-      return data;
+      return rows;
     }
     const q = search.toLowerCase();
-    return data.filter((row) =>
+    return rows.filter((row) =>
       searchKeys.some((key) =>
         String(row[key] ?? '')
           .toLowerCase()
           .includes(q),
       ),
     );
-  }, [data, search, searchKeys]);
+  }, [data, search, searchKeys, rowFilter]);
 
   const tableInstance = useReactTable({
     data: filtered,
@@ -81,6 +86,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
 
   return (
     <Card>
+      {toolbarExtra ? <div className="px-5 pt-4">{toolbarExtra}</div> : null}
       <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
         <h3 className="text-sm font-medium">{title}</h3>
         {searchKeys.length > 0 ? (

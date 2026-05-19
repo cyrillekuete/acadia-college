@@ -4,47 +4,39 @@ import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
-import { CalendarMilestoneFormDialog } from '@/components/acadia/academics/calendar-milestone-form-dialog';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
+import { SequenceFormDialog } from '@/components/acadia/academics/sequence-form-dialog';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
-import { formatRecordValue, termLabel } from '@/lib/acadia/record-display';
+import { sequenceLabel, termLabel } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
 
 type Row = {
   id: string;
-  kind: string;
-  onDate: string;
-  labelEn: string | null;
-  labelFr: string | null;
+  number: number;
+  numberInTerm: number;
+  termId: string;
   academicYearId: string;
-  termId: string | null;
-  AcademicYear?: unknown;
   Term?: unknown;
+  AcademicYear?: unknown;
 };
 
-function kindLabel(kind: string): string {
-  return kind
-    .toLowerCase()
-    .split('_')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-}
-
-export default function AcademicCalendarPage() {
+export default function SequencesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
-  const { deleteMilestone } = useAcademicCalendarMutations();
+  const { deleteSequence } = useAcademicCalendarMutations();
 
   const columns = useMemo<ColumnDef<Row>[]>(
     () => [
       {
-        accessorKey: 'kind',
-        header: 'Kind',
-        cell: ({ row }) => kindLabel(row.original.kind),
+        accessorKey: 'number',
+        header: 'Sequence',
+        cell: ({ row }) =>
+          sequenceLabel({
+            number: row.original.number,
+            numberInTerm: row.original.numberInTerm,
+          }),
       },
-      { accessorKey: 'onDate', header: 'Date' },
-      { accessorKey: 'labelEn', header: 'Label (EN)' },
       nestedFieldColumn<Row>('year', 'Academic year', 'AcademicYear', 'label'),
       {
         id: 'term',
@@ -55,7 +47,7 @@ export default function AcademicCalendarPage() {
           if (term && typeof term === 'object' && 'number' in term) {
             return termLabel({ number: (term as { number: number }).number });
           }
-          return formatRecordValue(null);
+          return '—';
         },
       },
       {
@@ -68,37 +60,41 @@ export default function AcademicCalendarPage() {
               setDialogOpen(true);
             }}
             onDelete={() => {
-              if (window.confirm('Delete this calendar milestone?')) {
-                deleteMilestone.mutate(row.original.id);
+              if (
+                window.confirm(
+                  `Delete sequence ${row.original.number}? This may fail if it is in use.`,
+                )
+              ) {
+                deleteSequence.mutate(row.original.id);
               }
             }}
           />
         ),
       },
     ],
-    [deleteMilestone],
+    [deleteSequence],
   );
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Academic calendar"
-      description="Key dates for enrollment, instruction, exams, and mark entry."
+      title="Acadia College — Sequences"
+      description="Six sequences per academic year (two per term) for sequence exams and marks."
     >
       <AdminToolbar
-        addLabel="New milestone"
+        addLabel="New sequence"
         onAdd={() => {
           setEditing(null);
           setDialogOpen(true);
         }}
       />
       <SupabaseTableList
-        table="AcademicCalendarMilestone"
-        title="Calendar milestones"
-        select="id, kind, onDate, labelEn, labelFr, academicYearId, termId, AcademicYear:academicYearId ( label ), Term:termId ( number )"
+        table="AcademicSequence"
+        title="Sequences"
+        select="id, number, numberInTerm, termId, academicYearId, AcademicYear:academicYearId ( label ), Term:termId ( number )"
         columns={columns}
-        searchKeys={['labelEn', 'kind']}
+        searchKeys={['number']}
       />
-      <CalendarMilestoneFormDialog
+      <SequenceFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         record={editing}

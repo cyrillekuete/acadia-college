@@ -8,7 +8,8 @@ import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import {
   formatDateTime,
   formatRecordValue,
-  semesterLabel,
+  sequenceLabel,
+  termLabel,
   specialtyLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
@@ -23,7 +24,8 @@ const EXAM_SELECT = `
   updatedAt,
   Course:courseId ( code, nameEn, nameFr ),
   AcademicYear:academicYearId ( label ),
-  Semester:semesterId ( number )
+  Term:termId ( number ),
+  AcademicSequence:sequenceId ( number, numberInTerm )
 `;
 
 type ExamSessionDetail = {
@@ -36,7 +38,8 @@ type ExamSessionDetail = {
   updatedAt: string;
   Course: unknown;
   AcademicYear: unknown;
-  Semester: unknown;
+  Term: unknown;
+  AcademicSequence: unknown;
 };
 
 export default function ExamSessionDetailPage({
@@ -53,7 +56,10 @@ export default function ExamSessionDetailPage({
 
   const course = unwrapRelation<{ code?: string; nameEn?: string }>(data?.Course);
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
-  const semester = unwrapRelation<{ number?: number }>(data?.Semester);
+  const term = unwrapRelation<{ number?: number }>(data?.Term);
+  const sequence = unwrapRelation<{ number?: number; numberInTerm?: number }>(
+    data?.AcademicSequence,
+  );
 
   const isFinalized = !!data?.finalizedAt;
   const title = data?.type ? `Exam — ${data.type}` : 'Exam session';
@@ -97,7 +103,8 @@ export default function ExamSessionDetailPage({
             fields={[
               { label: 'Course', value: specialtyLabel(course) },
               { label: 'Academic year', value: formatRecordValue(year?.label) },
-              { label: 'Semester', value: semesterLabel(semester) },
+              { label: 'Term', value: termLabel(term) },
+              { label: 'Sequence', value: sequenceLabel(sequence) },
             ]}
           />
         </div>

@@ -11,20 +11,24 @@ function normalizeRole(roleSlug: string | null | undefined): string {
   return roleSlug?.toLowerCase() ?? '';
 }
 
-export function isAdminOrRegistrar(roleSlug: string | null | undefined): boolean {
+/** Administrator-level access (includes legacy `registrar` slug for existing users). */
+export function isAdmin(roleSlug: string | null | undefined): boolean {
   return ADMIN_ROLES.has(normalizeRole(roleSlug));
 }
+
+/** @deprecated Use {@link isAdmin} */
+export const isAdminOrRegistrar = isAdmin;
 
 export function isStaffOrTeacher(roleSlug: string | null | undefined): boolean {
   return STAFF_ROLES.has(normalizeRole(roleSlug));
 }
 
 export function canManageInstitution(roleSlug: string | null | undefined): boolean {
-  return isAdminOrRegistrar(roleSlug);
+  return isAdmin(roleSlug);
 }
 
 export function canWriteRegistry(roleSlug: string | null | undefined): boolean {
-  return isAdminOrRegistrar(roleSlug);
+  return isAdmin(roleSlug);
 }
 
 export function canWriteOperations(roleSlug: string | null | undefined): boolean {

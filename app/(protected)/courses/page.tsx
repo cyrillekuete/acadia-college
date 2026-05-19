@@ -1,28 +1,60 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import {
+  EMPTY_CATALOG_FILTERS,
+  rowMatchesCatalogFilters,
+  specialtyStreamLabel,
+  type CatalogFilters,
+} from '@/lib/acadia/education-system';
 import { detailLinkColumn } from '@/lib/acadia/list-columns';
 
-type Row = { id: string; code?: string } & Record<string, unknown>;
+type Row = { id: string; code?: string; Specialty?: unknown } & Record<string, unknown>;
 
-const columns: ColumnDef<Row>[] = [
-  detailLinkColumn<Row>('/courses', 'code', 'Code'),
-  { accessorKey: 'nameEn', header: 'Name (EN)' },
-  { accessorKey: 'nameFr', header: 'Name (FR)' },
-  { accessorKey: 'credits', header: 'Credits' },
-];
+export default function CoursesPage() {
+  const [catalogFilters, setCatalogFilters] =
+    useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
 
-export default function Page() {
+  const columns = useMemo<ColumnDef<Row>[]>(
+    () => [
+      detailLinkColumn<Row>('/courses', 'code', 'Code'),
+      { accessorKey: 'nameEn', header: 'Name (EN)' },
+      { accessorKey: 'nameFr', header: 'Name (FR)' },
+      { accessorKey: 'credits', header: 'Credits' },
+      {
+        id: 'stream',
+        header: 'Sub-system / branch',
+        cell: ({ row }) => {
+          const specialty = row.original.Specialty;
+          const rel = Array.isArray(specialty) ? specialty[0] : specialty;
+          if (rel && typeof rel === 'object') {
+            const s = rel as { subSystem?: string; branch?: string };
+            return specialtyStreamLabel(s.subSystem, s.branch);
+          }
+          return '—';
+        },
+      },
+    ],
+    [],
+  );
+
   return (
-    <AcadiaPageShell title="Acadia College — Courses" description="Course catalog.">
+    <AcadiaPageShell
+      title="Acadia College — Courses"
+      description="Course catalog filtered by specialty sub-system and branch."
+    >
+      <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
       <SupabaseTableList
         table="Course"
-        title="Course"
-        select="id, code, nameEn, nameFr, credits, hours"
+        title="Courses"
+        select="id, code, nameEn, nameFr, credits, hours, specialtyId, Specialty:specialtyId ( subSystem, branch )"
         columns={columns}
         searchKeys={['code', 'nameEn', 'nameFr']}
+        rowFilter={(row) => rowMatchesCatalogFilters(row, catalogFilters)}
       />
     </AcadiaPageShell>
   );

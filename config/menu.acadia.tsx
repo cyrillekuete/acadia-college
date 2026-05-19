@@ -40,7 +40,8 @@ export const MENU_ACADIA: MenuConfig = [
     icon: Building,
     children: [
       { title: 'Academic years', path: '/academics/years' },
-      { title: 'Semesters', path: '/academics/semesters' },
+      { title: 'Terms', path: '/academics/terms' },
+      { title: 'Sequences', path: '/academics/sequences' },
       { title: 'Departments', path: '/academics/departments' },
       { title: 'Levels', path: '/academics/levels' },
       { title: 'Specialties', path: '/academics/specialties' },
