@@ -1,6 +1,7 @@
 'use client';
 
-import { LucideIcon } from 'lucide-react';
+import { KeenIcon } from '@/components/keenicons';
+import type { KeenIconName } from '@/lib/icons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -9,19 +10,19 @@ export function AdminOverviewStatCard({
   value,
   footer,
   footerTone = 'muted',
-  icon: Icon,
+  icon,
 }: {
   title: string;
   value: string | number;
   footer: string;
   footerTone?: 'positive' | 'muted';
-  icon: LucideIcon;
+  icon: KeenIconName;
 }) {
   return (
     <Card className="h-full">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <StatIconBadge Icon={Icon} />
+        <StatIconBadge icon={icon} />
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-3xl font-semibold tracking-tight">{value}</p>
@@ -38,10 +39,10 @@ export function AdminOverviewStatCard({
   );
 }
 
-function StatIconBadge({ Icon }: { Icon: LucideIcon }) {
+function StatIconBadge({ icon }: { icon: KeenIconName }) {
   return (
     <div className="flex size-9 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
-      <Icon className="size-4" aria-hidden />
+      <KeenIcon icon={icon} style="duotone" className="text-base" aria-hidden />
     </div>
   );
 }

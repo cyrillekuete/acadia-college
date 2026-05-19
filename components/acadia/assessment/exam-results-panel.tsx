@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { LoaderCircleIcon } from 'lucide-react';
+import { LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { MarksEntryGrid } from '@/components/acadia/assessment/marks-entry-grid';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';

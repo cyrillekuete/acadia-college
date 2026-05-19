@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Printer } from 'lucide-react';
+import { Printer } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import {
   Form,

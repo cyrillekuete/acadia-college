@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, ArrowLeft, Check } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check } from '@/lib/icons';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, AlertIcon, AlertTitle } from '@/components/ui/alert';
@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { LoaderCircleIcon } from 'lucide-react';
+import { LoaderCircleIcon } from '@/lib/icons';
 import { createClientOrNull } from '@/lib/supabase/client';
 import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase/env';
 

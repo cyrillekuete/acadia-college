@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import {

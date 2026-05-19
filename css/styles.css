@@ -15,6 +15,9 @@
   }
 }
 
+/* Keenicons (duotone default for Acadia) */
+@import '../components/keenicons/assets/styles.css';
+
 /* Metronic Components  */
 @import './components/image-input.css';
 @import './components/apexcharts.css';

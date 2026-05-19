@@ -1,5 +1,4 @@
 'use client';
-'use client';
 
 import { JSX, useCallback } from 'react';
 import Link from 'next/link';

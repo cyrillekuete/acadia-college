@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, LoaderCircleIcon } from 'lucide-react';
+import { ExternalLink, LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import {
   Form,

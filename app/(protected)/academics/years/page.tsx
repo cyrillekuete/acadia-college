@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
-import { ArrowRightLeft, Star } from 'lucide-react';
+import { ArrowRightLeft, Star } from '@/lib/icons';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AcademicYearFormDialog } from '@/components/acadia/academics/academic-year-form-dialog';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';

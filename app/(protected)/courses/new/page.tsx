@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/lib/icons';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { CourseForm } from '@/components/acadia/courses/course-form';
 import { Button } from '@/components/ui/button';

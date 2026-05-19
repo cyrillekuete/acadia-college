@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Check, FileText, X } from 'lucide-react';
+import { Check, FileText, X } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

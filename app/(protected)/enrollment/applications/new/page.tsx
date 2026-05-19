@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/lib/icons';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { EnrollmentApplicationForm } from '@/components/acadia/enrollment/enrollment-application-form';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';

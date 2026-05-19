@@ -1,17 +1,18 @@
 'use client';
 
-import { LucideIcon } from 'lucide-react';
+import { KeenIcon } from '@/components/keenicons';
+import type { KeenIconName } from '@/lib/icons';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 export function DashboardChannelStatCard({
   title,
   value,
-  icon: Icon,
+  icon,
   className,
 }: {
   title: string;
   value: number | string;
-  icon: LucideIcon;
+  icon: KeenIconName;
   className?: string;
 }) {
   return (
@@ -23,7 +24,12 @@ export function DashboardChannelStatCard({
           'bg-cover bg-[right_top_-1.7rem] bg-no-repeat rtl:bg-[left_top_-1.7rem]',
         )}
       >
-        <Icon className="mt-4 ms-5 size-7 text-primary" aria-hidden />
+        <KeenIcon
+          icon={icon}
+          style="duotone"
+          className="mt-4 ms-5 text-[1.75rem] text-primary"
+          aria-hidden
+        />
         <div className="flex flex-col gap-1 px-5 pb-4">
           <span className="text-3xl font-semibold text-mono">{value}</span>
           <span className="text-sm font-normal text-muted-foreground">{title}</span>

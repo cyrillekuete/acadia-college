@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { Printer } from 'lucide-react';
+import { Printer } from '@/lib/icons';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import {
   EnrollmentConfirmationView,

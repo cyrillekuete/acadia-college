@@ -1,6 +1,5 @@
 'use client';
 
-import { BookOpen, DollarSign, GraduationCap, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AdminOverviewStatCard } from '@/components/acadia/admin-dashboard/admin-overview-stat-card';
@@ -58,7 +57,7 @@ export default function AdminDashboardPage() {
                 ? 'positive'
                 : 'muted'
             }
-            icon={GraduationCap}
+            icon="teacher"
           />
           <AdminOverviewStatCard
             title="Total Teachers"
@@ -73,13 +72,13 @@ export default function AdminDashboardPage() {
                 ? 'positive'
                 : 'muted'
             }
-            icon={Users}
+            icon="users"
           />
           <AdminOverviewStatCard
             title="Active Classes"
             value={formatDashboardStatValue(stats?.activeClasses)}
             footer="Across all levels"
-            icon={BookOpen}
+            icon="book-open"
           />
           <AdminOverviewStatCard
             title="Revenue"
@@ -94,7 +93,7 @@ export default function AdminDashboardPage() {
                 ? 'positive'
                 : 'muted'
             }
-            icon={DollarSign}
+            icon="dollar"
           />
         </div>
 

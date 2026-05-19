@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getMenuForRole } from '@/config/menu.acadia';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { MenuConfig, MenuItem } from '@/config/types';
+import { type AcadiaMenuConfig, type AcadiaMenuItem } from '@/config/types';
 import { cn } from '@/lib/utils';
 import {
   AccordionMenu,
@@ -18,6 +18,19 @@ import {
   AccordionMenuSubTrigger,
 } from '@/components/ui/accordion-menu';
 import { Badge } from '@/components/ui/badge';
+import { KeenIcon } from '@/components/keenicons';
+import type { KeenIconName } from '@/lib/icons/keen-icon-names';
+
+function MenuItemIcon({ icon }: { icon: KeenIconName }) {
+  return (
+    <KeenIcon
+      icon={icon}
+      style="duotone"
+      className="text-base shrink-0"
+      data-slot="accordion-menu-icon"
+    />
+  );
+}
 
 export function SidebarMenu() {
   const pathname = usePathname();
@@ -46,8 +59,8 @@ export function SidebarMenu() {
     indicator: '',
   };
 
-  const buildMenu = (items: MenuConfig): JSX.Element[] => {
-    return items.map((item: MenuItem, index: number) => {
+  const buildMenu = (items: AcadiaMenuConfig): JSX.Element[] => {
+    return items.map((item: AcadiaMenuItem, index: number) => {
       if (item.heading) {
         return buildMenuHeading(item, index);
       } else if (item.disabled) {
@@ -58,12 +71,12 @@ export function SidebarMenu() {
     });
   };
 
-  const buildMenuItemRoot = (item: MenuItem, index: number): JSX.Element => {
+  const buildMenuItemRoot = (item: AcadiaMenuItem, index: number): JSX.Element => {
     if (item.children) {
       return (
         <AccordionMenuSub key={index} value={item.path || `root-${index}`}>
           <AccordionMenuSubTrigger className="text-sm font-medium">
-            {item.icon && <item.icon data-slot="accordion-menu-icon" />}
+            {item.icon ? <MenuItemIcon icon={item.icon} /> : null}
             <span data-slot="accordion-menu-title">{item.title}</span>
           </AccordionMenuSubTrigger>
           <AccordionMenuSubContent
@@ -89,7 +102,7 @@ export function SidebarMenu() {
             href={item.path || '#'}
             className="flex items-center justify-start grow gap-2"
           >
-            {item.icon && <item.icon data-slot="accordion-menu-icon" />}
+            {item.icon ? <MenuItemIcon icon={item.icon} /> : null}
             <span data-slot="accordion-menu-title">{item.title}</span>
           </Link>
         </AccordionMenuItem>
@@ -98,7 +111,7 @@ export function SidebarMenu() {
   };
 
   const buildMenuItemRootDisabled = (
-    item: MenuItem,
+    item: AcadiaMenuItem,
     index: number,
   ): JSX.Element => {
     return (
@@ -107,7 +120,7 @@ export function SidebarMenu() {
         value={`disabled-${index}`}
         className="text-sm font-medium"
       >
-        {item.icon && <item.icon data-slot="accordion-menu-icon" />}
+        {item.icon ? <MenuItemIcon icon={item.icon} /> : null}
         <span data-slot="accordion-menu-title">{item.title}</span>
         {item.disabled && (
           <Badge variant="secondary" size="sm" className="ms-auto me-[-10px]">
@@ -119,10 +132,10 @@ export function SidebarMenu() {
   };
 
   const buildMenuItemChildren = (
-    items: MenuConfig,
+    items: AcadiaMenuConfig,
     level: number = 0,
   ): JSX.Element[] => {
-    return items.map((item: MenuItem, index: number) => {
+    return items.map((item: AcadiaMenuItem, index: number) => {
       if (item.disabled) {
         return buildMenuItemChildDisabled(item, index, level);
       } else {
@@ -132,7 +145,7 @@ export function SidebarMenu() {
   };
 
   const buildMenuItemChild = (
-    item: MenuItem,
+    item: AcadiaMenuItem,
     index: number,
     level: number = 0,
   ): JSX.Element => {
@@ -189,7 +202,7 @@ export function SidebarMenu() {
   };
 
   const buildMenuItemChildDisabled = (
-    item: MenuItem,
+    item: AcadiaMenuItem,
     index: number,
     level: number = 0,
   ): JSX.Element => {
@@ -209,7 +222,7 @@ export function SidebarMenu() {
     );
   };
 
-  const buildMenuHeading = (item: MenuItem, index: number): JSX.Element => {
+  const buildMenuHeading = (item: AcadiaMenuItem, index: number): JSX.Element => {
     return <AccordionMenuLabel key={index}>{item.heading}</AccordionMenuLabel>;
   };
 

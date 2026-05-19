@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/lib/icons';
 import { ReactNode } from 'react';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { Button } from '@/components/ui/button';

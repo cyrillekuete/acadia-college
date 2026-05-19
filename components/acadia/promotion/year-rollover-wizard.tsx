@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
-import { AlertTriangle, LoaderCircleIcon } from 'lucide-react';
+import { AlertTriangle, LoaderCircleIcon } from '@/lib/icons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

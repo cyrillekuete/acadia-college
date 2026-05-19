@@ -1,4 +1,5 @@
 import { type LucideIcon } from 'lucide-react';
+import type { KeenIconName } from '@/lib/icons/keen-icon-names';
 
 export interface MenuItem {
   title?: string;
@@ -17,6 +18,25 @@ export interface MenuItem {
 }
 
 export type MenuConfig = MenuItem[];
+
+/** Acadia role-based sidebar navigation (Keenicons duotone glyph names). */
+export interface AcadiaMenuItem {
+  title?: string;
+  icon?: KeenIconName;
+  path?: string;
+  rootPath?: string;
+  childrenIndex?: number;
+  heading?: string;
+  children?: AcadiaMenuConfig;
+  disabled?: boolean;
+  collapse?: boolean;
+  collapseTitle?: string;
+  expandTitle?: string;
+  badge?: string;
+  separator?: boolean;
+}
+
+export type AcadiaMenuConfig = AcadiaMenuItem[];
 
 export interface Settings {
   container: 'fixed' | 'fluid';

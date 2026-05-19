@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
-import { KeyRound, Pencil } from 'lucide-react';
+import { KeyRound, Pencil } from '@/lib/icons';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { UserFormDialog } from '@/components/acadia/admin/user-form-dialog';

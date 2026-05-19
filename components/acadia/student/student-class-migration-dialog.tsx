@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { ArrowRightLeft, LoaderCircleIcon } from 'lucide-react';
+import { ArrowRightLeft, LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

@@ -7,7 +7,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { Search } from 'lucide-react';
+import { Search } from '@/lib/icons';
 import { ReactNode, useMemo, useState } from 'react';
 import { Card, CardHeader, CardTable, CardFooter } from '@/components/ui/card';
 import { DataGrid } from '@/components/ui/data-grid';

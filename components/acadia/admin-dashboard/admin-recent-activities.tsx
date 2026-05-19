@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, FileText, LogIn, MoreHorizontal } from 'lucide-react';
+import { BookOpen, FileText, LogIn, MoreHorizontal } from '@/lib/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { timeAgo } from '@/lib/helpers';

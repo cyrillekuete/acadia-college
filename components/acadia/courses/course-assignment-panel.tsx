@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { LoaderCircleIcon, Trash2 } from 'lucide-react';
+import { LoaderCircleIcon, Trash2 } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import {
   Form,

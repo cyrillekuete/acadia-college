@@ -6,7 +6,7 @@ import { KeeniconsProps } from './types';
 
 // KeenIcon using forwardRef to pass the ref and spread props
 export const KeenIcon = forwardRef<HTMLElement, KeeniconsProps>(
-  ({ icon, style = 'filled', className = '', ...props }, ref) => {
+  ({ icon, style = 'duotone', className = '', ...props }, ref) => {
     return (
       <i
         ref={ref}

@@ -1,44 +1,26 @@
-import {
-  Bell,
-  Book,
-  Building,
-  CalendarCheck,
-  ClipboardList,
-  FileCheck,
-  FileText,
-  FolderOpen,
-  GraduationCap,
-  LayoutGrid,
-  MessageSquare,
-  ScrollText,
-  Settings,
-  Shield,
-  Users,
-  Wallet,
-} from 'lucide-react';
-import { type MenuConfig } from './types';
+import { type AcadiaMenuConfig } from './types';
 
-export const MENU_ACADIA: MenuConfig = [
+export const MENU_ACADIA: AcadiaMenuConfig = [
   {
     title: 'Dashboard',
-    icon: LayoutGrid,
+    icon: 'element-11',
     path: '/',
   },
   { heading: 'Registry' },
   {
     title: 'Students',
-    icon: Users,
+    icon: 'users',
     path: '/students',
   },
   {
     title: 'Staff',
-    icon: GraduationCap,
+    icon: 'teacher',
     path: '/staff',
   },
   { heading: 'Academics' },
   {
     title: 'Academic structure',
-    icon: Building,
+    icon: 'bank',
     children: [
       { title: 'Academic years', path: '/academics/years' },
       { title: 'Promotion', path: '/admin/promotion' },
@@ -55,18 +37,18 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Courses',
-    icon: Book,
+    icon: 'book',
     path: '/courses',
   },
   {
     title: 'Timetable',
-    icon: CalendarCheck,
+    icon: 'calendar-tick',
     path: '/timetable',
   },
   { heading: 'Operations' },
   {
     title: 'Enrollment',
-    icon: FileText,
+    icon: 'file-sheet',
     children: [
       { title: 'Applications', path: '/enrollment/applications' },
       { title: 'Enrollments', path: '/enrollment/enrollments' },
@@ -75,7 +57,7 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Attendance',
-    icon: CalendarCheck,
+    icon: 'calendar-tick',
     children: [
       { title: 'Sessions', path: '/attendance' },
       { title: 'New session', path: '/attendance/sessions/new' },
@@ -85,7 +67,7 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Marks',
-    icon: ScrollText,
+    icon: 'document',
     children: [
       { title: 'All marks', path: '/marks' },
       { title: 'Enter marks', path: '/marks/entry' },
@@ -94,12 +76,12 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Coursework',
-    icon: ClipboardList,
+    icon: 'clipboard',
     path: '/coursework',
   },
   {
     title: 'Exams',
-    icon: FileCheck,
+    icon: 'check-squared',
     children: [
       { title: 'Exam sessions', path: '/exams' },
       { title: 'New exam', path: '/exams/new' },
@@ -108,7 +90,7 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Reports',
-    icon: FileText,
+    icon: 'file-sheet',
     children: [
       { title: 'Sequence results', path: '/reports/sequence' },
       { title: 'Term report cards', path: '/reports/term' },
@@ -119,7 +101,7 @@ export const MENU_ACADIA: MenuConfig = [
   { heading: 'Finance & records' },
   {
     title: 'Finance',
-    icon: Wallet,
+    icon: 'wallet',
     children: [
       { title: 'Student fees', path: '/finance/fees' },
       { title: 'Fee plan setup', path: '/finance/fees/setup' },
@@ -131,7 +113,7 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Transcripts',
-    icon: ScrollText,
+    icon: 'document',
     children: [
       { title: 'Transcripts', path: '/transcripts' },
       { title: 'Copy requests', path: '/transcripts/requests' },
@@ -139,7 +121,7 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Messages',
-    icon: MessageSquare,
+    icon: 'message-text',
     children: [
       { title: 'Inbox', path: '/messages' },
       { title: 'New message', path: '/messages/new' },
@@ -148,7 +130,7 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Announcements',
-    icon: Bell,
+    icon: 'notification',
     children: [
       { title: 'All announcements', path: '/announcements' },
       { title: 'New announcement', path: '/announcements/new' },
@@ -157,7 +139,7 @@ export const MENU_ACADIA: MenuConfig = [
   },
   {
     title: 'Resources',
-    icon: FolderOpen,
+    icon: 'folder',
     children: [
       { title: 'Inventory', path: '/resources' },
       { title: 'Learning materials', path: '/resources/materials' },
@@ -166,20 +148,29 @@ export const MENU_ACADIA: MenuConfig = [
   },
   { heading: 'Administration' },
   {
-    title: 'Administration',
-    icon: Shield,
+    title: 'User Management',
+    icon: 'security-user',
     children: [
       { title: 'Users', path: '/admin/users' },
+      { title: 'Roles', path: '/user-management/roles' },
+      { title: 'Permissions', path: '/user-management/permissions' },
+      { title: 'Account', path: '/user-management/account' },
+      { title: 'Logs', path: '/admin/logs' },
+      { title: 'Settings', path: '/user-management/settings' },
+    ],
+  },
+  {
+    title: 'Administration',
+    icon: 'shield-tick',
+    children: [
       { title: 'Promotion', path: '/admin/promotion' },
       { title: 'Data retention', path: '/admin/data-retention' },
-      { title: 'Roles', path: '/admin/roles' },
       { title: 'API keys', path: '/account/api-keys' },
-      { title: 'System log', path: '/admin/logs' },
     ],
   },
   {
     title: 'My account',
-    icon: Settings,
+    icon: 'setting-2',
     children: [
       { title: 'Profile', path: '/account/home/user-profile' },
       { title: 'Institution', path: '/account/home/company-profile' },
@@ -191,28 +182,28 @@ export const MENU_ACADIA: MenuConfig = [
   },
 ];
 
-const STUDENT_MENU: MenuConfig = [
-  { title: 'Dashboard', icon: LayoutGrid, path: '/' },
-  { title: 'My courses', icon: Book, path: '/courses' },
-  { title: 'Timetable', icon: CalendarCheck, path: '/timetable' },
-  { title: 'Attendance', icon: CalendarCheck, path: '/attendance' },
-  { title: 'Marks', icon: ScrollText, path: '/marks' },
-  { title: 'Coursework', icon: ClipboardList, path: '/coursework' },
-  { title: 'Fees', icon: Wallet, path: '/finance/fees' },
+const STUDENT_MENU: AcadiaMenuConfig = [
+  { title: 'Dashboard', icon: 'element-11', path: '/' },
+  { title: 'My courses', icon: 'book', path: '/courses' },
+  { title: 'Timetable', icon: 'calendar-tick', path: '/timetable' },
+  { title: 'Attendance', icon: 'calendar-tick', path: '/attendance' },
+  { title: 'Marks', icon: 'document', path: '/marks' },
+  { title: 'Coursework', icon: 'clipboard', path: '/coursework' },
+  { title: 'Fees', icon: 'wallet', path: '/finance/fees' },
   {
     title: 'Messages',
-    icon: MessageSquare,
+    icon: 'message-text',
     children: [
       { title: 'Inbox', path: '/messages' },
       { title: 'New message', path: '/messages/new' },
     ],
   },
-  { title: 'Announcements', icon: Bell, path: '/announcements' },
-  { title: 'Learning materials', icon: FolderOpen, path: '/resources/materials' },
-  { title: 'Resource requests', icon: FolderOpen, path: '/resources/requests' },
+  { title: 'Announcements', icon: 'notification', path: '/announcements' },
+  { title: 'Learning materials', icon: 'folder', path: '/resources/materials' },
+  { title: 'Resource requests', icon: 'folder', path: '/resources/requests' },
   {
     title: 'My account',
-    icon: Settings,
+    icon: 'setting-2',
     children: [
       { title: 'Profile', path: '/account/home/user-profile' },
       { title: 'Notifications', path: '/account/notifications' },
@@ -220,14 +211,14 @@ const STUDENT_MENU: MenuConfig = [
   },
 ];
 
-const STAFF_MENU: MenuConfig = [
-  { title: 'Dashboard', icon: LayoutGrid, path: '/' },
-  { title: 'Students', icon: Users, path: '/students' },
-  { title: 'Courses', icon: Book, path: '/courses' },
-  { title: 'Timetable', icon: CalendarCheck, path: '/timetable' },
+const STAFF_MENU: AcadiaMenuConfig = [
+  { title: 'Dashboard', icon: 'element-11', path: '/' },
+  { title: 'Students', icon: 'users', path: '/students' },
+  { title: 'Courses', icon: 'book', path: '/courses' },
+  { title: 'Timetable', icon: 'calendar-tick', path: '/timetable' },
   {
     title: 'Attendance',
-    icon: CalendarCheck,
+    icon: 'calendar-tick',
     children: [
       { title: 'Sessions', path: '/attendance' },
       { title: 'New session', path: '/attendance/sessions/new' },
@@ -236,16 +227,16 @@ const STAFF_MENU: MenuConfig = [
   },
   {
     title: 'Marks',
-    icon: ScrollText,
+    icon: 'document',
     children: [
       { title: 'All marks', path: '/marks' },
       { title: 'Enter marks', path: '/marks/entry' },
     ],
   },
-  { title: 'Coursework', icon: ClipboardList, path: '/coursework' },
+  { title: 'Coursework', icon: 'clipboard', path: '/coursework' },
   {
     title: 'Exams',
-    icon: FileCheck,
+    icon: 'check-squared',
     children: [
       { title: 'Exam sessions', path: '/exams' },
       { title: 'Schedule', path: '/exams/schedule' },
@@ -253,17 +244,17 @@ const STAFF_MENU: MenuConfig = [
   },
   {
     title: 'Messages',
-    icon: MessageSquare,
+    icon: 'message-text',
     children: [
       { title: 'Inbox', path: '/messages' },
       { title: 'New message', path: '/messages/new' },
       { title: 'Groups', path: '/messages/groups' },
     ],
   },
-  { title: 'Announcements', icon: Bell, path: '/announcements' },
+  { title: 'Announcements', icon: 'notification', path: '/announcements' },
   {
     title: 'Resources',
-    icon: FolderOpen,
+    icon: 'folder',
     children: [
       { title: 'Inventory', path: '/resources' },
       { title: 'Learning materials', path: '/resources/materials' },
@@ -272,18 +263,18 @@ const STAFF_MENU: MenuConfig = [
   },
   {
     title: 'My account',
-    icon: Settings,
+    icon: 'setting-2',
     children: [{ title: 'Profile', path: '/account/home/user-profile' }],
   },
 ];
 
 /** Bursar / financial director — finance-focused navigation (PRD §3.3). */
-const BURSAR_MENU: MenuConfig = [
-  { title: 'Dashboard', icon: LayoutGrid, path: '/' },
+const BURSAR_MENU: AcadiaMenuConfig = [
+  { title: 'Dashboard', icon: 'element-11', path: '/' },
   { heading: 'Finance & records' },
   {
     title: 'Finance',
-    icon: Wallet,
+    icon: 'wallet',
     children: [
       { title: 'Student fees', path: '/finance/fees' },
       { title: 'Fee plan setup', path: '/finance/fees/setup' },
@@ -295,18 +286,18 @@ const BURSAR_MENU: MenuConfig = [
   },
   {
     title: 'Transcripts',
-    icon: ScrollText,
+    icon: 'document',
     children: [
       { title: 'Transcripts', path: '/transcripts' },
       { title: 'Copy requests', path: '/transcripts/requests' },
     ],
   },
-  { title: 'Students', icon: Users, path: '/students' },
-  { title: 'Messages', icon: MessageSquare, path: '/messages' },
-  { title: 'Announcements', icon: Bell, path: '/announcements' },
+  { title: 'Students', icon: 'users', path: '/students' },
+  { title: 'Messages', icon: 'message-text', path: '/messages' },
+  { title: 'Announcements', icon: 'notification', path: '/announcements' },
   {
     title: 'My account',
-    icon: Settings,
+    icon: 'setting-2',
     children: [
       { title: 'Profile', path: '/account/home/user-profile' },
       { title: 'Institution', path: '/account/home/company-profile' },
@@ -315,16 +306,16 @@ const BURSAR_MENU: MenuConfig = [
   },
 ];
 
-const GUARDIAN_MENU: MenuConfig = [
-  { title: 'Dashboard', icon: LayoutGrid, path: '/' },
-  { title: 'Attendance', icon: CalendarCheck, path: '/attendance' },
-  { title: 'Marks', icon: ScrollText, path: '/marks' },
-  { title: 'Fees', icon: Wallet, path: '/finance/fees' },
-  { title: 'Messages', icon: MessageSquare, path: '/messages' },
-  { title: 'Announcements', icon: Bell, path: '/announcements' },
+const GUARDIAN_MENU: AcadiaMenuConfig = [
+  { title: 'Dashboard', icon: 'element-11', path: '/' },
+  { title: 'Attendance', icon: 'calendar-tick', path: '/attendance' },
+  { title: 'Marks', icon: 'document', path: '/marks' },
+  { title: 'Fees', icon: 'wallet', path: '/finance/fees' },
+  { title: 'Messages', icon: 'message-text', path: '/messages' },
+  { title: 'Announcements', icon: 'notification', path: '/announcements' },
   {
     title: 'My account',
-    icon: Settings,
+    icon: 'setting-2',
     children: [
       { title: 'Profile', path: '/account/home/user-profile' },
       { title: 'Notifications', path: '/account/notifications' },
@@ -332,7 +323,7 @@ const GUARDIAN_MENU: MenuConfig = [
   },
 ];
 
-export function getMenuForRole(roleSlug: string | null | undefined): MenuConfig {
+export function getMenuForRole(roleSlug: string | null | undefined): AcadiaMenuConfig {
   const slug = roleSlug?.toLowerCase() ?? '';
 
   if (slug === 'financial-director') {

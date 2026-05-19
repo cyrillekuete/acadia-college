@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { isAdmin } from '@/lib/acadia/roles';
