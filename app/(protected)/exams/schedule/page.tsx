@@ -9,29 +9,22 @@ import {
   detailLinkColumn,
   nestedFieldColumn,
 } from '@/lib/acadia/list-columns';
-import { examSessionTypeLabel } from '@/lib/acadia/assessment';
-import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { canWriteOperations } from '@/lib/acadia/roles';
-
 type ExamRow = {
   id: string;
   type?: string;
   Course?: unknown;
+  AcademicSequence?: unknown;
 } & Record<string, unknown>;
 
 const columns: ColumnDef<ExamRow>[] = [
-  {
-    ...detailLinkColumn<ExamRow>('/exams', 'type', 'Type'),
-    cell: ({ row }) => (
-      <Link
-        href={`/exams/${row.original.id}`}
-        className="font-medium text-primary hover:underline"
-      >
-        {examSessionTypeLabel(String(row.original.type ?? ''))}
-      </Link>
-    ),
-  },
+  detailLinkColumn<ExamRow>('/exams', 'type', 'Type'),
   nestedFieldColumn<ExamRow>('course', 'Course', 'Course', 'code'),
+  nestedFieldColumn<ExamRow>(
+    'sequence',
+    'Sequence',
+    'AcademicSequence',
+    'number',
+  ),
   { accessorKey: 'startsOn', header: 'Starts' },
   { accessorKey: 'endsOn', header: 'Ends' },
   { accessorKey: 'finalizedAt', header: 'Finalized' },
@@ -43,32 +36,27 @@ const EXAM_SELECT = `
   startsOn,
   endsOn,
   finalizedAt,
-  createdAt,
-  Course:courseId ( code, nameEn )
+  Course:courseId ( code, nameEn ),
+  AcademicSequence:sequenceId ( number )
 `;
 
-export default function ExamsPage() {
-  const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteOperations(session?.roleSlug);
-
+export default function ExamSchedulePage() {
   return (
     <AcadiaPageShell
-      title="Acadia College — Exams"
-      description="Exam sessions including sequence exams and major national examinations."
+      title="Examination schedule"
+      description="Upcoming and past exam sessions (FR-4.2.3)."
     >
       <div className="mb-4 flex flex-wrap gap-2">
-        {canManage ? (
-          <Button size="sm" asChild>
-            <Link href="/exams/new">New exam session</Link>
-          </Button>
-        ) : null}
+        <Button size="sm" asChild>
+          <Link href="/exams/new">New exam session</Link>
+        </Button>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/exams/schedule">Exam schedule</Link>
+          <Link href="/exams">All exams</Link>
         </Button>
       </div>
       <SupabaseTableList
         table="ExamSession"
-        title="Exam sessions"
+        title="Exam schedule"
         select={EXAM_SELECT}
         columns={columns}
         searchKeys={['type']}

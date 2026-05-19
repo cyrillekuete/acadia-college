@@ -1,10 +1,13 @@
 'use client';
 
 import { use } from 'react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
+import { examSessionTypeLabel } from '@/lib/acadia/assessment';
 import {
   formatDateTime,
   formatRecordValue,
@@ -13,6 +16,8 @@ import {
   specialtyLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canWriteOperations } from '@/lib/acadia/roles';
 
 const EXAM_SELECT = `
   id,
@@ -48,6 +53,8 @@ export default function ExamSessionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { data: session } = useAcadiaCollegeSession();
+  const canManage = canWriteOperations(session?.roleSlug);
   const { data, isLoading, isError, error } = useSupabaseRecord<ExamSessionDetail>(
     'ExamSession',
     id,
@@ -62,7 +69,9 @@ export default function ExamSessionDetailPage({
   );
 
   const isFinalized = !!data?.finalizedAt;
-  const title = data?.type ? `Exam — ${data.type}` : 'Exam session';
+  const title = data?.type
+    ? `Exam — ${examSessionTypeLabel(data.type)}`
+    : 'Exam session';
 
   return (
     <RecordDetailShell
@@ -74,12 +83,25 @@ export default function ExamSessionDetailPage({
       isError={isError}
       error={error}
     >
+      {data && canManage ? (
+        <div className="mb-5 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/exams/${id}/edit`}>Edit</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href={`/exams/${id}/results`}>Results</Link>
+          </Button>
+        </div>
+      ) : null}
       {data ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 lg:gap-7.5">
           <RecordDetailCard
             title="Exam session"
             fields={[
-              { label: 'Type', value: formatRecordValue(data.type) },
+              {
+                label: 'Type',
+                value: formatRecordValue(examSessionTypeLabel(data.type)),
+              },
               { label: 'Starts', value: formatDateTime(data.startsOn) },
               { label: 'Ends', value: formatDateTime(data.endsOn) },
               {

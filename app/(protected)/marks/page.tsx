@@ -1,9 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { MarksAuditPanel } from '@/components/acadia/assessment/marks-audit-panel';
+import { MarksAveragesPanel } from '@/components/acadia/assessment/marks-averages-panel';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canWriteOperations } from '@/lib/acadia/roles';
 
 type Row = {
   id: string;
@@ -31,16 +38,48 @@ const SELECT = `
   StudentProfile:studentProfileId ( registrationNumber )
 `;
 
-export default function Page() {
+export default function MarksPage() {
+  const { data: session } = useAcadiaCollegeSession();
+  const canEnter = canWriteOperations(session?.roleSlug);
+
   return (
-    <AcadiaPageShell title="Acadia College — Marks" description="Course marks from Supabase.">
-      <SupabaseTableList
-        table="CourseMark"
-        title="CourseMark"
-        select={SELECT}
-        columns={columns}
-        searchKeys={[]}
-      />
+    <AcadiaPageShell
+      title="Acadia College — Marks"
+      description="Course marks, averages, reports, and audit trail."
+    >
+      <div className="mb-4 flex flex-wrap gap-2">
+        {canEnter ? (
+          <Button size="sm" asChild>
+            <Link href="/marks/entry">Enter marks</Link>
+          </Button>
+        ) : null}
+        <Button size="sm" variant="outline" asChild>
+          <Link href="/marks/reports">Grade reports</Link>
+        </Button>
+      </div>
+
+      <Tabs defaultValue="list" className="space-y-5">
+        <TabsList>
+          <TabsTrigger value="list">All marks</TabsTrigger>
+          <TabsTrigger value="averages">Averages & rankings</TabsTrigger>
+          <TabsTrigger value="audit">Change history</TabsTrigger>
+        </TabsList>
+        <TabsContent value="list">
+          <SupabaseTableList
+            table="CourseMark"
+            title="Course marks"
+            select={SELECT}
+            columns={columns}
+            searchKeys={[]}
+          />
+        </TabsContent>
+        <TabsContent value="averages">
+          <MarksAveragesPanel />
+        </TabsContent>
+        <TabsContent value="audit">
+          <MarksAuditPanel />
+        </TabsContent>
+      </Tabs>
     </AcadiaPageShell>
   );
 }

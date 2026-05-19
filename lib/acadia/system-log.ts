@@ -15,7 +15,12 @@ export type SystemLogEvent =
   | 'enrollment.application_approved'
   | 'enrollment.application_rejected'
   | 'student.profile_updated'
-  | 'student.class_migrated';
+  | 'student.class_migrated'
+  | 'exam_session.created'
+  | 'exam_session.updated'
+  | 'exam_session.finalized'
+  | 'course_mark.created'
+  | 'course_mark.updated';
 
 export async function appendSystemLog(
   supabase: SupabaseClient,

@@ -1,9 +1,15 @@
-# Supabase local config (remote projects linked via CLI)
+# Supabase CLI config — Acadia College (mjjulujygiibfndtapud)
+# Link remote: npm run supabase:link (requires SUPABASE_ACCESS_TOKEN in .env.local)
 project_id = "mjjulujygiibfndtapud"
 
 [api]
 enabled = true
+port = 54321
 
 [db]
 port = 54322
 major_version = 17
+
+[studio]
+enabled = true
+port = 54323

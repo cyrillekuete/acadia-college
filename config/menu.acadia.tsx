@@ -77,7 +77,11 @@ export const MENU_ACADIA: MenuConfig = [
   {
     title: 'Marks',
     icon: ScrollText,
-    path: '/marks',
+    children: [
+      { title: 'All marks', path: '/marks' },
+      { title: 'Enter marks', path: '/marks/entry' },
+      { title: 'Grade reports', path: '/marks/reports' },
+    ],
   },
   {
     title: 'Coursework',
@@ -87,7 +91,21 @@ export const MENU_ACADIA: MenuConfig = [
   {
     title: 'Exams',
     icon: FileCheck,
-    path: '/exams',
+    children: [
+      { title: 'Exam sessions', path: '/exams' },
+      { title: 'New exam', path: '/exams/new' },
+      { title: 'Schedule', path: '/exams/schedule' },
+    ],
+  },
+  {
+    title: 'Reports',
+    icon: FileText,
+    children: [
+      { title: 'Sequence results', path: '/reports/sequence' },
+      { title: 'Term report cards', path: '/reports/term' },
+      { title: 'Annual summary', path: '/reports/annual' },
+      { title: 'Promotion', path: '/reports/promotion' },
+    ],
   },
   { heading: 'Finance & records' },
   {
@@ -161,9 +179,23 @@ const STAFF_MENU: MenuConfig = [
   { title: 'Courses', icon: Book, path: '/courses' },
   { title: 'Timetable', icon: CalendarCheck, path: '/timetable' },
   { title: 'Attendance', icon: CalendarCheck, path: '/attendance' },
-  { title: 'Marks', icon: ScrollText, path: '/marks' },
+  {
+    title: 'Marks',
+    icon: ScrollText,
+    children: [
+      { title: 'All marks', path: '/marks' },
+      { title: 'Enter marks', path: '/marks/entry' },
+    ],
+  },
   { title: 'Coursework', icon: ClipboardList, path: '/coursework' },
-  { title: 'Exams', icon: FileCheck, path: '/exams' },
+  {
+    title: 'Exams',
+    icon: FileCheck,
+    children: [
+      { title: 'Exam sessions', path: '/exams' },
+      { title: 'Schedule', path: '/exams/schedule' },
+    ],
+  },
   { title: 'Messages', icon: MessageSquare, path: '/messages' },
   {
     title: 'My account',

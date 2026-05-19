@@ -3,7 +3,7 @@
 **Purpose:** Single source of truth for what has been built vs not built. Update this file whenever a feature is started, completed, or blocked.
 
 **Last updated:** 2026-05-19  
-**Overall progress:** 83 / 129 features complete (64%) — Phase 7A–7E done
+**Overall progress:** 95 / 129 features complete (74%) — Phase 7A–7F done
 
 ### Status legend
 
@@ -188,18 +188,18 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-082 | Marks entry scoped to sequence | FR-4.1.1 | `not_started` | `/marks/entry` | DataGrid + form | Extends F-023; `sequenceId` |
-| F-083 | Sequence/term averages and rankings | FR-4.1.2 | `not_started` | `/marks` | — | |
-| F-084 | Grade reports (export/print) | FR-4.1.3 | `not_started` | `/marks/reports` | — | |
-| F-085 | Grade change history / audit | FR-4.1.4 | `not_started` | `/marks` | — | `SystemLog` or mark versions |
-| F-086 | Exam session create/edit | FR-4.2.1 | `not_started` | `/exams/new`, `/exams/[id]/edit` | form | Extends F-026; `termId` + `sequenceId` |
-| F-087 | Major exam types (GCE, BEPC, Probatoire, Bac) | FR-4.2.2 | `not_started` | `/exams` | — | `ExamSessionType` enum extension |
-| F-088 | Examination schedules | FR-4.2.3 | `not_started` | `/exams/schedule` | calendar/list | |
-| F-089 | Examination results processing | FR-4.2.4 | `not_started` | `/exams/[id]/results` | — | |
-| F-090 | Sequence results report | FR-4.3.1 | `not_started` | `/reports/sequence` | — | PRD §3.1 |
-| F-091 | Term report cards | FR-4.3.2 | `not_started` | `/reports/term` | — | |
-| F-092 | Annual academic summary | FR-4.3.3 | `not_started` | `/reports/annual` | — | |
-| F-093 | Promotion / admission statements | FR-4.3.4 | `not_started` | `/reports/promotion` | — | |
+| F-082 | Marks entry scoped to sequence | FR-4.1.1 | `done` | `/marks/entry` | DataGrid + form | `MarksEntryGrid`, sequence exam session |
+| F-083 | Sequence/term averages and rankings | FR-4.1.2 | `done` | `/marks` | — | `MarksAveragesPanel` tab |
+| F-084 | Grade reports (export/print) | FR-4.1.3 | `done` | `/marks/reports` | — | Print-friendly `GradeReportView` |
+| F-085 | Grade change history / audit | FR-4.1.4 | `done` | `/marks` | — | `MarksAuditPanel` + `SystemLog` events |
+| F-086 | Exam session create/edit | FR-4.2.1 | `done` | `/exams/new`, `/exams/[id]/edit` | form | `ExamSessionForm` |
+| F-087 | Major exam types (GCE, BEPC, Probatoire, Bac) | FR-4.2.2 | `done` | `/exams` | — | Migration `20260519150000` |
+| F-088 | Examination schedules | FR-4.2.3 | `done` | `/exams/schedule` | calendar/list | Sorted exam list |
+| F-089 | Examination results processing | FR-4.2.4 | `done` | `/exams/[id]/results` | — | `ExamResultsPanel` + finalize |
+| F-090 | Sequence results report | FR-4.3.1 | `done` | `/reports/sequence` | — | `AcademicReportView` |
+| F-091 | Term report cards | FR-4.3.2 | `done` | `/reports/term` | — | |
+| F-092 | Annual academic summary | FR-4.3.3 | `done` | `/reports/annual` | — | |
+| F-093 | Promotion / admission statements | FR-4.3.4 | `done` | `/reports/promotion` | — | Pass ≥ 10 rule |
 
 ### 7G — Attendance
 
@@ -348,7 +348,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | W-07 | Account pages | `done` | repurpose-account | Institution, settings, profile, notifications wired |
 | W-08 | Operations modules | `done` | operations-modules | Includes coursework and exams |
 | W-09 | Vercel + GitHub delivery | `done` | vercel-github-delivery | |
-| W-10 | Phase 7 product depth (FR catalogue) | `in_progress` | F-050–F-125 | 7A–7E complete; continue 7F→7K |
+| W-10 | Phase 7 product depth (FR catalogue) | `in_progress` | F-050–F-125 | 7A–7F complete; continue 7G→7K |
 
 ---
 
@@ -371,6 +371,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7C: user CRUD, password reset, system log, session timeout, bursar menu (F-060–F-068); migration `20260519140000` |
 | 2026-05-19 | — | Phase 7D: enrollment application CRUD, approve/reject, confirmation, student profile tabs (F-070–F-076) |
 | 2026-05-19 | — | Phase 7E: course CRUD, assignments, class rosters, timetable slots, course materials (F-077–F-081) |
+| 2026-05-19 | — | Phase 7F: marks entry, averages, audit, exams CRUD/schedule/results, academic reports (F-082–F-093) |
 
 ---
 

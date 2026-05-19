@@ -48,8 +48,9 @@ prisma/*.db-journal
 coverage/
 .nyc_output/
 
-# Supabase temp artifacts
+# Supabase CLI local artifacts
 supabase/.temp/
+.supabase/
 
 # Misc
 *.pem
