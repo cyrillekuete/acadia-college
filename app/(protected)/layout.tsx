@@ -13,6 +13,7 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { useAcadiaSignOut } from '@/hooks/use-acadia-sign-out';
+import { SessionTimeoutGuard } from '@/components/acadia/session-timeout-guard';
 import { Demo1Layout } from '../components/layouts/demo1/layout';
 
 export default function ProtectedLayout({
@@ -79,7 +80,12 @@ export default function ProtectedLayout({
     return <ScreenLoader />;
   }
 
-  return <Demo1Layout>{children}</Demo1Layout>;
+  return (
+    <Demo1Layout>
+      <SessionTimeoutGuard />
+      {children}
+    </Demo1Layout>
+  );
 }
 
 function SessionErrorView({

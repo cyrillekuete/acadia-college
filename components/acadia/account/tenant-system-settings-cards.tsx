@@ -3,6 +3,7 @@
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { AccountDataState } from '@/components/acadia/account/account-data-state';
 import { useAcadiaTenant } from '@/hooks/use-acadia-tenant';
+import { TenantSessionSettingsForm } from '@/components/acadia/admin/tenant-session-settings-form';
 import { formatRecordValue } from '@/lib/acadia/record-display';
 
 function formatModules(modules: string[]): string {
@@ -49,6 +50,7 @@ export function TenantSystemSettingsCards() {
               },
             ]}
           />
+          <TenantSessionSettingsForm />
           <RecordDetailCard
             title="Academic policies"
             fields={[

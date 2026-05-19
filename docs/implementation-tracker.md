@@ -3,7 +3,7 @@
 **Purpose:** Single source of truth for what has been built vs not built. Update this file whenever a feature is started, completed, or blocked.
 
 **Last updated:** 2026-05-19  
-**Overall progress:** 63 / 129 features complete (49%) — Phase 7A done; Phase 7B Cameroon catalog done
+**Overall progress:** 71 / 129 features complete (55%) — Phase 7A–7B done; Phase 7C user management done
 
 ### Status legend
 
@@ -151,15 +151,15 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-060 | Create user (Auth + `User` + role) | FR-1.1.1 | `not_started` | `/admin/users` | user-management/users | Replace legacy redirect (F-040) |
-| F-061 | Edit user profile and contact | FR-1.1.2 | `not_started` | `/admin/users/[id]` | user-profile form | |
-| F-062 | Activate/deactivate user accounts | FR-1.1.3 | `not_started` | `/admin/users` | — | `User.status` |
-| F-063 | Admin-triggered password reset | FR-1.1.4 | `not_started` | `/admin/users` | — | Supabase Admin API or invite flow |
-| F-064 | Assign and modify user roles | FR-1.1.5 | `not_started` | `/admin/users`, `/admin/roles` | account/members/roles | Replace redirect (F-040b) |
-| F-065 | User activity in system log | FR-1.1.6 | `not_started` | `/admin/logs` | DataGrid | Extends F-045 |
-| F-066 | Session timeout configuration | FR-1.2.2 | `not_started` | `SystemSetting` / middleware | settings-sidebar | |
-| F-067 | Password policy enforcement | FR-1.2.3 | `not_started` | Supabase Auth + sign-in | signin | Extends F-003 |
-| F-068 | Bursar (`financial-director`) finance-focused nav | — | `not_started` | `config/menu.acadia.tsx`, `/dashboard/admin` | — | PRD §3.3 |
+| F-060 | Create user (Auth + `User` + role) | FR-1.1.1 | `done` | `/admin/users` | user-management/users | `POST /api/acadia/admin/users` + dialog |
+| F-061 | Edit user profile and contact | FR-1.1.2 | `done` | `/admin/users/[id]` | user-profile form | `UserEditForm` |
+| F-062 | Activate/deactivate user accounts | FR-1.1.3 | `done` | `/admin/users` | — | Status actions + `User.status` |
+| F-063 | Admin-triggered password reset | FR-1.1.4 | `done` | `/admin/users` | — | `POST …/reset-password` via service role |
+| F-064 | Assign and modify user roles | FR-1.1.5 | `done` | `/admin/users`, `/admin/roles` | account/members/roles | Role select on create/edit |
+| F-065 | User activity in system log | FR-1.1.6 | `done` | `/admin/logs` | DataGrid | `SystemLog` + audit on user actions |
+| F-066 | Session timeout configuration | FR-1.2.2 | `done` | `Tenant` / settings-sidebar | settings-sidebar | `TenantSessionSettingsForm` + idle guard |
+| F-067 | Password policy enforcement | FR-1.2.3 | `done` | Supabase Auth + sign-in | signin | `getPasswordSchema` on admin create + signup |
+| F-068 | Bursar (`financial-director`) finance-focused nav | — | `done` | `config/menu.acadia.tsx`, `/dashboard/admin` | — | `BURSAR_MENU` in `getMenuForRole` |
 | F-069 | Multi-factor authentication | FR-1.2.4 | `na` | — | — | Deferred; Supabase MFA when prioritized |
 
 ### 7D — Enrollment & student lifecycle
@@ -348,7 +348,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | W-07 | Account pages | `done` | repurpose-account | Institution, settings, profile, notifications wired |
 | W-08 | Operations modules | `done` | operations-modules | Includes coursework and exams |
 | W-09 | Vercel + GitHub delivery | `done` | vercel-github-delivery | |
-| W-10 | Phase 7 product depth (FR catalogue) | `in_progress` | F-050–F-125 | 7A–7B complete; continue 7C→7K |
+| W-10 | Phase 7 product depth (FR catalogue) | `in_progress` | F-050–F-125 | 7A–7C complete; continue 7D→7K |
 
 ---
 
@@ -368,6 +368,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7 added: F-050–F-125 mapped to PRD §10.6 FR IDs; progress 53/129; FR coverage index |
 | 2026-05-19 | — | Phase 7A: migrations + `academic-calendar.ts`; admin CRUD on years/terms/sequences/calendar (F-050–F-055) |
 | 2026-05-19 | — | Phase 7B: sub-system/branch schema, level catalog seed, catalog filters (F-056–F-059) |
+| 2026-05-19 | — | Phase 7C: user CRUD, password reset, system log, session timeout, bursar menu (F-060–F-068); migration `20260519140000` |
 
 ---
 

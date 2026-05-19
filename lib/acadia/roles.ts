@@ -27,6 +27,16 @@ export function canManageInstitution(roleSlug: string | null | undefined): boole
   return isAdmin(roleSlug);
 }
 
+/** User CRUD and role assignment (administrators only — not bursar). */
+export function canManageUsers(roleSlug: string | null | undefined): boolean {
+  const slug = normalizeRole(roleSlug);
+  return slug === 'admin' || slug === 'super-admin' || slug === 'registrar';
+}
+
+export function isFinancialDirector(roleSlug: string | null | undefined): boolean {
+  return normalizeRole(roleSlug) === 'financial-director';
+}
+
 export function canWriteRegistry(roleSlug: string | null | undefined): boolean {
   return isAdmin(roleSlug);
 }

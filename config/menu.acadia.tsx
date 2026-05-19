@@ -171,6 +171,39 @@ const STAFF_MENU: MenuConfig = [
   },
 ];
 
+/** Bursar / financial director — finance-focused navigation (PRD §3.3). */
+const BURSAR_MENU: MenuConfig = [
+  { title: 'Dashboard', icon: LayoutGrid, path: '/' },
+  { heading: 'Finance & records' },
+  {
+    title: 'Finance',
+    icon: Wallet,
+    children: [
+      { title: 'Student fees', path: '/finance/fees' },
+      { title: 'Scholarships', path: '/finance/scholarships' },
+    ],
+  },
+  {
+    title: 'Transcripts',
+    icon: ScrollText,
+    children: [
+      { title: 'Transcripts', path: '/transcripts' },
+      { title: 'Copy requests', path: '/transcripts/requests' },
+    ],
+  },
+  { title: 'Students', icon: Users, path: '/students' },
+  { title: 'Messages', icon: MessageSquare, path: '/messages' },
+  {
+    title: 'My account',
+    icon: Settings,
+    children: [
+      { title: 'Profile', path: '/account/home/user-profile' },
+      { title: 'Institution', path: '/account/home/company-profile' },
+      { title: 'Notifications', path: '/account/notifications' },
+    ],
+  },
+];
+
 const GUARDIAN_MENU: MenuConfig = [
   { title: 'Dashboard', icon: LayoutGrid, path: '/' },
   { title: 'Attendance', icon: CalendarCheck, path: '/attendance' },
@@ -182,6 +215,9 @@ const GUARDIAN_MENU: MenuConfig = [
 export function getMenuForRole(roleSlug: string | null | undefined): MenuConfig {
   const slug = roleSlug?.toLowerCase() ?? '';
 
+  if (slug === 'financial-director') {
+    return BURSAR_MENU;
+  }
   if (slug === 'student') {
     return STUDENT_MENU;
   }
