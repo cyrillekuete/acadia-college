@@ -22,18 +22,18 @@ BEGIN
   DELETE FROM auth.users WHERE id IN (admin_id, staff_id, student_id);
   DELETE FROM "User" WHERE id IN (admin_id::text, staff_id::text, student_id::text);
 
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-  VALUES ('00000000-0000-0000-0000-000000000000', admin_id, 'authenticated', 'authenticated', 'admin@acadia-college.edu', pwd, NOW(), '{"provider":"email","providers":["email"]}', '{"name":"Acadia Admin"}', NOW(), NOW());
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, confirmation_token, recovery_token, email_change_token_new, email_change, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  VALUES ('00000000-0000-0000-0000-000000000000', admin_id, 'authenticated', 'authenticated', 'admin@acadia-college.edu', pwd, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{"name":"Acadia Admin"}', NOW(), NOW());
   INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
   VALUES (admin_id, admin_id, admin_id::text, 'email', jsonb_build_object('sub', admin_id::text, 'email', 'admin@acadia-college.edu'), NOW(), NOW(), NOW());
 
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-  VALUES ('00000000-0000-0000-0000-000000000000', staff_id, 'authenticated', 'authenticated', 'staff@acadia-college.edu', pwd, NOW(), '{"provider":"email","providers":["email"]}', '{"name":"Acadia Staff"}', NOW(), NOW());
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, confirmation_token, recovery_token, email_change_token_new, email_change, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  VALUES ('00000000-0000-0000-0000-000000000000', staff_id, 'authenticated', 'authenticated', 'staff@acadia-college.edu', pwd, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{"name":"Acadia Staff"}', NOW(), NOW());
   INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
   VALUES (staff_id, staff_id, staff_id::text, 'email', jsonb_build_object('sub', staff_id::text, 'email', 'staff@acadia-college.edu'), NOW(), NOW(), NOW());
 
-  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-  VALUES ('00000000-0000-0000-0000-000000000000', student_id, 'authenticated', 'authenticated', 'student@acadia-college.edu', pwd, NOW(), '{"provider":"email","providers":["email"]}', '{"name":"Acadia Student"}', NOW(), NOW());
+  INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, confirmation_token, recovery_token, email_change_token_new, email_change, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  VALUES ('00000000-0000-0000-0000-000000000000', student_id, 'authenticated', 'authenticated', 'student@acadia-college.edu', pwd, NOW(), '', '', '', '', '{"provider":"email","providers":["email"]}', '{"name":"Acadia Student"}', NOW(), NOW());
   INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
   VALUES (student_id, student_id, student_id::text, 'email', jsonb_build_object('sub', student_id::text, 'email', 'student@acadia-college.edu'), NOW(), NOW(), NOW());
 
