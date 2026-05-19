@@ -128,12 +128,12 @@ export function computeStudentCourseAverages(
   }
 
   const averages = new Map<string, number>();
-  for (const [studentId, scores] of byStudent) {
+  Array.from(byStudent.entries()).forEach(([studentId, scores]) => {
     const avg = averageScores(scores);
     if (avg != null) {
       averages.set(studentId, avg);
     }
-  }
+  });
   return averages;
 }
 
@@ -147,7 +147,7 @@ export function computeTermAverageFromSequences(
     list.push(row.average);
     byTerm.set(termNumber, list);
   }
-  const all = [...byTerm.values()].flat();
+  const all = Array.from(byTerm.values()).flat();
   return averageScores(all);
 }
 

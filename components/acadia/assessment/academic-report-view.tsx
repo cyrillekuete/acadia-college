@@ -202,7 +202,7 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
       }
 
       const ranked = rankStudents(
-        [...marksByStudent.entries()].map(([studentProfileId, scores]) => ({
+        Array.from(marksByStudent.entries()).map(([studentProfileId, scores]) => ({
           studentProfileId,
           average: averageScores(scores) ?? 0,
           courseCount: scores.length,

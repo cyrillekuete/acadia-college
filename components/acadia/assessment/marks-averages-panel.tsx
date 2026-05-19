@@ -92,7 +92,7 @@ export function MarksAveragesPanel() {
       );
 
       const ranked = rankStudents(
-        [...averages.entries()].map(([studentProfileId, average]) => ({
+        Array.from(averages.entries()).map(([studentProfileId, average]) => ({
           studentProfileId,
           average,
         })),
