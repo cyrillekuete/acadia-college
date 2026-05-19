@@ -15,7 +15,7 @@ export const createUserSchema = z.object({
     .min(1, { message: 'Email is required.' }),
   name: z.string().min(1, { message: 'Name is required.' }).max(120),
   roleId: z.string().min(1, { message: 'Role is required.' }),
-  status: z.enum(USER_STATUSES).default(UserStatus.ACTIVE),
+  status: z.enum(USER_STATUSES),
   password: getPasswordSchema(),
   country: z.string().max(80).optional().or(z.literal('')),
   timezone: z.string().max(80).optional().or(z.literal('')),
