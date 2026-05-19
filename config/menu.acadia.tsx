@@ -66,6 +66,7 @@ export const MENU_ACADIA: MenuConfig = [
     children: [
       { title: 'Applications', path: '/enrollment/applications' },
       { title: 'Enrollments', path: '/enrollment/enrollments' },
+      { title: 'Class rosters', path: '/classes' },
     ],
   },
   {

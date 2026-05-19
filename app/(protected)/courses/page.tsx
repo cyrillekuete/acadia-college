@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import {
@@ -16,6 +18,7 @@ import { detailLinkColumn } from '@/lib/acadia/list-columns';
 type Row = { id: string; code?: string; Specialty?: unknown } & Record<string, unknown>;
 
 export default function CoursesPage() {
+  const router = useRouter();
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
 
@@ -47,6 +50,10 @@ export default function CoursesPage() {
       title="Acadia College — Courses"
       description="Course catalog filtered by specialty sub-system and branch."
     >
+      <AdminToolbar
+        addLabel="New course"
+        onAdd={() => router.push('/courses/new')}
+      />
       <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
       <SupabaseTableList
         table="Course"

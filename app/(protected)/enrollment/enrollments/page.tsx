@@ -3,21 +3,45 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 
-type Row = Record<string, unknown>;
+type Row = {
+  id: string;
+  status?: string;
+  createdAt?: string;
+  StudentProfile?: unknown;
+  AcademicYear?: unknown;
+} & Record<string, unknown>;
 
 const columns: ColumnDef<Row>[] = [
+  nestedFieldColumn<Row>(
+    'student',
+    'Student',
+    'StudentProfile',
+    'registrationNumber',
+  ),
+  nestedFieldColumn<Row>('year', 'Academic year', 'AcademicYear', 'label'),
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'enrolledOn', header: 'Enrolled on' },
+  {
+    accessorKey: 'createdAt',
+    header: 'Enrolled',
+    cell: ({ row }) => {
+      const value = row.original.createdAt;
+      return value ? new Date(String(value)).toLocaleDateString() : '—';
+    },
+  },
 ];
 
-export default function Page() {
+export default function StudentEnrollmentsPage() {
   return (
-    <AcadiaPageShell title="Acadia College — Student enrollments" description="Active enrollments.">
+    <AcadiaPageShell
+      title="Acadia College — Student enrollments"
+      description="Active enrollments linked to academic years and class placement."
+    >
       <SupabaseTableList
         table="StudentEnrollment"
-        title="StudentEnrollment"
-        select="id, status, enrolledOn"
+        title="Enrollments"
+        select="id, status, createdAt, StudentProfile:studentProfileId ( id, registrationNumber ), AcademicYear:academicYearId ( label )"
         columns={columns}
         searchKeys={['status']}
       />

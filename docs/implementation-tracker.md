@@ -3,7 +3,7 @@
 **Purpose:** Single source of truth for what has been built vs not built. Update this file whenever a feature is started, completed, or blocked.
 
 **Last updated:** 2026-05-19  
-**Overall progress:** 71 / 129 features complete (55%) — Phase 7A–7B done; Phase 7C user management done
+**Overall progress:** 83 / 129 features complete (64%) — Phase 7A–7E done
 
 ### Status legend
 
@@ -166,23 +166,23 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-070 | Enrollment application create/edit | FR-2.1.1, FR-2.1.2, FR-2.1.3 | `not_started` | `/enrollment/applications/new`, `[id]/edit` | user-management form | Sub-system + branch + specialty |
-| F-071 | Application approve/reject → enrollment | — | `not_started` | `/enrollment/applications` | — | `EnrollmentApplication` → `StudentEnrollment` |
-| F-072 | Enrollment confirmation (print/PDF) | FR-2.1.4 | `not_started` | `/enrollment/applications/[id]/confirmation` | — | |
-| F-073 | Student profile edit | FR-2.2.1 | `not_started` | `/students/[id]` | user-profile | Extends F-011 read-only |
-| F-074 | Academic progress across terms | FR-2.2.2 | `not_started` | `/students/[id]` | Card tab | Join enrollments, marks, terms |
-| F-075 | Examination results & certificates on profile | FR-2.2.3 | `not_started` | `/students/[id]` | Card tab | Links to exams, transcripts |
-| F-076 | Student class migration (manual) | FR-2.2.4, FR-DM-2 | `not_started` | `/students/[id]` | — | Level/specialty change |
+| F-070 | Enrollment application create/edit | FR-2.1.1, FR-2.1.2, FR-2.1.3 | `done` | `/enrollment/applications/new`, `[id]/edit` | user-management form | `enrollment-schemas.ts`, catalog-filtered specialty/level |
+| F-071 | Application approve/reject → enrollment | — | `done` | `/enrollment/applications/[id]` | — | API review route; provisions User + StudentProfile on NEW approve |
+| F-072 | Enrollment confirmation (print/PDF) | FR-2.1.4 | `done` | `/enrollment/applications/[id]/confirmation` | — | Print-friendly confirmation view |
+| F-073 | Student profile edit | FR-2.2.1 | `done` | `/students/[id]` | user-profile | `StudentEditForm` tab |
+| F-074 | Academic progress across terms | FR-2.2.2 | `done` | `/students/[id]` | Card tab | Enrollments + recent marks |
+| F-075 | Examination results & certificates on profile | FR-2.2.3 | `done` | `/students/[id]` | Card tab | Exam sessions, transcripts, copy requests |
+| F-076 | Student class migration (manual) | FR-2.2.4, FR-DM-2 | `done` | `/students/[id]` | — | `StudentClassMigrationDialog` + enrollment row |
 
 ### 7E — Classes, courses, timetable
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-077 | Course create/edit | FR-3.2.1 | `not_started` | `/courses/new`, `/courses/[id]/edit` | teams form | Extends F-014; `termId` required |
-| F-078 | CourseAssignment (teacher ↔ course) | FR-3.1.2, FR-3.2.2 | `not_started` | `/courses/[id]` or `/staff/[id]` | — | `CourseAssignment` CRUD |
-| F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `not_started` | `/enrollment/enrollments` or new `/classes` | DataGrid | |
-| F-080 | Timetable slot create/edit | FR-3.1.4 | `not_started` | `/timetable` | DataGrid + form | Extends F-024 list |
-| F-081 | Subject-specific resources (course materials) | FR-3.2.3, FR-8.1.1 | `not_started` | `/courses/[id]` | — | Storage or links; see F-119 |
+| F-077 | Course create/edit | FR-3.2.1 | `done` | `/courses/new`, `/courses/[id]/edit` | teams form | `course-schemas.ts`, `CourseForm`, term + catalog placement |
+| F-078 | CourseAssignment (teacher ↔ course) | FR-3.1.2, FR-3.2.2 | `done` | `/courses/[id]` | — | `CourseAssignmentPanel` CRUD |
+| F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `done` | `/classes` | DataGrid | Year + catalog + specialty/level filters |
+| F-080 | Timetable slot create/edit | FR-3.1.4 | `done` | `/timetable` | DataGrid + form | `TimetableSlotFormDialog` + edit/delete |
+| F-081 | Subject-specific resources (course materials) | FR-3.2.3, FR-8.1.1 | `done` | `/courses/[id]` | — | `CourseworkTask` via `CourseMaterialsPanel` |
 
 ### 7F — Academic assessment (Cameroon)
 
@@ -348,7 +348,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | W-07 | Account pages | `done` | repurpose-account | Institution, settings, profile, notifications wired |
 | W-08 | Operations modules | `done` | operations-modules | Includes coursework and exams |
 | W-09 | Vercel + GitHub delivery | `done` | vercel-github-delivery | |
-| W-10 | Phase 7 product depth (FR catalogue) | `in_progress` | F-050–F-125 | 7A–7C complete; continue 7D→7K |
+| W-10 | Phase 7 product depth (FR catalogue) | `in_progress` | F-050–F-125 | 7A–7E complete; continue 7F→7K |
 
 ---
 
@@ -369,6 +369,8 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7A: migrations + `academic-calendar.ts`; admin CRUD on years/terms/sequences/calendar (F-050–F-055) |
 | 2026-05-19 | — | Phase 7B: sub-system/branch schema, level catalog seed, catalog filters (F-056–F-059) |
 | 2026-05-19 | — | Phase 7C: user CRUD, password reset, system log, session timeout, bursar menu (F-060–F-068); migration `20260519140000` |
+| 2026-05-19 | — | Phase 7D: enrollment application CRUD, approve/reject, confirmation, student profile tabs (F-070–F-076) |
+| 2026-05-19 | — | Phase 7E: course CRUD, assignments, class rosters, timetable slots, course materials (F-077–F-081) |
 
 ---
 

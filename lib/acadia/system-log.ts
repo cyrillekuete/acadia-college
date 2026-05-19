@@ -9,7 +9,13 @@ export type SystemLogEvent =
   | 'user.blocked'
   | 'user.role_changed'
   | 'user.password_reset'
-  | 'tenant.session_settings_updated';
+  | 'tenant.session_settings_updated'
+  | 'enrollment.application_created'
+  | 'enrollment.application_updated'
+  | 'enrollment.application_approved'
+  | 'enrollment.application_rejected'
+  | 'student.profile_updated'
+  | 'student.class_migrated';
 
 export async function appendSystemLog(
   supabase: SupabaseClient,

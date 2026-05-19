@@ -3,7 +3,7 @@
 
 **Version:** 1.0  
 **Date:** May 2026  
-**Project:** Acadia School Management Application  
+**Project:** Acadia College
 **Document Type:** Product Requirements Document
 
 ---
