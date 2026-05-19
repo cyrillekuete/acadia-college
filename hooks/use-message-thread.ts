@@ -35,7 +35,7 @@ export function useMessageThread(threadId: string | null) {
 
   return useQuery<MessageThreadDetail | null>({
     queryKey: ['message-thread', tenantId, threadId],
-    queryFn: async () => {
+    queryFn: async (): Promise<MessageThreadDetail | null> => {
       if (!tenantId || !threadId) {
         return null;
       }
@@ -100,7 +100,9 @@ export function useMessageThread(threadId: string | null) {
           body: message.body as string,
           createdAt: message.createdAt as string,
           senderUserId: message.senderUserId as string,
-          Sender: unwrapRelation<{ name?: string; email?: string }>(message.Sender),
+          Sender:
+            unwrapRelation<{ name?: string; email?: string }>(message.Sender) ??
+            undefined,
         })),
       };
     },

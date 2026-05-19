@@ -369,7 +369,7 @@ export function PromotionAdminPanel() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={row.source === 'MANUAL' ? 'default' : 'secondary'}
+                      variant={row.source === 'MANUAL' ? 'primary' : 'secondary'}
                     >
                       {promotionActionLabel(
                         row.finalAction as Parameters<typeof promotionActionLabel>[0],

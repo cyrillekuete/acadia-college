@@ -36,8 +36,8 @@ export const yearRolloverSchema = z
     targetYearLabel: z.string().optional(),
     targetYearStartsOn: z.string().optional(),
     targetYearEndsOn: z.string().optional(),
-    promoteEligible: z.boolean().default(true),
-    repeatNonEligible: z.boolean().default(true),
+    promoteEligible: z.boolean(),
+    repeatNonEligible: z.boolean(),
   })
   .superRefine((data, ctx) => {
     if (data.createTargetYear) {

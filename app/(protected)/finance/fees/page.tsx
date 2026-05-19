@@ -219,21 +219,25 @@ function FeeAccountsTable() {
           />
         </div>
       </CardHeader>
-      <CardTable>
-        {query.isLoading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : (
-          <ScrollArea>
-            <DataGrid table={table} recordCount={filtered.length}>
+      <DataGrid
+        table={table}
+        recordCount={filtered.length}
+        isLoading={query.isLoading}
+      >
+        <CardTable>
+          {query.isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
               <DataGridTable />
-            </DataGrid>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        )}
-      </CardTable>
-      <CardFooter className="justify-end">
-        <DataGridPagination table={table} />
-      </CardFooter>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter className="justify-end">
+          <DataGridPagination />
+        </CardFooter>
+      </DataGrid>
     </Card>
   );
 }

@@ -178,10 +178,10 @@ export function computeYearAveragesFromMarks(
   }
 
   const result = new Map<string, number>();
-  for (const [studentId, sequences] of byStudent.entries()) {
+  for (const [studentId, sequences] of Array.from(byStudent.entries())) {
     const termAvgs: (number | null)[] = [];
     const termNumbers = new Set(sequences.map((s) => Math.floor((s.sequenceNumber - 1) / 2) + 1));
-    for (const termNum of termNumbers) {
+    for (const termNum of Array.from(termNumbers)) {
       const seqInTerm = sequences.filter(
         (s) => Math.floor((s.sequenceNumber - 1) / 2) + 1 === termNum,
       );

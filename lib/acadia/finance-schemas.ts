@@ -31,7 +31,7 @@ export const createStudentFeeAccountSchema = z.object({
   academicYearId: z.string().min(1, 'Academic year is required.'),
   specialtyId: z.string().min(1, 'Specialty is required.'),
   studentEnrollmentId: z.string().optional().or(z.literal('')),
-  feeCurrency: z.string().min(1).default('XAF'),
+  feeCurrency: z.string().min(1),
   useSpecialtyPlan: z.boolean().optional(),
 });
 
@@ -54,7 +54,7 @@ export const financeLedgerEntrySchema = z.object({
   category: z.string().min(1, 'Category is required.'),
   description: z.string().optional().or(z.literal('')),
   amountMinor: z.coerce.number().int().min(1, 'Amount must be greater than zero.'),
-  currency: z.string().min(1).default('XAF'),
+  currency: z.string().min(1),
   occurredOn: z.string().min(1, 'Date is required.'),
 });
 
@@ -69,7 +69,7 @@ export const financeBudgetLineSchema = z.object({
     .number()
     .int()
     .min(0, 'Budget must be zero or greater.'),
-  currency: z.string().min(1).default('XAF'),
+  currency: z.string().min(1),
   notes: z.string().optional().or(z.literal('')),
 });
 

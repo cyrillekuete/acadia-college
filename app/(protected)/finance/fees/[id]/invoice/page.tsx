@@ -21,6 +21,7 @@ export default function FeeInvoicePage({
       backLabel="Back to account"
       isLoading={false}
       isError={false}
+      error={null}
     >
       <div className="mb-4 print:hidden">
         <Button variant="outline" size="sm" asChild>

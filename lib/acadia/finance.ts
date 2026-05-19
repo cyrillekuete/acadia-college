@@ -185,7 +185,7 @@ export function buildFeePaymentUpdate(
   nowIso: string,
 ): Record<string, unknown> {
   const paidMinor =
-    values.paidAmountMinor > 0
+    values.paidAmountMinor != null && values.paidAmountMinor > 0
       ? values.paidAmountMinor
       : values.amountMinor;
   const isFull = paidMinor >= values.amountMinor;

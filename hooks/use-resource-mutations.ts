@@ -105,12 +105,11 @@ export function useResourceMutations() {
       }
 
       await appendSystemLog(supabase, {
-        tenantId,
         userId,
         event: 'learning_material.uploaded',
         entityType: 'LearningMaterial',
         entityId: id,
-        summary: `Uploaded learning material ${input.values.titleEn}`,
+        description: `Uploaded learning material ${input.values.titleEn}`,
       });
     },
     onSuccess: () => {
@@ -145,12 +144,11 @@ export function useResourceMutations() {
         throw error;
       }
       await appendSystemLog(supabase, {
-        tenantId,
         userId,
         event: 'school_resource.created',
         entityType: 'SchoolResource',
         entityId: id,
-        summary: `Created resource ${values.code}`,
+        description: `Created resource ${values.code}`,
       });
     },
     onSuccess: () => {
@@ -191,12 +189,11 @@ export function useResourceMutations() {
         throw error;
       }
       await appendSystemLog(supabase, {
-        tenantId,
         userId,
         event: 'resource.allocation_saved',
         entityType: 'ResourceAllocation',
         entityId: id,
-        summary: `Allocated resource ${values.resourceId}`,
+        description: `Allocated resource ${values.resourceId}`,
       });
     },
     onSuccess: () => {
@@ -254,12 +251,11 @@ export function useResourceMutations() {
         throw error;
       }
       await appendSystemLog(supabase, {
-        tenantId,
         userId,
         event: 'resource.usage_logged',
         entityType: 'ResourceUsageLog',
         entityId: id,
-        summary: `Logged usage for resource ${values.resourceId}`,
+        description: `Logged usage for resource ${values.resourceId}`,
       });
     },
     onSuccess: () => {
@@ -292,12 +288,11 @@ export function useResourceMutations() {
         throw error;
       }
       await appendSystemLog(supabase, {
-        tenantId,
         userId,
         event: 'resource.request_submitted',
         entityType: 'ResourceRequest',
         entityId: id,
-        summary: `Submitted resource request ${id}`,
+        description: `Submitted resource request ${id}`,
       });
     },
     onSuccess: () => {
@@ -332,12 +327,11 @@ export function useResourceMutations() {
         throw error;
       }
       await appendSystemLog(supabase, {
-        tenantId,
         userId,
         event: 'resource.request_reviewed',
         entityType: 'ResourceRequest',
         entityId: input.requestId,
-        summary: `Resource request ${input.values.status}`,
+        description: `Resource request ${input.values.status}`,
       });
     },
     onSuccess: () => {
@@ -372,12 +366,11 @@ export function useResourceMutations() {
         throw error;
       }
       await appendSystemLog(supabase, {
-        tenantId,
         userId,
         event: 'room.maintenance_scheduled',
         entityType: 'RoomMaintenanceSchedule',
         entityId: id,
-        summary: `Scheduled maintenance: ${values.title}`,
+        description: `Scheduled maintenance: ${values.title}`,
       });
     },
     onSuccess: () => {

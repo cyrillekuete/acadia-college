@@ -54,7 +54,7 @@ export const announcementSchema = z
     eventEndsAt: z.string().optional(),
     eventLocation: z.string().max(300).optional(),
     publishAt: z.string().optional(),
-    publishNow: z.boolean().default(false),
+    publishNow: z.boolean(),
   })
   .superRefine((values, ctx) => {
     if (values.kind === 'EVENT' && !values.eventStartsAt) {

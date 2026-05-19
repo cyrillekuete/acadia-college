@@ -347,6 +347,10 @@ export function usePromotionMutations() {
         await provisionCameroonCalendar(supabase, tenantId, targetYearId);
       }
 
+      if (!targetYearId?.trim()) {
+        throw new Error('Target academic year is required.');
+      }
+
       const { data: decisions, error: decisionError } = await supabase
         .from('StudentPromotionDecision')
         .select(

@@ -103,7 +103,7 @@ export function RoomAssignmentsPanel() {
       );
       map.set(key, entry);
     }
-    return [...map.values()].sort((a, b) =>
+    return Array.from(map.values()).sort((a, b) =>
       a.roomLabel.localeCompare(b.roomLabel),
     );
   }, [query.data]);

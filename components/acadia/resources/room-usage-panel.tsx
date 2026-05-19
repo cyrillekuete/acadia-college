@@ -89,7 +89,7 @@ export function RoomUsagePanel() {
         });
       }
     }
-    return [...usageMap.entries()]
+    return Array.from(usageMap.entries())
       .map(([roomId, stats]) => {
         const meta = roomMeta.get(roomId);
         return {
