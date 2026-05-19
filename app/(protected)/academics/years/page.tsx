@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Star } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRightLeft, Star } from 'lucide-react';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AcademicYearFormDialog } from '@/components/acadia/academics/academic-year-form-dialog';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
@@ -53,6 +54,11 @@ export default function AcademicYearsPage() {
                 <Star className="size-4" />
               </Button>
             ) : null}
+            <Button type="button" variant="ghost" size="icon" title="Year rollover" asChild>
+              <Link href={`/academics/years/${row.original.id}/rollover`}>
+                <ArrowRightLeft className="size-4" />
+              </Link>
+            </Button>
             <RegistryRowActions
               onEdit={() => {
                 setEditing(row.original);

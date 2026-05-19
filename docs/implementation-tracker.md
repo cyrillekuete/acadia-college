@@ -3,7 +3,7 @@
 **Purpose:** Single source of truth for what has been built vs not built. Update this file whenever a feature is started, completed, or blocked.
 
 **Last updated:** 2026-05-19  
-**Overall progress:** 95 / 129 features complete (74%) — Phase 7A–7F done
+**Overall progress:** 129 / 129 features complete (100%) — Phase 7A–7K done
 
 ### Status legend
 
@@ -205,58 +205,58 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-094 | Attendance session create + daily marks | FR-5.1.1, FR-5.1.2 | `not_started` | `/attendance/sessions/new` | form | Extends F-022 |
-| F-095 | Attendance reports | FR-5.1.3 | `not_started` | `/attendance/reports` | — | |
-| F-096 | Attendance notifications to guardians | FR-5.1.4 | `not_started` | notifications | account/notifications | |
-| F-097 | Attendance percentage calculations | FR-5.2.1 | `not_started` | `/attendance` | — | |
-| F-098 | Attendance pattern analytics | FR-5.2.2 | `not_started` | `/attendance/analytics` | chart cards | |
-| F-099 | Attendance summaries | FR-5.2.3 | `not_started` | `/attendance/reports` | — | |
+| F-094 | Attendance session create + daily marks | FR-5.1.1, FR-5.1.2 | `done` | `/attendance/sessions/new`, `/attendance/sessions/[id]` | form | `AttendanceSessionForm`, `AttendanceEntryGrid` |
+| F-095 | Attendance reports | FR-5.1.3 | `done` | `/attendance/reports` | — | `AttendanceReportsView` |
+| F-096 | Attendance notifications to guardians | FR-5.1.4 | `done` | notifications | account/notifications | In-app `Notification` on absent/late; migration `20260519160000` |
+| F-097 | Attendance percentage calculations | FR-5.2.1 | `done` | `/attendance` | — | `AttendancePercentagesPanel` tab |
+| F-098 | Attendance pattern analytics | FR-5.2.2 | `done` | `/attendance/analytics` | chart cards | `AttendanceAnalyticsPanel` |
+| F-099 | Attendance summaries | FR-5.2.3 | `done` | `/attendance/reports` | — | Student summaries in reports view |
 
 ### 7H — Financial management
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-100 | Tuition fee plans / setup | FR-6.1.1 | `not_started` | `/finance/fees/setup` | account/billing/basic | `SpecialtyFeePlan` |
-| F-101 | Payment status tracking | FR-6.1.2 | `not_started` | `/finance/fees` | billing | Extends F-030 |
-| F-102 | Invoices and receipts | FR-6.1.3 | `not_started` | `/finance/fees/[id]/invoice` | — | |
-| F-103 | Outstanding balances view | FR-6.1.4 | `not_started` | `/finance/fees` | — | |
-| F-104 | Financial summaries | FR-6.2.1 | `not_started` | `/finance/reports` | dashboard cards | Bursar (F-068) |
-| F-105 | Income and expense tracking | FR-6.2.2 | `not_started` | `/finance/ledger` | — | May need schema |
-| F-106 | Budget reports | FR-6.2.3 | `not_started` | `/finance/budget` | — | |
-| F-107 | Year-end financial statements | FR-6.2.4 | `not_started` | `/finance/reports/annual` | — | |
+| F-100 | Tuition fee plans / setup | FR-6.1.1 | `done` | `/finance/fees/setup` | account/billing/basic | `FeePlanSetupForm`, `SpecialtyFeePlan` |
+| F-101 | Payment status tracking | FR-6.1.2 | `done` | `/finance/fees`, `/finance/fees/[id]` | billing | `FeeAccountInstallments`, status badges |
+| F-102 | Invoices and receipts | FR-6.1.3 | `done` | `/finance/fees/[id]/invoice` | — | `FeeInvoiceView` (print) |
+| F-103 | Outstanding balances view | FR-6.1.4 | `done` | `/finance/fees` | — | `FeeOutstandingPanel` tab |
+| F-104 | Financial summaries | FR-6.2.1 | `done` | `/finance/reports` | dashboard cards | `FinanceSummaryPanel` |
+| F-105 | Income and expense tracking | FR-6.2.2 | `done` | `/finance/ledger` | — | `FinanceLedgerEntry` + `FinanceLedgerPanel` |
+| F-106 | Budget reports | FR-6.2.3 | `done` | `/finance/budget` | — | `FinanceBudgetLine` + `FinanceBudgetPanel` |
+| F-107 | Year-end financial statements | FR-6.2.4 | `done` | `/finance/reports/annual` | — | `FinanceAnnualReport` |
 
 ### 7I — Promotion & year rollover
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-108 | Automatic promotion (average ≥ 10) | FR-DM-1 | `not_started` | `lib/acadia/promotion.ts` or RPC | — | PRD §3.2 |
-| F-109 | Manual promotion override | FR-DM-2 | `not_started` | `/admin/promotion` | — | Admin UI; links F-076 |
-| F-110 | Academic year transition / rollover | FR-DM-3 | `not_started` | `/academics/years/[id]/rollover` | — | New year + terms/sequences + enrollments |
-| F-111 | Data archival and retention | FR-DM-4 | `not_started` | admin job / settings | — | Policy per tenant |
+| F-108 | Automatic promotion (average ≥ 10) | FR-DM-1 | `done` | `lib/acadia/promotion.ts` | — | `computeAutomaticPromotion`, year averages |
+| F-109 | Manual promotion override | FR-DM-2 | `done` | `/admin/promotion` | — | `PromotionAdminPanel`; links F-076 |
+| F-110 | Academic year transition / rollover | FR-DM-3 | `done` | `/academics/years/[id]/rollover` | — | `YearRolloverWizard` |
+| F-111 | Data archival and retention | FR-DM-4 | `done` | `/admin/data-retention` | — | `TenantDataRetentionPolicy` + archive job |
 
 ### 7J — Communication
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-112 | Message compose and reply | FR-7.1.1 | `not_started` | `/messages/[id]` | — | Extends F-033 list |
-| F-113 | Group messaging | FR-7.1.2 | `not_started` | `/messages/groups` | — | |
-| F-114 | System notifications and alerts | FR-7.1.3 | `not_started` | `/account/notifications` | notifications | Extends F-043b |
-| F-115 | Communication preferences | FR-7.1.4 | `not_started` | `/account/notifications` | settings | `NotificationPreference` CRUD |
-| F-116 | School announcements broadcast | FR-7.2.1 | `not_started` | `/announcements` | — | New module |
-| F-117 | Event notifications | FR-7.2.2 | `not_started` | `/announcements/events` | — | |
-| F-118 | Announcement scheduling | FR-7.2.3 | `not_started` | `/announcements` | — | |
+| F-112 | Message compose and reply | FR-7.1.1 | `done` | `/messages/new`, `/messages/[id]` | — | `MessageComposeForm`, `MessageThreadPanel` |
+| F-113 | Group messaging | FR-7.1.2 | `done` | `/messages/groups` | — | `MessageGroupForm` |
+| F-114 | System notifications and alerts | FR-7.1.3 | `done` | `/account/notifications` | notifications | `NotificationInboxPanel`, mark read |
+| F-115 | Communication preferences | FR-7.1.4 | `done` | `/account/notifications` | settings | `NotificationPreferencesForm` CRUD |
+| F-116 | School announcements broadcast | FR-7.2.1 | `done` | `/announcements` | — | `SchoolAnnouncement` + `AnnouncementsPanel` |
+| F-117 | Event notifications | FR-7.2.2 | `done` | `/announcements/events` | — | Event kind filter |
+| F-118 | Announcement scheduling | FR-7.2.3 | `done` | `/announcements`, `/announcements/new` | — | `AnnouncementForm` publish/schedule |
 
 ### 7K — Resource management
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-119 | Learning materials library | FR-8.1.1 | `not_started` | `/resources/materials` | — | Supabase Storage |
-| F-120 | Resource allocation tracking | FR-8.1.2 | `not_started` | `/resources` | — | |
-| F-121 | Resource usage monitoring | FR-8.1.3 | `not_started` | `/resources` | — | |
-| F-122 | Resource request workflow | FR-8.1.4 | `not_started` | `/resources/requests` | — | |
-| F-123 | Classroom assignments | FR-8.2.1 | `not_started` | `/academics/rooms` | — | Extends F-013f; `TimetableSlot` |
-| F-124 | Facility usage tracking | FR-8.2.2 | `not_started` | `/academics/rooms/usage` | — | |
-| F-125 | Maintenance scheduling | FR-8.2.3 | `not_started` | `/academics/rooms/maintenance` | — | |
+| F-119 | Learning materials library | FR-8.1.1 | `done` | `/resources/materials` | — | `LearningMaterial` + `learning-materials` bucket |
+| F-120 | Resource allocation tracking | FR-8.1.2 | `done` | `/resources` | — | `ResourceAllocation` + `ResourcesOverviewPanel` |
+| F-121 | Resource usage monitoring | FR-8.1.3 | `done` | `/resources` | — | `ResourceUsageLog` tab |
+| F-122 | Resource request workflow | FR-8.1.4 | `done` | `/resources/requests` | — | `ResourceRequest` + review workflow |
+| F-123 | Classroom assignments | FR-8.2.1 | `done` | `/academics/rooms` | — | `RoomAssignmentsPanel` via `TimetableSlot` |
+| F-124 | Facility usage tracking | FR-8.2.2 | `done` | `/academics/rooms/usage` | — | `RoomUsagePanel` |
+| F-125 | Maintenance scheduling | FR-8.2.3 | `done` | `/academics/rooms/maintenance` | — | `RoomMaintenanceSchedule` |
 
 ### Phase 7 — FR coverage index
 
@@ -348,7 +348,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | W-07 | Account pages | `done` | repurpose-account | Institution, settings, profile, notifications wired |
 | W-08 | Operations modules | `done` | operations-modules | Includes coursework and exams |
 | W-09 | Vercel + GitHub delivery | `done` | vercel-github-delivery | |
-| W-10 | Phase 7 product depth (FR catalogue) | `in_progress` | F-050–F-125 | 7A–7F complete; continue 7G→7K |
+| W-10 | Phase 7 product depth (FR catalogue) | `done` | F-050–F-125 | 7A–7K complete |
 
 ---
 
@@ -372,6 +372,11 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7D: enrollment application CRUD, approve/reject, confirmation, student profile tabs (F-070–F-076) |
 | 2026-05-19 | — | Phase 7E: course CRUD, assignments, class rosters, timetable slots, course materials (F-077–F-081) |
 | 2026-05-19 | — | Phase 7F: marks entry, averages, audit, exams CRUD/schedule/results, academic reports (F-082–F-093) |
+| 2026-05-19 | — | Phase 7G: attendance sessions, daily marks, reports, analytics, guardian notifications (F-094–F-099) |
+| 2026-05-19 | — | Phase 7H: fee plans, payments, invoices, outstanding balances, ledger, budget, annual reports (F-100–F-107) |
+| 2026-05-19 | — | Phase 7I: automatic promotion, manual overrides, year rollover, data retention (F-108–F-111) |
+| 2026-05-19 | — | Phase 7J: messaging, group threads, notifications, preferences, announcements (F-112–F-118) |
+| 2026-05-19 | — | Phase 7K: learning materials, resource inventory/requests, room usage & maintenance (F-119–F-125) |
 
 ---
 

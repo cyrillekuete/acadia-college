@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileCheck,
   FileText,
+  FolderOpen,
   GraduationCap,
   LayoutGrid,
   MessageSquare,
@@ -40,12 +41,15 @@ export const MENU_ACADIA: MenuConfig = [
     icon: Building,
     children: [
       { title: 'Academic years', path: '/academics/years' },
+      { title: 'Promotion', path: '/admin/promotion' },
       { title: 'Terms', path: '/academics/terms' },
       { title: 'Sequences', path: '/academics/sequences' },
       { title: 'Departments', path: '/academics/departments' },
       { title: 'Levels', path: '/academics/levels' },
       { title: 'Specialties', path: '/academics/specialties' },
       { title: 'Rooms', path: '/academics/rooms' },
+      { title: 'Room usage', path: '/academics/rooms/usage' },
+      { title: 'Room maintenance', path: '/academics/rooms/maintenance' },
       { title: 'Calendar', path: '/academics/calendar' },
     ],
   },
@@ -72,7 +76,12 @@ export const MENU_ACADIA: MenuConfig = [
   {
     title: 'Attendance',
     icon: CalendarCheck,
-    path: '/attendance',
+    children: [
+      { title: 'Sessions', path: '/attendance' },
+      { title: 'New session', path: '/attendance/sessions/new' },
+      { title: 'Reports', path: '/attendance/reports' },
+      { title: 'Analytics', path: '/attendance/analytics' },
+    ],
   },
   {
     title: 'Marks',
@@ -113,6 +122,10 @@ export const MENU_ACADIA: MenuConfig = [
     icon: Wallet,
     children: [
       { title: 'Student fees', path: '/finance/fees' },
+      { title: 'Fee plan setup', path: '/finance/fees/setup' },
+      { title: 'Financial reports', path: '/finance/reports' },
+      { title: 'Ledger', path: '/finance/ledger' },
+      { title: 'Budget', path: '/finance/budget' },
       { title: 'Scholarships', path: '/finance/scholarships' },
     ],
   },
@@ -127,7 +140,29 @@ export const MENU_ACADIA: MenuConfig = [
   {
     title: 'Messages',
     icon: MessageSquare,
-    path: '/messages',
+    children: [
+      { title: 'Inbox', path: '/messages' },
+      { title: 'New message', path: '/messages/new' },
+      { title: 'Groups', path: '/messages/groups' },
+    ],
+  },
+  {
+    title: 'Announcements',
+    icon: Bell,
+    children: [
+      { title: 'All announcements', path: '/announcements' },
+      { title: 'New announcement', path: '/announcements/new' },
+      { title: 'Events', path: '/announcements/events' },
+    ],
+  },
+  {
+    title: 'Resources',
+    icon: FolderOpen,
+    children: [
+      { title: 'Inventory', path: '/resources' },
+      { title: 'Learning materials', path: '/resources/materials' },
+      { title: 'Requests', path: '/resources/requests' },
+    ],
   },
   { heading: 'Administration' },
   {
@@ -135,6 +170,8 @@ export const MENU_ACADIA: MenuConfig = [
     icon: Shield,
     children: [
       { title: 'Users', path: '/admin/users' },
+      { title: 'Promotion', path: '/admin/promotion' },
+      { title: 'Data retention', path: '/admin/data-retention' },
       { title: 'Roles', path: '/admin/roles' },
       { title: 'API keys', path: '/account/api-keys' },
       { title: 'System log', path: '/admin/logs' },
@@ -162,7 +199,17 @@ const STUDENT_MENU: MenuConfig = [
   { title: 'Marks', icon: ScrollText, path: '/marks' },
   { title: 'Coursework', icon: ClipboardList, path: '/coursework' },
   { title: 'Fees', icon: Wallet, path: '/finance/fees' },
-  { title: 'Messages', icon: MessageSquare, path: '/messages' },
+  {
+    title: 'Messages',
+    icon: MessageSquare,
+    children: [
+      { title: 'Inbox', path: '/messages' },
+      { title: 'New message', path: '/messages/new' },
+    ],
+  },
+  { title: 'Announcements', icon: Bell, path: '/announcements' },
+  { title: 'Learning materials', icon: FolderOpen, path: '/resources/materials' },
+  { title: 'Resource requests', icon: FolderOpen, path: '/resources/requests' },
   {
     title: 'My account',
     icon: Settings,
@@ -178,7 +225,15 @@ const STAFF_MENU: MenuConfig = [
   { title: 'Students', icon: Users, path: '/students' },
   { title: 'Courses', icon: Book, path: '/courses' },
   { title: 'Timetable', icon: CalendarCheck, path: '/timetable' },
-  { title: 'Attendance', icon: CalendarCheck, path: '/attendance' },
+  {
+    title: 'Attendance',
+    icon: CalendarCheck,
+    children: [
+      { title: 'Sessions', path: '/attendance' },
+      { title: 'New session', path: '/attendance/sessions/new' },
+      { title: 'Reports', path: '/attendance/reports' },
+    ],
+  },
   {
     title: 'Marks',
     icon: ScrollText,
@@ -196,7 +251,25 @@ const STAFF_MENU: MenuConfig = [
       { title: 'Schedule', path: '/exams/schedule' },
     ],
   },
-  { title: 'Messages', icon: MessageSquare, path: '/messages' },
+  {
+    title: 'Messages',
+    icon: MessageSquare,
+    children: [
+      { title: 'Inbox', path: '/messages' },
+      { title: 'New message', path: '/messages/new' },
+      { title: 'Groups', path: '/messages/groups' },
+    ],
+  },
+  { title: 'Announcements', icon: Bell, path: '/announcements' },
+  {
+    title: 'Resources',
+    icon: FolderOpen,
+    children: [
+      { title: 'Inventory', path: '/resources' },
+      { title: 'Learning materials', path: '/resources/materials' },
+      { title: 'Requests', path: '/resources/requests' },
+    ],
+  },
   {
     title: 'My account',
     icon: Settings,
@@ -213,6 +286,10 @@ const BURSAR_MENU: MenuConfig = [
     icon: Wallet,
     children: [
       { title: 'Student fees', path: '/finance/fees' },
+      { title: 'Fee plan setup', path: '/finance/fees/setup' },
+      { title: 'Financial reports', path: '/finance/reports' },
+      { title: 'Ledger', path: '/finance/ledger' },
+      { title: 'Budget', path: '/finance/budget' },
       { title: 'Scholarships', path: '/finance/scholarships' },
     ],
   },
@@ -226,6 +303,7 @@ const BURSAR_MENU: MenuConfig = [
   },
   { title: 'Students', icon: Users, path: '/students' },
   { title: 'Messages', icon: MessageSquare, path: '/messages' },
+  { title: 'Announcements', icon: Bell, path: '/announcements' },
   {
     title: 'My account',
     icon: Settings,
@@ -243,6 +321,15 @@ const GUARDIAN_MENU: MenuConfig = [
   { title: 'Marks', icon: ScrollText, path: '/marks' },
   { title: 'Fees', icon: Wallet, path: '/finance/fees' },
   { title: 'Messages', icon: MessageSquare, path: '/messages' },
+  { title: 'Announcements', icon: Bell, path: '/announcements' },
+  {
+    title: 'My account',
+    icon: Settings,
+    children: [
+      { title: 'Profile', path: '/account/home/user-profile' },
+      { title: 'Notifications', path: '/account/notifications' },
+    ],
+  },
 ];
 
 export function getMenuForRole(roleSlug: string | null | undefined): MenuConfig {

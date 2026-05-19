@@ -20,7 +20,32 @@ export type SystemLogEvent =
   | 'exam_session.updated'
   | 'exam_session.finalized'
   | 'course_mark.created'
-  | 'course_mark.updated';
+  | 'course_mark.updated'
+  | 'attendance_session.created'
+  | 'attendance_session.updated'
+  | 'attendance_record.saved'
+  | 'fee_plan.saved'
+  | 'fee_account.created'
+  | 'fee_payment.recorded'
+  | 'finance_ledger.created'
+  | 'finance_budget.saved'
+  | 'promotion.auto_computed'
+  | 'promotion.override_saved'
+  | 'academic_year.rollover'
+  | 'data_retention.policy_updated'
+  | 'data_retention.archive_run'
+  | 'message.thread_created'
+  | 'message.sent'
+  | 'announcement.created'
+  | 'announcement.published'
+  | 'notification.preference_updated'
+  | 'learning_material.uploaded'
+  | 'school_resource.created'
+  | 'resource.allocation_saved'
+  | 'resource.usage_logged'
+  | 'resource.request_submitted'
+  | 'resource.request_reviewed'
+  | 'room.maintenance_scheduled';
 
 export async function appendSystemLog(
   supabase: SupabaseClient,

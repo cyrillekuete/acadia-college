@@ -1,0 +1,22 @@
+'use client';
+
+import Link from 'next/link';
+import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { FinanceLedgerPanel } from '@/components/acadia/finance/finance-ledger-panel';
+import { Button } from '@/components/ui/button';
+
+export default function FinanceLedgerPage() {
+  return (
+    <AcadiaPageShell
+      title="Income & expenses"
+      description="School ledger for non-tuition income and operating expenses (FR-6.2.2)."
+    >
+      <div className="mb-4 print:hidden">
+        <Button size="sm" variant="outline" asChild>
+          <Link href="/finance/reports">Financial reports</Link>
+        </Button>
+      </div>
+      <FinanceLedgerPanel />
+    </AcadiaPageShell>
+  );
+}

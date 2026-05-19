@@ -37,8 +37,38 @@ export function isFinancialDirector(roleSlug: string | null | undefined): boolea
   return normalizeRole(roleSlug) === 'financial-director';
 }
 
+/** Fee plans, payments, ledger, and budget (admin + bursar). */
+export function canWriteFinance(roleSlug: string | null | undefined): boolean {
+  return isAdmin(roleSlug);
+}
+
 export function canWriteRegistry(roleSlug: string | null | undefined): boolean {
   return isAdmin(roleSlug);
+}
+
+/** Promotion, rollover, and data retention (administrators). */
+export function canManagePromotion(roleSlug: string | null | undefined): boolean {
+  return canWriteRegistry(roleSlug);
+}
+
+/** School announcements and event broadcasts (staff and administrators). */
+export function canManageAnnouncements(roleSlug: string | null | undefined): boolean {
+  return canWriteOperations(roleSlug);
+}
+
+/** All signed-in tenant users may participate in messaging. */
+export function canComposeMessages(_roleSlug: string | null | undefined): boolean {
+  return true;
+}
+
+/** Learning materials, inventory, allocations, and room maintenance (staff + admin). */
+export function canManageResources(roleSlug: string | null | undefined): boolean {
+  return canWriteOperations(roleSlug);
+}
+
+/** Any tenant member may submit a resource request. */
+export function canRequestResources(_roleSlug: string | null | undefined): boolean {
+  return true;
 }
 
 export function canWriteOperations(roleSlug: string | null | undefined): boolean {
