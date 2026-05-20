@@ -160,7 +160,7 @@ describe('rowMatchesSubjectListFilters', () => {
       rowMatchesSubjectListFilters(row, {
         status: 'all',
         groupingId: 'grp-1',
-        levelIds: ['level-1'],
+        levelId: 'level-1',
         termId: 'term-1',
       }),
     ).toBe(true);

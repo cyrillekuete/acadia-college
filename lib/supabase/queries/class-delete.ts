@@ -10,9 +10,13 @@ export type ClassDeleteBlockers = {
   promotionTarget: number;
 };
 
+type ClassBlockerCountTable =
+  | 'StudentEnrollment'
+  | 'StudentPromotionDecision';
+
 async function countRows(
   supabase: Client,
-  table: keyof Database['public']['Tables'],
+  table: ClassBlockerCountTable,
   tenantId: string,
   column: string,
   value: string,

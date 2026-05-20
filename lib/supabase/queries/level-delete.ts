@@ -19,9 +19,19 @@ export type LevelDeleteBlockers = {
   promotionTarget: number;
 };
 
+type LevelBlockerCountTable =
+  | 'StudentEnrollment'
+  | 'EnrollmentApplication'
+  | 'Subject'
+  | 'SubjectLevel'
+  | 'SubjectSpecialtyOffering'
+  | 'Term'
+  | 'StudentProfile'
+  | 'StudentPromotionDecision';
+
 async function countRows(
   supabase: Client,
-  table: keyof Database['public']['Tables'],
+  table: LevelBlockerCountTable,
   tenantId: string,
   column: string,
   value: string,
