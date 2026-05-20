@@ -81,6 +81,16 @@ export function termLabel(term: { number?: number } | null): string {
   return ordinal ? `${ordinal} Term` : `Term ${term.number}`;
 }
 
+export function subjectTermScopeLabel(
+  term: { number?: number } | null,
+  termId: string | null | undefined,
+): string {
+  if (!termId) {
+    return 'All terms';
+  }
+  return termLabel(term);
+}
+
 /** @deprecated Use {@link termLabel} */
 export const semesterLabel = termLabel;
 

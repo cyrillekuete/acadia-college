@@ -1,10 +1,10 @@
 'use client';
 
 import { createContext, ReactNode, useContext } from 'react';
-import type { DummyStudent } from '@/lib/acadia/dummy-students';
+import type { StudentDetailRecord } from '@/lib/supabase/queries/student-detail';
 
 interface StudentContextProps {
-  student: DummyStudent | undefined;
+  student: StudentDetailRecord | undefined;
   isLoading: boolean;
 }
 

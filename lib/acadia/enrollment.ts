@@ -23,6 +23,18 @@ export function generateRegistrationNumber(academicYearLabel?: string): string {
   return `AC-${yearPart}-${suffix}`;
 }
 
+/** Matricule for manual student create; uses override when provided. */
+export function resolveStudentMatricule(
+  override: string | undefined,
+  academicYearLabel?: string,
+): string {
+  const trimmed = override?.trim();
+  if (trimmed) {
+    return trimmed;
+  }
+  return generateRegistrationNumber(academicYearLabel);
+}
+
 export function buildEnrollmentApplicationRow(
   tenantId: string,
   id: string,

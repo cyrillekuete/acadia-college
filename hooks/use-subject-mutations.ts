@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { subBranchNameFr, type SubjectType } from '@/lib/acadia/subject-catalog';
 import { buildSubjectRow } from '@/lib/acadia/subject';
 import type {
   SubjectAssignmentFormValues,
@@ -58,8 +59,8 @@ async function replaceSubjectSubBranches(
     tenantId,
     subjectId,
     name: branch.name.trim(),
-    nameFr: branch.nameFr?.trim() || null,
-    coefficient: branch.coefficient,
+    nameFr: subBranchNameFr(branch),
+    coefficient: branch.hasCustomCoefficient ? branch.coefficient ?? null : null,
     sortOrder: index,
     createdAt: now,
     updatedAt: now,
@@ -85,7 +86,7 @@ export function useSubjectMutations() {
       const supabase = requireBrowserClient();
       const id = generateAcadiaId('subject');
       const now = new Date().toISOString();
-      const row = buildSubjectRow(tenantId, id, values, now);
+      const row = buildSubjectRow(tenantId, id, values, now, 'OTHERS');
 
       const { error } = await supabase.from('Subject').insert({
         ...row,
@@ -118,7 +119,22 @@ export function useSubjectMutations() {
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
-      const row = buildSubjectRow(tenantId, id, values, now);
+      const { data: existing, error: fetchError } = await supabase
+        .from('Subject')
+        .select('subjectType')
+        .eq('id', id)
+        .eq('tenantId', tenantId)
+        .maybeSingle();
+      if (fetchError) {
+        throw fetchError;
+      }
+      const row = buildSubjectRow(
+        tenantId,
+        id,
+        values,
+        now,
+        (existing?.subjectType as SubjectType | undefined) ?? 'OTHERS',
+      );
 
       const { error } = await supabase
         .from('Subject')
@@ -130,6 +146,7 @@ export function useSubjectMutations() {
           hours: row.hours,
           specialtyId: row.specialtyId,
           levelId: row.levelId,
+          academicYearId: row.academicYearId,
           termId: row.termId,
           subjectType: row.subjectType,
           coefficient: row.coefficient,
@@ -172,6 +189,31 @@ export function useSubjectMutations() {
     onSuccess: () => {
       invalidateSubjectQueries(queryClient);
       toast.success('Subject deactivated.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const reactivateSubject = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId) {
+        throw new Error('Tenant context is required.');
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase
+        .from('Subject')
+        .update({
+          deactivatedAt: null,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('tenantId', tenantId);
+      if (error) {
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      invalidateSubjectQueries(queryClient);
+      toast.success('Subject reactivated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -389,6 +431,7 @@ export function useSubjectMutations() {
     createSubject,
     updateSubject,
     deactivateSubject,
+    reactivateSubject,
     createAssignment,
     deleteAssignment,
     createMaterial,

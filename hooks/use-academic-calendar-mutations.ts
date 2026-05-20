@@ -35,8 +35,10 @@ function mutationErrorMessage(error: unknown): string {
 function invalidateCalendarQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-year-options'] });
+  void queryClient.invalidateQueries({ queryKey: ['current-academic-year'] });
   void queryClient.invalidateQueries({ queryKey: ['term-options'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-year-structure'] });
+  void queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
 }
 
 export function useAcademicCalendarMutations() {

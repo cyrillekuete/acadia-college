@@ -6,12 +6,17 @@ import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { SubjectForm } from '@/components/acadia/subjects/subject-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canWriteRegistry } from '@/lib/acadia/roles';
 
 export default function NewSubjectPage() {
+  const { data: session, isLoading } = useAcadiaCollegeSession();
+  const canManage = canWriteRegistry(session?.roleSlug);
+
   return (
     <AcadiaPageShell
       title="New subject"
-      description="Add a subject to the catalog with term and Cameroon placement."
+      description="Add a subject to the catalog for all terms in the academic year."
     >
       <div className="mb-5">
         <Button variant="outline" size="sm" asChild>
@@ -21,14 +26,22 @@ export default function NewSubjectPage() {
           </Link>
         </Button>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Subject details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SubjectForm onCancelHref="/subjects" />
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : !canManage ? (
+        <p className="text-sm text-muted-foreground">
+          You do not have permission to create subjects.
+        </p>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Subject details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SubjectForm onCancelHref="/subjects" />
+          </CardContent>
+        </Card>
+      )}
     </AcadiaPageShell>
   );
 }

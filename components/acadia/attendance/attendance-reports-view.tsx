@@ -25,7 +25,8 @@ import {
   summarizeStudentAttendance,
   type AttendanceStatus,
 } from '@/lib/acadia/attendance';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import {
   useAcadiaCollegeSession,
@@ -41,18 +42,17 @@ export function AttendanceReportsView() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
   const [subjectId, setSubjectId] = useState(ALL_SUBJECTS);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const { data: subjects = [] } = useSubjectOptions(academicYearId);
+  const { data: subjects = [] } = useSubjectOptions(activeYearId ?? '');
 
   const query = useQuery({
     queryKey: [
       'attendance-reports',
       tenantId,
-      academicYearId,
+      activeYearId,
       subjectId,
       fromDate,
       toDate,
@@ -61,9 +61,9 @@ export function AttendanceReportsView() {
       const supabase = requireBrowserClient();
       let sessionQuery = supabase
         .from('AttendanceSession')
-        .select('id, sessionDate, label, Subject:subjectId ( code )')
+        .select('id, sessionDate, label, Subject!AttendanceSession_subjectId_tenantId_fkey ( code )')
         .eq('tenantId', tenantId!)
-        .eq('academicYearId', academicYearId)
+        .eq('academicYearId', activeYearId!)
         .order('sessionDate', { ascending: false });
 
       if (subjectId !== ALL_SUBJECTS) {
@@ -93,9 +93,9 @@ export function AttendanceReportsView() {
           studentProfileId,
           status,
           attendanceSessionId,
-          StudentProfile:studentProfileId (
+          StudentProfile!AttendanceRecord_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
         )
@@ -137,8 +137,8 @@ export function AttendanceReportsView() {
       };
     },
     enabled:
-      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
-      !!academicYearId,
+      !!activeYearId &&
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
   const data = query.data;
@@ -147,27 +147,7 @@ export function AttendanceReportsView() {
   return (
     <div className="space-y-6 print:space-y-4">
       <div className="flex flex-wrap gap-4 print:hidden">
-        <div className="min-w-[180px]">
-          <p className="text-sm font-medium mb-1.5">Academic year</p>
-          <Select
-            value={academicYearId}
-            onValueChange={(value) => {
-              setAcademicYearId(value);
-              setSubjectId(ALL_SUBJECTS);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <CurrentAcademicYearBadge />
         <div className="min-w-[200px]">
           <p className="text-sm font-medium mb-1.5">Subject</p>
           <Select value={subjectId} onValueChange={setSubjectId}>

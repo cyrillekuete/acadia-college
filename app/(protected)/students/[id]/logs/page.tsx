@@ -1,13 +1,19 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
+import { use } from 'react';
+import { SystemLogDataGrid } from '@/components/acadia/admin/system-log-data-grid';
 
-export default function StudentActivityLogsPage() {
+export default function StudentActivityLogsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+
   return (
-    <Card>
-      <CardContent className="py-10 text-center text-sm text-muted-foreground">
-        No activity recorded for this student yet.
-      </CardContent>
-    </Card>
+    <SystemLogDataGrid
+      entityIdFilter={id}
+      entityTypes={['StudentProfile', 'students', 'EnrollmentApplication']}
+    />
   );
 }

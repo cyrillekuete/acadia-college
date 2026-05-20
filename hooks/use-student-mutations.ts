@@ -6,9 +6,11 @@ import type {
   StudentClassMigrationValues,
   StudentProfileEditValues,
 } from '@/lib/acadia/student-schemas';
+import { resolveClassIdForEnrollment } from '@/lib/acadia/class-assignment';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canWriteRegistry } from '@/lib/acadia/roles';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -21,6 +23,7 @@ export function useStudentMutations() {
   const queryClient = useQueryClient();
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const canWrite = canWriteRegistry(session?.roleSlug);
 
   const updateStudentProfile = useMutation({
     mutationFn: async ({
@@ -34,6 +37,9 @@ export function useStudentMutations() {
     }) => {
       if (!tenantId) {
         throw new Error('Tenant context is required.');
+      }
+      if (!canWrite) {
+        throw new Error('You do not have permission to modify registry records.');
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
@@ -68,9 +74,13 @@ export function useStudentMutations() {
         throw userError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['supabase-record'] });
       void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
+      void queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['student-detail', tenantId, variables.profileId],
+      });
       toast.success('Student profile updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -86,6 +96,9 @@ export function useStudentMutations() {
     }) => {
       if (!tenantId) {
         throw new Error('Tenant context is required.');
+      }
+      if (!canWrite) {
+        throw new Error('You do not have permission to modify registry records.');
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
@@ -103,6 +116,16 @@ export function useStudentMutations() {
         throw profileError;
       }
 
+      let classId = values.classId?.trim() || null;
+      if (!classId) {
+        classId = await resolveClassIdForEnrollment(
+          supabase,
+          tenantId,
+          values.levelId,
+          values.specialtyId,
+        );
+      }
+
       const { error: enrollmentError } = await supabase
         .from('StudentEnrollment')
         .insert({
@@ -112,6 +135,7 @@ export function useStudentMutations() {
           academicYearId: values.academicYearId,
           specialtyId: values.specialtyId,
           levelId: values.levelId,
+          classId,
           status: 'ENROLLED',
           applicationId: null,
           createdAt: now,
@@ -121,9 +145,13 @@ export function useStudentMutations() {
         throw enrollmentError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['supabase-record'] });
       void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
+      void queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['student-detail', tenantId, variables.profileId],
+      });
       void queryClient.invalidateQueries({
         queryKey: ['student-academic-progress'],
       });

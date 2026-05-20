@@ -4,11 +4,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { provisionAcademicCalendar, setCurrentAcademicYear } from '@/lib/acadia/academic-calendar';
+import { resolveClassIdForEnrollment } from '@/lib/acadia/class-assignment';
 import {
   buildPromotionCandidates,
-  computeYearAveragesFromMarks,
+  computeYearAverageForPromotionFromMarks,
   DEFAULT_RETENTION_POLICY,
   planYearRollover,
+  requireClassPromotionPolicy,
 } from '@/lib/acadia/promotion';
 import type {
   DataRetentionPolicyValues,
@@ -19,6 +21,14 @@ import type {
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import {
+  fetchClassPromotionPolicy,
+  fetchClassSubjectIds,
+  fetchClassesMissingPolicies,
+  fetchEnrollmentsForClassPromotion,
+  isPromotionYearLocked,
+  resolveClassIdsForBulkCompute,
+} from '@/lib/supabase/queries/promotion';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -32,12 +42,267 @@ function mutationErrorMessage(error: unknown): string {
 function invalidatePromotionQueries(
   queryClient: ReturnType<typeof useQueryClient>,
 ) {
-  void queryClient.invalidateQueries({ queryKey: ['promotion-candidates'] });
   void queryClient.invalidateQueries({ queryKey: ['promotion-decisions'] });
+  void queryClient.invalidateQueries({ queryKey: ['class-promotion-policies'] });
+  void queryClient.invalidateQueries({ queryKey: ['promotion-unassigned'] });
+  void queryClient.invalidateQueries({ queryKey: ['promotion-statement'] });
+  void queryClient.invalidateQueries({ queryKey: ['promotion-year-locked'] });
+  void queryClient.invalidateQueries({ queryKey: ['promotion-rollover-preview'] });
   void queryClient.invalidateQueries({ queryKey: ['data-retention-policy'] });
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['supabase-record'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-year-options'] });
+}
+
+async function computePromotionForClass(
+  supabase: ReturnType<typeof requireBrowserClient>,
+  tenantId: string,
+  userId: string,
+  academicYearId: string,
+  classId: string,
+  className: string,
+  targetAcademicYearId?: string,
+) {
+  const now = new Date().toISOString();
+
+  const locked = await isPromotionYearLocked(supabase, tenantId, academicYearId);
+  if (locked) {
+    throw new Error('Promotion for this year is locked after rollover was applied.');
+  }
+
+  const policy = requireClassPromotionPolicy(
+    await fetchClassPromotionPolicy(supabase, tenantId, classId, academicYearId),
+    className,
+  );
+
+  if (!policy.autoPromotionEnabled) {
+    return {
+      classId,
+      computed: 0,
+      promote: 0,
+      skippedManualOnly: true,
+      skippedPendingMarks: 0,
+    };
+  }
+
+  const [
+    enrollments,
+    classSubjectIds,
+    { data: levels, error: levelError },
+    { data: sessions, error: sessionError },
+  ] = await Promise.all([
+    fetchEnrollmentsForClassPromotion(supabase, tenantId, academicYearId, classId),
+    fetchClassSubjectIds(supabase, tenantId, classId),
+    supabase
+      .from('Level')
+      .select('id, number, subSystem, branch, sortOrder, isDefaultPromotionTarget')
+      .eq('tenantId', tenantId),
+    supabase
+      .from('ExamSession')
+      .select('id, AcademicSequence:sequenceId ( number )')
+      .eq('tenantId', tenantId)
+      .eq('academicYearId', academicYearId),
+  ]);
+
+  if (levelError) {
+    throw levelError;
+  }
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  const sessionIds = (sessions ?? []).map((s) => s.id as string);
+  const subjectFilter =
+    classSubjectIds.length > 0 ? classSubjectIds : null;
+
+  let marks: {
+    studentProfileId: string;
+    subjectId: string;
+    totalScore: number | null;
+    sequenceNumber: number | null;
+  }[] = [];
+
+  if (sessionIds.length > 0) {
+    let marksQuery = supabase
+      .from('SubjectMark')
+      .select('studentProfileId, subjectId, totalScore, examSessionId')
+      .eq('tenantId', tenantId)
+      .in('examSessionId', sessionIds);
+
+    if (subjectFilter) {
+      marksQuery = marksQuery.in('subjectId', subjectFilter);
+    }
+
+    const { data: markRows, error: marksError } = await marksQuery;
+    if (marksError) {
+      throw marksError;
+    }
+
+    const seqBySession = new Map(
+      (sessions ?? []).map((s) => [
+        s.id as string,
+        unwrapRelation<{ number?: number }>(s.AcademicSequence)?.number ?? null,
+      ]),
+    );
+
+    marks = (markRows ?? []).map((m) => ({
+      studentProfileId: m.studentProfileId as string,
+      subjectId: m.subjectId as string,
+      totalScore: m.totalScore != null ? Number(m.totalScore) : null,
+      sequenceNumber: seqBySession.get(m.examSessionId as string) ?? null,
+    }));
+  }
+
+  const enrollmentByStudent = new Map(
+    enrollments.map((e) => [e.studentProfileId as string, e]),
+  );
+
+  const { data: existingDecisions } = await supabase
+    .from('StudentPromotionDecision')
+    .select(
+      'id, studentProfileId, finalAction, targetLevelId, targetClassId, source, classId',
+    )
+    .eq('tenantId', tenantId)
+    .eq('academicYearId', academicYearId)
+    .in(
+      'studentProfileId',
+      enrollments.map((e) => e.studentProfileId as string),
+    );
+
+  const existingIdByStudent = new Map(
+    (existingDecisions ?? []).map((d) => [
+      d.studentProfileId as string,
+      d.id as string,
+    ]),
+  );
+
+  const manualByStudent = new Map(
+    (existingDecisions ?? [])
+      .filter((d) => d.source === 'MANUAL')
+      .map((d) => [
+        d.studentProfileId as string,
+        {
+          finalAction: d.finalAction as PromotionOverrideValues['finalAction'],
+          targetLevelId: d.targetLevelId as string | null,
+        },
+      ]),
+  );
+
+  const nextYearId = targetAcademicYearId ?? academicYearId;
+
+  const candidates = buildPromotionCandidates(
+    enrollments.map((e) => {
+      const studentId = e.studentProfileId as string;
+      const yearResult = computeYearAverageForPromotionFromMarks(
+        marks,
+        studentId,
+        subjectFilter,
+      );
+      return {
+        studentProfileId: studentId,
+        specialtyId: e.specialtyId as string,
+        levelId: e.levelId as string,
+        classId: e.classId as string,
+        enrollmentId: e.id as string,
+        yearAverage: yearResult.average,
+        marksComplete: yearResult.status === 'complete',
+        policy: {
+          autoPromotionEnabled: policy.autoPromotionEnabled,
+          minPromotionAverage: policy.minPromotionAverage,
+        },
+        manualFinalAction:
+          manualByStudent.get(studentId)?.finalAction ?? null,
+        manualTargetLevelId:
+          manualByStudent.get(studentId)?.targetLevelId ?? null,
+      };
+    }),
+    (levels ?? []).map((l) => ({
+      id: l.id as string,
+      number: Number(l.number),
+      subSystem: l.subSystem as string | undefined,
+      branch: l.branch as string | undefined,
+      sortOrder: l.sortOrder != null ? Number(l.sortOrder) : null,
+      isDefaultPromotionTarget: Boolean(l.isDefaultPromotionTarget),
+    })),
+  );
+
+  let skippedPendingMarks = 0;
+  const rows: Record<string, unknown>[] = [];
+
+  for (const c of candidates) {
+    if (c.skippedPendingMarks) {
+      skippedPendingMarks += 1;
+      continue;
+    }
+    if (c.skippedAuto) {
+      continue;
+    }
+
+    const existing = (existingDecisions ?? []).find(
+      (d) => d.studentProfileId === c.studentProfileId,
+    );
+    if (existing?.source === 'MANUAL') {
+      continue;
+    }
+
+    let targetClassId: string | null = null;
+    if (c.finalAction === 'PROMOTE' && c.targetLevelId) {
+      targetClassId = await resolveClassIdForEnrollment(
+        supabase,
+        tenantId,
+        c.targetLevelId,
+        c.specialtyId,
+      );
+    } else if (c.finalAction === 'REPEAT') {
+      targetClassId = c.classId;
+    }
+
+    rows.push({
+      id: existingIdByStudent.get(c.studentProfileId) ?? generateAcadiaId('promo'),
+      tenantId,
+      studentProfileId: c.studentProfileId,
+      academicYearId,
+      specialtyId: c.specialtyId,
+      classId: c.classId,
+      enrollmentId: c.enrollmentId ?? enrollmentByStudent.get(c.studentProfileId)?.id,
+      fromLevelId: c.fromLevelId,
+      targetLevelId: c.targetLevelId,
+      targetClassId,
+      yearAverage: c.yearAverage,
+      policyMinAverage: c.policyMinAverage,
+      recommendedAction: c.recommendedAction,
+      finalAction: c.finalAction,
+      source: c.isManualOverride ? ('MANUAL' as const) : ('AUTO' as const),
+      notes: null,
+      policyStaleAt: null,
+      decidedByUserId: userId,
+      appliedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    void nextYearId;
+  }
+
+  if (rows.length > 0) {
+    const { error: upsertError } = await supabase
+      .from('StudentPromotionDecision')
+      .upsert(rows, {
+        onConflict: 'tenantId,studentProfileId,academicYearId',
+        ignoreDuplicates: false,
+      });
+    if (upsertError) {
+      throw upsertError;
+    }
+  }
+
+  return {
+    classId,
+    computed: rows.length,
+    promote: rows.filter((r) => r.finalAction === 'PROMOTE').length,
+    skippedManualOnly: false,
+    skippedPendingMarks,
+  };
 }
 
 export function usePromotionMutations() {
@@ -53,164 +318,109 @@ export function usePromotionMutations() {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
 
-      const [
-        { data: enrollments, error: enrollError },
-        { data: levels, error: levelError },
-        { data: sessions, error: sessionError },
-      ] = await Promise.all([
-        supabase
-          .from('StudentEnrollment')
-          .select('studentProfileId, specialtyId, levelId')
-          .eq('tenantId', tenantId)
-          .eq('academicYearId', filters.academicYearId)
-          .eq('specialtyId', filters.specialtyId)
-          .eq('levelId', filters.levelId)
-          .eq('status', 'ENROLLED'),
-        supabase
-          .from('Level')
-          .select('id, number, subSystem, branch')
-          .eq('tenantId', tenantId),
-        supabase
-          .from('ExamSession')
-          .select('id, AcademicSequence:sequenceId ( number )')
-          .eq('tenantId', tenantId)
-          .eq('academicYearId', filters.academicYearId),
-      ]);
-
-      if (enrollError) {
-        throw enrollError;
-      }
-      if (levelError) {
-        throw levelError;
-      }
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      const sessionIds = (sessions ?? []).map((s) => s.id as string);
-      let yearAverages = new Map<string, number>();
-
-      if (sessionIds.length > 0) {
-        const { data: marks, error: marksError } = await supabase
-          .from('SubjectMark')
-          .select('studentProfileId, totalScore, examSessionId')
-          .eq('tenantId', tenantId)
-          .in('examSessionId', sessionIds);
-
-        if (marksError) {
-          throw marksError;
-        }
-
-        const seqBySession = new Map(
-          (sessions ?? []).map((s) => [
-            s.id as string,
-            unwrapRelation<{ number?: number }>(s.AcademicSequence)?.number ?? null,
-          ]),
-        );
-
-        yearAverages = computeYearAveragesFromMarks(
-          (marks ?? []).map((m) => ({
-            studentProfileId: m.studentProfileId as string,
-            totalScore:
-              m.totalScore != null ? Number(m.totalScore) : null,
-            sequenceNumber: seqBySession.get(m.examSessionId as string) ?? null,
-          })),
-        );
-      }
-
-      const { data: existingDecisions } = await supabase
-        .from('StudentPromotionDecision')
-        .select('id, studentProfileId, finalAction, targetLevelId, source')
-        .eq('tenantId', tenantId)
-        .eq('academicYearId', filters.academicYearId);
-
-      const existingIdByStudent = new Map(
-        (existingDecisions ?? []).map((d) => [
-          d.studentProfileId as string,
-          d.id as string,
-        ]),
-      );
-
-      const manualByStudent = new Map(
-        (existingDecisions ?? [])
-          .filter((d) => d.source === 'MANUAL')
-          .map((d) => [
-            d.studentProfileId as string,
-            {
-              finalAction: d.finalAction as PromotionOverrideValues['finalAction'],
-              targetLevelId: d.targetLevelId as string | null,
-            },
-          ]),
-      );
-
-      const candidates = buildPromotionCandidates(
-        (enrollments ?? []).map((e) => ({
-          studentProfileId: e.studentProfileId as string,
-          specialtyId: e.specialtyId as string,
-          levelId: e.levelId as string,
-          yearAverage: yearAverages.get(e.studentProfileId as string) ?? null,
-          manualFinalAction:
-            manualByStudent.get(e.studentProfileId as string)?.finalAction ?? null,
-          manualTargetLevelId:
-            manualByStudent.get(e.studentProfileId as string)?.targetLevelId ?? null,
-        })),
-        (levels ?? []).map((l) => ({
-          id: l.id as string,
-          number: Number(l.number),
-          subSystem: l.subSystem as string | undefined,
-          branch: l.branch as string | undefined,
-        })),
-      );
-
-      const rows = candidates.map((c) => ({
-        id:
-          existingIdByStudent.get(c.studentProfileId) ?? generateAcadiaId('promo'),
+      const locked = await isPromotionYearLocked(
+        supabase,
         tenantId,
-        studentProfileId: c.studentProfileId,
-        academicYearId: filters.academicYearId,
-        specialtyId: c.specialtyId,
-        fromLevelId: c.fromLevelId,
-        targetLevelId: c.targetLevelId,
-        yearAverage: c.yearAverage,
-        recommendedAction: c.recommendedAction,
-        finalAction: c.finalAction,
-        source: c.isManualOverride ? ('MANUAL' as const) : ('AUTO' as const),
-        notes: null,
-        decidedByUserId: userId,
-        appliedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      }));
+        filters.academicYearId,
+      );
+      if (locked) {
+        throw new Error('Promotion for this year is locked after rollover was applied.');
+      }
 
-      if (rows.length > 0) {
-        const { error: upsertError } = await supabase
-          .from('StudentPromotionDecision')
-          .upsert(rows, {
-            onConflict: 'tenantId,studentProfileId,academicYearId',
-            ignoreDuplicates: false,
-          });
-        if (upsertError) {
-          throw upsertError;
+      const classIds = await resolveClassIdsForBulkCompute(
+        supabase,
+        tenantId,
+        filters,
+      );
+
+      if (classIds.length === 0) {
+        throw new Error(
+          'No classes with auto-promotion policies found. Configure policies first.',
+        );
+      }
+
+      const { data: classRows } = await supabase
+        .from('Class')
+        .select('id, name')
+        .eq('tenantId', tenantId)
+        .in('id', classIds);
+
+      const nameById = new Map(
+        (classRows ?? []).map((c) => [c.id as string, c.name as string]),
+      );
+
+      let totalComputed = 0;
+      let totalPromote = 0;
+      let totalPendingMarks = 0;
+      let manualOnlyClasses = 0;
+      const errors: string[] = [];
+
+      for (const classId of classIds) {
+        try {
+          const result = await computePromotionForClass(
+            supabase,
+            tenantId,
+            userId,
+            filters.academicYearId,
+            classId,
+            nameById.get(classId) ?? classId,
+          );
+          if (result.skippedManualOnly) {
+            manualOnlyClasses += 1;
+            continue;
+          }
+          totalComputed += result.computed;
+          totalPromote += result.promote;
+          totalPendingMarks += result.skippedPendingMarks;
+        } catch (error) {
+          errors.push(
+            `${nameById.get(classId) ?? classId}: ${mutationErrorMessage(error)}`,
+          );
         }
+      }
+
+      if (errors.length === classIds.length) {
+        throw new Error(errors.join(' '));
       }
 
       await appendSystemLog(supabase, {
         userId,
         event: 'promotion.auto_computed',
-        description: `Computed promotion for ${rows.length} student(s).`,
+        description: `Computed promotion for ${totalComputed} student(s) across ${classIds.length - manualOnlyClasses} class(es).`,
         entityId: filters.academicYearId,
         entityType: 'AcademicYear',
-        meta: { specialtyId: filters.specialtyId, levelId: filters.levelId },
+        meta: { bulkMode: filters.bulkMode, classCount: classIds.length },
       });
 
-      return { count: rows.length, promote: rows.filter((r) => r.finalAction === 'PROMOTE').length };
+      return {
+        count: totalComputed,
+        promote: totalPromote,
+        classCount: classIds.length,
+        manualOnlyClasses,
+        skippedPendingMarks: totalPendingMarks,
+        errors,
+      };
     },
     onSuccess: (result) => {
       invalidatePromotionQueries(queryClient);
+      const warning =
+        result.errors.length > 0
+          ? ` (${result.errors.length} class(es) had errors)`
+          : '';
+      const manualNote =
+        result.manualOnlyClasses > 0
+          ? ` ${result.manualOnlyClasses} manual-only class(es) skipped.`
+          : '';
+      const pendingNote =
+        result.skippedPendingMarks > 0
+          ? ` ${result.skippedPendingMarks} student(s) skipped (incomplete marks).`
+          : '';
       toast.success(
-        `Promotion computed for ${result.count} student(s) (${result.promote} to promote).`,
+        `Promotion computed for ${result.count} student(s) in ${result.classCount} class(es) (${result.promote} to promote).${manualNote}${pendingNote}${warning}`,
+        result.errors.length > 0
+          ? { description: result.errors.slice(0, 5).join('\n') }
+          : undefined,
       );
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -222,16 +432,32 @@ export function usePromotionMutations() {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
+
+      const locked = await isPromotionYearLocked(
+        supabase,
+        tenantId,
+        values.academicYearId,
+      );
+      if (locked) {
+        throw new Error('Promotion for this year is locked after rollover was applied.');
+      }
+
       const now = new Date().toISOString();
 
-      const { data: enrollment, error: enrollError } = await supabase
+      let enrollmentQuery = supabase
         .from('StudentEnrollment')
-        .select('specialtyId, levelId, academicYearId')
+        .select('id, specialtyId, levelId, classId')
         .eq('tenantId', tenantId)
         .eq('studentProfileId', values.studentProfileId)
         .eq('academicYearId', values.academicYearId)
-        .eq('status', 'ENROLLED')
-        .maybeSingle();
+        .eq('status', 'ENROLLED');
+
+      if (values.classId) {
+        enrollmentQuery = enrollmentQuery.eq('classId', values.classId);
+      }
+
+      const { data: enrollment, error: enrollError } =
+        await enrollmentQuery.maybeSingle();
 
       if (enrollError) {
         throw enrollError;
@@ -239,10 +465,32 @@ export function usePromotionMutations() {
       if (!enrollment) {
         throw new Error('No active enrollment found for this student and year.');
       }
+      if (!enrollment.classId) {
+        throw new Error('Student is not assigned to a class.');
+      }
+
+      const classId = enrollment.classId as string;
+
+      const { data: classRow } = await supabase
+        .from('Class')
+        .select('name')
+        .eq('tenantId', tenantId)
+        .eq('id', classId)
+        .maybeSingle();
+
+      const policy = requireClassPromotionPolicy(
+        await fetchClassPromotionPolicy(
+          supabase,
+          tenantId,
+          classId,
+          values.academicYearId,
+        ),
+        classRow?.name ?? 'Class',
+      );
 
       const { data: levels, error: levelError } = await supabase
         .from('Level')
-        .select('id, number, subSystem, branch')
+        .select('id, number, subSystem, branch, sortOrder, isDefaultPromotionTarget')
         .eq('tenantId', tenantId);
       if (levelError) {
         throw levelError;
@@ -262,10 +510,17 @@ export function usePromotionMutations() {
             studentProfileId: values.studentProfileId,
             specialtyId: enrollment.specialtyId as string,
             levelId: enrollment.levelId as string,
+            classId,
+            enrollmentId: enrollment.id as string,
             yearAverage:
               existing?.yearAverage != null
                 ? Number(existing.yearAverage)
                 : null,
+            marksComplete: true,
+            policy: {
+              autoPromotionEnabled: policy.autoPromotionEnabled,
+              minPromotionAverage: policy.minPromotionAverage,
+            },
             manualFinalAction: values.finalAction,
             manualTargetLevelId: values.targetLevelId ?? null,
           },
@@ -275,8 +530,22 @@ export function usePromotionMutations() {
           number: Number(l.number),
           subSystem: l.subSystem as string | undefined,
           branch: l.branch as string | undefined,
+          sortOrder: l.sortOrder != null ? Number(l.sortOrder) : null,
+          isDefaultPromotionTarget: Boolean(l.isDefaultPromotionTarget),
         })),
       );
+
+      let targetClassId: string | null = null;
+      if (candidate.finalAction === 'PROMOTE' && candidate.targetLevelId) {
+        targetClassId = await resolveClassIdForEnrollment(
+          supabase,
+          tenantId,
+          candidate.targetLevelId,
+          candidate.specialtyId,
+        );
+      } else if (candidate.finalAction === 'REPEAT') {
+        targetClassId = classId;
+      }
 
       const row = {
         id: (existing?.id as string | undefined) ?? generateAcadiaId('promo'),
@@ -284,14 +553,19 @@ export function usePromotionMutations() {
         studentProfileId: values.studentProfileId,
         academicYearId: values.academicYearId,
         specialtyId: candidate.specialtyId,
+        classId: candidate.classId,
+        enrollmentId: enrollment.id as string,
         fromLevelId: candidate.fromLevelId,
         targetLevelId: candidate.targetLevelId,
+        targetClassId,
         yearAverage: candidate.yearAverage,
+        policyMinAverage: candidate.policyMinAverage,
         recommendedAction:
           existing?.recommendedAction ?? candidate.recommendedAction,
         finalAction: candidate.finalAction,
         source: 'MANUAL' as const,
         notes: values.notes?.trim() || null,
+        policyStaleAt: null,
         decidedByUserId: userId,
         appliedAt: null,
         updatedAt: now,
@@ -322,6 +596,38 @@ export function usePromotionMutations() {
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
 
+  const deleteOrphanAutoDecisions = useMutation({
+    mutationFn: async (input: {
+      academicYearId: string;
+      classId: string;
+      decisionIds: string[];
+    }) => {
+      if (!tenantId) {
+        throw new Error('Session required.');
+      }
+      if (input.decisionIds.length === 0) {
+        return;
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase
+        .from('StudentPromotionDecision')
+        .delete()
+        .eq('tenantId', tenantId)
+        .eq('academicYearId', input.academicYearId)
+        .eq('classId', input.classId)
+        .eq('source', 'AUTO')
+        .in('id', input.decisionIds);
+      if (error) {
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      invalidatePromotionQueries(queryClient);
+      toast.success('Orphan auto decisions removed.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
   const executeYearRollover = useMutation({
     mutationFn: async (values: YearRolloverValues) => {
       if (!tenantId || !userId) {
@@ -329,6 +635,22 @@ export function usePromotionMutations() {
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
+
+      const missingPolicies = await fetchClassesMissingPolicies(
+        supabase,
+        tenantId,
+        values.sourceAcademicYearId,
+      );
+      if (missingPolicies.length > 0) {
+        const names = missingPolicies
+          .map((c) => `${c.className} (${c.enrollmentCount})`)
+          .slice(0, 5)
+          .join(', ');
+        throw new Error(
+          `Classes without promotion policies: ${names}. Configure policies before rollover.`,
+        );
+      }
+
       let targetYearId = values.targetAcademicYearId;
 
       if (values.createTargetYear) {
@@ -353,10 +675,22 @@ export function usePromotionMutations() {
         throw new Error('Target academic year is required.');
       }
 
+      const { data: policies } = await supabase
+        .from('ClassPromotionPolicy')
+        .select('classId, autoPromotionEnabled')
+        .eq('tenantId', tenantId)
+        .eq('academicYearId', values.sourceAcademicYearId);
+
+      const manualOnlyClassIds = new Set(
+        (policies ?? [])
+          .filter((p) => !p.autoPromotionEnabled)
+          .map((p) => p.classId as string),
+      );
+
       const { data: decisions, error: decisionError } = await supabase
         .from('StudentPromotionDecision')
         .select(
-          'studentProfileId, specialtyId, fromLevelId, targetLevelId, finalAction, yearAverage, recommendedAction',
+          'id, studentProfileId, specialtyId, classId, fromLevelId, targetLevelId, targetClassId, finalAction, yearAverage, recommendedAction, source',
         )
         .eq('tenantId', tenantId)
         .eq('academicYearId', values.sourceAcademicYearId);
@@ -374,12 +708,17 @@ export function usePromotionMutations() {
       const candidates = (decisions ?? []).map((d) => ({
         studentProfileId: d.studentProfileId as string,
         specialtyId: d.specialtyId as string,
+        classId: (d.classId as string | null) ?? '',
         fromLevelId: d.fromLevelId as string,
         yearAverage: d.yearAverage != null ? Number(d.yearAverage) : null,
+        policyMinAverage: 0,
         recommendedAction: d.recommendedAction as 'PROMOTE' | 'REPEAT',
         finalAction: d.finalAction as PromotionOverrideValues['finalAction'],
         targetLevelId: d.targetLevelId as string | null,
-        isManualOverride: false,
+        targetClassId: d.targetClassId as string | null,
+        isManualOverride: d.source === 'MANUAL',
+        skippedAuto: false,
+        skippedPendingMarks: false,
       }));
 
       const plan = planYearRollover({
@@ -388,6 +727,7 @@ export function usePromotionMutations() {
         candidates,
         promoteEligible: values.promoteEligible,
         repeatNonEligible: values.repeatNonEligible,
+        manualOnlyClassIds,
       });
 
       for (const item of plan.enrollments) {
@@ -408,6 +748,16 @@ export function usePromotionMutations() {
         }
 
         if (item.createEnrollment) {
+          let classId = item.targetClassId;
+          if (!classId) {
+            classId = await resolveClassIdForEnrollment(
+              supabase,
+              tenantId,
+              item.targetLevelId,
+              item.specialtyId,
+            );
+          }
+
           const { error: enrollError } = await supabase
             .from('StudentEnrollment')
             .insert({
@@ -417,6 +767,7 @@ export function usePromotionMutations() {
               academicYearId: targetYearId,
               specialtyId: item.specialtyId,
               levelId: item.targetLevelId,
+              classId,
               status: 'ENROLLED',
               applicationId: null,
               createdAt: now,
@@ -453,7 +804,7 @@ export function usePromotionMutations() {
       await appendSystemLog(supabase, {
         userId,
         event: 'academic_year.rollover',
-        description: `Rollover: ${plan.promoted} promoted, ${plan.repeated} repeated, ${plan.graduated} graduated.`,
+        description: `Rollover: ${plan.promoted} promoted, ${plan.repeated} repeated, ${plan.graduated} graduated (${plan.skippedManualOnly} manual-only skipped).`,
         entityId: targetYearId,
         entityType: 'AcademicYear',
         meta: plan,
@@ -609,6 +960,7 @@ export function usePromotionMutations() {
   return {
     computeAutomaticPromotion,
     savePromotionOverride,
+    deleteOrphanAutoDecisions,
     executeYearRollover,
     saveRetentionPolicy,
     runRetentionArchive,

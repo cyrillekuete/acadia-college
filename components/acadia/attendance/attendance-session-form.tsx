@@ -27,7 +27,8 @@ import {
   type AttendanceSessionFormValues,
 } from '@/lib/acadia/attendance-schemas';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useAttendanceMutations } from '@/hooks/use-attendance-mutations';
 
@@ -45,7 +46,7 @@ export function AttendanceSessionForm({
   const isEdit = !!record;
   const { createAttendanceSession, updateAttendanceSession } =
     useAttendanceMutations();
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
 
   const form = useForm<AttendanceSessionFormValues>({
     resolver: zodResolver(attendanceSessionSchema),
@@ -58,7 +59,7 @@ export function AttendanceSessionForm({
     },
   });
 
-  const academicYearId = form.watch('academicYearId');
+  const academicYearId = form.watch('academicYearId') || activeYearId || '';
   const { data: subjects = [] } = useSubjectOptions(academicYearId);
 
   useEffect(() => {
@@ -75,14 +76,10 @@ export function AttendanceSessionForm({
   }, [record, form]);
 
   useEffect(() => {
-    if (record || years.length === 0) {
-      return;
+    if (!record && activeYearId) {
+      form.setValue('academicYearId', activeYearId);
     }
-    const current = years.find((y) => y.isCurrent);
-    if (current) {
-      form.setValue('academicYearId', current.id);
-    }
-  }, [years, record, form]);
+  }, [record, activeYearId, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (isEdit && record) {
@@ -104,20 +101,10 @@ export function AttendanceSessionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Academic year</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y.id} value={y.id}>
-                      {y.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CurrentAcademicYearBadge className="mb-2" />
+              <FormControl>
+                <Input type="hidden" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

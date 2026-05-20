@@ -8,12 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { useUserProfileSession } from '../user-profile-session';
 
 interface IBasicSettingsProps {
   title: string;
 }
 
 const BasicSettings = ({ title }: IBasicSettingsProps) => {
+  const { profile, authUser } = useUserProfileSession();
+  const displayEmail = profile?.email ?? authUser?.email ?? null;
+
   return (
     <Card className="min-w-full">
       <CardHeader>
@@ -33,12 +37,16 @@ const BasicSettings = ({ title }: IBasicSettingsProps) => {
                 Email
               </TableCell>
               <TableCell className="py-2 min-w-60">
-                <Link
-                  href="#"
-                  className="text-foreground font-normal text-sm hover:text-primary-active"
-                >
-                  jasontt@studio.co
-                </Link>
+                {displayEmail ? (
+                  <Link
+                    href={`mailto:${displayEmail}`}
+                    className="text-foreground font-normal text-sm hover:text-primary-active"
+                  >
+                    {displayEmail}
+                  </Link>
+                ) : (
+                  <span className="text-foreground font-normal text-sm">—</span>
+                )}
               </TableCell>
               <TableCell className="py-2 max-w-16 text-end">
                 <Button variant="ghost" mode="icon">

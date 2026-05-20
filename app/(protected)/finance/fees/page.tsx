@@ -19,6 +19,7 @@ import {
   paymentProgressPercent,
 } from '@/lib/acadia/finance';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteFinance } from '@/lib/acadia/roles';
 import {
@@ -105,11 +106,15 @@ function FeeAccountsTable() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const { activeYearId } = useActiveAcademicYear();
   const [search, setSearch] = useState('');
 
   const query = useQuery({
-    queryKey: ['fee-accounts', tenantId],
+    queryKey: ['fee-accounts', tenantId, activeYearId],
     queryFn: async () => {
+      if (!activeYearId) {
+        return [];
+      }
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
         .from('StudentFeeAccount')
@@ -118,17 +123,18 @@ function FeeAccountsTable() {
           id,
           feeCurrency,
           totalAmountMinor,
-          StudentProfile:studentProfileId (
+          StudentProfile!StudentFeeAccount_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           ),
-          AcademicYear:academicYearId ( label ),
-          Specialty:specialtyId ( code ),
+          AcademicYear!StudentFeeAccount_academicYearId_tenantId_fkey ( label ),
+          Specialty!StudentFeeAccount_specialtyId_tenantId_fkey ( code ),
           StudentFeeInstallment ( amountMinor, status, paidAmountMinor, dueOn ),
           StudentScholarship ( discountMinor )
         `,
         )
         .eq('tenantId', tenantId!)
+        .eq('academicYearId', activeYearId)
         .order('createdAt', { ascending: false });
       if (error) {
         throw error;
@@ -169,7 +175,9 @@ function FeeAccountsTable() {
         } satisfies FeeAccountRow;
       });
     },
-    enabled: isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
+    enabled:
+      !!activeYearId &&
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
   const filtered = useMemo(() => {

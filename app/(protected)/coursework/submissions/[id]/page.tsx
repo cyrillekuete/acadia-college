@@ -23,8 +23,8 @@ const SUBMISSION_SELECT = `
   confirmedAt,
   createdAt,
   updatedAt,
-  CourseworkTask:taskId ( titleEn, dueAt, maxScore ),
-  StudentProfile:studentProfileId ( registrationNumber )
+  CourseworkTask!CourseworkSubmission_taskId_tenantId_fkey ( titleEn, dueAt, maxScore ),
+  StudentProfile!CourseworkSubmission_studentProfileId_tenantId_fkey ( registrationNumber )
 `;
 
 type SubmissionDetail = {

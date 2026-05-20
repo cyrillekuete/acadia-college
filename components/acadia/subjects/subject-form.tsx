@@ -30,16 +30,9 @@ import {
   levelDisplayLabel,
   subSystemLabel,
 } from '@/lib/acadia/education-system';
-import {
-  SUBJECT_TYPES,
-  subjectTypeLabel,
-} from '@/lib/acadia/subject-catalog';
 import type { SubjectType } from '@/lib/acadia/subject-catalog';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { subjectSchema, type SubjectFormValues } from '@/lib/acadia/subject-schemas';
-import {
-  useAcademicYearOptions,
-  useTermOptions,
-} from '@/hooks/use-academic-calendar-options';
 import {
   useLevelsForSpecialty,
   useSpecialtyOptions,
@@ -51,20 +44,16 @@ const NO_GROUPING = '__none__';
 
 export type SubjectFormSubBranch = {
   name: string;
-  nameFr?: string;
-  coefficient: number;
+  hasCustomCoefficient: boolean;
+  coefficient?: number;
 };
 
 export type SubjectFormRecord = {
   id: string;
   code: string;
   nameEn: string;
-  nameFr: string;
-  credits: number;
-  hours: number;
   specialtyId: string;
   levelId: string;
-  termId: string;
   subSystem: string;
   branch: string;
   academicYearId: string;
@@ -84,7 +73,7 @@ export function SubjectForm({
 }) {
   const isEdit = !!record;
   const { createSubject, updateSubject } = useSubjectMutations();
-  const { data: years = [], isLoading: yearsLoading } = useAcademicYearOptions();
+  const { activeYearId, activeYear } = useActiveAcademicYear();
   const { data: groupings = [], isLoading: groupingsLoading } =
     useSubjectGroupingOptions();
 
@@ -93,16 +82,11 @@ export function SubjectForm({
     defaultValues: {
       code: '',
       nameEn: '',
-      nameFr: '',
-      credits: 3,
-      hours: 45,
       academicYearId: '',
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
       specialtyId: '',
       levelId: '',
-      termId: '',
-      subjectType: 'OTHERS',
       coefficient: 1,
       groupingId: '',
       hasSubBranches: false,
@@ -118,15 +102,13 @@ export function SubjectForm({
   const subSystem = form.watch('subSystem');
   const branch = form.watch('branch');
   const specialtyId = form.watch('specialtyId');
-  const academicYearId = form.watch('academicYearId');
+  const academicYearId = form.watch('academicYearId') || activeYearId || '';
   const hasSubBranches = form.watch('hasSubBranches');
 
   const { data: specialties = [], isLoading: specialtiesLoading } =
     useSpecialtyOptions(subSystem, branch);
   const { data: levels = [], isLoading: levelsLoading } =
     useLevelsForSpecialty(specialtyId, subSystem, branch);
-  const { data: terms = [], isLoading: termsLoading } =
-    useTermOptions(academicYearId);
 
   useEffect(() => {
     if (!record) {
@@ -135,16 +117,11 @@ export function SubjectForm({
     form.reset({
       code: record.code,
       nameEn: record.nameEn,
-      nameFr: record.nameFr,
-      credits: record.credits,
-      hours: record.hours,
       academicYearId: record.academicYearId,
       subSystem: record.subSystem as SubjectFormValues['subSystem'],
       branch: record.branch as SubjectFormValues['branch'],
       specialtyId: record.specialtyId,
       levelId: record.levelId,
-      termId: record.termId,
-      subjectType: record.subjectType,
       coefficient: record.coefficient,
       groupingId: record.groupingId ?? '',
       hasSubBranches: record.hasSubBranches,
@@ -159,13 +136,10 @@ export function SubjectForm({
   }, [hasSubBranches, form]);
 
   useEffect(() => {
-    if (!record && years.length > 0 && !form.getValues('academicYearId')) {
-      const current = years.find((y) => y.isCurrent);
-      if (current) {
-        form.setValue('academicYearId', current.id);
-      }
+    if (activeYearId) {
+      form.setValue('academicYearId', activeYearId);
     }
-  }, [record, years, form]);
+  }, [activeYearId, form]);
 
   useEffect(() => {
     const current = form.getValues('specialtyId');
@@ -195,7 +169,20 @@ export function SubjectForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <FormField
+            control={form.control}
+            name="nameEn"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Mathematics" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name="code"
@@ -215,27 +202,17 @@ export function SubjectForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Academic year</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={(v) => {
-                    field.onChange(v);
-                    form.setValue('termId', '');
-                  }}
-                  disabled={yearsLoading}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select year" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year.id} value={year.id}>
-                        {year.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <div>
+                    <Input type="hidden" {...field} />
+                    <Input
+                      readOnly
+                      disabled
+                      value={activeYear?.label ?? 'No academic year configured'}
+                      className="bg-muted"
+                    />
+                  </div>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -243,85 +220,6 @@ export function SubjectForm({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="nameEn"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name (English)</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="nameFr"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name (French)</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="credits"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Credits</FormLabel>
-                <FormControl>
-                  <Input {...field} type="number" min={1} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="hours"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Hours</FormLabel>
-                <FormControl>
-                  <Input {...field} type="number" min={1} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <FormField
-            control={form.control}
-            name="subjectType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Type</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {SUBJECT_TYPES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {subjectTypeLabel(value)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           <FormField
             control={form.control}
             name="coefficient"
@@ -391,7 +289,7 @@ export function SubjectForm({
                     onCheckedChange={(checked) => {
                       field.onChange(checked);
                       if (checked && fields.length === 0) {
-                        append({ name: '', nameFr: '', coefficient: 1 });
+                        append({ name: '', hasCustomCoefficient: false });
                       }
                     }}
                   />
@@ -402,10 +300,18 @@ export function SubjectForm({
 
           {hasSubBranches ? (
             <div className="space-y-3">
-              {fields.map((field, index) => (
+              <p className="text-xs text-muted-foreground">
+                Sub-branches use the subject coefficient unless a custom value is set.
+              </p>
+              {fields.map((field, index) => {
+                const hasCustomCoefficient = form.watch(
+                  `subBranches.${index}.hasCustomCoefficient`,
+                );
+
+                return (
                 <div
                   key={field.id}
-                  className="grid grid-cols-1 gap-3 rounded-md border border-dashed p-3 md:grid-cols-[1fr_1fr_auto_auto]"
+                  className="grid grid-cols-1 gap-3 rounded-md border border-dashed p-3 md:grid-cols-[1fr_auto_auto_auto]"
                 >
                   <FormField
                     control={form.control}
@@ -422,30 +328,41 @@ export function SubjectForm({
                   />
                   <FormField
                     control={form.control}
-                    name={`subBranches.${index}.nameFr`}
+                    name={`subBranches.${index}.hasCustomCoefficient`}
                     render={({ field: subField }) => (
-                      <FormItem>
-                        <FormLabel>Name (FR)</FormLabel>
+                      <FormItem className="flex flex-col justify-end">
+                        <FormLabel>Custom coef.</FormLabel>
                         <FormControl>
-                          <Input {...subField} />
+                          <Switch
+                            checked={subField.value}
+                            onCheckedChange={(checked) => {
+                              subField.onChange(checked);
+                              if (!checked) {
+                                form.setValue(`subBranches.${index}.coefficient`, undefined);
+                              }
+                            }}
+                          />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name={`subBranches.${index}.coefficient`}
-                    render={({ field: subField }) => (
-                      <FormItem>
-                        <FormLabel>Coef.</FormLabel>
-                        <FormControl>
-                          <Input {...subField} type="number" min={0.1} step={0.1} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {hasCustomCoefficient ? (
+                    <FormField
+                      control={form.control}
+                      name={`subBranches.${index}.coefficient`}
+                      render={({ field: subField }) => (
+                        <FormItem>
+                          <FormLabel>Coef.</FormLabel>
+                          <FormControl>
+                            <Input {...subField} type="number" min={0.1} step={0.1} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <div className="hidden md:block" aria-hidden />
+                  )}
                   <div className="flex items-end">
                     <Button
                       type="button"
@@ -458,12 +375,13 @@ export function SubjectForm({
                     </Button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ name: '', nameFr: '', coefficient: 1 })}
+                onClick={() => append({ name: '', hasCustomCoefficient: false })}
               >
                 <Plus className="size-4" />
                 Add sub-branch
@@ -473,7 +391,7 @@ export function SubjectForm({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
             name="subSystem"
@@ -536,34 +454,14 @@ export function SubjectForm({
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="termId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Term</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={!academicYearId || termsLoading}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select term" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {terms.map((term) => (
-                      <SelectItem key={term.id} value={term.id}>
-                        Term {term.number}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        </div>
+
+        <div className="rounded-lg border border-border p-4">
+          <p className="text-sm font-medium text-foreground">Terms</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            This subject applies to all terms (1st, 2nd, and 3rd) in the selected
+            academic year.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -629,7 +527,7 @@ export function SubjectForm({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || !activeYearId}>
             {pending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : null}

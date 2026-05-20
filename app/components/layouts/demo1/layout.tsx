@@ -3,6 +3,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSettings } from '@/providers/settings-provider';
+import { ViewingAcademicYearBanner } from '@/components/acadia/academics/viewing-academic-year-banner';
 import { Footer } from './components/footer';
 import { Header } from './components/header';
 import { Sidebar } from './components/sidebar';
@@ -55,6 +56,7 @@ export function Demo1Layout({ children }: { children: ReactNode }) {
 
       <div className="wrapper flex grow flex-col">
         <Header />
+        <ViewingAcademicYearBanner />
 
         <main className="grow pt-5" role="content">
           {children}

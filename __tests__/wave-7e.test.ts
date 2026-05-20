@@ -3,8 +3,12 @@
  * Covers: subject schemas, subject helpers, timetable utilities
  */
 import { describe, it, expect } from 'vitest';
-import { subjectTypeLabel } from '@/lib/acadia/subject-catalog';
-import { buildSubjectRow, canEditSubject } from '@/lib/acadia/subject';
+import { subjectTypeLabel, subBranchNameFr, resolveSubBranchCoefficient } from '@/lib/acadia/subject-catalog';
+import {
+  buildSubjectRow,
+  canEditSubject,
+  rowMatchesSubjectListFilters,
+} from '@/lib/acadia/subject';
 import {
   subjectAssignmentSchema,
   subjectMaterialSchema,
@@ -18,71 +22,75 @@ import {
   timeStringToMinutes,
 } from '@/lib/acadia/timetable';
 
+const baseSubjectValues = {
+  code: 'MATH101',
+  nameEn: 'Mathematics',
+  academicYearId: 'year-1',
+  subSystem: 'ENGLISH' as const,
+  branch: 'GRAMMAR' as const,
+  specialtyId: 'spec-1',
+  levelId: 'level-1',
+  coefficient: 2,
+  groupingId: '',
+  hasSubBranches: false,
+  subBranches: [],
+};
+
 describe('subjectSchema', () => {
-  it('requires catalog placement and term', () => {
-    const result = subjectSchema.safeParse({
-      code: 'MATH101',
-      nameEn: 'Mathematics',
-      nameFr: 'Mathématiques',
-      credits: 3,
-      hours: 45,
-      academicYearId: 'year-1',
-      subSystem: 'ENGLISH',
-      branch: 'GRAMMAR',
-      specialtyId: 'spec-1',
-      levelId: 'level-1',
-      termId: 'term-1',
-      subjectType: 'TRADE_SUBJECTS',
-      coefficient: 2,
-      groupingId: '',
-      hasSubBranches: false,
-      subBranches: [],
-    });
+  it('requires catalog placement fields', () => {
+    const result = subjectSchema.safeParse(baseSubjectValues);
     expect(result.success).toBe(true);
   });
 
   it('requires sub-branches when hasSubBranches is true', () => {
     const result = subjectSchema.safeParse({
-      code: 'MATH101',
-      nameEn: 'Mathematics',
-      nameFr: 'Mathématiques',
-      credits: 3,
-      hours: 45,
-      academicYearId: 'year-1',
-      subSystem: 'ENGLISH',
-      branch: 'GRAMMAR',
-      specialtyId: 'spec-1',
-      levelId: 'level-1',
-      termId: 'term-1',
-      subjectType: 'OTHERS',
+      ...baseSubjectValues,
       coefficient: 1,
-      groupingId: '',
       hasSubBranches: true,
       subBranches: [],
     });
     expect(result.success).toBe(false);
   });
 
+  it('does not require a term id', () => {
+    const result = subjectSchema.safeParse(baseSubjectValues);
+    expect(result.success).toBe(true);
+  });
+
   it('rejects invalid subject code', () => {
     const result = subjectSchema.safeParse({
+      ...baseSubjectValues,
       code: '',
-      nameEn: 'Mathematics',
-      nameFr: 'Mathématiques',
-      credits: 3,
-      hours: 45,
-      academicYearId: 'year-1',
-      subSystem: 'ENGLISH',
-      branch: 'GRAMMAR',
-      specialtyId: 'spec-1',
-      levelId: 'level-1',
-      termId: 'term-1',
-      subjectType: 'OTHERS',
       coefficient: 1,
-      groupingId: '',
-      hasSubBranches: false,
-      subBranches: [],
     });
     expect(result.success).toBe(false);
+  });
+
+  it('accepts sub-branches without custom coefficients', () => {
+    const result = subjectSchema.safeParse({
+      ...baseSubjectValues,
+      hasSubBranches: true,
+      subBranches: [{ name: 'Pure Maths', hasCustomCoefficient: false }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('requires coefficient when sub-branch custom coefficient is enabled', () => {
+    const result = subjectSchema.safeParse({
+      ...baseSubjectValues,
+      hasSubBranches: true,
+      subBranches: [{ name: 'Pure Maths', hasCustomCoefficient: true }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts sub-branches with custom coefficients', () => {
+    const result = subjectSchema.safeParse({
+      ...baseSubjectValues,
+      hasSubBranches: true,
+      subBranches: [{ name: 'Pure Maths', hasCustomCoefficient: true, coefficient: 2 }],
+    });
+    expect(result.success).toBe(true);
   });
 });
 
@@ -90,6 +98,94 @@ describe('subjectTypeLabel', () => {
   it('returns human-readable labels', () => {
     expect(subjectTypeLabel('LANGUAGES')).toBe('Languages');
     expect(subjectTypeLabel('TRADE_SUBJECTS')).toBe('Trade subjects');
+  });
+});
+
+describe('resolveSubBranchCoefficient', () => {
+  it('inherits subject coefficient when sub-branch coefficient is null', () => {
+    expect(resolveSubBranchCoefficient({ coefficient: null }, 3)).toBe(3);
+    expect(resolveSubBranchCoefficient({}, 3)).toBe(3);
+  });
+
+  it('uses custom sub-branch coefficient when set', () => {
+    expect(resolveSubBranchCoefficient({ coefficient: 2 }, 3)).toBe(2);
+  });
+});
+
+describe('subBranchNameFr', () => {
+  it('falls back to English name when French is blank', () => {
+    expect(subBranchNameFr({ name: 'Pure Maths', nameFr: '' })).toBe('Pure Maths');
+    expect(subBranchNameFr({ name: 'Pure Maths' })).toBe('Pure Maths');
+  });
+
+  it('uses French name when provided', () => {
+    expect(subBranchNameFr({ name: 'Pure Maths', nameFr: 'Maths pures' })).toBe(
+      'Maths pures',
+    );
+  });
+});
+
+describe('rowMatchesSubjectListFilters', () => {
+  const row = {
+    deactivatedAt: null,
+    groupingId: 'grp-1',
+    levelId: 'level-1',
+    termId: 'term-1',
+  };
+
+  it('filters by active status by default', () => {
+    expect(
+      rowMatchesSubjectListFilters(row, {
+        status: 'active',
+        groupingId: null,
+        levelId: null,
+        termId: null,
+      }),
+    ).toBe(true);
+    expect(
+      rowMatchesSubjectListFilters(
+        { ...row, deactivatedAt: '2026-01-01T00:00:00.000Z' },
+        {
+          status: 'active',
+          groupingId: null,
+          levelId: null,
+          termId: null,
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it('filters by grouping, level, and term', () => {
+    expect(
+      rowMatchesSubjectListFilters(row, {
+        status: 'all',
+        groupingId: 'grp-1',
+        levelId: 'level-1',
+        termId: 'term-1',
+      }),
+    ).toBe(true);
+    expect(
+      rowMatchesSubjectListFilters(row, {
+        status: 'all',
+        groupingId: 'grp-2',
+        levelId: null,
+        termId: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('includes all-terms subjects when filtering by term', () => {
+    expect(
+      rowMatchesSubjectListFilters(
+        { ...row, termId: null },
+        {
+          status: 'all',
+          groupingId: null,
+          levelId: null,
+          termId: 'term-1',
+        },
+      ),
+    ).toBe(true);
   });
 });
 
@@ -156,30 +252,40 @@ describe('buildSubjectRow', () => {
       {
         code: ' math101 ',
         nameEn: 'Math',
-        nameFr: 'Maths',
-        credits: 4,
-        hours: 60,
         academicYearId: 'year-1',
         subSystem: 'ENGLISH',
         branch: 'GRAMMAR',
         specialtyId: 'spec-1',
         levelId: 'level-1',
-        termId: 'term-1',
-        subjectType: 'RELATED_TRADE_SUBJECTS',
         coefficient: 3,
         groupingId: 'grp-1',
         hasSubBranches: true,
-        subBranches: [{ name: 'Pure Maths', coefficient: 2 }],
+        subBranches: [{ name: 'Pure Maths', hasCustomCoefficient: true, coefficient: 2 }],
       },
       '2026-05-19T00:00:00.000Z',
+      'RELATED_TRADE_SUBJECTS',
     );
     expect(row.code).toBe('MATH101');
-    expect(row.termId).toBe('term-1');
+    expect(row.nameFr).toBe('Math');
+    expect(row.credits).toBe(1);
+    expect(row.hours).toBe(1);
+    expect(row.termId).toBeNull();
+    expect(row.academicYearId).toBe('year-1');
     expect(row.subjectType).toBe('RELATED_TRADE_SUBJECTS');
     expect(row.coefficient).toBe(3);
     expect(row.groupingId).toBe('grp-1');
     expect(row.hasSubBranches).toBe(true);
     expect(row.deactivatedAt).toBeNull();
+  });
+
+  it('defaults subject type to OTHERS', () => {
+    const row = buildSubjectRow(
+      'tenant-1',
+      'subject-1',
+      baseSubjectValues,
+      '2026-05-19T00:00:00.000Z',
+    );
+    expect(row.subjectType).toBe('OTHERS');
   });
 });
 

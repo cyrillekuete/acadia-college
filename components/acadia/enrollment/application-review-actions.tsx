@@ -13,19 +13,50 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useEnrollmentMutations } from '@/hooks/use-enrollment-mutations';
+import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
+
+type ReviewErrorPayload = {
+  message?: string;
+  candidateClassIds?: string[];
+};
 
 export function ApplicationReviewActions({
   applicationId,
   status,
+  levelId,
+  specialtyId,
 }: {
   applicationId: string;
   status: string;
+  levelId?: string;
+  specialtyId?: string;
 }) {
   const { reviewApplication } = useEnrollmentMutations();
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [classPickerOpen, setClassPickerOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [candidateClassIds, setCandidateClassIds] = useState<string[]>([]);
+  const [classPickerMessage, setClassPickerMessage] = useState('');
+
+  const { data: classOptions = [] } = useClassesForFilters({
+    specialtyId: specialtyId ?? null,
+    levelId: levelId ?? null,
+  });
+
+  const classChoices =
+    candidateClassIds.length > 0
+      ? classOptions.filter((c) => candidateClassIds.includes(c.id))
+      : classOptions;
 
   if (status !== 'PENDING') {
     if (status === 'APPROVED') {
@@ -41,11 +72,43 @@ export function ApplicationReviewActions({
     return null;
   }
 
+  const submitApprove = (classId?: string) => {
+    reviewApplication.mutate(
+      {
+        id: applicationId,
+        input: classId
+          ? { decision: 'approve', classId }
+          : { decision: 'approve' },
+      },
+      {
+        onSuccess: () => {
+          setClassPickerOpen(false);
+          setSelectedClassId('');
+          setCandidateClassIds([]);
+        },
+        onError: (error) => {
+          const payload = (error as Error & { payload?: ReviewErrorPayload })
+            .payload;
+          const ids = payload?.candidateClassIds ?? [];
+          if (
+            ids.length > 0 ||
+            (payload?.message &&
+              payload.message.toLowerCase().includes('class'))
+          ) {
+            setCandidateClassIds(ids);
+            setClassPickerMessage(
+              payload?.message ??
+                'Select a class to complete approval.',
+            );
+            setClassPickerOpen(true);
+          }
+        },
+      },
+    );
+  };
+
   const handleApprove = () => {
-    reviewApplication.mutate({
-      id: applicationId,
-      input: { decision: 'approve' },
-    });
+    submitApprove();
   };
 
   const handleReject = () => {
@@ -114,6 +177,39 @@ export function ApplicationReviewActions({
               onClick={handleReject}
             >
               Confirm rejection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={classPickerOpen} onOpenChange={setClassPickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select class</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-3">
+            <p className="text-sm text-muted-foreground">{classPickerMessage}</p>
+            <Label htmlFor="approve-class">Class</Label>
+            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+              <SelectTrigger id="approve-class">
+                <SelectValue placeholder="Choose a class" />
+              </SelectTrigger>
+              <SelectContent>
+                {classChoices.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              disabled={reviewApplication.isPending || !selectedClassId}
+              onClick={() => submitApprove(selectedClassId)}
+            >
+              Approve with class
             </Button>
           </DialogFooter>
         </DialogContent>

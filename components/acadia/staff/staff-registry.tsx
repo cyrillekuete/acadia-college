@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { StaffList } from '@/components/acadia/staff/staff-list';
 import { StaffRegistryFiltersPanel } from '@/components/acadia/staff/staff-registry-filters';
 import { StaffRegistryStats } from '@/components/acadia/staff/staff-registry-stats';
-import { DUMMY_STAFF, type DummyStaff } from '@/lib/acadia/dummy-staff';
+import type { DummyStaff } from '@/lib/acadia/dummy-staff';
 import {
   EMPTY_STAFF_REGISTRY_FILTERS,
   computeStaffRegistryStats,
@@ -15,7 +15,7 @@ import {
 } from '@/lib/acadia/staff-registry';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchStaffList } from '@/lib/supabase/queries/staff-list';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -25,16 +25,16 @@ export function StaffRegistry() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYear, activeYearId } = useActiveAcademicYear();
 
   const { data: remoteStaff, isLoading: staffLoading } = useQuery({
-    queryKey: ['staff-list', tenantId],
+    queryKey: ['staff-list', tenantId, activeYearId],
     queryFn: async () => {
       if (!tenantId) {
         throw new Error('Tenant context is required');
       }
       const supabase = requireBrowserClient();
-      return fetchStaffList(supabase, tenantId);
+      return fetchStaffList(supabase, tenantId, activeYearId);
     },
     enabled: isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
@@ -46,19 +46,18 @@ export function StaffRegistry() {
     if (remoteStaff != null) {
       return remoteStaff;
     }
-    return DUMMY_STAFF;
+    return [];
   }, [remoteStaff, staffLoading]);
 
   const [filters, setFilters] = useState<StaffRegistryFilters>(
     EMPTY_STAFF_REGISTRY_FILTERS,
   );
 
-  const currentYearLabel =
-    years.find((y) => y.isCurrent)?.label ?? years[0]?.label ?? null;
+  const activeYearLabel = activeYear?.label ?? null;
 
   const stats = useMemo(
-    () => computeStaffRegistryStats(listSource, currentYearLabel),
-    [listSource, currentYearLabel],
+    () => computeStaffRegistryStats(listSource, activeYearLabel),
+    [listSource, activeYearLabel],
   );
 
   const filteredStaff = useMemo(

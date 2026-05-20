@@ -4,22 +4,34 @@ import {
   computeTermAverageFromSequences,
   PASSING_AVERAGE,
 } from '@/lib/acadia/assessment';
+import type { ClassPromotionPolicyRow } from '@/lib/acadia/class-promotion-policy-schemas';
 import type { PromotionAction } from '@/lib/acadia/promotion-schemas';
 
 export { PASSING_AVERAGE as PROMOTION_PASS_AVERAGE };
+
+export type ClassPromotionPolicyInput = Pick<
+  ClassPromotionPolicyRow,
+  'autoPromotionEnabled' | 'minPromotionAverage'
+>;
 
 export type LevelRow = {
   id: string;
   number: number;
   subSystem?: string;
   branch?: string;
+  sortOrder?: number | null;
+  isDefaultPromotionTarget?: boolean;
 };
 
 export type PromotionCandidateInput = {
   studentProfileId: string;
   specialtyId: string;
   levelId: string;
+  classId: string;
+  enrollmentId?: string;
   yearAverage: number | null;
+  marksComplete: boolean;
+  policy: ClassPromotionPolicyInput;
   manualFinalAction?: PromotionAction | null;
   manualTargetLevelId?: string | null;
 };
@@ -27,18 +39,26 @@ export type PromotionCandidateInput = {
 export type PromotionCandidate = {
   studentProfileId: string;
   specialtyId: string;
+  classId: string;
+  enrollmentId?: string;
   fromLevelId: string;
   yearAverage: number | null;
+  policyMinAverage: number;
   recommendedAction: PromotionAction;
   finalAction: PromotionAction;
   targetLevelId: string | null;
+  targetClassId: string | null;
   isManualOverride: boolean;
+  skippedAuto: boolean;
+  skippedPendingMarks: boolean;
+  classChangedSinceCompute?: boolean;
 };
 
 export type YearRolloverEnrollmentPlan = {
   studentProfileId: string;
   specialtyId: string;
   targetLevelId: string;
+  targetClassId: string | null;
   finalAction: PromotionAction;
   createEnrollment: boolean;
   markAlumni: boolean;
@@ -54,6 +74,7 @@ export type YearRolloverPlan = {
   deferred: number;
   withdrawn: number;
   skipped: number;
+  skippedManualOnly: number;
 };
 
 export type RetentionArchivePreview = {
@@ -63,14 +84,64 @@ export type RetentionArchivePreview = {
   description: string;
 };
 
-/** Students with year average ≥ 10 are recommended to promote (FR-DM-1). */
+export type ClassComputeResult = {
+  classId: string;
+  computed: number;
+  promote: number;
+  skippedManualOnly: boolean;
+  skippedPendingMarks: number;
+};
+
+export type BulkComputeResult = {
+  count: number;
+  promote: number;
+  classCount: number;
+  manualOnlyClasses: number;
+  skippedPendingMarks: number;
+  errors: string[];
+};
+
+export type RecommendedPromotionResult =
+  | 'PROMOTE'
+  | 'REPEAT'
+  | 'MANUAL_ONLY';
+
+export type YearAverageForPromotion = {
+  average: number | null;
+  status: 'complete' | 'incomplete';
+};
+
+const PROMOTION_DECIMALS = 2;
+
+export function roundPromotionAverage(value: number): number {
+  const factor = 10 ** PROMOTION_DECIMALS;
+  return Math.round(value * factor) / factor;
+}
+
+export function meetsPromotionThreshold(
+  yearAverage: number,
+  minPromotionAverage: number,
+): boolean {
+  return (
+    roundPromotionAverage(yearAverage) >= roundPromotionAverage(minPromotionAverage)
+  );
+}
+
+/** Per-class policy: average threshold and optional auto-promotion off. */
 export function recommendedPromotionAction(
   yearAverage: number | null | undefined,
-): 'PROMOTE' | 'REPEAT' {
-  if (yearAverage == null || Number.isNaN(yearAverage)) {
+  policy: ClassPromotionPolicyInput,
+  marksComplete = true,
+): RecommendedPromotionResult {
+  if (!policy.autoPromotionEnabled) {
+    return 'MANUAL_ONLY';
+  }
+  if (!marksComplete || yearAverage == null || Number.isNaN(yearAverage)) {
     return 'REPEAT';
   }
-  return yearAverage >= PASSING_AVERAGE ? 'PROMOTE' : 'REPEAT';
+  return meetsPromotionThreshold(yearAverage, policy.minPromotionAverage)
+    ? 'PROMOTE'
+    : 'REPEAT';
 }
 
 export function findNextLevel(
@@ -94,15 +165,33 @@ export function findNextLevel(
     }
     return true;
   });
-  return candidates.sort((a, b) => a.number - b.number)[0] ?? null;
+
+  if (candidates.length === 0) {
+    return null;
+  }
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+
+  const defaultTarget = candidates.find((l) => l.isDefaultPromotionTarget);
+  if (defaultTarget) {
+    return defaultTarget;
+  }
+
+  return [...candidates].sort((a, b) => {
+    const orderA = a.sortOrder ?? a.number;
+    const orderB = b.sortOrder ?? b.number;
+    return orderA - orderB;
+  })[0];
 }
 
 export function resolveFinalPromotionAction(
-  recommended: 'PROMOTE' | 'REPEAT',
+  recommended: RecommendedPromotionResult,
   yearAverage: number | null,
   levels: LevelRow[],
   specialtyId: string,
   fromLevelId: string,
+  minPromotionAverage: number,
   manualFinalAction?: PromotionAction | null,
 ): { finalAction: PromotionAction; targetLevelId: string | null } {
   if (manualFinalAction) {
@@ -119,7 +208,7 @@ export function resolveFinalPromotionAction(
     return { finalAction: manualFinalAction, targetLevelId: null };
   }
 
-  if (recommended === 'REPEAT') {
+  if (recommended === 'MANUAL_ONLY' || recommended === 'REPEAT') {
     return { finalAction: 'REPEAT', targetLevelId: fromLevelId };
   }
 
@@ -127,7 +216,10 @@ export function resolveFinalPromotionAction(
   if (next) {
     return { finalAction: 'PROMOTE', targetLevelId: next.id };
   }
-  if (yearAverage != null && yearAverage >= PASSING_AVERAGE) {
+  if (
+    yearAverage != null &&
+    meetsPromotionThreshold(yearAverage, minPromotionAverage)
+  ) {
     return { finalAction: 'GRADUATE', targetLevelId: null };
   }
   return { finalAction: 'REPEAT', targetLevelId: fromLevelId };
@@ -138,14 +230,61 @@ export function buildPromotionCandidates(
   levels: LevelRow[],
 ): PromotionCandidate[] {
   return inputs.map((input) => {
-    const recommended = recommendedPromotionAction(input.yearAverage);
+    if (!input.marksComplete && !input.manualFinalAction) {
+      return {
+        studentProfileId: input.studentProfileId,
+        specialtyId: input.specialtyId,
+        classId: input.classId,
+        enrollmentId: input.enrollmentId,
+        fromLevelId: input.levelId,
+        yearAverage: input.yearAverage,
+        policyMinAverage: input.policy.minPromotionAverage,
+        recommendedAction: 'REPEAT',
+        finalAction: 'REPEAT',
+        targetLevelId: input.levelId,
+        targetClassId: null,
+        isManualOverride: false,
+        skippedAuto: true,
+        skippedPendingMarks: true,
+      };
+    }
+
+    const recommended = recommendedPromotionAction(
+      input.yearAverage,
+      input.policy,
+      input.marksComplete,
+    );
     const manual = input.manualFinalAction ?? null;
+
+    if (recommended === 'MANUAL_ONLY' && !manual) {
+      return {
+        studentProfileId: input.studentProfileId,
+        specialtyId: input.specialtyId,
+        classId: input.classId,
+        enrollmentId: input.enrollmentId,
+        fromLevelId: input.levelId,
+        yearAverage: input.yearAverage,
+        policyMinAverage: input.policy.minPromotionAverage,
+        recommendedAction: 'REPEAT',
+        finalAction: 'REPEAT',
+        targetLevelId: input.levelId,
+        targetClassId: null,
+        isManualOverride: false,
+        skippedAuto: true,
+        skippedPendingMarks: false,
+      };
+    }
+
+    const recommendedAction: PromotionAction =
+      recommended === 'MANUAL_ONLY' ? 'REPEAT' : recommended;
+
     const { finalAction, targetLevelId } = resolveFinalPromotionAction(
       recommended,
       input.yearAverage,
       levels,
       input.specialtyId,
       input.levelId,
+      input.policy.minPromotionAverage,
       manual,
     );
     const resolvedTarget =
@@ -156,19 +295,29 @@ export function buildPromotionCandidates(
     return {
       studentProfileId: input.studentProfileId,
       specialtyId: input.specialtyId,
+      classId: input.classId,
+      enrollmentId: input.enrollmentId,
       fromLevelId: input.levelId,
       yearAverage: input.yearAverage,
-      recommendedAction: recommended,
+      policyMinAverage: input.policy.minPromotionAverage,
+      recommendedAction: recommendedAction,
       finalAction,
       targetLevelId: resolvedTarget,
-      isManualOverride: manual != null && manual !== recommended,
+      targetClassId: null,
+      isManualOverride: manual != null && manual !== recommendedAction,
+      skippedAuto: false,
+      skippedPendingMarks: false,
     };
   });
 }
 
 /** Aggregate sequence marks into a year average per student. */
 export function computeYearAveragesFromMarks(
-  marks: { studentProfileId: string; totalScore: number | null; sequenceNumber: number | null }[],
+  marks: {
+    studentProfileId: string;
+    totalScore: number | null;
+    sequenceNumber: number | null;
+  }[],
 ): Map<string, number> {
   const byStudent = new Map<string, { sequenceNumber: number; average: number }[]>();
 
@@ -206,12 +355,55 @@ export function computeYearAveragesFromMarks(
   return result;
 }
 
+/** Class-scoped year average: requires marks for all class subjects when mappings exist. */
+export function computeYearAverageForPromotionFromMarks(
+  marks: {
+    studentProfileId: string;
+    subjectId: string;
+    totalScore: number | null;
+    sequenceNumber: number | null;
+  }[],
+  studentProfileId: string,
+  classSubjectIds: string[] | null,
+): YearAverageForPromotion {
+  const studentMarks = marks.filter((m) => m.studentProfileId === studentProfileId);
+  const scopedMarks =
+    classSubjectIds && classSubjectIds.length > 0
+      ? studentMarks.filter((m) => classSubjectIds.includes(m.subjectId))
+      : studentMarks;
+
+  if (classSubjectIds && classSubjectIds.length > 0) {
+    const subjectsWithMarks = new Set(scopedMarks.map((m) => m.subjectId));
+    const allSubjectsCovered = classSubjectIds.every((id) =>
+      subjectsWithMarks.has(id),
+    );
+    if (!allSubjectsCovered) {
+      return { average: null, status: 'incomplete' };
+    }
+  }
+
+  const averages = computeYearAveragesFromMarks(
+    scopedMarks.map((m) => ({
+      studentProfileId: m.studentProfileId,
+      totalScore: m.totalScore,
+      sequenceNumber: m.sequenceNumber,
+    })),
+  );
+
+  const average = averages.get(studentProfileId) ?? null;
+  if (average == null) {
+    return { average: null, status: 'incomplete' };
+  }
+  return { average, status: 'complete' };
+}
+
 export function planYearRollover(input: {
   sourceAcademicYearId: string;
   targetAcademicYearId: string;
   candidates: PromotionCandidate[];
   promoteEligible: boolean;
   repeatNonEligible: boolean;
+  manualOnlyClassIds?: Set<string>;
 }): YearRolloverPlan {
   const enrollments: YearRolloverEnrollmentPlan[] = [];
   let promoted = 0;
@@ -220,8 +412,18 @@ export function planYearRollover(input: {
   let deferred = 0;
   let withdrawn = 0;
   let skipped = 0;
+  let skippedManualOnly = 0;
 
   for (const row of input.candidates) {
+    if (
+      input.manualOnlyClassIds?.has(row.classId) &&
+      !row.isManualOverride
+    ) {
+      skippedManualOnly += 1;
+      skipped += 1;
+      continue;
+    }
+
     if (row.finalAction === 'DEFER' || row.finalAction === 'WITHDRAW') {
       if (row.finalAction === 'DEFER') {
         deferred += 1;
@@ -238,6 +440,7 @@ export function planYearRollover(input: {
         studentProfileId: row.studentProfileId,
         specialtyId: row.specialtyId,
         targetLevelId: row.fromLevelId,
+        targetClassId: null,
         finalAction: 'GRADUATE',
         createEnrollment: false,
         markAlumni: true,
@@ -255,6 +458,7 @@ export function planYearRollover(input: {
         studentProfileId: row.studentProfileId,
         specialtyId: row.specialtyId,
         targetLevelId: row.targetLevelId,
+        targetClassId: row.targetClassId,
         finalAction: 'PROMOTE',
         createEnrollment: true,
         markAlumni: false,
@@ -272,6 +476,7 @@ export function planYearRollover(input: {
         studentProfileId: row.studentProfileId,
         specialtyId: row.specialtyId,
         targetLevelId: row.fromLevelId,
+        targetClassId: row.classId,
         finalAction: 'REPEAT',
         createEnrollment: true,
         markAlumni: false,
@@ -289,6 +494,7 @@ export function planYearRollover(input: {
     deferred,
     withdrawn,
     skipped,
+    skippedManualOnly,
   };
 }
 
@@ -339,4 +545,16 @@ export function promotionActionLabel(action: PromotionAction): string {
       return _exhaustive;
     }
   }
+}
+
+export function requireClassPromotionPolicy(
+  policy: ClassPromotionPolicyRow | null,
+  className: string,
+): ClassPromotionPolicyRow {
+  if (!policy) {
+    throw new Error(
+      `Configure a promotion policy for "${className}" before computing.`,
+    );
+  }
+  return policy;
 }

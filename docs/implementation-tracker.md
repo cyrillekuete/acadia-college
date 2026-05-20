@@ -65,8 +65,9 @@
 | F-013d | Levels | `done` | `/academics/levels` | DataGrid list | |
 | F-013e | Specialties | `done` | `/academics/specialties` | DataGrid list | |
 | F-013f | Rooms | `done` | `/academics/rooms` | DataGrid list | |
-| F-014 | Courses list | `done` | `/courses` | account/members/teams | |
-| F-014b | Course detail | `done` | `/courses/[id]` | `account/home/user-profile` | Read-only course + academic placement cards |
+| F-014 | Subjects catalog list | `done` | `/subjects` | account/members/teams | Catalog filters, placement columns, bilingual names |
+| F-014b | Subject detail | `done` | `/subjects/[id]` | `account/home/user-profile` | Read-only subject + academic placement cards |
+| F-014c | Subject groupings CRUD | `done` | `/subjects/groupings` | Dialog CRUD | Bilingual groupings with subject counts |
 | F-015 | Academic calendar milestones | `done` | `/academics/calendar` | DataGrid list | |
 
 ---
@@ -178,11 +179,11 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-077 | Course create/edit | FR-3.2.1 | `done` | `/courses/new`, `/courses/[id]/edit` | teams form | `course-schemas.ts`, `CourseForm`, term + catalog placement |
-| F-078 | CourseAssignment (teacher ↔ course) | FR-3.1.2, FR-3.2.2 | `done` | `/courses/[id]` | — | `CourseAssignmentPanel` CRUD |
+| F-077 | Subject create/edit | FR-3.2.1 | `done` | `/subjects/new`, `/subjects/[id]/edit` | teams form | `subject-schemas.ts`, `SubjectForm`, term + catalog placement |
+| F-078 | SubjectAssignment (teacher ↔ subject) | FR-3.1.2, FR-3.2.2 | `done` | `/subjects/[id]` | — | `SubjectAssignmentPanel` CRUD |
 | F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `done` | `/classes` | DataGrid | Year + catalog + specialty/level filters |
 | F-080 | Timetable slot create/edit | FR-3.1.4 | `done` | `/timetable` | DataGrid + form | `TimetableSlotFormDialog` + edit/delete |
-| F-081 | Subject-specific resources (course materials) | FR-3.2.3, FR-8.1.1 | `done` | `/courses/[id]` | — | `CourseworkTask` via `CourseMaterialsPanel` |
+| F-081 | Subject-specific resources (course materials) | FR-3.2.3, FR-8.1.1 | `done` | `/subjects/[id]` | — | `CourseworkTask` via `SubjectMaterialsPanel` |
 
 ### 7F — Academic assessment (Cameroon)
 
@@ -229,8 +230,8 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-108 | Automatic promotion (average ≥ 10) | FR-DM-1 | `done` | `lib/acadia/promotion.ts` | — | `computeAutomaticPromotion`, year averages |
-| F-109 | Manual promotion override | FR-DM-2 | `done` | `/admin/promotion` | — | `PromotionAdminPanel`; links F-076 |
+| F-108 | Class-based automatic promotion | FR-DM-1 | `done` | `/academics/promotion`, `lib/acadia/promotion.ts` | — | Per-class per-year `ClassPromotionPolicy`; class-scoped marks; pending when incomplete |
+| F-109 | Manual promotion override | FR-DM-2 | `done` | `/academics/promotion` | — | `PromotionAdminPanel`; manual-only classes; year lock after rollover |
 | F-110 | Academic year transition / rollover | FR-DM-3 | `done` | `/academics/years/[id]/rollover` | — | `YearRolloverWizard` |
 | F-111 | Data archival and retention | FR-DM-4 | `done` | `/admin/data-retention` | — | `TenantDataRetentionPolicy` + archive job |
 

@@ -25,9 +25,10 @@ export type SubjectOption = {
   nameEn: string;
 };
 
-export function useStaffOptions() {
+export function useStaffOptions(options?: { enabled?: boolean }) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const queryEnabled = options?.enabled !== false;
 
   return useQuery({
     queryKey: ['staff-options', tenantId],
@@ -35,16 +36,17 @@ export function useStaffOptions() {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
         .from('StaffProfile')
-        .select('id, staffCode, User:userId ( name )')
+        .select('id, staffCode, User!StaffProfile_userId_tenantId_fkey ( name )')
         .eq('tenantId', tenantId!)
         .eq('isActive', true)
-        .order('staffCode', { ascending: true });
+        .order('id', { ascending: true });
       if (error) {
         throw error;
       }
       return (data ?? []) as StaffOption[];
     },
-    enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
+    enabled:
+      queryEnabled && isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 }
 
@@ -81,7 +83,7 @@ export function useSubjectOptions(academicYearId?: string | null) {
       const supabase = requireBrowserClient();
       const query = supabase
         .from('Subject')
-        .select('id, code, nameEn, termId, Term:termId ( academicYearId )')
+        .select('id, code, nameEn, termId, academicYearId, Term!Subject_semesterId_tenantId_fkey ( academicYearId )')
         .eq('tenantId', tenantId!)
         .is('deactivatedAt', null)
         .order('code', { ascending: true });
@@ -92,6 +94,8 @@ export function useSubjectOptions(academicYearId?: string | null) {
       }
 
       const rows = (data ?? []) as (SubjectOption & {
+        termId: string | null;
+        academicYearId: string | null;
         Term?: { academicYearId?: string } | { academicYearId?: string }[] | null;
       })[];
 
@@ -101,6 +105,9 @@ export function useSubjectOptions(academicYearId?: string | null) {
 
       return rows
         .filter((row) => {
+          if (!row.termId) {
+            return row.academicYearId === academicYearId;
+          }
           const term = Array.isArray(row.Term) ? row.Term[0] : row.Term;
           return term?.academicYearId === academicYearId;
         })

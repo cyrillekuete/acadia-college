@@ -174,7 +174,7 @@ export function useStudentProfileOptions(search?: string) {
       const supabase = requireBrowserClient();
       let query = supabase
         .from('StudentProfile')
-        .select('id, registrationNumber, User:userId ( name, email )')
+        .select('id, registrationNumber, User!StudentProfile_userId_tenantId_fkey ( name, email )')
         .eq('tenantId', tenantId!)
         .eq('isActive', true)
         .order('registrationNumber', { ascending: true })

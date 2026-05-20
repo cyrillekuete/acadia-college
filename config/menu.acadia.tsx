@@ -23,7 +23,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     icon: 'bank',
     children: [
       { title: 'Academic years', path: '/academics/years' },
-      { title: 'Promotion', path: '/admin/promotion' },
+      { title: 'Promotion', path: '/academics/promotion' },
       { title: 'Terms', path: '/academics/terms' },
       { title: 'Sequences', path: '/academics/sequences' },
       { title: 'Departments', path: '/academics/departments' },
@@ -166,7 +166,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     title: 'Administration',
     icon: 'shield-tick',
     children: [
-      { title: 'Promotion', path: '/admin/promotion' },
+      { title: 'Promotion', path: '/academics/promotion' },
       { title: 'Data retention', path: '/admin/data-retention' },
       { title: 'API keys', path: '/account/api-keys' },
     ],

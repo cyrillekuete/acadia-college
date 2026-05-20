@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   Table,
   TableBody,
@@ -23,7 +25,6 @@ import {
   isPassingScore,
   rankStudents,
 } from '@/lib/acadia/assessment';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
 import {
   sequenceOptionLabel,
   useSequenceOptions,
@@ -36,21 +37,20 @@ export function MarksAveragesPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
   const [sequenceId, setSequenceId] = useState('');
 
-  const { data: sequences = [] } = useSequenceOptions(academicYearId);
+  const { data: sequences = [] } = useSequenceOptions(activeYearId ?? '');
 
   const query = useQuery({
-    queryKey: ['marks-averages', tenantId, academicYearId, sequenceId],
+    queryKey: ['marks-averages', tenantId, activeYearId, sequenceId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let examQuery = supabase
         .from('ExamSession')
         .select('id')
         .eq('tenantId', tenantId!)
-        .eq('academicYearId', academicYearId);
+        .eq('academicYearId', activeYearId!);
       if (sequenceId) {
         examQuery = examQuery.eq('sequenceId', sequenceId);
       }
@@ -69,9 +69,9 @@ export function MarksAveragesPanel() {
           `
           studentProfileId,
           totalScore,
-          StudentProfile:studentProfileId (
+          StudentProfile!SubjectMark_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
         )
@@ -118,7 +118,7 @@ export function MarksAveragesPanel() {
     },
     enabled:
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
-      !!academicYearId,
+      !!activeYearId,
   });
 
   const rows = useMemo(() => query.data ?? [], [query.data]);
@@ -126,21 +126,7 @@ export function MarksAveragesPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4">
-        <div className="min-w-[180px]">
-          <p className="text-sm font-medium mb-1.5">Academic year</p>
-          <Select value={academicYearId} onValueChange={setAcademicYearId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <CurrentAcademicYearBadge />
         <div className="min-w-[200px]">
           <p className="text-sm font-medium mb-1.5">Sequence (optional)</p>
           <Select

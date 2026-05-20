@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -26,7 +27,8 @@ import {
   createStudentFeeAccountSchema,
   type CreateStudentFeeAccountValues,
 } from '@/lib/acadia/finance-schemas';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useSpecialtyOptions } from '@/hooks/use-enrollment-catalog-options';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import {
@@ -39,7 +41,7 @@ import { unwrapRelation } from '@/lib/acadia/record-display';
 
 export function CreateFeeAccountForm() {
   const { createStudentFeeAccount } = useFinanceMutations();
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
   const { data: specialties = [] } = useSpecialtyOptions();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
@@ -70,9 +72,9 @@ export function CreateFeeAccountForm() {
           id,
           studentProfileId,
           specialtyId,
-          StudentProfile:studentProfileId (
+          StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
         )
@@ -102,17 +104,16 @@ export function CreateFeeAccountForm() {
   });
 
   useEffect(() => {
-    if (years.length === 0) {
-      return;
+    if (activeYearId) {
+      form.setValue('academicYearId', activeYearId);
     }
-    const current = years.find((y) => y.isCurrent);
-    if (current) {
-      form.setValue('academicYearId', current.id);
-    }
-  }, [years, form]);
+  }, [activeYearId, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await createStudentFeeAccount.mutateAsync(values);
+    await createStudentFeeAccount.mutateAsync({
+      ...values,
+      academicYearId: activeYearId!,
+    });
   });
 
   return (
@@ -124,20 +125,10 @@ export function CreateFeeAccountForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Academic year</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y.id} value={y.id}>
-                      {y.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CurrentAcademicYearBadge className="mb-2" />
+              <FormControl>
+                <Input type="hidden" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -211,7 +202,7 @@ export function CreateFeeAccountForm() {
         />
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={createStudentFeeAccount.isPending}>
+          <Button type="submit" disabled={createStudentFeeAccount.isPending || !activeYearId}>
             {createStudentFeeAccount.isPending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : null}

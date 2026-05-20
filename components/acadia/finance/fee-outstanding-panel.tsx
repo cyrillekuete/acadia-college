@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -12,19 +12,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   computeFeeAccountTotals,
   formatMoneyMinor,
   isInstallmentOverdue,
 } from '@/lib/acadia/finance';
 import { FeeStatusBadge } from '@/components/acadia/finance/fee-status-badge';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -47,11 +41,10 @@ export function FeeOutstandingPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
 
   const query = useQuery({
-    queryKey: ['fee-outstanding', tenantId, academicYearId],
+    queryKey: ['fee-outstanding', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       const { data: accounts, error } = await supabase
@@ -61,9 +54,9 @@ export function FeeOutstandingPanel() {
           id,
           feeCurrency,
           totalAmountMinor,
-          StudentProfile:studentProfileId (
+          StudentProfile!StudentFeeAccount_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           ),
           StudentFeeInstallment (
             amountMinor,
@@ -75,7 +68,7 @@ export function FeeOutstandingPanel() {
         `,
         )
         .eq('tenantId', tenantId!)
-        .eq('academicYearId', academicYearId);
+        .eq('academicYearId', activeYearId!);
       if (error) {
         throw error;
       }
@@ -129,7 +122,7 @@ export function FeeOutstandingPanel() {
       return rows;
     },
     enabled:
-      !!academicYearId &&
+      !!activeYearId &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
@@ -141,22 +134,8 @@ export function FeeOutstandingPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="w-56">
-          <label className="text-sm font-medium mb-1.5 block">Academic year</label>
-          <Select value={academicYearId} onValueChange={setAcademicYearId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {academicYearId ? (
+        <CurrentAcademicYearBadge />
+        {activeYearId ? (
           <p className="text-sm text-muted-foreground pb-2">
             Outstanding: {formatMoneyMinor(totalOutstanding)}
           </p>
@@ -169,7 +148,7 @@ export function FeeOutstandingPanel() {
         </p>
       ) : null}
 
-      {academicYearId && !query.isLoading && (query.data?.length ?? 0) === 0 ? (
+      {activeYearId && !query.isLoading && (query.data?.length ?? 0) === 0 ? (
         <p className="text-sm text-muted-foreground">No outstanding balances.</p>
       ) : null}
 

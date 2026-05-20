@@ -14,11 +14,12 @@ const STAFF_LIST_SELECT = `
   departmentId,
   Department!StaffProfile_departmentId_tenantId_fkey ( nameEn, nameFr ),
   User!StaffProfile_userId_tenantId_fkey ( name, email, avatar ),
-  SubjectAssignment (
-    Subject:subjectId (
+  SubjectAssignment!SubjectAssignment_staffProfileId_tenantId_fkey (
+    academicYearId,
+    Subject!SubjectAssignment_subjectId_tenantId_fkey (
       nameEn,
       code,
-      Specialty:specialtyId ( subSystem )
+      Specialty!Subject_specialtyId_tenantId_fkey ( subSystem )
     )
   )
 `;
@@ -58,7 +59,10 @@ function subjectDisplayName(subject: SubjectNested | null): string | null {
   return subject.nameEn ?? subject.code ?? null;
 }
 
-function aggregateAssignments(assignments: unknown): {
+function aggregateAssignments(
+  assignments: unknown,
+  academicYearId?: string | null,
+): {
   subjects: string[];
   subsystems: string[];
 } {
@@ -72,7 +76,10 @@ function aggregateAssignments(assignments: unknown): {
   const subsystems = new Set<string>();
 
   for (const item of raw) {
-    const assignment = item as AssignmentNested;
+    const assignment = item as AssignmentNested & { academicYearId?: string };
+    if (academicYearId && assignment.academicYearId !== academicYearId) {
+      continue;
+    }
     const subject = unwrapRelation<SubjectNested>(assignment.Subject);
     const name = subjectDisplayName(subject);
     if (name) {
@@ -102,11 +109,14 @@ function deriveSubsystemDisplay(subsystems: string[]): string | null {
   return labels.join(', ');
 }
 
-function mapRow(row: StaffListDbRow): StaffListRow {
+function mapRow(row: StaffListDbRow, academicYearId?: string | null): StaffListRow {
   const user = unwrapRelation<{ name?: string; email?: string; avatar?: string }>(
     row.User,
   );
-  const { subjects, subsystems } = aggregateAssignments(row.SubjectAssignment);
+  const { subjects, subsystems } = aggregateAssignments(
+    row.SubjectAssignment,
+    academicYearId,
+  );
 
   return {
     id: row.id,
@@ -130,6 +140,7 @@ function mapRow(row: StaffListDbRow): StaffListRow {
 export async function fetchStaffList(
   supabase: SupabaseClient,
   tenantId: string,
+  academicYearId?: string | null,
 ): Promise<StaffListRow[]> {
   const { data, error } = await supabase
     .from('StaffProfile')
@@ -141,7 +152,7 @@ export async function fetchStaffList(
     throw error;
   }
 
-  return (data ?? []).map((row) => mapRow(row as StaffListDbRow));
+  return (data ?? []).map((row) => mapRow(row as StaffListDbRow, academicYearId));
 }
 
 export type DepartmentOption = { id: string; name: string };

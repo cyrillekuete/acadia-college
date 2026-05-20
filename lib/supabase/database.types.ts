@@ -625,6 +625,64 @@ export type Database = {
           },
         ]
       }
+      ClassPromotionPolicy: {
+        Row: {
+          academicYearId: string
+          autoPromotionEnabled: boolean
+          classId: string
+          createdAt: string
+          id: string
+          minPromotionAverage: number
+          notes: string | null
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          academicYearId: string
+          autoPromotionEnabled?: boolean
+          classId: string
+          createdAt?: string
+          id: string
+          minPromotionAverage?: number
+          notes?: string | null
+          tenantId: string
+          updatedAt: string
+        }
+        Update: {
+          academicYearId?: string
+          autoPromotionEnabled?: boolean
+          classId?: string
+          createdAt?: string
+          id?: string
+          minPromotionAverage?: number
+          notes?: string | null
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ClassPromotionPolicy_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassPromotionPolicy_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassPromotionPolicy_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       CourseworkSubmission: {
         Row: {
           confirmedAt: string | null
@@ -1373,6 +1431,7 @@ export type Database = {
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           id: string
+          isDefaultPromotionTarget: boolean
           labelEn: string | null
           labelFr: string | null
           name: string
@@ -1385,6 +1444,7 @@ export type Database = {
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id: string
+          isDefaultPromotionTarget?: boolean
           labelEn?: string | null
           labelFr?: string | null
           name: string
@@ -1397,6 +1457,7 @@ export type Database = {
           branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id?: string
+          isDefaultPromotionTarget?: boolean
           labelEn?: string | null
           labelFr?: string | null
           name?: string
@@ -2799,16 +2860,21 @@ export type Database = {
         Row: {
           academicYearId: string
           appliedAt: string | null
+          classId: string | null
           createdAt: string
           decidedByUserId: string | null
+          enrollmentId: string | null
           finalAction: Database["public"]["Enums"]["PromotionAction"]
           fromLevelId: string
           id: string
           notes: string | null
+          policyMinAverage: number | null
+          policyStaleAt: string | null
           recommendedAction: Database["public"]["Enums"]["PromotionAction"]
           source: Database["public"]["Enums"]["PromotionDecisionSource"]
           specialtyId: string
           studentProfileId: string
+          targetClassId: string | null
           targetLevelId: string | null
           tenantId: string
           updatedAt: string
@@ -2817,16 +2883,21 @@ export type Database = {
         Insert: {
           academicYearId: string
           appliedAt?: string | null
+          classId?: string | null
           createdAt?: string
           decidedByUserId?: string | null
+          enrollmentId?: string | null
           finalAction: Database["public"]["Enums"]["PromotionAction"]
           fromLevelId: string
           id: string
           notes?: string | null
+          policyMinAverage?: number | null
+          policyStaleAt?: string | null
           recommendedAction: Database["public"]["Enums"]["PromotionAction"]
           source?: Database["public"]["Enums"]["PromotionDecisionSource"]
           specialtyId: string
           studentProfileId: string
+          targetClassId?: string | null
           targetLevelId?: string | null
           tenantId: string
           updatedAt: string
@@ -2835,22 +2906,34 @@ export type Database = {
         Update: {
           academicYearId?: string
           appliedAt?: string | null
+          classId?: string | null
           createdAt?: string
           decidedByUserId?: string | null
+          enrollmentId?: string | null
           finalAction?: Database["public"]["Enums"]["PromotionAction"]
           fromLevelId?: string
           id?: string
           notes?: string | null
+          policyMinAverage?: number | null
+          policyStaleAt?: string | null
           recommendedAction?: Database["public"]["Enums"]["PromotionAction"]
           source?: Database["public"]["Enums"]["PromotionDecisionSource"]
           specialtyId?: string
           studentProfileId?: string
+          targetClassId?: string | null
           targetLevelId?: string | null
           tenantId?: string
           updatedAt?: string
           yearAverage?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "StudentPromotionDecision_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
           {
             foreignKeyName: "StudentPromotionDecision_academicYearId_tenantId_fkey"
             columns: ["tenantId", "academicYearId"]
@@ -2911,6 +2994,7 @@ export type Database = {
           class: string | null
           class_id: string | null
           class_name: string | null
+          country: string | null
           created_at: string
           date_of_birth: string | null
           email: string | null
@@ -2947,6 +3031,7 @@ export type Database = {
           class?: string | null
           class_id?: string | null
           class_name?: string | null
+          country?: string | null
           created_at?: string
           date_of_birth?: string | null
           email?: string | null
@@ -2983,6 +3068,7 @@ export type Database = {
           class?: string | null
           class_id?: string | null
           class_name?: string | null
+          country?: string | null
           created_at?: string
           date_of_birth?: string | null
           email?: string | null
@@ -3082,6 +3168,7 @@ export type Database = {
       }
       Subject: {
         Row: {
+          academicYearId: string | null
           code: string
           coefficient: number
           createdAt: string
@@ -3097,10 +3184,11 @@ export type Database = {
           specialtyId: string
           subjectType: Database["public"]["Enums"]["subject_type"]
           tenantId: string
-          termId: string
+          termId: string | null
           updatedAt: string
         }
         Insert: {
+          academicYearId?: string | null
           code: string
           coefficient?: number
           createdAt?: string
@@ -3116,10 +3204,11 @@ export type Database = {
           specialtyId: string
           subjectType?: Database["public"]["Enums"]["subject_type"]
           tenantId: string
-          termId: string
+          termId?: string | null
           updatedAt: string
         }
         Update: {
+          academicYearId?: string | null
           code?: string
           coefficient?: number
           createdAt?: string
@@ -3135,7 +3224,7 @@ export type Database = {
           specialtyId?: string
           subjectType?: Database["public"]["Enums"]["subject_type"]
           tenantId?: string
-          termId?: string
+          termId?: string | null
           updatedAt?: string
         }
         Relationships: [
@@ -3219,7 +3308,7 @@ export type Database = {
       }
       SubjectSubBranch: {
         Row: {
-          coefficient: number
+          coefficient: number | null
           createdAt: string
           id: string
           name: string

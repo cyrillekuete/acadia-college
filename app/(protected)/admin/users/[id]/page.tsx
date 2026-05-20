@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AccountDataState } from '@/components/acadia/account/account-data-state';
 import {
   UserEditForm,
@@ -69,42 +68,37 @@ export default function AdminUserDetailPage() {
   const role = unwrapRelation(user?.UserRole);
 
   return (
-    <AcadiaPageShell
-      title="User profile"
-      description={user?.email ?? 'Edit tenant user'}
+    <AccountDataState
+      isLoading={isLoading || sessionLoading}
+      isError={isError}
+      error={error}
+      isEmpty={!user}
+      emptyMessage="User not found in your institution."
     >
-      <AccountDataState
-        isLoading={isLoading || sessionLoading}
-        isError={isError}
-        error={error}
-        isEmpty={!user}
-        emptyMessage="User not found in your institution."
-      >
-        {user ? (
-          <div className="flex flex-col gap-6 lg:max-w-xl">
-            <RecordDetailCard
-              title="Account summary"
-              fields={[
-                { label: 'Email', value: formatRecordValue(user.email) },
-                { label: 'Role', value: formatRecordValue(role?.name ?? role?.slug) },
-                { label: 'Status', value: formatRecordValue(user.status) },
-                {
-                  label: 'Last sign-in',
-                  value: formatRecordValue(user.lastSignInAt),
-                },
-                { label: 'Created', value: formatRecordValue(user.createdAt) },
-              ]}
-            />
-            {canManage ? (
-              <UserEditForm user={user} />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                You do not have permission to edit users.
-              </p>
-            )}
-          </div>
-        ) : null}
-      </AccountDataState>
-    </AcadiaPageShell>
+      {user ? (
+        <div className="flex flex-col gap-6 lg:max-w-xl">
+          <RecordDetailCard
+            title="Account summary"
+            fields={[
+              { label: 'Email', value: formatRecordValue(user.email) },
+              { label: 'Role', value: formatRecordValue(role?.name ?? role?.slug) },
+              { label: 'Status', value: formatRecordValue(user.status) },
+              {
+                label: 'Last sign-in',
+                value: formatRecordValue(user.lastSignInAt),
+              },
+              { label: 'Created', value: formatRecordValue(user.createdAt) },
+            ]}
+          />
+          {canManage ? (
+            <UserEditForm user={user} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You do not have permission to edit users.
+            </p>
+          )}
+        </div>
+      ) : null}
+    </AccountDataState>
   );
 }

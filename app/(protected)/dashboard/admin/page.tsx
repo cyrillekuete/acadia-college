@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { AdminAcademicYearCard } from '@/components/acadia/admin-dashboard/admin-academic-year-card';
 import { AdminOverviewStatCard } from '@/components/acadia/admin-dashboard/admin-overview-stat-card';
 import { AdminQuickActions } from '@/components/acadia/admin-dashboard/admin-quick-actions';
 import { AdminRecentActivities } from '@/components/acadia/admin-dashboard/admin-recent-activities';
@@ -9,6 +10,7 @@ import { formatDashboardStatValue } from '@/components/acadia/dashboard-stat-car
 import { formatMoneyMinor } from '@/lib/acadia/finance';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchAdminDashboardStats } from '@/lib/supabase/queries/admin-dashboard';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -25,15 +27,16 @@ function formatGrowthFooter(percent: number | null | undefined, fallback: string
 export default function AdminDashboardPage() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const { activeYearId } = useActiveAcademicYear();
 
   const { data: stats } = useQuery({
-    queryKey: ['admin-dashboard-stats', tenantId],
+    queryKey: ['admin-dashboard-stats', tenantId, activeYearId],
     queryFn: async () => {
       if (!tenantId) {
         throw new Error('Tenant context is required');
       }
       const supabase = requireBrowserClient();
-      return fetchAdminDashboardStats(supabase, tenantId);
+      return fetchAdminDashboardStats(supabase, tenantId, activeYearId ?? undefined);
     },
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
@@ -44,7 +47,8 @@ export default function AdminDashboardPage() {
       description="Welcome to Acadia College. Overview of students, staff, classes, and finance."
     >
       <div className="space-y-7.5">
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminAcademicYearCard />
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
           <AdminOverviewStatCard
             title="Total Students"
             value={formatDashboardStatValue(stats?.students)}
@@ -79,6 +83,12 @@ export default function AdminDashboardPage() {
             value={formatDashboardStatValue(stats?.activeClasses)}
             footer="Across all levels"
             icon="book-open"
+          />
+          <AdminOverviewStatCard
+            title="Active Subjects"
+            value={formatDashboardStatValue(stats?.activeSubjects)}
+            footer="In subject catalog"
+            icon="book"
           />
           <AdminOverviewStatCard
             title="Revenue"

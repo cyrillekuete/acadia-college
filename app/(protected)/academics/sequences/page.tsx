@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { AcademicYearFilterSelect } from '@/components/acadia/academics/academic-year-filter-select';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
 import { SequenceFormDialog } from '@/components/acadia/academics/sequence-form-dialog';
@@ -22,7 +22,7 @@ type Row = {
 };
 
 export default function SequencesPage() {
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const { deleteSequence } = useAcademicCalendarMutations();
@@ -78,14 +78,16 @@ export default function SequencesPage() {
   return (
     <AcadiaPageShell
       title="Acadia College — Sequences"
-      description="Define how many sequences each academic year has (per term and total), then manage sequence records for exams and marks."
+      description="Define how many sequences each academic year has (per term and total), then manage sequence records. Use the academic year selector in the header to choose which year you are configuring."
     >
       <div className="mb-6 space-y-6">
-        <div>
-          <p className="mb-2 text-sm font-medium">Academic year</p>
-          <AcademicYearFilterSelect value={academicYearId} onValueChange={setAcademicYearId} />
-        </div>
-        {academicYearId ? <SequencesStructureCard academicYearId={academicYearId} /> : null}
+        {activeYearId ? (
+          <SequencesStructureCard academicYearId={activeYearId} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Select an academic year in the header to manage sequences.
+          </p>
+        )}
       </div>
 
       <AdminToolbar
@@ -102,8 +104,8 @@ export default function SequencesPage() {
         columns={columns}
         searchKeys={['number']}
         rowFilter={
-          academicYearId
-            ? (row) => row.academicYearId === academicYearId
+          activeYearId
+            ? (row) => row.academicYearId === activeYearId
             : undefined
         }
       />
@@ -111,7 +113,7 @@ export default function SequencesPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         record={editing}
-        defaultAcademicYearId={academicYearId || undefined}
+        defaultAcademicYearId={activeYearId || undefined}
       />
     </AcadiaPageShell>
   );

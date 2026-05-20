@@ -1,22 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   aggregateFinanceSummary,
   computeFeeAccountTotals,
   formatMoneyMinor,
   isInstallmentOverdue,
 } from '@/lib/acadia/finance';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -28,11 +22,10 @@ export function FinanceSummaryPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
 
   const query = useQuery({
-    queryKey: ['finance-summary', tenantId, academicYearId],
+    queryKey: ['finance-summary', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       const [{ data: accounts, error: accountsError }, { data: ledger, error: ledgerError }] =
@@ -47,12 +40,12 @@ export function FinanceSummaryPanel() {
             `,
             )
             .eq('tenantId', tenantId!)
-            .eq('academicYearId', academicYearId),
+            .eq('academicYearId', activeYearId!),
           supabase
             .from('FinanceLedgerEntry')
             .select('entryType, amountMinor')
             .eq('tenantId', tenantId!)
-            .eq('academicYearId', academicYearId),
+            .eq('academicYearId', activeYearId!),
         ]);
       if (accountsError) {
         throw accountsError;
@@ -101,7 +94,7 @@ export function FinanceSummaryPanel() {
       return summary;
     },
     enabled:
-      !!academicYearId &&
+      !!activeYearId &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
@@ -124,21 +117,7 @@ export function FinanceSummaryPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="w-56">
-        <label className="text-sm font-medium mb-1.5 block">Academic year</label>
-        <Select value={academicYearId} onValueChange={setAcademicYearId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select year" />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((y) => (
-              <SelectItem key={y.id} value={y.id}>
-                {y.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <CurrentAcademicYearBadge />
 
       {query.isError ? (
         <p className="text-sm text-destructive">
@@ -146,7 +125,7 @@ export function FinanceSummaryPanel() {
         </p>
       ) : null}
 
-      {academicYearId && query.data ? (
+      {activeYearId && query.data ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((card) => (
             <Card key={card.label}>

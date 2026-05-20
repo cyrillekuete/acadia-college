@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const subsystemEnum = z.enum(['english', 'french']);
 export const branchEnum = z.enum(['grammar', 'technical', 'commercial']);
-export const genderEnum = z.enum(['male', 'female', 'other']);
+export const genderEnum = z.enum(['male', 'female']);
 export const relationshipEnum = z.enum(['father', 'mother', 'guardian', 'other']);
 
 export const studentCreateSchema = z
@@ -21,6 +21,7 @@ export const studentCreateSchema = z
     email: z.string().email('Valid student email required'),
     phone: z.string().optional(),
     address: z.string().optional(),
+    country: z.string().optional(),
     city: z.string().optional(),
     region: z.string().optional(),
 
@@ -28,18 +29,34 @@ export const studentCreateSchema = z
     subsystem: subsystemEnum.optional(),
     branch: branchEnum.optional(),
     academic_year: z.string().optional(),
+    academic_year_id: z.string().min(1, 'Academic year is required'),
+    specialty_id: z.string().min(1, 'Specialty is required'),
+    level_id: z.string().min(1, 'Level is required'),
     class_id: z.string().optional(),
     class_name: z.string().optional(),
     previous_school: z.string().optional(),
     previous_class: z.string().optional(),
     is_new_student: z.boolean(),
     enrollment_date: z.string().optional(),
-    matricule_number: z.string().optional(),
+    matricule_number: z
+      .string()
+      .optional()
+      .transform((value) => (value?.trim() ? value.trim() : undefined)),
 
     // Parent section
     parent_name: z.string().min(1, 'Parent / guardian name is required'),
-    parent_email: z.string().email('Valid parent email required'),
-    parent_phone: z.string().optional(),
+    parent_email: z
+      .string()
+      .optional()
+      .transform((value) => (value?.trim() ? value.trim() : ''))
+      .refine(
+        (value) => !value || z.string().email().safeParse(value).success,
+        'Valid parent email required',
+      ),
+    parent_phone: z
+      .string()
+      .min(1, 'Parent / guardian phone is required')
+      .transform((value) => value.trim()),
     parent_address: z.string().optional(),
     parent_occupation: z.string().optional(),
     parent_relationship: relationshipEnum,
@@ -53,7 +70,13 @@ export const studentCreateSchema = z
     medical_conditions: z.string().optional(),
   })
   .refine(
-    (d) => d.email.trim().toLowerCase() !== d.parent_email.trim().toLowerCase(),
+    (d) => {
+      const parentEmail = d.parent_email.trim().toLowerCase();
+      if (!parentEmail) {
+        return true;
+      }
+      return d.email.trim().toLowerCase() !== parentEmail;
+    },
     {
       message: 'Student and parent email addresses must be different.',
       path: ['parent_email'],

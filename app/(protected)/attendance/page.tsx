@@ -40,7 +40,7 @@ const ATTENDANCE_SELECT = `
   sessionDate,
   label,
   createdAt,
-  Subject:subjectId ( code, nameEn )
+  Subject!AttendanceSession_subjectId_tenantId_fkey ( code, nameEn )
 `;
 
 export default function AttendancePage() {
@@ -72,7 +72,7 @@ export default function AttendancePage() {
           <TabsTrigger value="rates">Attendance rates</TabsTrigger>
         </TabsList>
         <TabsContent value="sessions" className="mt-4">
-          <SupabaseTableList
+          <SupabaseTableList scopeByAcademicYear
             table="AttendanceSession"
             title="Attendance sessions"
             select={ATTENDANCE_SELECT}

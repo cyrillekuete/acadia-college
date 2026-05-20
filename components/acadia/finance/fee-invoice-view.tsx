@@ -40,12 +40,12 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
           feeCurrency,
           totalAmountMinor,
           createdAt,
-          StudentProfile:studentProfileId (
+          StudentProfile!StudentFeeAccount_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name, email )
+            User!StudentProfile_userId_tenantId_fkey ( name, email )
           ),
-          AcademicYear:academicYearId ( label ),
-          Specialty:specialtyId ( code, nameEn ),
+          AcademicYear!StudentFeeAccount_academicYearId_tenantId_fkey ( label ),
+          Specialty!StudentFeeAccount_specialtyId_tenantId_fkey ( code, nameEn ),
           StudentFeeInstallment (
             installmentNumber,
             labelEn,

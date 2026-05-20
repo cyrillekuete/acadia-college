@@ -4,7 +4,6 @@ import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { RiCheckboxCircleFill, RiErrorWarningFill } from '@remixicon/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
 import { ControllerRenderProps, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { apiFetch } from '@/lib/api';
@@ -39,7 +38,6 @@ import { LoaderCircleIcon } from 'lucide-react';
 
 export default function AccountDetails() {
   const queryClient = useQueryClient();
-  const { data: session, update: updateSession } = useSession();
   const { user } = useAccount();
 
   const [avatarExistingPreview, setAvatarExistingPreview] = useState<
@@ -98,8 +96,9 @@ export default function AccountDetails() {
 
       return response.json();
     },
-    onSuccess: (updatedUser) => {
-      queryClient.invalidateQueries({ queryKey: ['account-profile'] });
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['account-profile'] });
+      void queryClient.invalidateQueries({ queryKey: ['acadia-college-session'] });
 
       toast.custom(() => (
         <Alert variant="mono" icon="success">
@@ -109,15 +108,6 @@ export default function AccountDetails() {
           <AlertTitle>Account updated successfully</AlertTitle>
         </Alert>
       ));
-
-      setTimeout(() => {
-        // Update user session and reload app
-        if (session) {
-          updateSession({
-            user: updatedUser,
-          });
-        }
-      }, 1000);
     },
     onError: (error: Error) => {
       toast.custom(

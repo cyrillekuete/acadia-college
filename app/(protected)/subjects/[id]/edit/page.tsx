@@ -32,8 +32,8 @@ const SUBJECT_EDIT_SELECT = `
   groupingId,
   hasSubBranches,
   deactivatedAt,
-  Specialty:specialtyId ( subSystem, branch ),
-  Term:termId ( academicYearId ),
+  Specialty!Subject_specialtyId_tenantId_fkey ( subSystem, branch ),
+  Term!Subject_semesterId_tenantId_fkey ( academicYearId ),
   SubjectSubBranch ( name, nameFr, coefficient, sortOrder )
 `;
 
@@ -57,7 +57,7 @@ type SubjectEditDetail = {
   SubjectSubBranch?: {
     name: string;
     nameFr: string | null;
-    coefficient: number;
+    coefficient: number | null;
     sortOrder: number;
   }[];
 };
@@ -91,12 +91,8 @@ export default function EditSubjectPage({
           id: data.id,
           code: data.code,
           nameEn: data.nameEn,
-          nameFr: data.nameFr,
-          credits: data.credits,
-          hours: data.hours,
           specialtyId: data.specialtyId,
           levelId: data.levelId,
-          termId: data.termId,
           subSystem: specialty.subSystem,
           branch: specialty.branch,
           academicYearId: term.academicYearId,
@@ -106,8 +102,8 @@ export default function EditSubjectPage({
           hasSubBranches: data.hasSubBranches,
           subBranches: subBranches.map((branch) => ({
             name: branch.name,
-            nameFr: branch.nameFr ?? '',
-            coefficient: branch.coefficient,
+            hasCustomCoefficient: branch.coefficient != null,
+            coefficient: branch.coefficient ?? undefined,
           })),
         }
       : null;

@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { reviewApplicationSchema } from '@/lib/acadia/enrollment-schemas';
+import { resolveClassForEnrollment } from '@/lib/acadia/class-assignment';
 import {
   applicantDisplayName,
   generateRegistrationNumber,
 } from '@/lib/acadia/enrollment';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { getAppOrigin } from '@/lib/auth/app-origin';
+import { sendPasswordRecoveryEmail } from '@/lib/auth/password-recovery';
+import {
+  checkRegistrationNumberAvailable,
+  checkRegistryStudentEmail,
+} from '@/lib/acadia/registry-lookups';
 import { requireRegistryApi } from '@/lib/acadia/require-registry-api';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
@@ -54,7 +61,7 @@ export async function POST(request: Request, context: RouteContext) {
       specialtyId,
       levelId,
       academicYearId,
-      AcademicYear:academicYearId ( label )
+      AcademicYear!EnrollmentApplication_academicYearId_tenantId_fkey ( label )
     `,
     )
     .eq('id', applicationId)
@@ -114,6 +121,16 @@ export async function POST(request: Request, context: RouteContext) {
   let studentProfileId = application.studentProfileId as string | null;
 
   if (application.kind === 'NEW' && !studentProfileId) {
+    const emailCheck = await checkRegistryStudentEmail(
+      supabase,
+      auth.ctx.tenantId,
+      String(application.email),
+      { excludeApplicationId: applicationId },
+    );
+    if (!emailCheck.ok) {
+      return NextResponse.json({ message: emailCheck.message }, { status: 400 });
+    }
+
     if (!isAdminClientConfigured()) {
       return NextResponse.json(
         { message: 'Student provisioning is not configured on this server.' },
@@ -183,6 +200,17 @@ export async function POST(request: Request, context: RouteContext) {
     studentProfileId = generateAcadiaId('student');
     const registrationNumber = generateRegistrationNumber(yearLabel);
 
+    const matriculeCheck = await checkRegistrationNumberAvailable(
+      supabase,
+      auth.ctx.tenantId,
+      registrationNumber,
+    );
+    if (!matriculeCheck.ok) {
+      await admin.auth.admin.deleteUser(userId);
+      await supabase.from('User').delete().eq('id', userId);
+      return NextResponse.json({ message: matriculeCheck.message }, { status: 400 });
+    }
+
     const { error: profileError } = await supabase.from('StudentProfile').insert({
       id: studentProfileId,
       tenantId: auth.ctx.tenantId,
@@ -204,12 +232,24 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    const origin =
-      process.env.NEXT_PUBLIC_BASE_PATH?.replace(/\/$/, '') ||
-      process.env.NEXTAUTH_URL?.replace(/\/$/, '') ||
-      'http://localhost:3000';
-    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent('/change-password')}`;
-    await admin.auth.resetPasswordForEmail(String(application.email), { redirectTo });
+    const recovery = await sendPasswordRecoveryEmail(
+      admin,
+      String(application.email),
+      getAppOrigin(),
+    );
+    if (!recovery.ok) {
+      console.warn(
+        '[enrollment/review] Password reset email failed:',
+        recovery.message,
+      );
+      await appendSystemLog(supabase, {
+        userId: auth.ctx.actorUserId,
+        event: 'enrollment.password_reset_failed',
+        description: `Failed to send password reset to ${application.email}: ${recovery.message}`,
+        entityId: applicationId,
+        entityType: 'EnrollmentApplication',
+      });
+    }
   }
 
   if (!studentProfileId) {
@@ -250,6 +290,48 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  const classResolution = await resolveClassForEnrollment(
+    supabase,
+    auth.ctx.tenantId,
+    application.levelId as string,
+    application.specialtyId as string,
+  );
+
+  let classId: string | null = classResolution.classId;
+  if (classResolution.status === 'ambiguous') {
+    const requestedClassId = parsed.data.classId?.trim();
+    if (!requestedClassId) {
+      return NextResponse.json(
+        {
+          message:
+            'Multiple classes match this level and specialty. Select a class.',
+          candidateClassIds: classResolution.candidateIds,
+        },
+        { status: 400 },
+      );
+    }
+    if (!classResolution.candidateIds.includes(requestedClassId)) {
+      return NextResponse.json(
+        { message: 'Selected class is not valid for this enrollment.' },
+        { status: 400 },
+      );
+    }
+    classId = requestedClassId;
+  } else if (classResolution.status === 'none') {
+    const requestedClassId = parsed.data.classId?.trim();
+    if (!requestedClassId) {
+      return NextResponse.json(
+        {
+          message:
+            'No class matches this level and specialty. Select a class to continue.',
+          candidateClassIds: [],
+        },
+        { status: 400 },
+      );
+    }
+    classId = requestedClassId;
+  }
+
   const enrollmentId = generateAcadiaId('enr');
   const { error: enrollmentError } = await supabase.from('StudentEnrollment').insert({
     id: enrollmentId,
@@ -258,6 +340,7 @@ export async function POST(request: Request, context: RouteContext) {
     academicYearId: application.academicYearId,
     specialtyId: application.specialtyId,
     levelId: application.levelId,
+    classId,
     status: 'ENROLLED',
     applicationId,
     createdAt: now,

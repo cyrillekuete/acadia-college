@@ -1,41 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ColumnDef } from '@tanstack/react-table';
-import { Plus } from '@/lib/icons';
+import { useState } from 'react';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { ClassFormDialog } from '@/components/acadia/academics/class-form-dialog';
 import { ClassesTable } from '@/components/acadia/academics/classes-table';
 import { LevelFormDialog } from '@/components/acadia/academics/level-form-dialog';
-import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
-import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
-import { Button } from '@/components/ui/button';
+import { LevelsTable } from '@/components/acadia/academics/levels-table';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import {
-  EMPTY_CATALOG_FILTERS,
-  branchLabel,
-  rowMatchesCatalogFilters,
-  subSystemLabel,
-  type AcademicBranch,
-  type AcademicSubSystem,
-  type CatalogFilters,
-} from '@/lib/acadia/education-system';
-import { formatDate } from '@/lib/helpers';
+import { EMPTY_CATALOG_FILTERS, type CatalogFilters } from '@/lib/acadia/education-system';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
 import { type ClassListRow } from '@/hooks/use-class-list';
-
-type LevelRow = {
-  id: string;
-  name: string;
-  subSystem: AcademicSubSystem;
-  branch: AcademicBranch;
-  createdAt: string;
-  labelEn?: string | null;
-  labelFr?: string | null;
-  sortOrder?: number | null;
-};
+import { type LevelListRow } from '@/hooks/use-level-list';
 
 type TableView = 'levels' | 'classes';
 
@@ -45,48 +22,9 @@ export default function ClassesAndLevelsPage() {
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
   const [levelDialogOpen, setLevelDialogOpen] = useState(false);
   const [classDialogOpen, setClassDialogOpen] = useState(false);
-  const [editingLevel, setEditingLevel] = useState<LevelRow | null>(null);
+  const [editingLevel, setEditingLevel] = useState<LevelListRow | null>(null);
   const [editingClass, setEditingClass] = useState<ClassListRow | null>(null);
   const { deleteLevel, deleteClass } = useAcademicStructureMutations();
-
-  const levelColumns = useMemo<ColumnDef<LevelRow>[]>(
-    () => [
-      { accessorKey: 'name', header: 'Level Name' },
-      {
-        id: 'subSystem',
-        header: 'Subsystem',
-        cell: ({ row }) => subSystemLabel(row.original.subSystem),
-      },
-      {
-        id: 'branch',
-        header: 'Branch',
-        cell: ({ row }) => branchLabel(row.original.branch),
-      },
-      {
-        accessorKey: 'createdAt',
-        header: 'Created At',
-        cell: ({ row }) => formatDate(row.original.createdAt),
-      },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: ({ row }) => (
-          <RegistryRowActions
-            onEdit={() => {
-              setEditingLevel(row.original);
-              setLevelDialogOpen(true);
-            }}
-            onDelete={() => {
-              if (window.confirm(`Delete level "${row.original.name}"?`)) {
-                deleteLevel.mutate(row.original.id);
-              }
-            }}
-          />
-        ),
-      },
-    ],
-    [deleteLevel],
-  );
 
   return (
     <AcadiaPageShell
@@ -116,31 +54,33 @@ export default function ClassesAndLevelsPage() {
             }}
           />
         ) : (
-          <AdminToolbar className="mb-0">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setEditingLevel(null);
-                setLevelDialogOpen(true);
-              }}
-            >
-              <Plus className="size-4" />
-              New level
-            </Button>
-          </AdminToolbar>
+          <AdminToolbar
+            className="mb-0"
+            addLabel="New level"
+            onAdd={() => {
+              setEditingLevel(null);
+              setLevelDialogOpen(true);
+            }}
+          />
         )}
       </div>
 
       {tableView === 'levels' ? (
-        <SupabaseTableList
-          table="Level"
-          title="Levels"
-          select="id, name, subSystem, branch, createdAt, labelEn, labelFr, sortOrder"
-          columns={levelColumns}
-          searchKeys={['name', 'labelEn']}
-          rowFilter={(row) => rowMatchesCatalogFilters(row, catalogFilters)}
+        <LevelsTable
+          filters={catalogFilters}
+          onEdit={(row) => {
+            setEditingLevel(row);
+            setLevelDialogOpen(true);
+          }}
+          onDelete={(row) => {
+            const warning =
+              row.classCount > 0
+                ? `Delete level "${row.name}"? ${row.classCount} class(es) are linked to this level and may block deletion.`
+                : `Delete level "${row.name}"?`;
+            if (window.confirm(warning)) {
+              deleteLevel.mutate(row.id);
+            }
+          }}
         />
       ) : null}
 
@@ -161,13 +101,23 @@ export default function ClassesAndLevelsPage() {
 
       <LevelFormDialog
         open={levelDialogOpen}
-        onOpenChange={setLevelDialogOpen}
+        onOpenChange={(open) => {
+          setLevelDialogOpen(open);
+          if (!open) {
+            setEditingLevel(null);
+          }
+        }}
         record={editingLevel}
         defaultFilters={catalogFilters}
       />
       <ClassFormDialog
         open={classDialogOpen}
-        onOpenChange={setClassDialogOpen}
+        onOpenChange={(open) => {
+          setClassDialogOpen(open);
+          if (!open) {
+            setEditingClass(null);
+          }
+        }}
         record={editingClass}
         defaultFilters={catalogFilters}
       />

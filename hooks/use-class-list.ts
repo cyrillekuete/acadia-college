@@ -2,7 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
+import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -31,11 +33,13 @@ export function useClassList(filters?: {
 }) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const { activeYearId } = useActiveAcademicYear();
 
   return useQuery({
     queryKey: [
       'class-list',
       tenantId,
+      activeYearId,
       filters?.subSystem ?? null,
       filters?.branch ?? null,
       filters?.levelId ?? null,
@@ -55,8 +59,11 @@ export function useClassList(filters?: {
           staffProfileId,
           status,
           createdAt,
-          Level:levelId ( name, number ),
-          StaffProfile:staffProfileId ( User:userId ( name ) )
+          Level!Class_levelId_tenantId_fkey ( name, number ),
+          StaffProfile!Class_staffProfileId_tenantId_fkey (
+            staffCode,
+            User!StaffProfile_userId_tenantId_fkey ( name )
+          )
         `,
         )
         .eq('tenantId', tenantId!)
@@ -74,7 +81,7 @@ export function useClassList(filters?: {
 
       const { data: classes, error } = await query;
       if (error) {
-        throw error;
+        throw new Error(getQueryErrorMessage(error));
       }
 
       const rows = classes ?? [];
@@ -84,18 +91,33 @@ export function useClassList(filters?: {
 
       const classIds = rows.map((r) => r.id as string);
 
-      const [{ data: enrollments }, { data: classSubjects }] = await Promise.all([
-        supabase
-          .from('StudentEnrollment')
-          .select('classId')
-          .eq('tenantId', tenantId!)
-          .in('classId', classIds),
+      let enrollmentQuery = supabase
+        .from('StudentEnrollment')
+        .select('classId')
+        .eq('tenantId', tenantId!)
+        .in('classId', classIds);
+      if (activeYearId) {
+        enrollmentQuery = enrollmentQuery.eq('academicYearId', activeYearId);
+      }
+
+      const [
+        { data: enrollments, error: enrollmentError },
+        { data: classSubjects, error: classSubjectsError },
+      ] = await Promise.all([
+        enrollmentQuery,
         supabase
           .from('ClassSubject')
           .select('classId')
           .eq('tenantId', tenantId!)
           .in('classId', classIds),
       ]);
+
+      if (enrollmentError) {
+        throw new Error(getQueryErrorMessage(enrollmentError));
+      }
+      if (classSubjectsError) {
+        throw new Error(getQueryErrorMessage(classSubjectsError));
+      }
 
       const enrollmentByClass = new Map<string, number>();
       for (const row of enrollments ?? []) {

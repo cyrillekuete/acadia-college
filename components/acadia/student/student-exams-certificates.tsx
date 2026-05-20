@@ -8,6 +8,7 @@ import {
   formatRecordValue,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import {
   isAcadiaTenantQueryEnabled,
@@ -23,9 +24,10 @@ export function StudentExamsCertificates({
   const { data: session, isLoading: sessionLoading, isError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const { activeYearId } = useActiveAcademicYear();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['student-exams-certificates', tenantId, studentProfileId],
+    queryKey: ['student-exams-certificates', tenantId, studentProfileId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
 
@@ -39,13 +41,16 @@ export function StudentExamsCertificates({
         throw enrollError;
       }
 
-      const yearIds = Array.from(
+      const enrollmentYearIds = Array.from(
         new Set(
           (enrollments ?? [])
             .map((e) => e.academicYearId as string)
             .filter(Boolean),
         ),
       );
+      const yearIds = activeYearId
+        ? enrollmentYearIds.filter((id) => id === activeYearId)
+        : enrollmentYearIds;
 
       let exams: Record<string, unknown>[] = [];
       if (yearIds.length > 0) {
@@ -57,7 +62,7 @@ export function StudentExamsCertificates({
             type,
             startsOn,
             endsOn,
-            Subject:subjectId ( code, nameEn )
+            Subject!ExamSession_subjectId_tenantId_fkey ( code, nameEn )
           `,
           )
           .eq('tenantId', tenantId!)
@@ -70,11 +75,15 @@ export function StudentExamsCertificates({
         exams = examData ?? [];
       }
 
-      const { data: transcripts, error: transcriptError } = await supabase
+      let transcriptQuery = supabase
         .from('Transcript')
-        .select('id, status, issuedAt, termId')
+        .select('id, status, issuedAt, termId, academicYearId')
         .eq('tenantId', tenantId!)
-        .eq('studentProfileId', studentProfileId)
+        .eq('studentProfileId', studentProfileId);
+      if (activeYearId) {
+        transcriptQuery = transcriptQuery.eq('academicYearId', activeYearId);
+      }
+      const { data: transcripts, error: transcriptError } = await transcriptQuery
         .order('issuedAt', { ascending: false })
         .limit(10);
 

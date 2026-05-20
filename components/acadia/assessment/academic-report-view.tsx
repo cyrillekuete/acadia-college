@@ -14,6 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -40,10 +41,9 @@ import {
   academicReportFiltersSchema,
   type AcademicReportFiltersValues,
 } from '@/lib/acadia/assessment-schemas';
-import {
-  useAcademicYearOptions,
-  useTermOptions,
-} from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { useTermOptions } from '@/hooks/use-academic-calendar-options';
 import {
   sequenceOptionLabel,
   useSequenceOptions,
@@ -73,7 +73,7 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
 
   const form = useForm<AcademicReportFiltersValues>({
     resolver: zodResolver(academicReportFiltersSchema),
@@ -86,7 +86,7 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
     },
   });
 
-  const academicYearId = form.watch('academicYearId');
+  const academicYearId = form.watch('academicYearId') || activeYearId || '';
   const specialtyId = form.watch('specialtyId');
   const { data: specialties = [] } = useSpecialtyOptions();
   const { data: levels = [] } = useLevelsForSpecialty(specialtyId);
@@ -98,11 +98,10 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
   );
 
   useEffect(() => {
-    if (years.length > 0 && !academicYearId) {
-      const current = years.find((y) => y.isCurrent);
-      form.setValue('academicYearId', current?.id ?? years[0].id);
+    if (activeYearId) {
+      form.setValue('academicYearId', activeYearId);
     }
-  }, [years, academicYearId, form]);
+  }, [activeYearId, form]);
 
   const reportQuery = useQuery({
     queryKey: ['academic-report', kind, tenantId, submitted],
@@ -117,9 +116,9 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
         .select(
           `
           studentProfileId,
-          StudentProfile:studentProfileId (
+          StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
         )
@@ -127,7 +126,7 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
         .eq('academicYearId', submitted.academicYearId)
         .eq('specialtyId', submitted.specialtyId)
         .eq('levelId', submitted.levelId)
-        .eq('status', 'ACTIVE');
+        .eq('status', 'ENROLLED');
 
       if (enrollError) {
         throw enrollError;
@@ -257,20 +256,10 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
             render={({ field }) => (
               <FormItem className="min-w-[160px]">
                 <FormLabel>Year</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {years.map((y) => (
-                      <SelectItem key={y.id} value={y.id}>
-                        {y.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CurrentAcademicYearBadge className="mb-2" />
+                <FormControl>
+                  <Input type="hidden" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

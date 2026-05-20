@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import {
   Select,
@@ -21,7 +23,6 @@ import {
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
 import { specialtyLabel, unwrapRelation } from '@/lib/acadia/record-display';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
 import {
   useLevelsForSpecialty,
   useSpecialtyOptions,
@@ -40,10 +41,9 @@ type Row = Record<string, unknown> & {
 };
 
 export default function ClassRostersPage() {
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
-  const [academicYearId, setAcademicYearId] = useState('');
   const [specialtyId, setSpecialtyId] = useState('');
   const [levelId, setLevelId] = useState('');
 
@@ -52,13 +52,6 @@ export default function ClassRostersPage() {
 
   const { data: specialties = [] } = useSpecialtyOptions(subSystem, branch);
   const { data: levels = [] } = useLevelsForSpecialty(specialtyId, subSystem, branch);
-
-  useEffect(() => {
-    if (!academicYearId && years.length > 0) {
-      const current = years.find((y) => y.isCurrent);
-      setAcademicYearId(current?.id ?? years[0].id);
-    }
-  }, [years, academicYearId]);
 
   useEffect(() => {
     if (specialtyId && !specialties.some((s) => s.id === specialtyId)) {
@@ -123,9 +116,6 @@ export default function ClassRostersPage() {
   );
 
   const rowFilter = (row: Row) => {
-    if (academicYearId && row.academicYearId !== academicYearId) {
-      return false;
-    }
     if (!rowMatchesCatalogFilters(row, catalogFilters)) {
       return false;
     }
@@ -144,18 +134,7 @@ export default function ClassRostersPage() {
       description="Students enrolled by academic year, sub-system, branch, specialty, and level."
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Select value={academicYearId} onValueChange={setAcademicYearId}>
-          <SelectTrigger className="w-[200px]" aria-label="Academic year">
-            <SelectValue placeholder="Academic year" />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((year) => (
-              <SelectItem key={year.id} value={year.id}>
-                {year.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <CurrentAcademicYearBadge />
         <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
         <Select
           value={specialtyId || '__all__'}
@@ -195,10 +174,10 @@ export default function ClassRostersPage() {
         </Select>
       </div>
 
-      <SupabaseTableList
+      <SupabaseTableList scopeByAcademicYear
         table="StudentEnrollment"
         title="Class roster"
-        select="id, status, academicYearId, specialtyId, levelId, StudentProfile:studentProfileId ( id, registrationNumber ), AcademicYear:academicYearId ( label ), Specialty:specialtyId ( subSystem, branch, code, nameEn ), Level:levelId ( number, name, labelEn )"
+        select="id, status, academicYearId, specialtyId, levelId, StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey ( id, registrationNumber ), AcademicYear!StudentEnrollment_academicYearId_tenantId_fkey ( label ), Specialty!StudentEnrollment_specialtyId_tenantId_fkey ( subSystem, branch, code, nameEn ), Level!StudentEnrollment_levelId_tenantId_fkey ( number, name, labelEn )"
         columns={columns}
         searchKeys={['status']}
         rowFilter={rowFilter}

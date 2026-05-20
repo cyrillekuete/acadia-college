@@ -24,6 +24,7 @@ export type StudentProfileEditValues = z.infer<typeof studentProfileEditSchema>;
 export const studentClassMigrationSchema = z.object({
   specialtyId: z.string().min(1, 'Specialty is required.'),
   levelId: z.string().min(1, 'Level is required.'),
+  classId: z.string().optional(),
   academicYearId: z.string().min(1, 'Academic year is required.'),
   note: z.string().max(500).optional().or(z.literal('')),
 });

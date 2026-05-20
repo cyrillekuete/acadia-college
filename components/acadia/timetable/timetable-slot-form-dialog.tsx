@@ -34,7 +34,8 @@ import {
   type TimetableSlotFormValues,
 } from '@/lib/acadia/subject-schemas';
 import { DAY_OF_WEEK_LABELS, minutesToTimeString } from '@/lib/acadia/timetable';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   staffDisplayLabel,
   useSubjectOptions,
@@ -67,7 +68,7 @@ export function TimetableSlotFormDialog({
 }) {
   const isEdit = !!record;
   const { createTimetableSlot, updateTimetableSlot } = useSubjectMutations();
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
   const { data: staff = [] } = useStaffOptions();
   const { data: rooms = [] } = useRoomOptions();
 
@@ -84,7 +85,7 @@ export function TimetableSlotFormDialog({
     },
   });
 
-  const academicYearId = form.watch('academicYearId');
+  const academicYearId = form.watch('academicYearId') || activeYearId || '';
   const { data: subjects = [] } = useSubjectOptions(academicYearId);
 
   useEffect(() => {
@@ -102,9 +103,8 @@ export function TimetableSlotFormDialog({
         endTime: minutesToTimeString(record.endMinutes),
       });
     } else {
-      const currentYear = years.find((y) => y.isCurrent);
       form.reset({
-        academicYearId: currentYear?.id ?? '',
+        academicYearId: activeYearId ?? '',
         subjectId: defaultSubjectId ?? '',
         staffProfileId: '',
         roomId: '',
@@ -113,7 +113,7 @@ export function TimetableSlotFormDialog({
         endTime: '09:00',
       });
     }
-  }, [open, record, years, defaultSubjectId, form]);
+  }, [open, record, activeYearId, defaultSubjectId, form]);
 
   const pending =
     createTimetableSlot.isPending || updateTimetableSlot.isPending;
@@ -142,26 +142,10 @@ export function TimetableSlotFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Academic year</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={(v) => {
-                        field.onChange(v);
-                        form.setValue('subjectId', '');
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {years.map((year) => (
-                          <SelectItem key={year.id} value={year.id}>
-                            {year.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CurrentAcademicYearBadge className="mb-2" />
+                    <FormControl>
+                      <Input type="hidden" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

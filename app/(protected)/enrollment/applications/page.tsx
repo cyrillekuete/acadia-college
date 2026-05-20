@@ -87,10 +87,10 @@ export default function EnrollmentApplicationsPage() {
         onAdd={() => router.push('/enrollment/applications/new')}
       />
       <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
-      <SupabaseTableList
+      <SupabaseTableList scopeByAcademicYear
         table="EnrollmentApplication"
         title="Applications"
-        select="id, status, kind, firstNameEn, lastNameEn, firstNameFr, lastNameFr, subSystem, branch, createdAt, specialtyId, Specialty:specialtyId ( subSystem, branch )"
+        select="id, status, kind, firstNameEn, lastNameEn, firstNameFr, lastNameFr, subSystem, branch, createdAt, specialtyId, Specialty!EnrollmentApplication_specialtyId_tenantId_fkey ( subSystem, branch )"
         columns={columns}
         searchKeys={['status', 'kind', 'lastNameEn', 'firstNameEn']}
         rowFilter={(row) => rowMatchesCatalogFilters(row, catalogFilters)}

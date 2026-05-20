@@ -91,10 +91,10 @@ export default function AcademicCalendarPage() {
           setDialogOpen(true);
         }}
       />
-      <SupabaseTableList
+      <SupabaseTableList scopeByAcademicYear
         table="AcademicCalendarMilestone"
         title="Calendar milestones"
-        select="id, kind, onDate, labelEn, labelFr, academicYearId, termId, AcademicYear:academicYearId ( label ), Term:termId ( number )"
+        select="id, kind, onDate, labelEn, labelFr, academicYearId, termId, AcademicYear!AcademicCalendarMilestone_academicYearId_tenantId_fkey ( label ), Term!AcademicCalendarMilestone_semesterId_tenantId_fkey ( number )"
         columns={columns}
         searchKeys={['labelEn', 'kind']}
       />

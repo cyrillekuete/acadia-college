@@ -5,6 +5,8 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Trash2 } from '@/lib/icons';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import {
   TimetableSlotFormDialog,
@@ -38,6 +40,7 @@ type Row = Record<string, unknown> & {
 export default function TimetablePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSlot, setEditingSlot] = useState<TimetableSlotRecord | null>(null);
+  const { activeYearId } = useActiveAcademicYear();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
   const { deleteTimetableSlot } = useSubjectMutations();
@@ -157,10 +160,14 @@ export default function TimetablePage() {
           setDialogOpen(true);
         }}
       />
+      <div className="mb-4">
+        <CurrentAcademicYearBadge />
+      </div>
       <SupabaseTableList
+        scopeByAcademicYear
         table="TimetableSlot"
         title="Timetable slots"
-        select="id, academicYearId, subjectId, staffProfileId, roomId, dayOfWeek, startMinutes, endMinutes, Subject:subjectId ( code, nameEn ), StaffProfile:staffProfileId ( staffCode, User:userId ( name ) ), Room:roomId ( code, nameEn ), AcademicYear:academicYearId ( label )"
+        select="id, academicYearId, subjectId, staffProfileId, roomId, dayOfWeek, startMinutes, endMinutes, Subject!TimetableSlot_subjectId_tenantId_fkey ( code, nameEn ), StaffProfile!TimetableSlot_staffProfileId_tenantId_fkey ( staffCode, User!StaffProfile_userId_tenantId_fkey ( name ) ), Room!TimetableSlot_roomId_tenantId_fkey ( code, nameEn ), AcademicYear!TimetableSlot_academicYearId_tenantId_fkey ( label )"
         columns={columns}
         searchKeys={[]}
       />

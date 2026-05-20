@@ -84,7 +84,7 @@ const PermissionList = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Role select query
-  const { data: roleList } = useRoleSelectQuery();
+  const { data: roleList = [] } = useRoleSelectQuery();
 
   // Fetch permissions from the server API
   const fetchPermissions = async ({
@@ -359,7 +359,7 @@ const PermissionList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
-              {roleList?.map((role: UserRole) => (
+              {roleList.map((role: UserRole) => (
                 <SelectItem key={role.id} value={role.id}>
                   {role.name}
                 </SelectItem>

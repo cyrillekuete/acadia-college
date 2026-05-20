@@ -13,6 +13,8 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { useAcadiaSignOut } from '@/hooks/use-acadia-sign-out';
+import { AcademicYearGate } from '@/components/acadia/academics/academic-year-gate';
+import { AcademicYearProvider } from '@/components/acadia/academics/academic-year-provider';
 import { SessionTimeoutGuard } from '@/components/acadia/session-timeout-guard';
 import { Demo1Layout } from '../components/layouts/demo1/layout';
 
@@ -82,10 +84,12 @@ export default function ProtectedLayout({
   }
 
   return (
-    <Demo1Layout>
-      <SessionTimeoutGuard />
-      {children}
-    </Demo1Layout>
+    <AcademicYearProvider>
+      <Demo1Layout>
+        <SessionTimeoutGuard />
+        <AcademicYearGate>{children}</AcademicYearGate>
+      </Demo1Layout>
+    </AcademicYearProvider>
   );
 }
 

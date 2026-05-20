@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { sendPasswordRecoveryEmail } from '@/lib/auth/password-recovery';
 import { UserStatus } from '@/app/models/user';
 import { generateStaffCode } from '@/lib/acadia/ids';
 import type { StaffCreateInput } from '@/lib/acadia/staff-create-schemas';
@@ -141,13 +142,12 @@ export async function provisionStaff(
     };
   }
 
-  const { error: linkError } = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email,
-  });
-
-  if (linkError) {
-    console.warn('[provisionStaff] Failed to send password setup link:', linkError.message);
+  const recovery = await sendPasswordRecoveryEmail(admin, email);
+  if (!recovery.ok) {
+    console.warn(
+      '[provisionStaff] Failed to send password setup email:',
+      recovery.message,
+    );
   }
 
   return { ok: true, staffId: authId, staffCode };

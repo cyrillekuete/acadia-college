@@ -15,7 +15,7 @@ export type SubjectSubBranchRow = {
   id: string;
   name: string;
   nameFr: string | null;
-  coefficient: number;
+  coefficient: number | null;
   sortOrder: number;
 };
 
@@ -29,16 +29,33 @@ export type SubjectListRow = {
   hasSubBranches: boolean;
   deactivatedAt: string | null;
   specialtyId: string;
-  Specialty?: { subSystem?: AcademicSubSystem; branch?: AcademicBranch } | null;
-  SubjectGrouping?: { nameEn?: string; nameFr?: string } | null;
+  levelId: string;
+  termId: string | null;
+  groupingId: string | null;
+  Specialty?: {
+    code?: string;
+    nameEn?: string;
+    subSystem?: AcademicSubSystem;
+    branch?: AcademicBranch;
+  } | null;
+  Level?: { labelEn?: string | null; number?: number } | null;
+  Term?: { number?: number; academicYearId?: string } | null;
+  SubjectGrouping?: { id?: string; nameEn?: string; nameFr?: string } | null;
   SubjectSubBranch?: SubjectSubBranchRow[] | null;
 };
 
 export type SubjectListRowView = SubjectListRow & {
   subSystem?: AcademicSubSystem;
   branch?: AcademicBranch;
-  Specialty: { subSystem?: AcademicSubSystem; branch?: AcademicBranch } | null;
-  SubjectGrouping: { nameEn?: string; nameFr?: string } | null;
+  Specialty: {
+    code?: string;
+    nameEn?: string;
+    subSystem?: AcademicSubSystem;
+    branch?: AcademicBranch;
+  } | null;
+  Level: { labelEn?: string | null; number?: number } | null;
+  Term: { number?: number; academicYearId?: string } | null;
+  SubjectGrouping: { id?: string; nameEn?: string; nameFr?: string } | null;
   SubjectSubBranch: SubjectSubBranchRow[];
 };
 
@@ -63,8 +80,13 @@ export function useSubjectList(filters: CatalogFilters) {
           hasSubBranches,
           deactivatedAt,
           specialtyId,
-          Specialty:specialtyId ( subSystem, branch ),
-          SubjectGrouping:groupingId ( nameEn, nameFr ),
+          levelId,
+          termId,
+          groupingId,
+          Specialty!Subject_specialtyId_tenantId_fkey ( code, nameEn, subSystem, branch ),
+          Level!Subject_levelId_tenantId_fkey ( labelEn, number ),
+          Term!Subject_semesterId_tenantId_fkey ( number, academicYearId ),
+          SubjectGrouping!Subject_groupingId_tenantId_fkey ( id, nameEn, nameFr ),
           SubjectSubBranch ( id, name, nameFr, coefficient, sortOrder )
         `,
         )
@@ -79,10 +101,18 @@ export function useSubjectList(filters: CatalogFilters) {
       return rows
         .map((row): SubjectListRowView => {
           const specialty = unwrapRelation<{
+            code?: string;
+            nameEn?: string;
             subSystem?: AcademicSubSystem;
             branch?: AcademicBranch;
           }>(row.Specialty);
-          const grouping = unwrapRelation<{ nameEn?: string; nameFr?: string }>(
+          const level = unwrapRelation<{ labelEn?: string | null; number?: number }>(
+            row.Level,
+          );
+          const term = unwrapRelation<{ number?: number; academicYearId?: string }>(
+            row.Term,
+          );
+          const grouping = unwrapRelation<{ id?: string; nameEn?: string; nameFr?: string }>(
             row.SubjectGrouping,
           );
           const subBranches = Array.isArray(row.SubjectSubBranch)
@@ -91,6 +121,8 @@ export function useSubjectList(filters: CatalogFilters) {
           return {
             ...row,
             Specialty: specialty,
+            Level: level,
+            Term: term,
             SubjectGrouping: grouping,
             SubjectSubBranch: subBranches,
             subSystem: specialty?.subSystem,

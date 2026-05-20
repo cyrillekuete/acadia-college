@@ -21,6 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -38,8 +39,10 @@ import {
   studentClassMigrationSchema,
   type StudentClassMigrationValues,
 } from '@/lib/acadia/student-schemas';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
+  useClassesForFilters,
   useLevelsForSpecialty,
   useSpecialtyOptions,
 } from '@/hooks/use-enrollment-catalog-options';
@@ -58,19 +61,21 @@ export function StudentClassMigrationDialog({
 }) {
   const [open, setOpen] = useState(false);
   const { migrateStudentClass } = useStudentMutations();
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
 
   const form = useForm<StudentClassMigrationValues>({
     resolver: zodResolver(studentClassMigrationSchema),
     defaultValues: {
       specialtyId: currentSpecialtyId,
       levelId: '',
+      classId: '',
       academicYearId: '',
       note: '',
     },
   });
 
   const specialtyId = form.watch('specialtyId');
+  const levelId = form.watch('levelId');
   const { data: specialties = [] } = useSpecialtyOptions(
     subSystem as 'ENGLISH' | 'FRENCH',
     branch as 'GRAMMAR' | 'TECHNICAL' | 'COMMERCIAL',
@@ -80,6 +85,12 @@ export function StudentClassMigrationDialog({
     subSystem as AcademicSubSystem,
     branch as AcademicBranch,
   );
+  const { data: classOptions = [] } = useClassesForFilters({
+    specialtyId,
+    levelId,
+    subSystem: subSystem as AcademicSubSystem,
+    branch: branch as AcademicBranch,
+  });
 
   useEffect(() => {
     if (!open) {
@@ -88,10 +99,11 @@ export function StudentClassMigrationDialog({
     form.reset({
       specialtyId: currentSpecialtyId,
       levelId: '',
-      academicYearId: years.find((y) => y.isCurrent)?.id ?? '',
+      classId: '',
+      academicYearId: activeYearId ?? '',
       note: '',
     });
-  }, [open, currentSpecialtyId, years, form]);
+  }, [open, currentSpecialtyId, activeYearId, form]);
 
   const onSubmit = (values: StudentClassMigrationValues) => {
     migrateStudentClass.mutate(
@@ -125,20 +137,10 @@ export function StudentClassMigrationDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Academic year</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select year" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {years.map((year) => (
-                            <SelectItem key={year.id} value={year.id}>
-                              {year.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <CurrentAcademicYearBadge className="mb-2" />
+                      <FormControl>
+                        <Input type="hidden" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -183,6 +185,33 @@ export function StudentClassMigrationDialog({
                           {levels.map((level) => (
                             <SelectItem key={level.id} value={level.id}>
                               {levelDisplayLabel(level)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="classId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Class (optional)</FormLabel>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Auto-match if unique" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {classOptions.map((cls) => (
+                            <SelectItem key={cls.id} value={cls.id}>
+                              {cls.name}
                             </SelectItem>
                           ))}
                         </SelectContent>

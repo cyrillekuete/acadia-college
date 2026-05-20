@@ -5,9 +5,6 @@ export const levelFormSchema = z.object({
   name: z.string().trim().min(1, 'Level name is required').max(120),
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
   branch: z.enum(ACADEMIC_BRANCHES),
-  labelEn: z.string().trim().max(120).optional(),
-  labelFr: z.string().trim().max(120).optional(),
-  sortOrder: z.coerce.number().int().min(0).max(99).optional(),
 });
 
 export type LevelFormValues = z.infer<typeof levelFormSchema>;
@@ -23,6 +20,7 @@ export const classFormSchema = z.object({
   specialtyId: z.string().optional(),
   staffProfileId: z.string().optional(),
   status: z.enum(CLASS_STATUSES),
+  subjectIds: z.array(z.string()).default([]),
 });
 
 export type ClassFormValues = z.infer<typeof classFormSchema>;

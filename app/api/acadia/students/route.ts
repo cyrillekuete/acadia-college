@@ -4,6 +4,11 @@ import { isAdminClientConfigured } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { studentCreateSchema } from '@/lib/acadia/student-create-schemas';
 import { provisionStudentAndParent } from '@/lib/acadia/provision-accounts';
+import {
+  checkRegistrationNumberAvailable,
+  checkRegistryStudentEmail,
+} from '@/lib/acadia/registry-lookups';
+import { resolveStudentMatricule } from '@/lib/acadia/enrollment';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 
 export async function POST(request: Request) {
@@ -39,6 +44,32 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
+
+  const emailCheck = await checkRegistryStudentEmail(
+    supabase,
+    auth.ctx.tenantId,
+    parsed.data.email,
+  );
+  if (!emailCheck.ok) {
+    return NextResponse.json({ message: emailCheck.message }, { status: 400 });
+  }
+
+  const matricule = resolveStudentMatricule(
+    parsed.data.matricule_number,
+    parsed.data.academic_year ?? undefined,
+  );
+  const matriculeCheck = await checkRegistrationNumberAvailable(
+    supabase,
+    auth.ctx.tenantId,
+    matricule,
+  );
+  if (!matriculeCheck.ok) {
+    return NextResponse.json(
+      { message: matriculeCheck.message, field: 'matricule_number' },
+      { status: 400 },
+    );
+  }
+
   const result = await provisionStudentAndParent(
     supabase,
     parsed.data,
@@ -55,12 +86,13 @@ export async function POST(request: Request) {
     userId: auth.ctx.actorUserId,
     event: 'student.created',
     description: `Provisioned student ${result.studentId} and parent ${result.parentCode}`,
-    entityId: result.studentUuid,
-    entityType: 'students',
+    entityId: result.studentProfileId,
+    entityType: 'StudentProfile',
     meta: {
       studentId: result.studentId,
       parentCode: result.parentCode,
       newParentAuthCreated: result.newParentAuthCreated,
+      enrollmentId: result.enrollmentId,
     },
   });
 
@@ -68,6 +100,7 @@ export async function POST(request: Request) {
     {
       studentId: result.studentId,
       studentUuid: result.studentUuid,
+      studentProfileId: result.studentProfileId,
       parentCode: result.parentCode,
       newParentAuthCreated: result.newParentAuthCreated,
     },

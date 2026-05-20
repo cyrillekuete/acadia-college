@@ -38,10 +38,10 @@ export default function StudentEnrollmentsPage() {
       title="Acadia College — Student enrollments"
       description="Active enrollments linked to academic years and class placement."
     >
-      <SupabaseTableList
+      <SupabaseTableList scopeByAcademicYear
         table="StudentEnrollment"
         title="Enrollments"
-        select="id, status, createdAt, StudentProfile:studentProfileId ( id, registrationNumber ), AcademicYear:academicYearId ( label )"
+        select="id, status, createdAt, StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey ( id, registrationNumber ), AcademicYear!StudentEnrollment_academicYearId_tenantId_fkey ( label )"
         columns={columns}
         searchKeys={['status']}
       />

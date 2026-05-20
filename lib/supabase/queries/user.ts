@@ -8,10 +8,17 @@ export type AcadiaUserProfile = {
   status: string;
   roleId: string;
   isTrashed: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  isProtected?: boolean;
   UserRole: {
+    id?: string;
     slug: string;
     name: string;
     isTrashed?: boolean;
+    createdAt?: string;
+    isProtected?: boolean;
+    isDefault?: boolean;
   } | null;
 };
 
@@ -37,7 +44,7 @@ export async function fetchAcadiaUserProfile(
   // ── New users table (snake_case, database.sql) ──────────────────────────
   const { data: newRow, error: newError } = await supabase
     .from('users')
-    .select('id, email, name, tenant_id, status, role')
+    .select('id, email, name, tenant_id, status, role, created_at, updated_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -61,6 +68,11 @@ export async function fetchAcadiaUserProfile(
         status: String(row.status ?? 'active').toUpperCase(),
         roleId: String(row.id),
         isTrashed: false,
+        createdAt:
+          row.created_at != null ? String(row.created_at) : undefined,
+        updatedAt:
+          row.updated_at != null ? String(row.updated_at) : undefined,
+        isProtected: false,
         UserRole: roleSlug ? { slug: roleSlug, name: roleSlug } : null,
       },
     };
@@ -68,7 +80,7 @@ export async function fetchAcadiaUserProfile(
 
   // ── Legacy User + UserRole join (PascalCase tables) ─────────────────────
   const USER_PROFILE_SELECT =
-    'id, email, name, tenantId, status, roleId, isTrashed, UserRole(slug, name, isTrashed)';
+    'id, email, name, tenantId, status, roleId, isTrashed, createdAt, updatedAt, isProtected, UserRole(id, slug, name, isTrashed, createdAt, isProtected, isDefault)';
 
   const { data, error } = await supabase
     .from('User')

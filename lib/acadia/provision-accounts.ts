@@ -4,15 +4,31 @@
  * and inserts rows into the new snake_case tables from database.sql.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { sendPasswordRecoveryEmail } from '@/lib/auth/password-recovery';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveStudentMatricule } from '@/lib/acadia/enrollment';
 import { generateStudentId, generateParentCode } from '@/lib/acadia/ids';
+import { normalizePhoneForLookup } from '@/lib/acadia/phone';
 import type { StudentCreateInput } from '@/lib/acadia/student-create-schemas';
+import {
+  provisionStudentProfileAndEnrollment,
+  type ProvisionStudentProfileInput,
+} from '@/lib/acadia/provision-student-profile';
+
+function buildParentSystemAuthEmail(
+  tenantId: string,
+  normalizedPhone: string,
+): string {
+  return `parent.${tenantId}.${normalizedPhone}@guardian.acadia.local`;
+}
 
 export type ProvisionResult =
   | {
       ok: true;
       studentId: string;
       studentUuid: string;
+      studentProfileId: string;
+      enrollmentId: string;
       parentCode: string;
       parentUuid: string;
       newParentAuthCreated: boolean;
@@ -44,7 +60,11 @@ export async function provisionStudentAndParent(
   const admin = createAdminClient();
   const now = new Date().toISOString();
   const studentEmail = input.email.trim().toLowerCase();
-  const parentEmail = input.parent_email.trim().toLowerCase();
+  const parentEmailRaw = input.parent_email.trim()
+    ? input.parent_email.trim().toLowerCase()
+    : '';
+  const parentPhone = input.parent_phone.trim();
+  const parentPhoneNormalized = normalizePhoneForLookup(parentPhone);
 
   // -- Step 1: Create student auth user --
   const { data: studentAuthData, error: studentAuthError } =
@@ -95,6 +115,10 @@ export async function provisionStudentAndParent(
 
   // -- Step 3: Insert students row --
   const studentId = generateStudentId();
+  const matriculeNumber = resolveStudentMatricule(
+    input.matricule_number,
+    input.academic_year ?? undefined,
+  );
 
   const { error: studentInsertError } = await supabase.from('students').insert({
     student_id: studentId,
@@ -109,6 +133,7 @@ export async function provisionStudentAndParent(
     nationality: input.nationality ?? 'Cameroonian',
     religion: input.religion ?? null,
     address: input.address ?? null,
+    country: input.country ?? 'Cameroon',
     city: input.city ?? null,
     region: input.region ?? null,
     subsystem: input.subsystem ?? null,
@@ -120,7 +145,7 @@ export async function provisionStudentAndParent(
     is_new_student: input.is_new_student ?? true,
     academic_year: input.academic_year ?? null,
     enrollment_date: input.enrollment_date ?? new Date().toISOString().slice(0, 10),
-    matricule_number: input.matricule_number ?? null,
+    matricule_number: matriculeNumber,
     enrollment_status: 'active',
     status: 'active',
     tenant_id: tenantId,
@@ -230,28 +255,60 @@ export async function provisionStudentAndParent(
   let parentAuthId: string;
   let newParentAuthCreated = false;
 
-  const { data: existingParentUser, error: existingParentUserError } =
-    await supabase
+  let existingParentUser: { id: string; role: string } | null = null;
+
+  if (parentEmailRaw) {
+    const { data, error: existingParentUserError } = await supabase
       .from('users')
       .select('id, role')
-      .eq('email', parentEmail)
+      .eq('email', parentEmailRaw)
       .eq('tenant_id', tenantId)
       .maybeSingle();
 
-  if (existingParentUserError) {
-    await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
-    return {
-      ok: false,
-      message:
-        existingParentUserError.message ??
-        'Failed to look up existing parent account.',
-      status: 500,
-    };
+    if (existingParentUserError) {
+      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      return {
+        ok: false,
+        message:
+          existingParentUserError.message ??
+          'Failed to look up existing parent account.',
+        status: 500,
+      };
+    }
+
+    existingParentUser = data;
+  } else {
+    const { data: parentCandidates, error: parentPhoneLookupError } =
+      await supabase
+        .from('users')
+        .select('id, role, phone')
+        .eq('role', 'parent')
+        .eq('tenant_id', tenantId)
+        .not('phone', 'is', null);
+
+    if (parentPhoneLookupError) {
+      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      return {
+        ok: false,
+        message:
+          parentPhoneLookupError.message ??
+          'Failed to look up existing parent account.',
+        status: 500,
+      };
+    }
+
+    const match = parentCandidates?.find(
+      (row) =>
+        row.phone &&
+        normalizePhoneForLookup(row.phone) === parentPhoneNormalized,
+    );
+    if (match) {
+      existingParentUser = { id: match.id as string, role: match.role as string };
+    }
   }
 
   if (existingParentUser) {
     if (existingParentUser.role !== 'parent') {
-      // Rollback student
       await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
       return {
         ok: false,
@@ -260,13 +317,15 @@ export async function provisionStudentAndParent(
         status: 400,
       };
     }
-    // 6a: reuse existing parent auth id
-    parentAuthId = existingParentUser.id as string;
+    parentAuthId = existingParentUser.id;
   } else {
-    // 6b: create new parent auth user
+    const parentAuthEmail =
+      parentEmailRaw ||
+      buildParentSystemAuthEmail(tenantId, parentPhoneNormalized);
+
     const { data: parentAuthData, error: parentAuthError } =
       await admin.auth.admin.createUser({
-        email: parentEmail,
+        email: parentAuthEmail,
         email_confirm: true,
         user_metadata: { name: input.parent_name.trim() },
       });
@@ -276,7 +335,9 @@ export async function provisionStudentAndParent(
       const msg =
         parentAuthError?.message?.includes('already been registered') ||
         parentAuthError?.message?.includes('already exists')
-          ? 'A user with this parent email already exists.'
+          ? parentEmailRaw
+            ? 'A user with this parent email already exists.'
+            : 'A parent account with this phone number already exists.'
           : (parentAuthError?.message ?? 'Failed to create parent auth account.');
       return { ok: false, message: msg, status: 400 };
     }
@@ -286,11 +347,11 @@ export async function provisionStudentAndParent(
 
     const { error: parentUserError } = await supabase.from('users').insert({
       id: parentAuthId,
-      email: parentEmail,
+      email: parentAuthEmail,
       name: input.parent_name.trim(),
       role: 'parent',
       status: 'active',
-      phone: input.parent_phone ?? null,
+      phone: parentPhone,
       address: input.parent_address ?? null,
       tenant_id: tenantId,
       created_at: now,
@@ -313,8 +374,8 @@ export async function provisionStudentAndParent(
   const { error: parentInsertError } = await supabase.from('parents').insert({
     parent_code: parentCode,
     name: input.parent_name.trim(),
-    email: parentEmail,
-    phone: input.parent_phone ?? null,
+    email: parentEmailRaw || null,
+    phone: parentPhone,
     address: input.parent_address ?? null,
     occupation: input.parent_occupation ?? null,
     relationship: input.parent_relationship,
@@ -340,34 +401,71 @@ export async function provisionStudentAndParent(
   // -- Step 7: Send password-reset (set-password) emails --
   // Errors here are non-fatal: records are already committed. Log and continue
   // so callers receive a success result and can resend the link separately.
-  const { error: studentLinkError } = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email: studentEmail,
-  });
-  if (studentLinkError) {
+  const studentRecovery = await sendPasswordRecoveryEmail(
+    admin,
+    studentEmail,
+  );
+  if (!studentRecovery.ok) {
     console.warn(
-      '[provisionStudentAndParent] Failed to send student recovery link:',
-      studentLinkError.message,
+      '[provisionStudentAndParent] Failed to send student recovery email:',
+      studentRecovery.message,
     );
   }
 
-  if (newParentAuthCreated) {
-    const { error: parentLinkError } = await admin.auth.admin.generateLink({
-      type: 'recovery',
-      email: parentEmail,
-    });
-    if (parentLinkError) {
+  if (newParentAuthCreated && parentEmailRaw) {
+    const parentRecovery = await sendPasswordRecoveryEmail(
+      admin,
+      parentEmailRaw,
+    );
+    if (!parentRecovery.ok) {
       console.warn(
-        '[provisionStudentAndParent] Failed to send parent recovery link:',
-        parentLinkError.message,
+        '[provisionStudentAndParent] Failed to send parent recovery email:',
+        parentRecovery.message,
       );
     }
+  }
+
+  const profileInput: ProvisionStudentProfileInput = {
+    authUserId: studentAuthId,
+    email: studentEmail,
+    name: `${input.first_name.trim()} ${input.last_name.trim()}`,
+    registrationNumber: matriculeNumber,
+    tenantId,
+    actorUserId,
+    specialtyId: input.specialty_id,
+    levelId: input.level_id,
+    academicYearId: input.academic_year_id,
+    classId: input.class_id ?? null,
+    country: input.country ?? null,
+  };
+
+  const profileResult = await provisionStudentProfileAndEnrollment(
+    supabase,
+    profileInput,
+  );
+
+  if (!profileResult.ok) {
+    await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+    if (newParentAuthCreated) {
+      await supabase.from('parents').delete().eq('parent_code', parentCode);
+      await supabase.from('users').delete().eq('id', parentAuthId);
+      await admin.auth.admin.deleteUser(parentAuthId);
+    } else {
+      await supabase.from('parents').delete().eq('parent_code', parentCode);
+    }
+    return {
+      ok: false,
+      message: profileResult.message,
+      status: profileResult.status,
+    };
   }
 
   return {
     ok: true,
     studentId,
     studentUuid,
+    studentProfileId: profileResult.studentProfileId,
+    enrollmentId: profileResult.enrollmentId,
     parentCode,
     parentUuid: parentAuthId,
     newParentAuthCreated,

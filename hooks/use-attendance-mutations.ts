@@ -16,13 +16,25 @@ import type {
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import { useAcademicYearWriteGuard } from '@/hooks/use-academic-year-write-guard';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import {
+  ensureAcademicYearWriteAllowed,
+  isWriteCancelledError,
+} from '@/lib/acadia/mutation-write-guard';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
   return 'Operation failed.';
+}
+
+function handleMutationError(error: unknown) {
+  if (isWriteCancelledError(error)) {
+    return;
+  }
+  toast.error(mutationErrorMessage(error));
 }
 
 function invalidateAttendanceQueries(
@@ -173,11 +185,13 @@ export function useAttendanceMutations() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { data: session } = useAcadiaCollegeSession();
+  const { confirmWrite } = useAcademicYearWriteGuard();
   const tenantId = session?.tenantId ?? null;
   const actorUserId = session?.authUser?.id ?? null;
 
   const createAttendanceSession = useMutation({
     mutationFn: async (values: AttendanceSessionFormValues) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
@@ -228,6 +242,7 @@ export function useAttendanceMutations() {
       id: string;
       values: AttendanceSessionFormValues;
     }) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
@@ -267,6 +282,7 @@ export function useAttendanceMutations() {
 
   const saveAttendanceEntry = useMutation({
     mutationFn: async (input: AttendanceEntryContextValues) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId || !actorUserId) {
         throw new Error('Tenant and user context are required.');
       }
@@ -278,7 +294,7 @@ export function useAttendanceMutations() {
         .select(
           `
           sessionDate,
-          Subject:subjectId ( code )
+          Subject!AttendanceSession_subjectId_tenantId_fkey ( code )
         `,
         )
         .eq('id', input.attendanceSessionId)
@@ -297,7 +313,7 @@ export function useAttendanceMutations() {
       const studentIds = input.records.map((r) => r.studentProfileId);
       const { data: students, error: studentsError } = await supabase
         .from('StudentProfile')
-        .select('id, registrationNumber, User:userId ( name )')
+        .select('id, registrationNumber, User!StudentProfile_userId_tenantId_fkey ( name )')
         .eq('tenantId', tenantId)
         .in('id', studentIds);
 

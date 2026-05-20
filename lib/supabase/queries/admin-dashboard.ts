@@ -6,6 +6,7 @@ export type AdminDashboardStats = {
   teachers: number;
   teachersNewThisMonth: number;
   activeClasses: number;
+  activeSubjects: number;
   revenueMinor: number;
   revenueGrowthPercent: number | null;
 };
@@ -74,9 +75,22 @@ async function sumLedgerIncome(
   return (data ?? []).reduce((sum, row) => sum + Number(row.amountMinor ?? 0), 0);
 }
 
+async function countActiveSubjects(supabase: SupabaseClient, tenantId: string) {
+  const { count, error } = await supabase
+    .from('Subject')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenantId', tenantId)
+    .is('deactivatedAt', null);
+  if (error) {
+    throw error;
+  }
+  return count ?? 0;
+}
+
 export async function fetchAdminDashboardStats(
   supabase: SupabaseClient,
   tenantId: string,
+  academicYearId?: string,
 ): Promise<AdminDashboardStats> {
   const thisMonth = monthRange(0);
   const lastMonth = monthRange(-1);
@@ -86,6 +100,7 @@ export async function fetchAdminDashboardStats(
     teachers,
     teachersNewThisMonth,
     activeClasses,
+    activeSubjects,
     revenueMinor,
     revenueLastMonthMinor,
   ] = await Promise.all([
@@ -95,11 +110,21 @@ export async function fetchAdminDashboardStats(
     }),
     countTeachers(supabase, tenantId),
     countTeachersCreatedSince(supabase, tenantId, thisMonth.start),
-    countRows(supabase, 'classes', {
-      tenantColumn: 'tenant_id',
-      tenantId,
-      filters: [{ column: 'status', op: 'eq', value: 'active' }],
-    }),
+    academicYearId
+      ? countRows(supabase, 'StudentEnrollment', {
+          tenantColumn: 'tenantId',
+          tenantId,
+          filters: [
+            { column: 'academicYearId', op: 'eq', value: academicYearId },
+            { column: 'status', op: 'eq', value: 'ACTIVE' },
+          ],
+        })
+      : countRows(supabase, 'classes', {
+          tenantColumn: 'tenant_id',
+          tenantId,
+          filters: [{ column: 'status', op: 'eq', value: 'active' }],
+        }),
+    countActiveSubjects(supabase, tenantId),
     sumLedgerIncome(supabase, tenantId),
     sumLedgerIncome(supabase, tenantId, lastMonth.start, lastMonth.end),
   ]);
@@ -124,6 +149,7 @@ export async function fetchAdminDashboardStats(
     teachers,
     teachersNewThisMonth,
     activeClasses,
+    activeSubjects,
     revenueMinor,
     revenueGrowthPercent: percentChange(revenueThisMonthMinor, revenuePrevMonthMinor),
   };

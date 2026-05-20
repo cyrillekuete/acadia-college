@@ -86,10 +86,10 @@ export function AttendanceEntryGrid({
         .select(
           `
           studentProfileId,
-          StudentProfile:studentProfileId (
+          StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             id,
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
         )

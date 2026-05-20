@@ -1,4 +1,4 @@
-export function getQueryErrorMessage(error: unknown): string {
+function readErrorMessage(error: unknown): string | null {
   if (error instanceof Error && error.message) {
     return error.message;
   }
@@ -14,5 +14,73 @@ export function getQueryErrorMessage(error: unknown): string {
   ) {
     return (error as { message: string }).message;
   }
+  return null;
+}
+
+function readErrorCode(error: unknown): string | null {
+  if (
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    typeof (error as { code: unknown }).code === 'string'
+  ) {
+    return (error as { code: string }).code;
+  }
+  return null;
+}
+
+function friendlyPostgresMessage(code: string, rawMessage: string): string | null {
+  if (code === '23505') {
+    if (rawMessage.includes('Level_tenantId_subSystem_branch_name_key')) {
+      return 'A level with this name already exists for this sub-system and branch.';
+    }
+    return 'This record already exists.';
+  }
+  if (code === '42501') {
+    return 'You do not have permission to perform this action.';
+  }
+  if (code === '23503') {
+    if (rawMessage.includes('Level') || rawMessage.includes('levelId')) {
+      return 'This level cannot be deleted because classes or other records still reference it.';
+    }
+    return 'This record cannot be deleted because other records still reference it.';
+  }
+  return null;
+}
+
+export function getQueryErrorMessage(error: unknown): string {
+  const code = readErrorCode(error);
+  const message = readErrorMessage(error);
+  if (code && message) {
+    const friendly = friendlyPostgresMessage(code, message);
+    if (friendly) {
+      return friendly;
+    }
+  }
+  if (message) {
+    return message;
+  }
   return 'Failed to load data.';
+}
+
+export function getMutationErrorMessage(
+  error: unknown,
+  fallback = 'Operation failed.',
+): string {
+  const code = readErrorCode(error);
+  const message = readErrorMessage(error);
+  if (code && message) {
+    const friendly = friendlyPostgresMessage(code, message);
+    if (friendly) {
+      return friendly;
+    }
+  }
+  if (message) {
+    return message;
+  }
+  return fallback;
+}
+
+export function throwMutationError(error: unknown, fallback?: string): never {
+  throw new Error(getMutationErrorMessage(error, fallback));
 }

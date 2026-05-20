@@ -44,7 +44,7 @@ const EXAM_SELECT = `
   endsOn,
   finalizedAt,
   createdAt,
-  Subject:subjectId ( code, nameEn )
+  Subject!ExamSession_subjectId_tenantId_fkey ( code, nameEn )
 `;
 
 export default function ExamsPage() {
@@ -66,7 +66,7 @@ export default function ExamsPage() {
           <Link href="/exams/schedule">Exam schedule</Link>
         </Button>
       </div>
-      <SupabaseTableList
+      <SupabaseTableList scopeByAcademicYear
         table="ExamSession"
         title="Exam sessions"
         select={EXAM_SELECT}

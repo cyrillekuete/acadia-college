@@ -1,9 +1,20 @@
 'use client';
 
-import { use } from 'react';
+import { Fragment, use } from 'react';
+import Link from 'next/link';
+import {
+  Toolbar,
+  ToolbarActions,
+  ToolbarDescription,
+  ToolbarHeading,
+  ToolbarPageTitle,
+} from '@/partials/common/toolbar';
+import { useSettings } from '@/providers/settings-provider';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Container } from '@/components/common/container';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
-import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
+import { PageNavbar } from '@/app/(protected)/account/page-navbar';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import {
   apiKeyStatus,
@@ -12,6 +23,7 @@ import {
   formatStringArray,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const API_KEY_SELECT = `
   id,
@@ -39,12 +51,23 @@ type TenantApiKeyDetail = {
   User: unknown;
 };
 
+function getQueryErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'Failed to load record.';
+}
+
 export default function TenantApiKeyDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { settings } = useSettings();
   const { data, isLoading, isError, error } = useSupabaseRecord<TenantApiKeyDetail>(
     'TenantApiKey',
     id,
@@ -59,59 +82,82 @@ export default function TenantApiKeyDetailPage({
   const title = data?.name ? `API key — ${data.name}` : 'API key';
 
   return (
-    <RecordDetailShell
-      title={title}
-      description="Tenant API key metadata from Supabase. Secret values are never stored in the client."
-      backHref="/account/api-keys"
-      backLabel="Back to API keys"
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-    >
-      {data ? (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 lg:gap-7.5">
-          <RecordDetailCard
-            title="Key"
-            fields={[
-              { label: 'Name', value: formatRecordValue(data.name) },
-              {
-                label: 'Prefix',
-                value: data.keyPrefix ? `${data.keyPrefix}••••••••` : '—',
-              },
-              {
-                label: 'Status',
-                value:
-                  status === 'revoked' ? (
-                    <Badge variant="destructive" appearance="light">
-                      Revoked
-                    </Badge>
-                  ) : status === 'expired' ? (
-                    <Badge variant="secondary" appearance="light">
-                      Expired
-                    </Badge>
-                  ) : (
-                    <Badge variant="success" appearance="light">
-                      Active
-                    </Badge>
-                  ),
-              },
-              { label: 'Scopes', value: formatStringArray(data.scopes) },
-              { label: 'Last used', value: formatDateTime(data.lastUsedAt) },
-              { label: 'Revoked at', value: formatDateTime(data.revokedAt) },
-              { label: 'Expires', value: formatDateTime(data.expiresAt) },
-              { label: 'Created', value: formatDateTime(data.createdAt) },
-              { label: 'Updated', value: formatDateTime(data.updatedAt) },
-            ]}
-          />
-          <RecordDetailCard
-            title="Created by"
-            fields={[
-              { label: 'Name', value: formatRecordValue(creator?.name) },
-              { label: 'Email', value: formatRecordValue(creator?.email) },
-            ]}
-          />
+    <Fragment>
+      <PageNavbar />
+      {settings?.layout === 'demo1' && (
+        <Container>
+          <Toolbar>
+            <ToolbarHeading>
+              <ToolbarPageTitle />
+              <ToolbarDescription>
+                Central Hub for Personal Customization
+              </ToolbarDescription>
+            </ToolbarHeading>
+            <ToolbarActions>
+              <Button variant="outline" asChild>
+                <Link href="/account/api-keys">Back to API keys</Link>
+              </Button>
+            </ToolbarActions>
+          </Toolbar>
+        </Container>
+      )}
+      <Container>
+        <div className="mb-5">
+          {settings?.layout !== 'demo1' && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/account/api-keys">Back to API keys</Link>
+            </Button>
+          )}
         </div>
-      ) : null}
-    </RecordDetailShell>
+        {isLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : isError ? (
+          <p className="text-sm text-destructive">{getQueryErrorMessage(error)}</p>
+        ) : data ? (
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 lg:gap-7.5">
+            <RecordDetailCard
+              title={title}
+              fields={[
+                { label: 'Name', value: formatRecordValue(data.name) },
+                {
+                  label: 'Prefix',
+                  value: data.keyPrefix ? `${data.keyPrefix}••••••••` : '—',
+                },
+                {
+                  label: 'Status',
+                  value:
+                    status === 'revoked' ? (
+                      <Badge variant="destructive" appearance="light">
+                        Revoked
+                      </Badge>
+                    ) : status === 'expired' ? (
+                      <Badge variant="secondary" appearance="light">
+                        Expired
+                      </Badge>
+                    ) : (
+                      <Badge variant="success" appearance="light">
+                        Active
+                      </Badge>
+                    ),
+                },
+                { label: 'Scopes', value: formatStringArray(data.scopes) },
+                { label: 'Last used', value: formatDateTime(data.lastUsedAt) },
+                { label: 'Revoked at', value: formatDateTime(data.revokedAt) },
+                { label: 'Expires', value: formatDateTime(data.expiresAt) },
+                { label: 'Created', value: formatDateTime(data.createdAt) },
+                { label: 'Updated', value: formatDateTime(data.updatedAt) },
+              ]}
+            />
+            <RecordDetailCard
+              title="Created by"
+              fields={[
+                { label: 'Name', value: formatRecordValue(creator?.name) },
+                { label: 'Email', value: formatRecordValue(creator?.email) },
+              ]}
+            />
+          </div>
+        ) : null}
+      </Container>
+    </Fragment>
   );
 }

@@ -3,9 +3,9 @@
 import React, { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { Activity, MoveLeft, UserPen } from '@/lib/icons';
-import { getDummyStudentById } from '@/lib/acadia/dummy-students';
+import { useStudentDetailQuery } from '@/hooks/use-student-detail-query';
+import { ViewingAcademicYearBanner } from '@/components/acadia/academics/viewing-academic-year-banner';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -46,18 +46,14 @@ export default function StudentDetailLayout({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
 
-  const { data: student, isLoading, isFetched } = useQuery({
-    queryKey: ['student', id],
-    queryFn: async () => getDummyStudentById(id) ?? null,
-    enabled: !!id,
-    staleTime: Infinity,
-  });
+  const { data: student, isLoading, isFetched, isError } =
+    useStudentDetailQuery(id);
 
   useEffect(() => {
-    if (isFetched && !student) {
+    if ((isFetched && !student) || isError) {
       router.replace('/students');
     }
-  }, [isFetched, student, router]);
+  }, [isFetched, student, isError, router]);
 
   const navRoutes = useMemo<NavRoutes>(
     () => ({
@@ -121,6 +117,7 @@ export default function StudentDetailLayout({
             </Button>
           </ToolbarActions>
         </Toolbar>
+        <ViewingAcademicYearBanner />
         <StudentHero student={student ?? undefined} isLoading={isLoading} />
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList variant="line" className="mb-5">

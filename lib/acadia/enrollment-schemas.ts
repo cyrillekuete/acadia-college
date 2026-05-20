@@ -29,7 +29,8 @@ const catalogFields = {
   academicYearId: z.string().min(1, 'Academic year is required.'),
 };
 
-export const enrollmentApplicationSchema = z.object({
+export const enrollmentApplicationSchema = z
+  .object({
   kind: z.enum(ENROLLMENT_APPLICATION_KINDS),
   firstNameEn: z.string().trim().min(1, 'First name (English) is required.'),
   lastNameEn: z.string().trim().min(1, 'Last name (English) is required.'),
@@ -45,7 +46,15 @@ export const enrollmentApplicationSchema = z.object({
   preferredLocale: z.enum(['en', 'fr']),
   studentProfileId: z.string().optional().or(z.literal('')),
   ...catalogFields,
-});
+})
+  .refine(
+    (d) =>
+      d.kind !== 'RE_ENROLL' || Boolean(d.studentProfileId?.trim()),
+    {
+      message: 'Select an existing student for re-enrollment.',
+      path: ['studentProfileId'],
+    },
+  );
 
 export type EnrollmentApplicationFormValues = z.infer<
   typeof enrollmentApplicationSchema
@@ -54,6 +63,7 @@ export type EnrollmentApplicationFormValues = z.infer<
 export const reviewApplicationSchema = z.discriminatedUnion('decision', [
   z.object({
     decision: z.literal('approve'),
+    classId: z.string().optional(),
   }),
   z.object({
     decision: z.literal('reject'),

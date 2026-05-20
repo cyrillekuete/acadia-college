@@ -1,8 +1,14 @@
+import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
+
 const AUTH_CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   oauth: 'Sign-in was cancelled or denied.',
   missing_code: 'Sign-in could not be completed. Please try again.',
   config: 'Authentication is not configured. Contact an administrator.',
   exchange: 'Sign-in session could not be established. Please try again.',
+  recovery_expired:
+    'Your password reset link is invalid or has expired. Request a new reset email.',
+  recovery_exchange:
+    'Your password reset link could not be verified. Request a new reset email.',
   profile_missing:
     'Your account is not linked to an Acadia College profile. Contact an administrator.',
   profile_query:
@@ -36,6 +42,27 @@ export function buildSignInErrorRedirectUrl(
 
 export function buildSignInErrorPath(code: string): string {
   return `/signin?${new URLSearchParams({ error: code }).toString()}`;
+}
+
+export function buildRecoveryErrorRedirectUrl(
+  origin: string,
+  code: 'recovery_expired' | 'recovery_exchange',
+): string {
+  const params = new URLSearchParams({ error: code });
+  return `${origin}/change-password?${params.toString()}`;
+}
+
+export function getRecoveryErrorMessage(code: string): string | null {
+  if (code === 'recovery_expired' || code === 'recovery_exchange') {
+    return AUTH_CALLBACK_ERROR_MESSAGES[code] ?? null;
+  }
+  return null;
+}
+
+export function isPasswordRecoveryCallback(
+  nextParam: string | null | undefined,
+): boolean {
+  return getSafeRedirectPath(nextParam, '') === '/change-password';
 }
 
 export function getAuthCallbackErrorMessage(

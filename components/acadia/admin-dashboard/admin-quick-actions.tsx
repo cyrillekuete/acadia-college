@@ -1,11 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, BookOpen, Plus, UserPlus } from '@/lib/icons';
+import { BarChart3, BookOpen, CalendarCheck, LayoutGrid, Plus, UserPlus } from '@/lib/icons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 const ACTIONS = [
+  {
+    label: 'Configure academic year',
+    href: '/academics/years',
+    icon: CalendarCheck,
+  },
   {
     label: 'Enrol New Student',
     href: '/students/new',
@@ -20,6 +25,16 @@ const ACTIONS = [
     label: 'Create New Class',
     href: '/classes',
     icon: BookOpen,
+  },
+  {
+    label: 'Manage subject catalog',
+    href: '/subjects',
+    icon: BookOpen,
+  },
+  {
+    label: 'Manage subject groupings',
+    href: '/subjects/groupings',
+    icon: LayoutGrid,
   },
   {
     label: 'Generate Reports',

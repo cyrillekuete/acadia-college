@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
@@ -14,13 +15,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
@@ -34,7 +28,8 @@ import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -49,18 +44,21 @@ export function SubjectMaterialsPanel({
   const { data: session, isLoading: sessionLoading, isError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
 
   const { data: materials = [], isLoading } = useQuery({
-    queryKey: ['subject-materials', tenantId, subjectId],
+    queryKey: ['subject-materials', tenantId, subjectId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      const { data, error } = await supabase
+      let query = supabase
         .from('CourseworkTask')
         .select('id, titleEn, titleFr, dueAt, maxScore, isPublished, createdAt')
         .eq('tenantId', tenantId!)
-        .eq('subjectId', subjectId)
-        .order('dueAt', { ascending: false });
+        .eq('subjectId', subjectId);
+      if (activeYearId) {
+        query = query.eq('academicYearId', activeYearId);
+      }
+      const { data, error } = await query.order('dueAt', { ascending: false });
       if (error) {
         throw error;
       }
@@ -77,7 +75,7 @@ export function SubjectMaterialsPanel({
   const form = useForm<SubjectMaterialFormValues>({
     resolver: zodResolver(subjectMaterialSchema),
     defaultValues: {
-      academicYearId: years.find((y) => y.isCurrent)?.id ?? '',
+      academicYearId: '',
       titleEn: '',
       titleFr: '',
       descriptionEn: '',
@@ -88,13 +86,19 @@ export function SubjectMaterialsPanel({
     },
   });
 
+  useEffect(() => {
+    if (activeYearId) {
+      form.setValue('academicYearId', activeYearId);
+    }
+  }, [activeYearId, form]);
+
   const onSubmit = (values: SubjectMaterialFormValues) => {
     createMaterial.mutate(
       { subjectId, values },
       {
         onSuccess: () => {
           form.reset({
-            academicYearId: values.academicYearId,
+            academicYearId: activeYearId ?? values.academicYearId,
             titleEn: '',
             titleFr: '',
             descriptionEn: '',
@@ -155,20 +159,10 @@ export function SubjectMaterialsPanel({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Academic year</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year.id} value={year.id}>
-                        {year.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CurrentAcademicYearBadge className="mb-2" />
+                <FormControl>
+                  <Input type="hidden" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

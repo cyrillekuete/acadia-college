@@ -8,6 +8,7 @@ import {
   buildEnrollmentApplicationRow,
   canEditEnrollmentApplication,
   generateRegistrationNumber,
+  resolveStudentMatricule,
 } from '@/lib/acadia/enrollment';
 import {
   enrollmentApplicationSchema,
@@ -31,8 +32,26 @@ describe('enrollmentApplicationSchema', () => {
       specialtyId: 'spec-1',
       levelId: 'level-1',
       academicYearId: 'year-1',
+      preferredLocale: 'en',
     });
     expect(result.success).toBe(true);
+  });
+
+  it('requires student profile for re-enrollment', () => {
+    const result = enrollmentApplicationSchema.safeParse({
+      kind: 'RE_ENROLL',
+      firstNameEn: 'Jane',
+      lastNameEn: 'Doe',
+      email: 'jane@school.edu',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
+      specialtyId: 'spec-1',
+      levelId: 'level-1',
+      academicYearId: 'year-1',
+      preferredLocale: 'en',
+      studentProfileId: '',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('rejects missing email', () => {
@@ -46,6 +65,7 @@ describe('enrollmentApplicationSchema', () => {
       specialtyId: 'spec-1',
       levelId: 'level-1',
       academicYearId: 'year-1',
+      preferredLocale: 'en',
     });
     expect(result.success).toBe(false);
   });
@@ -104,6 +124,12 @@ describe('enrollment helpers', () => {
 
   it('generates registration numbers with AC prefix', () => {
     expect(generateRegistrationNumber('2025-2026')).toMatch(/^AC-2026-/);
+  });
+
+  it('resolves student matricule from override or academic year', () => {
+    expect(resolveStudentMatricule('AC-2026-CUSTOM')).toBe('AC-2026-CUSTOM');
+    expect(resolveStudentMatricule('', '2025-2026')).toMatch(/^AC-2026-/);
+    expect(resolveStudentMatricule(undefined, '2024-2025')).toMatch(/^AC-2025-/);
   });
 
   it('only allows editing pending applications', () => {

@@ -26,8 +26,8 @@ const EXAM_SELECT = `
   academicYearId,
   termId,
   sequenceId,
-  Subject:subjectId ( code, nameEn ),
-  Term:termId ( number ),
+  Subject!ExamSession_subjectId_tenantId_fkey ( code, nameEn ),
+  Term!ExamSession_semesterId_tenantId_fkey ( number ),
   AcademicSequence:sequenceId ( number, numberInTerm )
 `;
 

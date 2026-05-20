@@ -37,9 +37,9 @@ export function StudentAcademicProgress({
             id,
             status,
             createdAt,
-            AcademicYear:academicYearId ( label ),
-            Specialty:specialtyId ( code, nameEn ),
-            Level:levelId ( number, labelEn )
+            AcademicYear!StudentEnrollment_academicYearId_tenantId_fkey ( label ),
+            Specialty!StudentEnrollment_specialtyId_tenantId_fkey ( code, nameEn ),
+            Level!StudentEnrollment_levelId_tenantId_fkey ( number, labelEn )
           `,
           )
           .eq('tenantId', tenantId!)
@@ -54,8 +54,8 @@ export function StudentAcademicProgress({
             examScore,
             totalScore,
             createdAt,
-            Subject:subjectId ( code, nameEn ),
-            ExamSession:examSessionId ( type, startsOn )
+            Subject!SubjectMark_subjectId_tenantId_fkey ( code, nameEn ),
+            ExamSession!SubjectMark_examSessionId_tenantId_fkey ( type, startsOn )
           `,
           )
           .eq('tenantId', tenantId!)

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -33,7 +35,8 @@ import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   staffDisplayLabel,
   useStaffOptions,
@@ -52,14 +55,14 @@ export function SubjectAssignmentPanel({
   const { data: session, isLoading: sessionLoading, isError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
   const { data: staff = [] } = useStaffOptions();
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ['subject-assignments', tenantId, subjectId],
+    queryKey: ['subject-assignments', tenantId, subjectId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      const { data, error } = await supabase
+      let query = supabase
         .from('SubjectAssignment')
         .select(
           `
@@ -67,13 +70,16 @@ export function SubjectAssignmentPanel({
           isLead,
           teachesPrimaryHome,
           notes,
-          StaffProfile:staffProfileId ( staffCode, User:userId ( name ) ),
-          AcademicYear:academicYearId ( label )
+          StaffProfile!SubjectAssignment_staffProfileId_tenantId_fkey ( staffCode, User!StaffProfile_userId_tenantId_fkey ( name ) ),
+          AcademicYear!SubjectAssignment_academicYearId_tenantId_fkey ( label )
         `,
         )
         .eq('tenantId', tenantId!)
-        .eq('subjectId', subjectId)
-        .order('createdAt', { ascending: false });
+        .eq('subjectId', subjectId);
+      if (activeYearId) {
+        query = query.eq('academicYearId', activeYearId);
+      }
+      const { data, error } = await query.order('createdAt', { ascending: false });
       if (error) {
         throw error;
       }
@@ -90,7 +96,7 @@ export function SubjectAssignmentPanel({
   const form = useForm<SubjectAssignmentFormValues>({
     resolver: zodResolver(subjectAssignmentSchema),
     defaultValues: {
-      academicYearId: years.find((y) => y.isCurrent)?.id ?? '',
+      academicYearId: '',
       staffProfileId: '',
       isLead: false,
       teachesPrimaryHome: true,
@@ -98,13 +104,19 @@ export function SubjectAssignmentPanel({
     },
   });
 
+  useEffect(() => {
+    if (activeYearId) {
+      form.setValue('academicYearId', activeYearId);
+    }
+  }, [activeYearId, form]);
+
   const onSubmit = (values: SubjectAssignmentFormValues) => {
     createAssignment.mutate(
       { subjectId, values },
       {
         onSuccess: () => {
           form.reset({
-            academicYearId: values.academicYearId,
+            academicYearId: activeYearId ?? values.academicYearId,
             staffProfileId: '',
             isLead: false,
             teachesPrimaryHome: true,
@@ -173,20 +185,10 @@ export function SubjectAssignmentPanel({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Academic year</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {years.map((year) => (
-                        <SelectItem key={year.id} value={year.id}>
-                          {year.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CurrentAcademicYearBadge className="mb-2" />
+                  <FormControl>
+                    <Input type="hidden" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

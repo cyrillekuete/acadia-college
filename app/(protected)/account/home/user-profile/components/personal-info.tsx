@@ -7,8 +7,41 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { useUserProfileSession } from '../user-profile-session';
+
+function getStatusBadge(status: string | undefined) {
+  const normalized = status?.toUpperCase() ?? '';
+  if (normalized === 'ACTIVE') {
+    return (
+      <Badge size="md" variant="success" appearance="light">
+        Active
+      </Badge>
+    );
+  }
+  if (normalized === 'BLOCKED' || normalized === 'INACTIVE') {
+    return (
+      <Badge size="md" variant="destructive" appearance="light">
+        {normalized === 'BLOCKED' ? 'Blocked' : 'Inactive'}
+      </Badge>
+    );
+  }
+  return (
+    <Badge size="md" variant="secondary" appearance="light">
+      {status ?? 'Available now'}
+    </Badge>
+  );
+}
 
 const PersonalInfo = () => {
+  const { profile, authUser } = useUserProfileSession();
+
+  const displayName =
+    profile?.name?.trim() ||
+    authUser?.email?.split('@')[0] ||
+    null;
+
+  const roleName = profile?.UserRole?.name;
+
   return (
     <Card className="min-w-full">
       <CardHeader>
@@ -34,8 +67,8 @@ const PersonalInfo = () => {
               <TableCell className="py-2 text-secondary-foreground font-normal">
                 Name
               </TableCell>
-              <TableCell className="py-2 text-foreground font-normaltext-sm">
-                Jason Tatum
+              <TableCell className="py-2 text-foreground font-normal text-sm">
+                {displayName ?? '—'}
               </TableCell>
               <TableCell className="py-2 text-center">
                 <Button variant="ghost" mode="icon">
@@ -43,14 +76,25 @@ const PersonalInfo = () => {
                 </Button>
               </TableCell>
             </TableRow>
+            {roleName ? (
+              <TableRow>
+                <TableCell className="py-2 text-secondary-foreground font-normal">
+                  Role
+                </TableCell>
+                <TableCell className="py-2 text-foreground font-normal text-sm">
+                  <Badge variant="primary" appearance="light">
+                    {roleName}
+                  </Badge>
+                </TableCell>
+                <TableCell className="py-2 text-center" />
+              </TableRow>
+            ) : null}
             <TableRow>
               <TableCell className="py-3 text-secondary-foreground font-normal">
-                Availability
+                Status
               </TableCell>
               <TableCell className="py-3 text-foreground font-normal">
-                <Badge size="md" variant="success" appearance="light">
-                  Available now
-                </Badge>
+                {getStatusBadge(profile?.status)}
               </TableCell>
               <TableCell className="py-3 text-center">
                 <Button variant="ghost" mode="icon">

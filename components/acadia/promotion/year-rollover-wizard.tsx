@@ -32,6 +32,7 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { usePromotionMutations } from '@/hooks/use-promotion-mutations';
+import { fetchClassesMissingPolicies } from '@/lib/supabase/queries/promotion';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { canManagePromotion } from '@/lib/acadia/roles';
@@ -64,6 +65,20 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
   useEffect(() => {
     form.setValue('sourceAcademicYearId', sourceYearId);
   }, [sourceYearId, form]);
+
+  const missingPoliciesQuery = useQuery({
+    queryKey: ['promotion-missing-policies', tenantId, sourceYearId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      return fetchClassesMissingPolicies(supabase, tenantId!, sourceYearId);
+    },
+    enabled: isAcadiaTenantQueryEnabled(
+      sessionLoading,
+      sessionError,
+      session,
+      tenantId,
+    ),
+  });
 
   const previewQuery = useQuery({
     queryKey: ['promotion-rollover-preview', tenantId, sourceYearId],
@@ -111,7 +126,8 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
       <p className="text-sm text-muted-foreground">
         End-of-year rollover (FR-DM-3) creates enrollments in the target year from
         saved promotion decisions, provisions the Cameroon calendar if needed, and sets
-        the target year as current.
+        the target year as current. Students with DEFER or WITHDRAW decisions are
+        skipped (no new enrollment); handle them manually after rollover.
       </p>
 
       <Alert>
@@ -119,14 +135,38 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
         <AlertTitle>Source year: {sourceLabel}</AlertTitle>
         <AlertDescription>
           Run automatic promotion from{' '}
-          <Link href="/admin/promotion" className="text-primary underline">
-            Promotion admin
+          <Link href="/academics/promotion" className="text-primary underline">
+            Promotion management
           </Link>{' '}
           before rollover. This action cannot be undone.
         </AlertDescription>
       </Alert>
 
-      {previewQuery.data ? (
+      {(missingPoliciesQuery.data?.length ?? 0) > 0 ? (
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Missing promotion policies</AlertTitle>
+          <AlertDescription>
+            Classes with enrolled students but no policy:{' '}
+            {missingPoliciesQuery.data!
+              .map((c) => `${c.className} (${c.enrollmentCount})`)
+              .join(', ')}
+            . Configure policies before rollover.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {previewQuery.data && previewQuery.data.total === 0 ? (
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>No promotion decisions</AlertTitle>
+          <AlertDescription>
+            Compute promotion for all classes in the source year before running rollover.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {previewQuery.data && previewQuery.data.total > 0 ? (
         <div className="space-y-1 rounded-lg border p-4 text-sm">
           <p className="font-medium">{previewQuery.data.total} promotion decision(s)</p>
           <p className="text-muted-foreground">
@@ -259,7 +299,9 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
           <Button
             type="submit"
             disabled={
-              executeYearRollover.isPending || (previewQuery.data?.total ?? 0) === 0
+              executeYearRollover.isPending ||
+              (previewQuery.data?.total ?? 0) === 0 ||
+              (missingPoliciesQuery.data?.length ?? 0) > 0
             }
           >
             {executeYearRollover.isPending ? (

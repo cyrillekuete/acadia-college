@@ -13,6 +13,7 @@ import { SubjectMaterialsPanel } from '@/components/acadia/subjects/subject-mate
 import { SubjectTimetablePanel } from '@/components/acadia/subjects/subject-timetable-panel';
 import { TimetableSlotFormDialog } from '@/components/acadia/timetable/timetable-slot-form-dialog';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
+import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canEditSubject } from '@/lib/acadia/subject';
 import { canWriteRegistry } from '@/lib/acadia/roles';
@@ -20,13 +21,13 @@ import {
   formatDateTime,
   formatRecordValue,
   levelLabel,
-  termLabel,
+  subjectTermScopeLabel,
   specialtyLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
 
 import {
-  formatSubBranchNames,
+  formatSubBranchDisplayNames,
   subjectTypeLabel,
 } from '@/lib/acadia/subject-catalog';
 import type { SubjectType } from '@/lib/acadia/subject-catalog';
@@ -41,13 +42,15 @@ const SUBJECT_SELECT = `
   subjectType,
   coefficient,
   hasSubBranches,
+  termId,
+  academicYearId,
   deactivatedAt,
   createdAt,
   updatedAt,
-  Specialty:specialtyId ( code, nameEn, nameFr ),
-  Level:levelId ( number, labelEn ),
-  Term:termId ( number ),
-  SubjectGrouping:groupingId ( nameEn, nameFr ),
+  Specialty!Subject_specialtyId_tenantId_fkey ( code, nameEn, nameFr ),
+  Level!Subject_levelId_tenantId_fkey ( number, labelEn ),
+  Term!Subject_semesterId_tenantId_fkey ( number ),
+  SubjectGrouping!Subject_groupingId_tenantId_fkey ( nameEn, nameFr ),
   SubjectSubBranch ( name, nameFr, coefficient, sortOrder )
 `;
 
@@ -61,6 +64,7 @@ type SubjectDetail = {
   subjectType: SubjectType;
   coefficient: number;
   hasSubBranches: boolean;
+  termId: string | null;
   deactivatedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -68,7 +72,12 @@ type SubjectDetail = {
   Level: unknown;
   Term: unknown;
   SubjectGrouping: unknown;
-  SubjectSubBranch?: { name: string; nameFr: string | null; sortOrder: number }[];
+  SubjectSubBranch?: {
+    name: string;
+    nameFr: string | null;
+    coefficient: number | null;
+    sortOrder: number;
+  }[];
 };
 
 export default function SubjectDetailPage({
@@ -80,6 +89,7 @@ export default function SubjectDetailPage({
   const [slotDialogOpen, setSlotDialogOpen] = useState(false);
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
+  const { reactivateSubject } = useSubjectMutations();
 
   const { data, isLoading, isError, error } = useSupabaseRecord<SubjectDetail>(
     'Subject',
@@ -130,6 +140,20 @@ export default function SubjectDetailPage({
                   </Link>
                 </Button>
               ) : null}
+              {canManage && !isActive ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (window.confirm(`Reactivate subject "${data.nameEn}"?`)) {
+                      reactivateSubject.mutate(id);
+                    }
+                  }}
+                >
+                  Reactivate
+                </Button>
+              ) : null}
               {canManage ? (
                 <Button
                   type="button"
@@ -149,10 +173,7 @@ export default function SubjectDetailPage({
                 title="Subject"
                 fields={[
                   { label: 'Code', value: formatRecordValue(data.code) },
-                  { label: 'Name (EN)', value: formatRecordValue(data.nameEn) },
-                  { label: 'Name (FR)', value: formatRecordValue(data.nameFr) },
-                  { label: 'Credits', value: formatRecordValue(data.credits) },
-                  { label: 'Hours', value: formatRecordValue(data.hours) },
+                  { label: 'Name', value: formatRecordValue(data.nameEn) },
                   { label: 'Type', value: subjectTypeLabel(data.subjectType) },
                   { label: 'Coefficient', value: formatRecordValue(data.coefficient) },
                   {
@@ -161,7 +182,7 @@ export default function SubjectDetailPage({
                   },
                   {
                     label: 'Sub-branches',
-                    value: formatSubBranchNames(subBranches, 10),
+                    value: formatSubBranchDisplayNames(subBranches, 10),
                   },
                   {
                     label: 'Status',
@@ -187,7 +208,7 @@ export default function SubjectDetailPage({
                 fields={[
                   { label: 'Specialty', value: specialtyLabel(specialty) },
                   { label: 'Level', value: levelLabel(level) },
-                  { label: 'Term', value: termLabel(term) },
+                  { label: 'Term', value: subjectTermScopeLabel(term, data?.termId) },
                 ]}
               />
             </div>

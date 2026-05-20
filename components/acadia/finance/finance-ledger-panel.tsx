@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
@@ -41,7 +41,8 @@ import {
   parseMoneyToMinor,
 } from '@/lib/acadia/finance';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import {
   isAcadiaTenantQueryEnabled,
@@ -56,8 +57,7 @@ export function FinanceLedgerPanel() {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const canManage = canWriteFinance(session?.roleSlug);
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
   const { createLedgerEntry } = useFinanceMutations();
 
   const form = useForm<FinanceLedgerEntryFormValues>({
@@ -74,14 +74,14 @@ export function FinanceLedgerPanel() {
   });
 
   const query = useQuery({
-    queryKey: ['finance-ledger', tenantId, academicYearId],
+    queryKey: ['finance-ledger', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
         .from('FinanceLedgerEntry')
         .select('id, entryType, category, description, amountMinor, currency, occurredOn')
         .eq('tenantId', tenantId!)
-        .eq('academicYearId', academicYearId)
+        .eq('academicYearId', activeYearId!)
         .order('occurredOn', { ascending: false });
       if (error) {
         throw error;
@@ -89,17 +89,23 @@ export function FinanceLedgerPanel() {
       return data ?? [];
     },
     enabled:
-      !!academicYearId &&
+      !!activeYearId &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
+
+  useEffect(() => {
+    if (activeYearId) {
+      form.setValue('academicYearId', activeYearId);
+    }
+  }, [activeYearId, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     await createLedgerEntry.mutateAsync({
       ...values,
-      academicYearId,
+      academicYearId: activeYearId!,
     });
     form.reset({
-      academicYearId,
+      academicYearId: activeYearId!,
       entryType: 'INCOME',
       category: '',
       description: '',
@@ -111,29 +117,9 @@ export function FinanceLedgerPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="w-56">
-        <label className="text-sm font-medium mb-1.5 block">Academic year</label>
-        <Select
-          value={academicYearId}
-          onValueChange={(value) => {
-            setAcademicYearId(value);
-            form.setValue('academicYearId', value);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select year" />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((y) => (
-              <SelectItem key={y.id} value={y.id}>
-                {y.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <CurrentAcademicYearBadge />
 
-      {canManage && academicYearId ? (
+      {canManage && activeYearId ? (
         <Form {...form}>
           <form
             onSubmit={onSubmit}
@@ -237,7 +223,7 @@ export function FinanceLedgerPanel() {
         </p>
       ) : null}
 
-      {academicYearId && query.data ? (
+      {activeYearId && query.data ? (
         <Table>
           <TableHeader>
             <TableRow>

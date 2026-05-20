@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
@@ -39,7 +39,8 @@ import {
   formatMoneyMinor,
   parseMoneyToMinor,
 } from '@/lib/acadia/finance';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import {
   isAcadiaTenantQueryEnabled,
@@ -54,8 +55,7 @@ export function FinanceBudgetPanel() {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const canManage = canWriteFinance(session?.roleSlug);
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
   const { saveBudgetLine } = useFinanceMutations();
 
   const form = useForm<FinanceBudgetLineFormValues>({
@@ -70,7 +70,7 @@ export function FinanceBudgetPanel() {
   });
 
   const query = useQuery({
-    queryKey: ['finance-budget', tenantId, academicYearId],
+    queryKey: ['finance-budget', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       const [{ data: budgetLines, error: budgetError }, { data: ledger, error: ledgerError }] =
@@ -79,12 +79,12 @@ export function FinanceBudgetPanel() {
             .from('FinanceBudgetLine')
             .select('category, budgetedMinor, currency, notes')
             .eq('tenantId', tenantId!)
-            .eq('academicYearId', academicYearId),
+            .eq('academicYearId', activeYearId!),
           supabase
             .from('FinanceLedgerEntry')
             .select('category, entryType, amountMinor')
             .eq('tenantId', tenantId!)
-            .eq('academicYearId', academicYearId),
+            .eq('academicYearId', activeYearId!),
         ]);
       if (budgetError) {
         throw budgetError;
@@ -124,42 +124,28 @@ export function FinanceBudgetPanel() {
       return rows;
     },
     enabled:
-      !!academicYearId &&
+      !!activeYearId &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
   useEffect(() => {
-    if (academicYearId) {
-      form.setValue('academicYearId', academicYearId);
+    if (activeYearId) {
+      form.setValue('academicYearId', activeYearId);
     }
-  }, [academicYearId, form]);
+  }, [activeYearId, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     await saveBudgetLine.mutateAsync({
       ...values,
-      academicYearId,
+      academicYearId: activeYearId!,
     });
   });
 
   return (
     <div className="space-y-6">
-      <div className="w-56">
-        <label className="text-sm font-medium mb-1.5 block">Academic year</label>
-        <Select value={academicYearId} onValueChange={setAcademicYearId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select year" />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((y) => (
-              <SelectItem key={y.id} value={y.id}>
-                {y.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <CurrentAcademicYearBadge />
 
-      {canManage && academicYearId ? (
+      {canManage && activeYearId ? (
         <Form {...form}>
           <form
             onSubmit={onSubmit}
@@ -240,7 +226,7 @@ export function FinanceBudgetPanel() {
         </p>
       ) : null}
 
-      {academicYearId && query.data ? (
+      {activeYearId && query.data ? (
         <Table>
           <TableHeader>
             <TableRow>

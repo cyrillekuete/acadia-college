@@ -1,16 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -24,7 +16,9 @@ import {
   computeFeeAccountTotals,
   formatMoneyMinor,
 } from '@/lib/acadia/finance';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { ActiveAcademicYearPrintHeader } from '@/components/acadia/academics/active-academic-year-print-header';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -36,14 +30,12 @@ export function FinanceAnnualReport() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId, activeYear } = useActiveAcademicYear();
 
   const query = useQuery({
-    queryKey: ['finance-annual', tenantId, academicYearId],
+    queryKey: ['finance-annual', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      const year = years.find((y) => y.id === academicYearId);
       const [
         { data: accounts, error: accountsError },
         { data: ledger, error: ledgerError },
@@ -59,17 +51,17 @@ export function FinanceAnnualReport() {
           `,
           )
           .eq('tenantId', tenantId!)
-          .eq('academicYearId', academicYearId),
+          .eq('academicYearId', activeYearId!),
         supabase
           .from('FinanceLedgerEntry')
           .select('entryType, amountMinor')
           .eq('tenantId', tenantId!)
-          .eq('academicYearId', academicYearId),
+          .eq('academicYearId', activeYearId!),
         supabase
           .from('FinanceBudgetLine')
           .select('budgetedMinor')
           .eq('tenantId', tenantId!)
-          .eq('academicYearId', academicYearId),
+          .eq('academicYearId', activeYearId!),
       ]);
       if (accountsError) {
         throw accountsError;
@@ -112,7 +104,7 @@ export function FinanceAnnualReport() {
       );
 
       return {
-        yearLabel: year?.label ?? academicYearId,
+        yearLabel: activeYear?.label ?? activeYearId!,
         summary,
         totalBudgeted,
         ledgerCount: ledger?.length ?? 0,
@@ -120,29 +112,16 @@ export function FinanceAnnualReport() {
       };
     },
     enabled:
-      !!academicYearId &&
+      !!activeYearId &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
   return (
     <div className="space-y-6">
+      <ActiveAcademicYearPrintHeader />
       <div className="flex flex-wrap items-end gap-3 print:hidden">
-        <div className="w-56">
-          <label className="text-sm font-medium mb-1.5 block">Academic year</label>
-          <Select value={academicYearId} onValueChange={setAcademicYearId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {academicYearId ? (
+        <CurrentAcademicYearBadge />
+        {activeYearId ? (
           <Button size="sm" onClick={() => window.print()}>
             Print statement
           </Button>

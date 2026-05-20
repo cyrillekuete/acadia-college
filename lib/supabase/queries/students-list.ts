@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DummyStudent, StudentEnrollmentStatus } from '@/lib/acadia/dummy-students';
+import { unwrapRelation } from '@/lib/acadia/record-display';
 
-const STUDENTS_LIST_SELECT =
+const LEGACY_STUDENTS_SELECT =
   'id, student_id, first_name, last_name, email, class_name, subsystem, branch, enrollment_status, enrollment_date, matricule_number, total_fees, paid_fees, fees_status, status';
 
 type StudentsListRow = {
@@ -26,13 +27,16 @@ function normalizeEnrollmentStatus(
   value: string | null | undefined,
 ): StudentEnrollmentStatus {
   const normalized = (value ?? 'pending').toLowerCase();
-  if (normalized === 'active' || normalized === 'pending' || normalized === 'inactive') {
-    return normalized;
+  if (normalized === 'active' || normalized === 'enrolled') {
+    return 'active';
   }
-  return 'pending';
+  if (normalized === 'pending') {
+    return 'pending';
+  }
+  return 'inactive';
 }
 
-function mapRow(row: StudentsListRow): DummyStudent {
+function mapLegacyRow(row: StudentsListRow): DummyStudent {
   const enrollmentStatus = normalizeEnrollmentStatus(row.enrollment_status);
   const enrollmentDate = row.enrollment_date
     ? new Date(row.enrollment_date).toISOString()
@@ -59,13 +63,139 @@ function mapRow(row: StudentsListRow): DummyStudent {
   };
 }
 
+function splitName(fullName: string | null | undefined): {
+  first: string;
+  last: string;
+} {
+  const trimmed = (fullName ?? '').trim();
+  if (!trimmed) {
+    return { first: 'Student', last: '' };
+  }
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) {
+    return { first: parts[0]!, last: '' };
+  }
+  return { first: parts[0]!, last: parts.slice(1).join(' ') };
+}
+
+async function fetchStudentsFromEnrollments(
+  supabase: SupabaseClient,
+  tenantId: string,
+  academicYearId: string,
+): Promise<DummyStudent[]> {
+  const { data, error } = await supabase
+    .from('StudentEnrollment')
+    .select(
+      `
+      id,
+      status,
+      createdAt,
+      StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
+        id,
+        registrationNumber,
+        isActive,
+        User!StudentProfile_userId_tenantId_fkey ( name, email ),
+        Specialty!StudentProfile_specialtyId_tenantId_fkey ( subSystem, branch )
+      ),
+      Class!StudentEnrollment_classId_tenantId_fkey ( name )
+    `,
+    )
+    .eq('tenantId', tenantId)
+    .eq('academicYearId', academicYearId)
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  const feeByProfile = new Map<string, { total: number; paid: number; status: string | null }>();
+  const profileIds = (data ?? [])
+    .map((row) => {
+      const profile = unwrapRelation<{ id?: string }>(row.StudentProfile);
+      return profile?.id ?? null;
+    })
+    .filter((id): id is string => !!id);
+
+  if (profileIds.length > 0) {
+    const { data: feeAccounts } = await supabase
+      .from('StudentFeeAccount')
+      .select('studentProfileId, totalAmountMinor, StudentFeeInstallment ( amountMinor, status, paidAmountMinor )')
+      .eq('tenantId', tenantId)
+      .eq('academicYearId', academicYearId)
+      .in('studentProfileId', profileIds);
+
+    for (const account of feeAccounts ?? []) {
+      const profileId = account.studentProfileId as string;
+      const installments = (account.StudentFeeInstallment ?? []) as Array<{
+        amountMinor: number;
+        status: string;
+        paidAmountMinor: number | null;
+      }>;
+      const paid = installments.reduce(
+        (sum, row) => sum + Number(row.paidAmountMinor ?? 0),
+        0,
+      );
+      const total = Number(account.totalAmountMinor ?? 0);
+      feeByProfile.set(profileId, {
+        total,
+        paid,
+        status: paid >= total && total > 0 ? 'paid' : paid > 0 ? 'partial' : 'outstanding',
+      });
+    }
+  }
+
+  return (data ?? []).map((row) => {
+    const profile = unwrapRelation<{
+      id: string;
+      registrationNumber: string;
+      isActive: boolean;
+      User?: unknown;
+      Specialty?: unknown;
+    }>(row.StudentProfile);
+    const user = unwrapRelation<{ name?: string; email?: string }>(profile?.User);
+    const specialty = unwrapRelation<{ subSystem?: string; branch?: string }>(
+      profile?.Specialty,
+    );
+    const classRow = unwrapRelation<{ name?: string }>(row.Class);
+    const { first, last } = splitName(user?.name);
+    const enrollmentStatus =
+      row.status === 'ENROLLED' ? 'active' : ('inactive' as StudentEnrollmentStatus);
+    const fees = profile?.id ? feeByProfile.get(profile.id) : undefined;
+
+    return {
+      id: profile?.id ?? (row.id as string),
+      student_id: profile?.id ?? (row.id as string),
+      first_name: first,
+      last_name: last,
+      email: user?.email ?? '',
+      avatar: null,
+      class_name: classRow?.name ?? '—',
+      subsystem: specialty?.subSystem ?? null,
+      branch: specialty?.branch ?? null,
+      matricule_number: profile?.registrationNumber ?? null,
+      enrollment_status: enrollmentStatus,
+      status: profile?.isActive === false ? 'inactive' : 'active',
+      enrollment_date: new Date(row.createdAt as string).toISOString(),
+      email_verified: false,
+      total_fees: fees?.total ?? 0,
+      paid_fees: fees?.paid ?? 0,
+      fees_status: fees?.status ?? null,
+    } satisfies DummyStudent;
+  });
+}
+
 export async function fetchStudentsList(
   supabase: SupabaseClient,
   tenantId: string,
+  academicYearId?: string | null,
 ): Promise<DummyStudent[]> {
+  if (academicYearId) {
+    return fetchStudentsFromEnrollments(supabase, tenantId, academicYearId);
+  }
+
   const { data, error } = await supabase
     .from('students')
-    .select(STUDENTS_LIST_SELECT)
+    .select(LEGACY_STUDENTS_SELECT)
     .eq('tenant_id', tenantId)
     .order('enrollment_date', { ascending: false });
 
@@ -73,5 +203,5 @@ export async function fetchStudentsList(
     throw error;
   }
 
-  return (data ?? []).map((row) => mapRow(row as StudentsListRow));
+  return (data ?? []).map((row) => mapLegacyRow(row as StudentsListRow));
 }

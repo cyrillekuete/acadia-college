@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import { fetchCurrentAcademicYear } from '@/lib/supabase/queries/academic-year';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -29,6 +30,28 @@ export type LevelOption = {
   labelEn: string | null;
   labelFr: string | null;
 };
+
+export function useCurrentAcademicYearOption() {
+  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
+
+  return useQuery({
+    queryKey: ['current-academic-year', tenantId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const year = await fetchCurrentAcademicYear(supabase, tenantId!);
+      if (!year) {
+        return null;
+      }
+      return {
+        id: year.id,
+        label: year.label,
+        isCurrent: year.isCurrent,
+      } satisfies AcademicYearOption;
+    },
+    enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
+  });
+}
 
 export function useAcademicYearOptions() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();

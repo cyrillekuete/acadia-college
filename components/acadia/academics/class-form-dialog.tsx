@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogBody,
@@ -22,6 +24,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -42,13 +46,16 @@ import {
   classFormSchema,
   type ClassFormValues,
 } from '@/lib/acadia/structure-schemas';
+import { fetchClassSubjectIds } from '@/lib/supabase/queries/class-subjects';
+import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
 import { useLevelOptions } from '@/hooks/use-academic-calendar-options';
-import {
-  useSpecialtyOptions,
-} from '@/hooks/use-enrollment-catalog-options';
+import { useSpecialtyOptions } from '@/hooks/use-enrollment-catalog-options';
 import { useStaffOptions } from '@/hooks/use-subject-catalog-options';
+import { useSubjectsForClass } from '@/hooks/use-subjects-for-class';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 
 type ClassRow = {
   id: string;
@@ -73,8 +80,11 @@ export function ClassFormDialog({
   defaultFilters?: CatalogFilters;
 }) {
   const { createClass, updateClass } = useAcademicStructureMutations();
+  const { data: session } = useAcadiaCollegeSession();
+  const { activeYearId } = useActiveAcademicYear();
   const isEdit = !!record;
   const pending = createClass.isPending || updateClass.isPending;
+  const tenantId = session?.tenantId ?? null;
 
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classFormSchema),
@@ -86,42 +96,67 @@ export function ClassFormDialog({
       specialtyId: '',
       staffProfileId: '',
       status: 'ACTIVE',
+      subjectIds: [],
     },
   });
 
   const subSystem = form.watch('subSystem');
   const branch = form.watch('branch');
+  const levelId = form.watch('levelId');
+  const specialtyId = form.watch('specialtyId');
+  const subjectIds = form.watch('subjectIds');
 
   const { data: levels = [] } = useLevelOptions({ subSystem, branch });
   const { data: specialties = [] } = useSpecialtyOptions(subSystem, branch);
-  const { data: staff = [] } = useStaffOptions();
+  const { data: staff = [] } = useStaffOptions({ enabled: open });
+  const { data: availableSubjects = [], isLoading: subjectsLoading } = useSubjectsForClass({
+    levelId,
+    specialtyId: specialtyId || undefined,
+    subSystem,
+    branch,
+    academicYearId: activeYearId,
+  });
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    if (record) {
-      form.reset({
-        name: record.name,
-        levelId: record.levelId,
-        subSystem: record.subSystem,
-        branch: record.branch,
-        specialtyId: record.specialtyId ?? '',
-        staffProfileId: record.staffProfileId ?? '',
-        status: record.status,
-      });
-    } else {
-      form.reset({
-        name: '',
-        levelId: '',
-        subSystem: defaultFilters?.subSystem ?? 'ENGLISH',
-        branch: defaultFilters?.branch ?? 'GRAMMAR',
-        specialtyId: '',
-        staffProfileId: '',
-        status: 'ACTIVE',
-      });
+
+    async function resetForm() {
+      if (record && tenantId) {
+        const supabase = requireBrowserClient();
+        let assignedSubjectIds: string[] = [];
+        try {
+          assignedSubjectIds = await fetchClassSubjectIds(supabase, tenantId, record.id);
+        } catch {
+          assignedSubjectIds = [];
+        }
+        form.reset({
+          name: record.name,
+          levelId: record.levelId,
+          subSystem: record.subSystem,
+          branch: record.branch,
+          specialtyId: record.specialtyId ?? '',
+          staffProfileId: record.staffProfileId ?? '',
+          status: record.status,
+          subjectIds: assignedSubjectIds,
+        });
+      } else {
+        form.reset({
+          name: '',
+          levelId: '',
+          subSystem: defaultFilters?.subSystem ?? 'ENGLISH',
+          branch: defaultFilters?.branch ?? 'GRAMMAR',
+          specialtyId: '',
+          staffProfileId: '',
+          status: 'ACTIVE',
+          subjectIds: [],
+        });
+      }
     }
-  }, [open, record, defaultFilters, form]);
+
+    void resetForm();
+  }, [open, record, defaultFilters, form, tenantId]);
 
   useEffect(() => {
     const currentLevel = form.getValues('levelId');
@@ -130,18 +165,46 @@ export function ClassFormDialog({
     }
   }, [subSystem, branch, levels, form]);
 
-  const onSubmit = form.handleSubmit(async (values) => {
-    if (isEdit && record) {
-      await updateClass.mutateAsync({ id: record.id, values });
-    } else {
-      await createClass.mutateAsync(values);
+  useEffect(() => {
+    const validIds = new Set(availableSubjects.map((s) => s.id));
+    const current = form.getValues('subjectIds') ?? [];
+    const next = current.filter((id) => validIds.has(id));
+    if (next.length !== current.length) {
+      form.setValue('subjectIds', next);
     }
-    onOpenChange(false);
+  }, [levelId, specialtyId, availableSubjects, form]);
+
+  const toggleSubject = (subjectId: string, checked: boolean) => {
+    const current = form.getValues('subjectIds') ?? [];
+    if (checked) {
+      if (!current.includes(subjectId)) {
+        form.setValue('subjectIds', [...current, subjectId], { shouldDirty: true });
+      }
+      return;
+    }
+    form.setValue(
+      'subjectIds',
+      current.filter((id) => id !== subjectId),
+      { shouldDirty: true },
+    );
+  };
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    try {
+      if (isEdit && record) {
+        await updateClass.mutateAsync({ id: record.id, values });
+      } else {
+        await createClass.mutateAsync(values);
+      }
+      onOpenChange(false);
+    } catch {
+      // Toast is shown by mutation onError; keep dialog open for correction.
+    }
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit class' : 'New class'}</DialogTitle>
         </DialogHeader>
@@ -263,6 +326,82 @@ export function ClassFormDialog({
               />
               <FormField
                 control={form.control}
+                name="subjectIds"
+                render={() => (
+                  <FormItem>
+                    <div className="flex items-center justify-between gap-2">
+                      <FormLabel>Subjects</FormLabel>
+                      {availableSubjects.length > 0 ? (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto px-2 py-1 text-xs"
+                            onClick={() =>
+                              form.setValue(
+                                'subjectIds',
+                                availableSubjects.map((s) => s.id),
+                                { shouldDirty: true },
+                              )
+                            }
+                          >
+                            Select all
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto px-2 py-1 text-xs"
+                            onClick={() => form.setValue('subjectIds', [], { shouldDirty: true })}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                    {!levelId ? (
+                      <p className="text-sm text-muted-foreground">
+                        Select a level to see subjects.
+                      </p>
+                    ) : subjectsLoading ? (
+                      <p className="text-sm text-muted-foreground">Loading subjects…</p>
+                    ) : availableSubjects.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No subjects found for this level and stream.
+                      </p>
+                    ) : (
+                      <ScrollArea className="h-40 rounded-md border p-3">
+                        <div className="space-y-2">
+                          {availableSubjects.map((subject) => {
+                            const checked = (subjectIds ?? []).includes(subject.id);
+                            return (
+                              <div key={subject.id} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`class-subject-${subject.id}`}
+                                  checked={checked}
+                                  onCheckedChange={(value) =>
+                                    toggleSubject(subject.id, value === true)
+                                  }
+                                />
+                                <Label
+                                  htmlFor={`class-subject-${subject.id}`}
+                                  className="cursor-pointer text-sm font-normal"
+                                >
+                                  {subject.code} — {subject.nameEn}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="staffProfileId"
                 render={({ field }) => (
                   <FormItem>
@@ -321,6 +460,16 @@ export function ClassFormDialog({
                 )}
               />
             </DialogBody>
+            {isEdit && record && activeYearId ? (
+              <p className="px-6 pb-2 text-sm text-muted-foreground">
+                <Link
+                  href={`/academics/promotion?year=${activeYearId}&class=${record.id}`}
+                  className="text-primary hover:underline"
+                >
+                  Configure promotion policy for this class
+                </Link>
+              </p>
+            ) : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel

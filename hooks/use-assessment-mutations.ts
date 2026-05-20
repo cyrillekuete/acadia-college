@@ -15,13 +15,25 @@ import type {
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import { useAcademicYearWriteGuard } from '@/hooks/use-academic-year-write-guard';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import {
+  ensureAcademicYearWriteAllowed,
+  isWriteCancelledError,
+} from '@/lib/acadia/mutation-write-guard';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
   return 'Operation failed.';
+}
+
+function handleMutationError(error: unknown) {
+  if (isWriteCancelledError(error)) {
+    return;
+  }
+  toast.error(mutationErrorMessage(error));
 }
 
 function invalidateAssessmentQueries(
@@ -41,11 +53,13 @@ export function useAssessmentMutations() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { data: session } = useAcadiaCollegeSession();
+  const { confirmWrite } = useAcademicYearWriteGuard();
   const tenantId = session?.tenantId ?? null;
   const actorUserId = session?.authUser?.id ?? null;
 
   const createExamSession = useMutation({
     mutationFn: async (values: ExamSessionFormValues) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
@@ -79,7 +93,7 @@ export function useAssessmentMutations() {
       toast.success('Exam session created.');
       router.push(`/exams/${id}`);
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: handleMutationError,
   });
 
   const updateExamSession = useMutation({
@@ -90,6 +104,7 @@ export function useAssessmentMutations() {
       id: string;
       values: ExamSessionFormValues;
     }) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
@@ -115,11 +130,12 @@ export function useAssessmentMutations() {
       invalidateAssessmentQueries(queryClient);
       toast.success('Exam session updated.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: handleMutationError,
   });
 
   const finalizeExamSession = useMutation({
     mutationFn: async (examSessionId: string) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
@@ -146,11 +162,12 @@ export function useAssessmentMutations() {
       invalidateAssessmentQueries(queryClient);
       toast.success('Exam session finalized.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: handleMutationError,
   });
 
   const saveMarksEntry = useMutation({
     mutationFn: async (input: MarksEntryContextValues) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId || !actorUserId) {
         throw new Error('Tenant and user context are required.');
       }
@@ -232,7 +249,7 @@ export function useAssessmentMutations() {
       invalidateAssessmentQueries(queryClient);
       toast.success('Marks saved.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: handleMutationError,
   });
 
   const ensureSequenceExamSession = useMutation({
@@ -242,6 +259,7 @@ export function useAssessmentMutations() {
       termId: string;
       sequenceId: string;
     }) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
@@ -285,7 +303,7 @@ export function useAssessmentMutations() {
       }
       return id;
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: handleMutationError,
   });
 
   return {

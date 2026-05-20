@@ -33,11 +33,14 @@ import {
   enrollmentApplicationSchema,
   type EnrollmentApplicationFormValues,
 } from '@/lib/acadia/enrollment-schemas';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   useLevelsForSpecialty,
   useSpecialtyOptions,
+  useStudentProfileOptions,
 } from '@/hooks/use-enrollment-catalog-options';
+import { unwrapRelation } from '@/lib/acadia/record-display';
 import { useEnrollmentMutations } from '@/hooks/use-enrollment-mutations';
 
 export type EnrollmentApplicationRecord = {
@@ -69,7 +72,7 @@ export function EnrollmentApplicationForm({
 }) {
   const isEdit = !!record;
   const { createApplication, updateApplication } = useEnrollmentMutations();
-  const { data: years = [], isLoading: yearsLoading } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
 
   const form = useForm<EnrollmentApplicationFormValues>({
     resolver: zodResolver(enrollmentApplicationSchema),
@@ -92,9 +95,11 @@ export function EnrollmentApplicationForm({
     },
   });
 
+  const applicationKind = form.watch('kind');
   const subSystem = form.watch('subSystem');
   const branch = form.watch('branch');
   const specialtyId = form.watch('specialtyId');
+  const { data: studentProfiles = [] } = useStudentProfileOptions();
 
   const { data: specialties = [], isLoading: specialtiesLoading } =
     useSpecialtyOptions(subSystem, branch);
@@ -140,6 +145,12 @@ export function EnrollmentApplicationForm({
       form.setValue('levelId', '');
     }
   }, [specialtyId, levels, form]);
+
+  useEffect(() => {
+    if (!record && activeYearId) {
+      form.setValue('academicYearId', activeYearId);
+    }
+  }, [record, activeYearId, form]);
 
   const pending =
     createApplication.isPending || updateApplication.isPending;
@@ -207,6 +218,45 @@ export function EnrollmentApplicationForm({
             )}
           />
         </div>
+
+        {applicationKind === 'RE_ENROLL' ? (
+          <FormField
+            control={form.control}
+            name="studentProfileId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Existing student</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select student profile" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {studentProfiles.map((row) => {
+                      const user = unwrapRelation<{ name?: string; email?: string }>(
+                        row.User,
+                      );
+                      const label =
+                        user?.name ||
+                        user?.email ||
+                        (row.registrationNumber as string);
+                      return (
+                        <SelectItem
+                          key={row.id as string}
+                          value={row.id as string}
+                        >
+                          {label} ({row.registrationNumber as string})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
@@ -371,25 +421,10 @@ export function EnrollmentApplicationForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Academic year</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={yearsLoading}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select year" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year.id} value={year.id}>
-                        {year.label}
-                        {year.isCurrent ? ' (current)' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CurrentAcademicYearBadge className="mb-2" />
+                <FormControl>
+                  <Input type="hidden" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

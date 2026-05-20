@@ -16,6 +16,7 @@ function mutationErrorMessage(error: unknown): string {
 
 function invalidateGroupingQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ['subject-grouping-options'] });
+  void queryClient.invalidateQueries({ queryKey: ['subject-grouping-list'] });
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-list'] });
 }

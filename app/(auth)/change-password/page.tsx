@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getRecoveryErrorMessage } from '@/lib/auth/auth-callback-errors';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, Eye, EyeOff } from '@/lib/icons';
 import { useForm } from 'react-hook-form';
@@ -27,6 +28,7 @@ import {
 
 export default function Page() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [checkingSession, setCheckingSession] = useState(true);
   const [hasRecoverySession, setHasRecoverySession] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +47,26 @@ export default function Page() {
   });
 
   useEffect(() => {
+    const recoveryError = searchParams.get('error');
+    if (recoveryError) {
+      const message = getRecoveryErrorMessage(recoveryError);
+      if (message) {
+        setError(message);
+        setHasRecoverySession(false);
+        setCheckingSession(false);
+        return;
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function checkSession() {
+      const recoveryError = searchParams.get('error');
+      if (recoveryError && getRecoveryErrorMessage(recoveryError)) {
+        return;
+      }
       const supabase = createClientOrNull();
       if (!supabase) {
         if (!cancelled) {
@@ -81,7 +100,7 @@ export default function Page() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchParams]);
 
   async function onSubmit(values: ChangePasswordSchemaType) {
     setIsProcessing(true);
@@ -109,7 +128,9 @@ export default function Page() {
       }
 
       await supabase.auth.signOut();
-      setSuccessMessage('Password updated. Redirecting to sign in…');
+      setSuccessMessage(
+        'Password updated. Redirecting to sign in… If your account is not active yet, contact an administrator before signing in.',
+      );
       setTimeout(() => router.push('/signin'), 2000);
     } catch {
       setError('An error occurred while resetting the password.');

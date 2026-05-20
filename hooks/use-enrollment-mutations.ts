@@ -10,6 +10,7 @@ import {
 import type { EnrollmentApplicationFormValues } from '@/lib/acadia/enrollment-schemas';
 import type { ReviewApplicationInput } from '@/lib/acadia/enrollment-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { checkRegistryStudentEmail } from '@/lib/acadia/registry-lookups';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -47,6 +48,15 @@ export function useEnrollmentMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      const emailCheck = await checkRegistryStudentEmail(
+        supabase,
+        tenantId,
+        values.email,
+      );
+      if (!emailCheck.ok) {
+        throw new Error(emailCheck.message);
+      }
+
       const id = generateAcadiaId('app');
       const now = new Date().toISOString();
       const row = buildEnrollmentApplicationRow(tenantId, id, values, now);
@@ -137,14 +147,23 @@ export function useEnrollmentMutations() {
           body: JSON.stringify(input),
         },
       );
-      const payload = (await response.json()) as { message?: string };
+      const payload = (await response.json()) as {
+        message?: string;
+        candidateClassIds?: string[];
+      };
       if (!response.ok) {
-        throw new Error(payload.message ?? 'Review failed.');
+        const err = new Error(payload.message ?? 'Review failed.') as Error & {
+          payload?: typeof payload;
+        };
+        err.payload = payload;
+        throw err;
       }
       return payload;
     },
     onSuccess: (_data, variables) => {
       invalidateEnrollmentQueries(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      void queryClient.invalidateQueries({ queryKey: ['student-detail'] });
       if (variables.input.decision === 'approve') {
         toast.success('Application approved and enrollment created.');
       } else {

@@ -1,12 +1,15 @@
 'use client';
 
+import { useEffect, type ComponentProps } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,21 +27,139 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { generateRegistrationNumber } from '@/lib/acadia/enrollment';
 import { studentCreateSchema, type StudentCreateInput, type StudentCreateFormValues } from '@/lib/acadia/student-create-schemas';
 import { useStudentCreateMutation } from '@/hooks/use-student-create-mutation';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import {
+  useClassesForFilters,
+  useLevelsForSpecialty,
+  useSpecialtyOptions,
+} from '@/hooks/use-enrollment-catalog-options';
+import { levelDisplayLabel } from '@/lib/acadia/education-system';
+import { toAcademicBranch, toAcademicSubSystem } from '@/lib/acadia/catalog-maps';
+import { CityAutocomplete } from '@/components/acadia/location/city-autocomplete';
+import { CountryCombobox } from '@/components/acadia/location/country-combobox';
+import { RegionSelect } from '@/components/acadia/location/region-select';
+import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
+import { isCityValidForLocation } from '@/lib/acadia/locations';
+
+const SECTION_GRID =
+  'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-center';
+
+const FIELD_ITEM =
+  'flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-4';
+
+const FIELD_LABEL =
+  'sm:mb-0 sm:w-36 sm:max-w-[9rem] shrink-0 sm:text-end';
+
+const FIELD_CONTROL =
+  'flex min-w-0 flex-1 flex-col justify-center gap-1.5';
+
+function StudentFieldItem({
+  className,
+  ...props
+}: ComponentProps<typeof FormItem>) {
+  return <FormItem className={cn(FIELD_ITEM, className)} {...props} />;
+}
+
+function StudentFieldLabel({
+  className,
+  ...props
+}: ComponentProps<typeof FormLabel>) {
+  return <FormLabel className={cn(FIELD_LABEL, className)} {...props} />;
+}
+
+function StudentFieldControl({
+  className,
+  ...props
+}: ComponentProps<'div'>) {
+  return <div className={cn(FIELD_CONTROL, className)} {...props} />;
+}
 
 export function StudentCreateForm() {
   const router = useRouter();
   const mutation = useStudentCreateMutation();
+  const { activeYear, activeYearId } = useActiveAcademicYear();
 
   const form = useForm<StudentCreateFormValues, unknown, StudentCreateInput>({
     resolver: zodResolver(studentCreateSchema),
     defaultValues: {
       is_new_student: true,
       nationality: 'Cameroonian',
+      country: DEFAULT_COUNTRY_NAME,
       parent_relationship: 'father',
+      academic_year: '',
+      academic_year_id: '',
+      specialty_id: '',
+      level_id: '',
+      class_id: '',
     },
   });
+
+  const watchedSubsystem = form.watch('subsystem');
+  const watchedBranch = form.watch('branch');
+  const watchedSpecialtyId = form.watch('specialty_id');
+  const catalogSubSystem = toAcademicSubSystem(watchedSubsystem);
+  const catalogBranch = toAcademicBranch(watchedBranch);
+
+  const { data: specialties = [] } = useSpecialtyOptions(
+    catalogSubSystem,
+    catalogBranch,
+  );
+  const { data: levels = [] } = useLevelsForSpecialty(
+    watchedSpecialtyId,
+    catalogSubSystem,
+    catalogBranch,
+  );
+  const { data: classOptions = [] } = useClassesForFilters({
+    subSystem: catalogSubSystem,
+    branch: catalogBranch,
+    specialtyId: watchedSpecialtyId || null,
+    levelId: form.watch('level_id') || null,
+  });
+
+  useEffect(() => {
+    if (activeYear?.label) {
+      form.setValue('academic_year', activeYear.label, { shouldDirty: false });
+    }
+    if (activeYearId) {
+      form.setValue('academic_year_id', activeYearId, { shouldDirty: false });
+    }
+  }, [activeYear?.label, activeYearId, form]);
+
+  useEffect(() => {
+    const current = form.getValues('specialty_id');
+    if (current && !specialties.some((s) => s.id === current)) {
+      form.setValue('specialty_id', '');
+      form.setValue('level_id', '');
+      form.setValue('class_id', '');
+    }
+  }, [catalogSubSystem, catalogBranch, specialties, form]);
+
+  useEffect(() => {
+    const current = form.getValues('level_id');
+    if (current && !levels.some((l) => l.id === current)) {
+      form.setValue('level_id', '');
+      form.setValue('class_id', '');
+    }
+  }, [watchedSpecialtyId, levels, form]);
+
+  const watchedAcademicYear = form.watch('academic_year');
+
+  useEffect(() => {
+    const yearLabel = watchedAcademicYear?.trim() || activeYear?.label;
+    if (!yearLabel?.trim()) {
+      return;
+    }
+    const currentMatricule = form.getValues('matricule_number')?.trim();
+    if (!currentMatricule) {
+      form.setValue('matricule_number', generateRegistrationNumber(yearLabel), {
+        shouldDirty: false,
+        shouldValidate: true,
+      });
+    }
+  }, [watchedAcademicYear, activeYear?.label, form]);
 
   async function onSubmit(values: StudentCreateInput) {
     const result = await mutation.mutateAsync(values).catch((err: Error) => {
@@ -51,7 +172,7 @@ export function StudentCreateForm() {
     toast.success(
       `Student ${result.studentId} created. Password-setup emails sent${result.newParentAuthCreated ? ' to student and parent' : ' to student'}.`,
     );
-    router.push(`/students/${result.studentUuid}`);
+    router.push(`/students/${result.studentProfileId}`);
   }
 
   return (
@@ -63,78 +184,95 @@ export function StudentCreateForm() {
           <CardHeader>
             <CardTitle>Identity</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CardContent className={SECTION_GRID}>
             <FormField control={form.control} name="first_name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>First name <span className="text-destructive">*</span></FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>First name <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="last_name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last name <span className="text-destructive">*</span></FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Last name <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="middle_name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Middle name</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Middle name</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="date_of_birth" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Date of birth</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Date of birth</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" type="date" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="gender" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Gender</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Gender</StudentFieldLabel>
+                <StudentFieldControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="place_of_birth" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Place of birth</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Place of birth</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="nationality" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nationality</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Nationality</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="religion" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Religion</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Religion</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
           </CardContent>
         </Card>
@@ -144,45 +282,99 @@ export function StudentCreateForm() {
           <CardHeader>
             <CardTitle>Contact information</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CardContent className={SECTION_GRID}>
             <FormField control={form.control} name="email" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
-                <FormControl><Input type="email" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Email <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="phone" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl><Input type="tel" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Phone</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" type="tel" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="address" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Address</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Address</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
-            <FormField control={form.control} name="city" render={({ field }) => (
-              <FormItem>
-                <FormLabel>City</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+            <FormField control={form.control} name="country" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>Country</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <CountryCombobox
+                      className="w-full"
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('region', '', { shouldDirty: true });
+                        form.setValue('city', '', { shouldDirty: true });
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="region" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Region</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Region</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <RegionSelect
+                      className="w-full"
+                      country={form.watch('country')}
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        const country = form.getValues('country');
+                        const city = form.getValues('city');
+                        if (
+                          city &&
+                          !isCityValidForLocation(country ?? '', value, city)
+                        ) {
+                          form.setValue('city', '', { shouldDirty: true });
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
+
+            <FormField control={form.control} name="city" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>City</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <CityAutocomplete
+                      country={form.watch('country')}
+                      region={form.watch('region')}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
           </CardContent>
         </Card>
@@ -192,100 +384,211 @@ export function StudentCreateForm() {
           <CardHeader>
             <CardTitle>Academic information</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CardContent className={SECTION_GRID}>
             <FormField control={form.control} name="subsystem" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Subsystem</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Select subsystem" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="english">English</SelectItem>
-                    <SelectItem value="french">French</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Subsystem</StudentFieldLabel>
+                <StudentFieldControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select subsystem" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="french">French</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="branch" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Branch</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="grammar">Grammar</SelectItem>
-                    <SelectItem value="technical">Technical</SelectItem>
-                    <SelectItem value="commercial">Commercial</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Branch</StudentFieldLabel>
+                <StudentFieldControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select branch" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="grammar">Grammar</SelectItem>
+                      <SelectItem value="technical">Technical</SelectItem>
+                      <SelectItem value="commercial">Commercial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="academic_year" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Academic year</FormLabel>
-                <FormControl><Input placeholder="e.g. 2025-2026" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Academic year</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <Input className="w-full" {...field} disabled readOnly />
+                  </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
-            <FormField control={form.control} name="class_name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Class</FormLabel>
-                <FormControl><Input placeholder="e.g. Form 3A" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+            <FormField control={form.control} name="specialty_id" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>Specialty <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!catalogSubSystem || !catalogBranch}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select specialty" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {specialties.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nameEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
+
+            <FormField control={form.control} name="level_id" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>Level <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!watchedSpecialtyId}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {levels.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {levelDisplayLabel(l)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
+
+            <FormField control={form.control} name="class_id" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>Class</StudentFieldLabel>
+                <StudentFieldControl>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value === '__none__' ? '' : value);
+                      const selected = classOptions.find((c) => c.id === value);
+                      if (selected?.name) {
+                        form.setValue('class_name', String(selected.name));
+                      }
+                    }}
+                    value={field.value || '__none__'}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select class (optional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">Auto-assign if unique</SelectItem>
+                      {classOptions.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="previous_school" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Previous school</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Previous school</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="previous_class" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Previous class</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Previous class</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="enrollment_date" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Enrolment date</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Enrolment date</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" type="date" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="matricule_number" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Matricule (optional override)</FormLabel>
-                <FormControl><Input placeholder="Auto-generated if blank" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Matricule</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <Input
+                      className="w-full"
+                      placeholder="Auto-generated from academic year"
+                      {...field}
+                      value={field.value ?? ''}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Generated automatically; edit to override.
+                  </FormDescription>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField
               control={form.control}
               name="is_new_student"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-2">
+                <FormItem className="flex flex-row items-center gap-3 space-y-0 sm:col-span-2 lg:col-span-3">
                   <FormControl>
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormLabel className="font-normal">New student (first enrolment)</FormLabel>
+                  <FormLabel className="font-normal leading-none">
+                    New student (first enrolment)
+                  </FormLabel>
                 </FormItem>
               )}
             />
@@ -297,63 +600,80 @@ export function StudentCreateForm() {
           <CardHeader>
             <CardTitle>Parent / Guardian</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CardContent className={SECTION_GRID}>
             <FormField control={form.control} name="parent_name" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full name <span className="text-destructive">*</span></FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Full name <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="parent_email" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
-                <FormControl><Input type="email" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Email</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
+                  <FormDescription>
+                    Optional — used for portal login if provided.
+                  </FormDescription>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="parent_phone" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl><Input type="tel" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Phone <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" type="tel" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="parent_relationship" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Relationship <span className="text-destructive">*</span></FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="father">Father</SelectItem>
-                    <SelectItem value="mother">Mother</SelectItem>
-                    <SelectItem value="guardian">Guardian</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Relationship <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select relationship" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="father">Father</SelectItem>
+                      <SelectItem value="mother">Mother</SelectItem>
+                      <SelectItem value="guardian">Guardian</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="parent_occupation" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Occupation</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Occupation</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
 
             <FormField control={form.control} name="parent_address" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Address</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+              <StudentFieldItem>
+                <StudentFieldLabel>Address</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
             )} />
           </CardContent>
         </Card>
@@ -364,57 +684,69 @@ export function StudentCreateForm() {
             <CardTitle>Emergency contact &amp; medical (optional)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={SECTION_GRID}>
               <FormField control={form.control} name="emergency_contact_name" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Emergency contact name</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
+                <StudentFieldItem>
+                  <StudentFieldLabel>Emergency contact name</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" {...field} /></FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
               )} />
 
               <FormField control={form.control} name="emergency_contact_phone" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Emergency contact phone</FormLabel>
-                  <FormControl><Input type="tel" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
+                <StudentFieldItem>
+                  <StudentFieldLabel>Emergency contact phone</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" type="tel" {...field} /></FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
               )} />
 
               <FormField control={form.control} name="emergency_contact_relationship" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Emergency contact relationship</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
+                <StudentFieldItem>
+                  <StudentFieldLabel>Emergency contact relationship</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" {...field} /></FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
               )} />
             </div>
 
             <Separator />
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={SECTION_GRID}>
               <FormField control={form.control} name="blood_group" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Blood group</FormLabel>
-                  <FormControl><Input placeholder="e.g. O+" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
+                <StudentFieldItem>
+                  <StudentFieldLabel>Blood group</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" placeholder="e.g. O+" {...field} /></FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
               )} />
 
               <FormField control={form.control} name="allergies" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Allergies</FormLabel>
-                  <FormControl><Input placeholder="List any known allergies" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
+                <StudentFieldItem className="sm:col-span-2">
+                  <StudentFieldLabel>Allergies</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" placeholder="List any known allergies" {...field} /></FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
               )} />
 
               <FormField control={form.control} name="medical_conditions" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                  <FormLabel>Medical conditions</FormLabel>
-                  <FormControl><Input placeholder="List any known conditions" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
+                <StudentFieldItem className="sm:col-span-2">
+                  <StudentFieldLabel>Medical conditions</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" placeholder="List any known conditions" {...field} /></FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
               )} />
             </div>
           </CardContent>

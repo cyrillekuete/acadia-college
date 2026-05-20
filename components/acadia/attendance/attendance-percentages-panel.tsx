@@ -22,7 +22,8 @@ import {
   summarizeStudentAttendance,
   type AttendanceStatus,
 } from '@/lib/acadia/attendance';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import {
   useAcadiaCollegeSession,
@@ -38,20 +39,19 @@ export function AttendancePercentagesPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
+  const { activeYearId } = useActiveAcademicYear();
   const [subjectId, setSubjectId] = useState(ALL_SUBJECTS);
-  const { data: subjects = [] } = useSubjectOptions(academicYearId);
+  const { data: subjects = [] } = useSubjectOptions(activeYearId ?? '');
 
   const query = useQuery({
-    queryKey: ['attendance-percentages', tenantId, academicYearId, subjectId],
+    queryKey: ['attendance-percentages', tenantId, activeYearId, subjectId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let sessionQuery = supabase
         .from('AttendanceSession')
         .select('id')
         .eq('tenantId', tenantId!)
-        .eq('academicYearId', academicYearId);
+        .eq('academicYearId', activeYearId!);
       if (subjectId !== ALL_SUBJECTS) {
         sessionQuery = sessionQuery.eq('subjectId', subjectId);
       }
@@ -70,9 +70,9 @@ export function AttendancePercentagesPanel() {
           `
           studentProfileId,
           status,
-          StudentProfile:studentProfileId (
+          StudentProfile!AttendanceRecord_studentProfileId_tenantId_fkey (
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
         )
@@ -109,8 +109,8 @@ export function AttendancePercentagesPanel() {
         .sort((a, b) => (a.percentage ?? 100) - (b.percentage ?? 100));
     },
     enabled:
-      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
-      !!academicYearId,
+      !!activeYearId &&
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
   const rows = useMemo(() => query.data ?? [], [query.data]);
@@ -118,27 +118,7 @@ export function AttendancePercentagesPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4">
-        <div className="min-w-[180px]">
-          <p className="text-sm font-medium mb-1.5">Academic year</p>
-          <Select
-            value={academicYearId}
-            onValueChange={(value) => {
-              setAcademicYearId(value);
-              setSubjectId(ALL_SUBJECTS);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <CurrentAcademicYearBadge />
         <div className="min-w-[200px]">
           <p className="text-sm font-medium mb-1.5">Subject (optional)</p>
           <Select value={subjectId} onValueChange={setSubjectId}>

@@ -37,13 +37,15 @@ const APPLICATION_SELECT = `
   dateOfBirth,
   subSystem,
   branch,
+  specialtyId,
+  levelId,
   rejectionReason,
   reviewedAt,
   createdAt,
-  Specialty:specialtyId ( code, nameEn ),
-  Level:levelId ( number, labelEn ),
-  AcademicYear:academicYearId ( label ),
-  StudentProfile:studentProfileId ( id, registrationNumber )
+  Specialty!EnrollmentApplication_specialtyId_tenantId_fkey ( code, nameEn ),
+  Level!EnrollmentApplication_levelId_tenantId_fkey ( number, labelEn ),
+  AcademicYear!EnrollmentApplication_academicYearId_tenantId_fkey ( label ),
+  StudentProfile!EnrollmentApplication_studentProfileId_tenantId_fkey ( id, registrationNumber )
 `;
 
 type ApplicationDetail = {
@@ -59,6 +61,8 @@ type ApplicationDetail = {
   dateOfBirth?: string | null;
   subSystem?: string | null;
   branch?: string | null;
+  specialtyId: string;
+  levelId: string;
   rejectionReason?: string | null;
   reviewedAt?: string | null;
   createdAt: string;
@@ -131,6 +135,8 @@ export default function EnrollmentApplicationDetailPage({
                 <ApplicationReviewActions
                   applicationId={id}
                   status={data.status}
+                  levelId={data.levelId as string}
+                  specialtyId={data.specialtyId as string}
                 />
               ) : null}
             </div>

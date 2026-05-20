@@ -14,7 +14,7 @@ const columns: ColumnDef<Row>[] = [
 export default function Page() {
   return (
     <AcadiaPageShell title="Acadia College — Transcripts" description="Issued transcripts.">
-      <SupabaseTableList
+      <SupabaseTableList scopeByAcademicYear
         table="Transcript"
         title="Transcript"
         select="id, issuedAt, language"

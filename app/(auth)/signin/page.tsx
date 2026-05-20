@@ -86,7 +86,15 @@ export default function Page() {
       const { user, supabase } = authSession;
 
       const gate = await completeAcadiaSignIn(supabase, user.id);
-      if (cancelled || !gate.ok) return;
+      if (cancelled) return;
+
+      if (!gate.ok) {
+        if (gate.shouldSignOut) {
+          await supabase.auth.signOut();
+        }
+        setError(gate.message);
+        return;
+      }
 
       router.replace(nextDestination || gate.dashboardPath);
     }
@@ -170,21 +178,25 @@ export default function Page() {
           </h1>
         </div>
 
-        <Alert size="sm" close={false}>
-          <AlertIcon>
-            <RiErrorWarningFill className="text-primary" />
-          </AlertIcon>
-          <AlertTitle className="text-accent-foreground">
-            Dev accounts (password{' '}
-            <span className="font-mono text-xs">Acadia2026!</span>): admin{' '}
-            <span className="font-mono text-xs">admin@acadia-college.edu</span>
-            , staff{' '}
-            <span className="font-mono text-xs">staff@acadia-college.edu</span>,
-            student{' '}
-            <span className="font-mono text-xs">student@acadia-college.edu</span>
-            . Role redirects after sign-in.
-          </AlertTitle>
-        </Alert>
+        {process.env.NODE_ENV === 'development' && (
+          <Alert size="sm" close={false}>
+            <AlertIcon>
+              <RiErrorWarningFill className="text-primary" />
+            </AlertIcon>
+            <AlertTitle className="text-accent-foreground">
+              Dev accounts (password{' '}
+              <span className="font-mono text-xs">Acadia2026!</span>): admin{' '}
+              <span className="font-mono text-xs">admin@acadia-college.edu</span>
+              , staff{' '}
+              <span className="font-mono text-xs">staff@acadia-college.edu</span>
+              , student{' '}
+              <span className="font-mono text-xs">
+                student@acadia-college.edu
+              </span>
+              . Role redirects after sign-in.
+            </AlertTitle>
+          </Alert>
+        )}
 
         {error && (
           <Alert variant="destructive">

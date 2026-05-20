@@ -27,7 +27,7 @@ export default function AccountUserProfilePage() {
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Your Acadia College user profile
+                Central Hub for Personal Customization
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>

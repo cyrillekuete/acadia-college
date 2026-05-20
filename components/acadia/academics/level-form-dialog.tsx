@@ -38,16 +38,7 @@ import {
 } from '@/lib/acadia/education-system';
 import { levelFormSchema, type LevelFormValues } from '@/lib/acadia/structure-schemas';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
-
-type LevelRow = {
-  id: string;
-  name: string;
-  subSystem: LevelFormValues['subSystem'];
-  branch: LevelFormValues['branch'];
-  labelEn?: string | null;
-  labelFr?: string | null;
-  sortOrder?: number | null;
-};
+import { type LevelListRow } from '@/hooks/use-level-list';
 
 export function LevelFormDialog({
   open,
@@ -57,7 +48,7 @@ export function LevelFormDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  record?: LevelRow | null;
+  record?: LevelListRow | null;
   defaultFilters?: CatalogFilters;
 }) {
   const { createLevel, updateLevel } = useAcademicStructureMutations();
@@ -70,9 +61,6 @@ export function LevelFormDialog({
       name: '',
       subSystem: defaultFilters?.subSystem ?? 'ENGLISH',
       branch: defaultFilters?.branch ?? 'GRAMMAR',
-      labelEn: '',
-      labelFr: '',
-      sortOrder: undefined,
     },
   });
 
@@ -85,29 +73,27 @@ export function LevelFormDialog({
         name: record.name,
         subSystem: record.subSystem,
         branch: record.branch,
-        labelEn: record.labelEn ?? '',
-        labelFr: record.labelFr ?? '',
-        sortOrder: record.sortOrder ?? undefined,
       });
     } else {
       form.reset({
         name: '',
         subSystem: defaultFilters?.subSystem ?? 'ENGLISH',
         branch: defaultFilters?.branch ?? 'GRAMMAR',
-        labelEn: '',
-        labelFr: '',
-        sortOrder: undefined,
       });
     }
   }, [open, record, defaultFilters, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
-    if (isEdit && record) {
-      await updateLevel.mutateAsync({ id: record.id, values });
-    } else {
-      await createLevel.mutateAsync(values);
+    try {
+      if (isEdit && record) {
+        await updateLevel.mutateAsync({ id: record.id, values });
+      } else {
+        await createLevel.mutateAsync(values);
+      }
+      onOpenChange(false);
+    } catch {
+      // Toast is shown by mutation onError; keep dialog open for correction.
     }
-    onOpenChange(false);
   });
 
   return (
@@ -176,32 +162,6 @@ export function LevelFormDialog({
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="labelEn"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Label (English)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Optional" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="labelFr"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Label (French)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Optional" {...field} />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

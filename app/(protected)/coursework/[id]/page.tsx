@@ -23,8 +23,8 @@ const TASK_SELECT = `
   isPublished,
   createdAt,
   updatedAt,
-  Subject:subjectId ( code, nameEn, nameFr ),
-  AcademicYear:academicYearId ( label )
+  Subject!CourseworkTask_subjectId_tenantId_fkey ( code, nameEn, nameFr ),
+  AcademicYear!CourseworkTask_academicYearId_tenantId_fkey ( label )
 `;
 
 type CourseworkTaskDetail = {

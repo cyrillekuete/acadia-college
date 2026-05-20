@@ -16,6 +16,7 @@ import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input, InputWrapper } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAcademicYearTableFilters } from '@/hooks/use-academic-year-table-filters';
 import { useSupabaseTableList } from '@/hooks/use-supabase-table-list';
 
 function getQueryErrorMessage(error: unknown): string {
@@ -37,6 +38,8 @@ function getQueryErrorMessage(error: unknown): string {
   return 'Failed to load records.';
 }
 
+type ColumnFilter = { column: string; value: string | number | boolean };
+
 export function SupabaseTableList<T extends Record<string, unknown>>({
   table,
   title,
@@ -46,6 +49,9 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   rowFilter,
   toolbarExtra,
   tenantColumn = 'tenantId',
+  filters: filtersProp,
+  inFilters: inFiltersProp,
+  scopeByAcademicYear = false,
 }: {
   table: string;
   title: string;
@@ -55,11 +61,31 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   rowFilter?: (row: T) => boolean;
   toolbarExtra?: ReactNode;
   tenantColumn?: string;
+  /** Extra Supabase `.eq` filters applied server-side. */
+  filters?: ColumnFilter[];
+  /** Supabase `.in` filters (e.g. examSessionId for year-scoped marks). */
+  inFilters?: { column: string; values: string[] }[];
+  /** When true, automatically filters by `academicYearId` from the global year context. */
+  scopeByAcademicYear?: boolean;
 }) {
+  const yearScope = useAcademicYearTableFilters(table);
+  const mergedFilters = useMemo(() => {
+    const base = filtersProp ?? [];
+    if (!scopeByAcademicYear) {
+      return base;
+    }
+    return [...yearScope.filters, ...base];
+  }, [filtersProp, scopeByAcademicYear, yearScope.filters]);
+
   const { data = [], isLoading, isError, error } = useSupabaseTableList<T>(
     table,
     select,
     tenantColumn,
+    mergedFilters,
+    {
+      enabled: scopeByAcademicYear ? yearScope.isReady : true,
+      inFilters: inFiltersProp,
+    },
   );
   const [search, setSearch] = useState('');
 
@@ -87,6 +113,8 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
     initialState: { pagination: { pageSize: 10 } },
   });
 
+  const waitingForYear = scopeByAcademicYear && !yearScope.isReady;
+
   return (
     <Card>
       {toolbarExtra ? <div className="px-5 pt-4">{toolbarExtra}</div> : null}
@@ -103,10 +131,14 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
           </InputWrapper>
         ) : null}
       </CardHeader>
-      <DataGrid table={tableInstance} recordCount={filtered.length} isLoading={isLoading}>
+      <DataGrid table={tableInstance} recordCount={filtered.length} isLoading={isLoading || waitingForYear}>
         <CardTable>
           <ScrollArea>
-            {isError ? (
+            {waitingForYear ? (
+              <p className="p-5 text-sm text-muted-foreground">
+                Select an academic year in the header to load records.
+              </p>
+            ) : isError ? (
               <p className="p-5 text-sm text-destructive">
                 {getQueryErrorMessage(error)}
               </p>

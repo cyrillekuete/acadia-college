@@ -5,7 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { MarksAuditPanel } from '@/components/acadia/assessment/marks-audit-panel';
 import { MarksAveragesPanel } from '@/components/acadia/assessment/marks-averages-panel';
-import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { MarksYearScopedList } from '@/components/acadia/assessment/marks-year-scoped-list';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
@@ -34,8 +34,8 @@ const SELECT = `
   totalScore,
   isResitEligible,
   updatedAt,
-  Subject:subjectId ( code ),
-  StudentProfile:studentProfileId ( registrationNumber )
+  Subject!SubjectMark_subjectId_tenantId_fkey ( code ),
+  StudentProfile!SubjectMark_studentProfileId_tenantId_fkey ( registrationNumber )
 `;
 
 export default function MarksPage() {
@@ -65,13 +65,7 @@ export default function MarksPage() {
           <TabsTrigger value="audit">Change history</TabsTrigger>
         </TabsList>
         <TabsContent value="list">
-          <SupabaseTableList
-            table="SubjectMark"
-            title="Subject marks"
-            select={SELECT}
-            columns={columns}
-            searchKeys={[]}
-          />
+          <MarksYearScopedList<Row> select={SELECT} columns={columns} />
         </TabsContent>
         <TabsContent value="averages">
           <MarksAveragesPanel />

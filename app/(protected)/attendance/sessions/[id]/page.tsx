@@ -19,8 +19,8 @@ const SESSION_SELECT = `
   label,
   timetableSlotId,
   createdAt,
-  Subject:subjectId ( code, nameEn ),
-  AcademicYear:academicYearId ( label )
+  Subject!AttendanceSession_subjectId_tenantId_fkey ( code, nameEn ),
+  AcademicYear!AttendanceSession_academicYearId_tenantId_fkey ( label )
 `;
 
 type AttendanceSessionDetail = {

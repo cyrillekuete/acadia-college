@@ -4,7 +4,6 @@ import {
   ACADEMIC_SUB_SYSTEMS,
 } from '@/lib/acadia/education-system';
 import {
-  SUBJECT_TYPES,
   subjectSubBranchFormSchema,
 } from '@/lib/acadia/subject-catalog';
 
@@ -13,18 +12,13 @@ const catalogFields = {
   branch: z.enum(ACADEMIC_BRANCHES),
   specialtyId: z.string().min(1, 'Specialty is required.'),
   levelId: z.string().min(1, 'Level is required.'),
-  termId: z.string().min(1, 'Term is required.'),
 };
 
 export const subjectSchema = z
   .object({
     code: z.string().trim().min(1, 'Code is required.').max(32),
-    nameEn: z.string().trim().min(1, 'English name is required.'),
-    nameFr: z.string().trim().min(1, 'French name is required.'),
-    credits: z.coerce.number().int().min(1, 'Credits must be at least 1.'),
-    hours: z.coerce.number().int().min(1, 'Hours must be at least 1.'),
+    nameEn: z.string().trim().min(1, 'Name is required.'),
     academicYearId: z.string().min(1, 'Academic year is required.'),
-    subjectType: z.enum(SUBJECT_TYPES),
     coefficient: z.coerce.number().positive('Coefficient must be greater than 0.'),
     groupingId: z.string().optional().or(z.literal('')),
     hasSubBranches: z.boolean(),

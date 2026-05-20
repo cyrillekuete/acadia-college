@@ -59,7 +59,7 @@ const UserProfileEditDialog = ({
   const queryClient = useQueryClient();
 
   // Fetch available roles
-  const { data: roleList } = useRoleSelectQuery();
+  const { data: roleList = [] } = useRoleSelectQuery();
 
   const form = useForm<UserProfileSchemaType>({
     resolver: zodResolver(UserProfileSchema),

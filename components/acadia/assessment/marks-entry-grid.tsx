@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/table';
 import { computeTotalScore, formatMarkScore } from '@/lib/acadia/assessment';
 import type { SubjectMarkEntryValues } from '@/lib/acadia/assessment-schemas';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   sequenceOptionLabel,
   useSequenceOptions,
@@ -56,8 +57,8 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
-  const [academicYearId, setAcademicYearId] = useState(preset?.academicYearId ?? '');
+  const { activeYearId } = useActiveAcademicYear();
+  const academicYearId = preset?.academicYearId ?? activeYearId ?? '';
   const [sequenceId, setSequenceId] = useState(preset?.sequenceId ?? '');
   const [subjectId, setSubjectId] = useState(preset?.subjectId ?? '');
   const [examSessionId, setExamSessionId] = useState(preset?.examSessionId ?? '');
@@ -71,17 +72,11 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
 
   useEffect(() => {
     if (preset) {
-      setAcademicYearId(preset.academicYearId);
       setSequenceId(preset.sequenceId);
       setSubjectId(preset.subjectId);
       setExamSessionId(preset.examSessionId);
-      return;
     }
-    if (!academicYearId && years.length > 0) {
-      const current = years.find((y) => y.isCurrent);
-      setAcademicYearId(current?.id ?? years[0].id);
-    }
-  }, [years, academicYearId, preset]);
+  }, [preset]);
 
   const rosterQuery = useQuery({
     queryKey: [
@@ -108,18 +103,18 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
         .select(
           `
           studentProfileId,
-          StudentProfile:studentProfileId (
+          StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             id,
             registrationNumber,
-            User:userId ( name )
+            User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
         )
         .eq('tenantId', tenantId!)
-        .eq('academicYearId', academicYearId)
+        .eq('academicYearId', academicYearId!)
         .eq('specialtyId', subject.specialtyId)
         .eq('levelId', subject.levelId)
-        .eq('status', 'ACTIVE');
+        .eq('status', 'ENROLLED');
 
       if (enrollError) {
         throw enrollError;
@@ -236,21 +231,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
     <div className="space-y-6">
       {!preset ? (
       <div className="flex flex-wrap gap-4 items-end">
-        <div className="min-w-[180px]">
-          <p className="text-sm font-medium mb-1.5">Academic year</p>
-          <Select value={academicYearId} onValueChange={setAcademicYearId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <CurrentAcademicYearBadge />
         <div className="min-w-[200px]">
           <p className="text-sm font-medium mb-1.5">Sequence</p>
           <Select value={sequenceId} onValueChange={setSequenceId}>

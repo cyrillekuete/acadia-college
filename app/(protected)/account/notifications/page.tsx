@@ -27,12 +27,12 @@ export default function AccountNotificationsPage() {
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Notification preferences and in-app messages from Supabase
+                Central Hub for Personal Customization
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
               <Button variant="outline" asChild>
-                <Link href="/account/home/user-profile">Profile</Link>
+                <Link href="#">Privacy Settings</Link>
               </Button>
             </ToolbarActions>
           </Toolbar>

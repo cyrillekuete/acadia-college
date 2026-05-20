@@ -2,16 +2,20 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { StudentCreateInput } from '@/lib/acadia/student-create-schemas';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 type CreateStudentResult = {
   studentId: string;
   studentUuid: string;
+  studentProfileId: string;
   parentCode: string;
   newParentAuthCreated: boolean;
 };
 
 export function useStudentCreateMutation() {
   const queryClient = useQueryClient();
+  const { data: session } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
 
   return useMutation({
     mutationFn: async (input: StudentCreateInput): Promise<CreateStudentResult> => {
@@ -29,8 +33,15 @@ export function useStudentCreateMutation() {
 
       return json as unknown as CreateStudentResult;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supabase-list', 'students'] });
+    onSuccess: (_data, _vars, _ctx) => {
+      void queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      if (tenantId) {
+        void queryClient.invalidateQueries({
+          queryKey: ['students-list', tenantId],
+        });
+      }
+      void queryClient.invalidateQueries({ queryKey: ['student-detail'] });
+      void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
     },
   });
 }

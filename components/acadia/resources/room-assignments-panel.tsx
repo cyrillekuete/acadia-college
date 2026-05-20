@@ -2,13 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   Table,
   TableBody,
@@ -18,7 +13,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatTimetableSlotSummary } from '@/lib/acadia/resources';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useRoomOptions } from '@/hooks/use-subject-catalog-options';
 import {
   isAcadiaTenantQueryEnabled,
@@ -33,15 +34,12 @@ export function RoomAssignmentsPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
   const { data: rooms = [] } = useRoomOptions();
-  const [academicYearId, setAcademicYearId] = useState('');
   const [roomId, setRoomId] = useState('');
 
-  const effectiveYearId = academicYearId || years.find((y) => y.isCurrent)?.id || '';
-
   const query = useQuery({
-    queryKey: ['room-assignments', tenantId, effectiveYearId, roomId],
+    queryKey: ['room-assignments', tenantId, activeYearId, roomId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let q = supabase
@@ -53,13 +51,13 @@ export function RoomAssignmentsPanel() {
           startMinutes,
           endMinutes,
           roomId,
-          Subject:subjectId ( code, nameEn ),
-          StaffProfile:staffProfileId ( User:userId ( name ) ),
-          Room:roomId ( code, nameEn )
+          Subject!TimetableSlot_subjectId_tenantId_fkey ( code, nameEn ),
+          StaffProfile!TimetableSlot_staffProfileId_tenantId_fkey ( User!StaffProfile_userId_tenantId_fkey ( name ) ),
+          Room!TimetableSlot_roomId_tenantId_fkey ( code, nameEn )
         `,
         )
         .eq('tenantId', tenantId!)
-        .eq('academicYearId', effectiveYearId)
+        .eq('academicYearId', activeYearId!)
         .order('dayOfWeek')
         .order('startMinutes');
       if (roomId) {
@@ -72,7 +70,7 @@ export function RoomAssignmentsPanel() {
       return data ?? [];
     },
     enabled:
-      !!effectiveYearId &&
+      !!activeYearId &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
@@ -117,21 +115,7 @@ export function RoomAssignmentsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3">
-        <Select
-          value={effectiveYearId || '__none__'}
-          onValueChange={(v) => setAcademicYearId(v === '__none__' ? '' : v)}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Academic year" />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((year) => (
-              <SelectItem key={year.id} value={year.id}>
-                {year.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <CurrentAcademicYearBadge />
         <Select
           value={roomId || '__all__'}
           onValueChange={(v) => setRoomId(v === '__all__' ? '' : v)}

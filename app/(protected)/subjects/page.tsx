@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
@@ -9,14 +9,78 @@ import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar
 import { SubjectsTable } from '@/components/acadia/subjects/subjects-table';
 import { Button } from '@/components/ui/button';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  branchLabel,
   EMPTY_CATALOG_FILTERS,
+  subSystemLabel,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
+import {
+  DEFAULT_SUBJECT_LIST_FILTERS,
+  type SubjectListFilters,
+  type SubjectStatusFilter,
+} from '@/lib/acadia/subject';
+import { levelLabel, termLabel } from '@/lib/acadia/record-display';
+import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
+import { useSubjectList } from '@/hooks/use-subject-list';
+
+const ALL = '__all__';
+
+function buildEmptyMessage(
+  catalogFilters: CatalogFilters,
+  listFilters: SubjectListFilters,
+): string {
+  const parts: string[] = [];
+  if (catalogFilters.subSystem) {
+    parts.push(subSystemLabel(catalogFilters.subSystem));
+  }
+  if (catalogFilters.branch) {
+    parts.push(branchLabel(catalogFilters.branch));
+  }
+  const scope = parts.length > 0 ? parts.join(' · ') : 'this catalog scope';
+  if (listFilters.status === 'inactive') {
+    return `No inactive subjects for ${scope}.`;
+  }
+  return `No subjects for ${scope}. Create one to get started.`;
+}
 
 export default function SubjectsPage() {
   const router = useRouter();
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
+  const [listFilters, setListFilters] = useState<SubjectListFilters>(
+    DEFAULT_SUBJECT_LIST_FILTERS,
+  );
+  const { data: groupings = [] } = useSubjectGroupingOptions();
+  const { data: subjects = [] } = useSubjectList(catalogFilters);
+
+  const levelOptions = useMemo(() => {
+    const map = new Map<string, { id: string; label: string }>();
+    for (const row of subjects) {
+      if (row.levelId && !map.has(row.levelId)) {
+        map.set(row.levelId, { id: row.levelId, label: levelLabel(row.Level) });
+      }
+    }
+    return [...map.values()];
+  }, [subjects]);
+
+  const termOptions = useMemo(() => {
+    const map = new Map<string, { id: string; label: string }>();
+    for (const row of subjects) {
+      if (row.termId && !map.has(row.termId)) {
+        map.set(row.termId, { id: row.termId, label: termLabel(row.Term) });
+      }
+    }
+    return [...map.values()];
+  }, [subjects]);
+
+  const emptyMessage = buildEmptyMessage(catalogFilters, listFilters);
 
   return (
     <AcadiaPageShell
@@ -24,6 +88,102 @@ export default function SubjectsPage() {
       description="Subject catalog with type, coefficient, optional groupings, and sub-branches."
     >
       <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
+
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Status</p>
+          <Select
+            value={listFilters.status}
+            onValueChange={(value) =>
+              setListFilters((current) => ({
+                ...current,
+                status: value as SubjectStatusFilter,
+              }))
+            }
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Grouping</p>
+          <Select
+            value={listFilters.groupingId ?? ALL}
+            onValueChange={(value) =>
+              setListFilters((current) => ({
+                ...current,
+                groupingId: value === ALL ? null : value,
+              }))
+            }
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All groupings" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All groupings</SelectItem>
+              {groupings.map((grouping) => (
+                <SelectItem key={grouping.id} value={grouping.id}>
+                  {grouping.nameEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Level</p>
+          <Select
+            value={listFilters.levelId ?? ALL}
+            onValueChange={(value) =>
+              setListFilters((current) => ({
+                ...current,
+                levelId: value === ALL ? null : value,
+              }))
+            }
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All levels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All levels</SelectItem>
+              {levelOptions.map((level) => (
+                <SelectItem key={level.id} value={level.id!}>
+                  {level.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Term</p>
+          <Select
+            value={listFilters.termId ?? ALL}
+            onValueChange={(value) =>
+              setListFilters((current) => ({
+                ...current,
+                termId: value === ALL ? null : value,
+              }))
+            }
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="All terms" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All terms</SelectItem>
+              {termOptions.map((term) => (
+                <SelectItem key={term.id} value={term.id}>
+                  {term.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Button type="button" size="sm" variant="outline" asChild>
@@ -36,7 +196,11 @@ export default function SubjectsPage() {
         />
       </div>
 
-      <SubjectsTable filters={catalogFilters} />
+      <SubjectsTable
+        catalogFilters={catalogFilters}
+        listFilters={listFilters}
+        emptyMessage={emptyMessage}
+      />
     </AcadiaPageShell>
   );
 }

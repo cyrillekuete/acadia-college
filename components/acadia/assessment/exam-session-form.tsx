@@ -30,10 +30,9 @@ import {
   examSessionSchema,
   type ExamSessionFormValues,
 } from '@/lib/acadia/assessment-schemas';
-import {
-  useAcademicYearOptions,
-  useTermOptions,
-} from '@/hooks/use-academic-calendar-options';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { useTermOptions } from '@/hooks/use-academic-calendar-options';
 import {
   sequenceOptionLabel,
   useSequenceOptions,
@@ -52,7 +51,7 @@ export function ExamSessionForm({
 }) {
   const isEdit = !!record;
   const { createExamSession, updateExamSession } = useAssessmentMutations();
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYearId } = useActiveAcademicYear();
 
   const form = useForm<ExamSessionFormValues>({
     resolver: zodResolver(examSessionSchema),
@@ -67,7 +66,7 @@ export function ExamSessionForm({
     },
   });
 
-  const academicYearId = form.watch('academicYearId');
+  const academicYearId = form.watch('academicYearId') || activeYearId || '';
   const termId = form.watch('termId');
   const { data: terms = [] } = useTermOptions(academicYearId);
   const { data: sequences = [] } = useSequenceOptions(academicYearId);
@@ -91,11 +90,10 @@ export function ExamSessionForm({
   }, [record, form]);
 
   useEffect(() => {
-    if (!record && years.length > 0 && !academicYearId) {
-      const current = years.find((y) => y.isCurrent);
-      form.setValue('academicYearId', current?.id ?? years[0].id);
+    if (!record && activeYearId) {
+      form.setValue('academicYearId', activeYearId);
     }
-  }, [years, academicYearId, record, form]);
+  }, [record, activeYearId, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (isEdit && record) {
@@ -116,21 +114,10 @@ export function ExamSessionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Academic year</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {years.map((y) => (
-                    <SelectItem key={y.id} value={y.id}>
-                      {y.label}
-                      {y.isCurrent ? ' (current)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CurrentAcademicYearBadge className="mb-2" />
+              <FormControl>
+                <Input type="hidden" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

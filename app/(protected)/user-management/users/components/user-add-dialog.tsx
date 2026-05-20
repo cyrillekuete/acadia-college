@@ -49,7 +49,7 @@ const UserAddDialog = ({
   const queryClient = useQueryClient();
 
   // Fetch available roles
-  const { data: roleList } = useRoleSelectQuery();
+  const { data: roleList = [] } = useRoleSelectQuery();
 
   const form = useForm<UserAddSchemaType>({
     resolver: zodResolver(UserAddSchema),

@@ -16,6 +16,7 @@ import {
   Search,
   SquareChevronRight,
 } from 'lucide-react';
+import { AcademicYearSwitcher } from '@/components/acadia/academics/academic-year-switcher';
 import { TenantLogo } from '@/components/acadia/tenant-logo';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
@@ -122,6 +123,7 @@ export function Header() {
 
         {/* HeaderTopbar */}
         <div className="flex items-center gap-3">
+          <AcademicYearSwitcher />
           {pathname.startsWith('/store-client') ? (
             <StoreClientTopbar />
           ) : (

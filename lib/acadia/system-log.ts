@@ -33,6 +33,8 @@ export type SystemLogEvent =
   | 'finance_budget.saved'
   | 'promotion.auto_computed'
   | 'promotion.override_saved'
+  | 'promotion.policy_saved'
+  | 'promotion.policies_copied'
   | 'academic_year.rollover'
   | 'data_retention.policy_updated'
   | 'data_retention.archive_run'

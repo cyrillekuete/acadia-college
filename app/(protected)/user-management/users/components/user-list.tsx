@@ -56,7 +56,7 @@ const UserList = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>('all');
 
   // Role select query
-  const { data: roleList } = useRoleSelectQuery();
+  const { data: roleList = [] } = useRoleSelectQuery();
 
   // Fetch users from the server API
   const fetchUsers = async ({
@@ -381,7 +381,7 @@ const UserList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
-              {roleList?.map((role: User) => (
+              {roleList.map((role: User) => (
                 <SelectItem key={role.id} value={role.id}>
                   {role.name}
                 </SelectItem>

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { StudentList } from '@/components/acadia/student/student-list';
 import { StudentRegistryFiltersPanel } from '@/components/acadia/student/student-registry-filters';
 import { StudentRegistryStats } from '@/components/acadia/student/student-registry-stats';
-import { DUMMY_STUDENTS, type DummyStudent } from '@/lib/acadia/dummy-students';
+import type { DummyStudent } from '@/lib/acadia/dummy-students';
 import {
   EMPTY_STUDENT_REGISTRY_FILTERS,
   computeStudentRegistryStats,
@@ -16,7 +16,7 @@ import {
 } from '@/lib/acadia/student-registry';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchStudentsList } from '@/lib/supabase/queries/students-list';
-import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -26,40 +26,41 @@ export function StudentRegistry() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const { data: years = [] } = useAcademicYearOptions();
+  const { activeYear, activeYearId } = useActiveAcademicYear();
 
   const { data: remoteStudents, isLoading: studentsLoading } = useQuery({
-    queryKey: ['students-list', tenantId],
+    queryKey: ['students-list', tenantId, activeYearId],
     queryFn: async () => {
-      if (!tenantId) {
-        throw new Error('Tenant context is required');
+      if (!tenantId || !activeYearId) {
+        throw new Error('Tenant and academic year are required');
       }
       const supabase = requireBrowserClient();
-      return fetchStudentsList(supabase, tenantId);
+      return fetchStudentsList(supabase, tenantId, activeYearId);
     },
-    enabled: isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
+    enabled:
+      !!activeYearId &&
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
   const listSource = useMemo((): DummyStudent[] => {
-    if (studentsLoading) {
+    if (studentsLoading || !activeYearId) {
       return [];
     }
     if (remoteStudents != null) {
       return remoteStudents;
     }
-    return DUMMY_STUDENTS;
-  }, [remoteStudents, studentsLoading]);
+    return [];
+  }, [remoteStudents, studentsLoading, activeYearId]);
 
   const [filters, setFilters] = useState<StudentRegistryFilters>(
     EMPTY_STUDENT_REGISTRY_FILTERS,
   );
 
-  const currentYearLabel =
-    years.find((y) => y.isCurrent)?.label ?? years[0]?.label ?? null;
+  const activeYearLabel = activeYear?.label ?? null;
 
   const stats = useMemo(
-    () => computeStudentRegistryStats(listSource, currentYearLabel),
-    [listSource, currentYearLabel],
+    () => computeStudentRegistryStats(listSource, activeYearLabel),
+    [listSource, activeYearLabel],
   );
 
   const filteredStudents = useMemo(

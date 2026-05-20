@@ -59,7 +59,7 @@ const TASK_SELECT = `
   maxScore,
   isPublished,
   createdAt,
-  Subject:subjectId ( code, nameEn )
+  Subject!CourseworkTask_subjectId_tenantId_fkey ( code, nameEn )
 `;
 
 const SUBMISSION_SELECT = `
@@ -68,8 +68,8 @@ const SUBMISSION_SELECT = `
   submittedAt,
   confirmedScore,
   createdAt,
-  CourseworkTask:taskId ( titleEn, dueAt ),
-  StudentProfile:studentProfileId ( registrationNumber )
+  CourseworkTask!CourseworkSubmission_taskId_tenantId_fkey ( titleEn, dueAt ),
+  StudentProfile!CourseworkSubmission_studentProfileId_tenantId_fkey ( registrationNumber )
 `;
 
 export default function CourseworkPage() {
@@ -80,6 +80,7 @@ export default function CourseworkPage() {
     >
       <div className="flex flex-col gap-5 lg:gap-7.5">
         <SupabaseTableList
+          scopeByAcademicYear
           table="CourseworkTask"
           title="Coursework tasks"
           select={TASK_SELECT}
