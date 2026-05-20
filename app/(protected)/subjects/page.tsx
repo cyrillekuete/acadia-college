@@ -67,7 +67,7 @@ export default function SubjectsPage() {
         map.set(row.levelId, { id: row.levelId, label: levelLabel(row.Level) });
       }
     }
-    return [...map.values()];
+    return Array.from(map.values());
   }, [subjects]);
 
   const termOptions = useMemo(() => {
@@ -77,7 +77,7 @@ export default function SubjectsPage() {
         map.set(row.termId, { id: row.termId, label: termLabel(row.Term) });
       }
     }
-    return [...map.values()];
+    return Array.from(map.values());
   }, [subjects]);
 
   const emptyMessage = buildEmptyMessage(catalogFilters, listFilters);
