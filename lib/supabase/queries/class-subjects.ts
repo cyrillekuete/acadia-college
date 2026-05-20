@@ -1,6 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
+import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
+import {
+  subjectMatchesClass,
+  type ClassSubjectEligibilityClass,
+  type ClassSubjectEligibilitySubject,
+} from '@/lib/acadia/class-subject-eligibility';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { fetchSubjectLevelIds } from '@/lib/supabase/queries/subject-levels';
+import { unwrapRelation } from '@/lib/acadia/record-display';
 
 type Client = SupabaseClient<Database>;
 
@@ -70,4 +78,146 @@ export async function syncClassSubjects(
   }
 
   await insertClassSubjects(supabase, tenantId, classId, toAdd);
+}
+
+export type BulkAssignClassSubjectsResult = {
+  added: number;
+  skippedDuplicate: number;
+  skippedIneligible: number;
+};
+
+export async function bulkAssignClassSubjects(
+  supabase: Client,
+  tenantId: string,
+  classIds: string[],
+  subjectIds: string[],
+  options?: { academicYearId?: string | null },
+): Promise<BulkAssignClassSubjectsResult> {
+  const uniqueClassIds = Array.from(new Set(classIds.filter((id) => id.trim())));
+  const uniqueSubjectIds = Array.from(new Set(subjectIds.filter((id) => id.trim())));
+
+  if (uniqueClassIds.length === 0 || uniqueSubjectIds.length === 0) {
+    return { added: 0, skippedDuplicate: 0, skippedIneligible: 0 };
+  }
+
+  const { data: classes, error: classError } = await supabase
+    .from('Class')
+    .select('id, levelId, specialtyId, subSystem, branch')
+    .eq('tenantId', tenantId)
+    .in('id', uniqueClassIds);
+
+  if (classError) {
+    throw classError;
+  }
+
+  const { data: subjects, error: subjectError } = await supabase
+    .from('Subject')
+    .select(
+      `
+      id,
+      specialtyId,
+      levelId,
+      academicYearId,
+      termId,
+      deactivatedAt,
+      Specialty!Subject_specialtyId_tenantId_fkey ( subSystem, branch ),
+      Term!Subject_semesterId_tenantId_fkey ( academicYearId )
+    `,
+    )
+    .eq('tenantId', tenantId)
+    .in('id', uniqueSubjectIds)
+    .is('deactivatedAt', null);
+
+  if (subjectError) {
+    throw subjectError;
+  }
+
+  const classById = new Map(
+    (classes ?? []).map((row) => [row.id as string, row as ClassSubjectEligibilityClass]),
+  );
+
+  const subjectRows: ClassSubjectEligibilitySubject[] = await Promise.all(
+    (subjects ?? []).map(async (row) => {
+      const levelIds = await fetchSubjectLevelIds(supabase, tenantId, row.id as string);
+      return {
+        id: row.id as string,
+        specialtyId: row.specialtyId as string,
+        levelId: row.levelId as string,
+        levelIds: levelIds.length > 0 ? levelIds : [row.levelId as string],
+        academicYearId: row.academicYearId as string | null,
+        termId: row.termId as string | null,
+        deactivatedAt: row.deactivatedAt as string | null,
+        Specialty: unwrapRelation<{
+          subSystem?: AcademicSubSystem;
+          branch?: AcademicBranch;
+        }>(row.Specialty),
+        Term: row.Term as ClassSubjectEligibilitySubject['Term'],
+      };
+    }),
+  );
+
+  const subjectById = new Map(subjectRows.map((s) => [s.id, s]));
+
+  const { data: existingLinks, error: linkError } = await supabase
+    .from('ClassSubject')
+    .select('classId, subjectId')
+    .eq('tenantId', tenantId)
+    .in('classId', uniqueClassIds)
+    .in('subjectId', uniqueSubjectIds);
+
+  if (linkError) {
+    throw linkError;
+  }
+
+  const existingPairs = new Set(
+    (existingLinks ?? []).map((r) => `${r.classId}:${r.subjectId}`),
+  );
+
+  const toInsert: { classId: string; subjectId: string }[] = [];
+  let skippedDuplicate = 0;
+  let skippedIneligible = 0;
+
+  for (const classId of uniqueClassIds) {
+    const classRow = classById.get(classId);
+    if (!classRow) {
+      skippedIneligible += uniqueSubjectIds.length;
+      continue;
+    }
+    for (const subjectId of uniqueSubjectIds) {
+      const key = `${classId}:${subjectId}`;
+      if (existingPairs.has(key)) {
+        skippedDuplicate += 1;
+        continue;
+      }
+      const subject = subjectById.get(subjectId);
+      if (!subject || !subjectMatchesClass(subject, classRow, options)) {
+        skippedIneligible += 1;
+        continue;
+      }
+      toInsert.push({ classId, subjectId });
+      existingPairs.add(key);
+    }
+  }
+
+  if (toInsert.length > 0) {
+    const now = new Date().toISOString();
+    const { error: insertError } = await supabase.from('ClassSubject').insert(
+      toInsert.map(({ classId, subjectId }) => ({
+        id: generateAcadiaId('csj'),
+        tenantId,
+        classId,
+        subjectId,
+        createdAt: now,
+      })),
+    );
+    if (insertError) {
+      throw insertError;
+    }
+  }
+
+  return {
+    added: toInsert.length,
+    skippedDuplicate,
+    skippedIneligible,
+  };
 }

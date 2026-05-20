@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -46,6 +46,8 @@ import {
   classFormSchema,
   type ClassFormValues,
 } from '@/lib/acadia/structure-schemas';
+import { classCreateConfirmCopy } from '@/lib/acadia/structure-messages';
+import { RegistryCreateConfirmDialog } from '@/components/acadia/academics/registry-create-confirm-dialog';
 import { fetchClassSubjectIds } from '@/lib/supabase/queries/class-subjects';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
@@ -85,6 +87,9 @@ export function ClassFormDialog({
   const isEdit = !!record;
   const pending = createClass.isPending || updateClass.isPending;
   const tenantId = session?.tenantId ?? null;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingValues, setPendingValues] = useState<ClassFormValues | null>(null);
+  const createConfirm = classCreateConfirmCopy();
 
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classFormSchema),
@@ -119,6 +124,8 @@ export function ClassFormDialog({
 
   useEffect(() => {
     if (!open) {
+      setConfirmOpen(false);
+      setPendingValues(null);
       return;
     }
 
@@ -190,17 +197,33 @@ export function ClassFormDialog({
   };
 
   const onSubmit = form.handleSubmit(async (values) => {
-    try {
-      if (isEdit && record) {
+    if (isEdit && record) {
+      try {
         await updateClass.mutateAsync({ id: record.id, values });
-      } else {
-        await createClass.mutateAsync(values);
+        onOpenChange(false);
+      } catch {
+        // Toast is shown by mutation onError; keep dialog open for correction.
       }
+      return;
+    }
+    setPendingValues(values);
+    setConfirmOpen(true);
+  });
+
+  const confirmCreate = async () => {
+    if (!pendingValues) {
+      return;
+    }
+    try {
+      await createClass.mutateAsync(pendingValues);
+      setConfirmOpen(false);
+      setPendingValues(null);
       onOpenChange(false);
     } catch {
-      // Toast is shown by mutation onError; keep dialog open for correction.
+      setConfirmOpen(false);
+      // Toast is shown by mutation onError; keep form dialog open for correction.
     }
-  });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -460,10 +483,14 @@ export function ClassFormDialog({
                 )}
               />
             </DialogBody>
-            {isEdit && record && activeYearId ? (
+            {isEdit && record ? (
               <p className="px-6 pb-2 text-sm text-muted-foreground">
                 <Link
-                  href={`/academics/promotion?year=${activeYearId}&class=${record.id}`}
+                  href={
+                    activeYearId
+                      ? `/academics/promotion?year=${activeYearId}&class=${record.id}`
+                      : `/academics/promotion?class=${record.id}`
+                  }
                   className="text-primary hover:underline"
                 >
                   Configure promotion policy for this class
@@ -482,6 +509,14 @@ export function ClassFormDialog({
           </form>
         </Form>
       </DialogContent>
+      <RegistryCreateConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={createConfirm.title}
+        description={createConfirm.description}
+        onConfirm={() => void confirmCreate()}
+        pending={createClass.isPending}
+      />
     </Dialog>
   );
 }

@@ -14,7 +14,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -33,10 +36,8 @@ import {
 import type { SubjectType } from '@/lib/acadia/subject-catalog';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { subjectSchema, type SubjectFormValues } from '@/lib/acadia/subject-schemas';
-import {
-  useLevelsForSpecialty,
-  useSpecialtyOptions,
-} from '@/hooks/use-enrollment-catalog-options';
+import { useLevelOptions } from '@/hooks/use-academic-calendar-options';
+import { useSpecialtyOptions } from '@/hooks/use-enrollment-catalog-options';
 import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 
@@ -53,7 +54,7 @@ export type SubjectFormRecord = {
   code: string;
   nameEn: string;
   specialtyId: string;
-  levelId: string;
+  levelIds: string[];
   subSystem: string;
   branch: string;
   academicYearId: string;
@@ -86,7 +87,7 @@ export function SubjectForm({
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
       specialtyId: '',
-      levelId: '',
+      levelIds: [],
       coefficient: 1,
       groupingId: '',
       hasSubBranches: false,
@@ -107,8 +108,11 @@ export function SubjectForm({
 
   const { data: specialties = [], isLoading: specialtiesLoading } =
     useSpecialtyOptions(subSystem, branch);
-  const { data: levels = [], isLoading: levelsLoading } =
-    useLevelsForSpecialty(specialtyId, subSystem, branch);
+  const { data: levels = [], isLoading: levelsLoading } = useLevelOptions({
+    subSystem,
+    branch,
+  });
+  const levelIds = form.watch('levelIds');
 
   useEffect(() => {
     if (!record) {
@@ -121,7 +125,7 @@ export function SubjectForm({
       subSystem: record.subSystem as SubjectFormValues['subSystem'],
       branch: record.branch as SubjectFormValues['branch'],
       specialtyId: record.specialtyId,
-      levelId: record.levelId,
+      levelIds: record.levelIds,
       coefficient: record.coefficient,
       groupingId: record.groupingId ?? '',
       hasSubBranches: record.hasSubBranches,
@@ -145,16 +149,33 @@ export function SubjectForm({
     const current = form.getValues('specialtyId');
     if (current && !specialties.some((s) => s.id === current)) {
       form.setValue('specialtyId', '');
-      form.setValue('levelId', '');
+      form.setValue('levelIds', []);
     }
   }, [subSystem, branch, specialties, form]);
 
   useEffect(() => {
-    const current = form.getValues('levelId');
-    if (current && !levels.some((l) => l.id === current)) {
-      form.setValue('levelId', '');
+    const current = form.getValues('levelIds') ?? [];
+    const validIds = new Set(levels.map((l) => l.id));
+    const next = current.filter((id) => validIds.has(id));
+    if (next.length !== current.length) {
+      form.setValue('levelIds', next);
     }
-  }, [specialtyId, levels, form]);
+  }, [subSystem, branch, levels, form]);
+
+  const toggleLevel = (levelId: string, checked: boolean) => {
+    const current = form.getValues('levelIds') ?? [];
+    if (checked) {
+      if (!current.includes(levelId)) {
+        form.setValue('levelIds', [...current, levelId], { shouldDirty: true });
+      }
+      return;
+    }
+    form.setValue(
+      'levelIds',
+      current.filter((id) => id !== levelId),
+      { shouldDirty: true },
+    );
+  };
 
   const pending = createSubject.isPending || updateSubject.isPending;
 
@@ -403,7 +424,7 @@ export function SubjectForm({
                   onValueChange={(v) => {
                     field.onChange(v);
                     form.setValue('specialtyId', '');
-                    form.setValue('levelId', '');
+                    form.setValue('levelIds', []);
                   }}
                 >
                   <FormControl>
@@ -434,7 +455,7 @@ export function SubjectForm({
                   onValueChange={(v) => {
                     field.onChange(v);
                     form.setValue('specialtyId', '');
-                    form.setValue('levelId', '');
+                    form.setValue('levelIds', []);
                   }}
                 >
                   <FormControl>
@@ -473,10 +494,7 @@ export function SubjectForm({
                 <FormLabel>Specialty</FormLabel>
                 <Select
                   value={field.value}
-                  onValueChange={(v) => {
-                    field.onChange(v);
-                    form.setValue('levelId', '');
-                  }}
+                  onValueChange={field.onChange}
                   disabled={specialtiesLoading || specialties.length === 0}
                 >
                   <FormControl>
@@ -498,28 +516,76 @@ export function SubjectForm({
           />
           <FormField
             control={form.control}
-            name="levelId"
-            render={({ field }) => (
+            name="levelIds"
+            render={() => (
               <FormItem>
-                <FormLabel>Level</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={!specialtyId || levelsLoading || levels.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {levels.map((level) => (
-                      <SelectItem key={level.id} value={level.id}>
-                        {levelDisplayLabel(level)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between gap-2">
+                  <FormLabel>Levels</FormLabel>
+                  {levels.length > 0 ? (
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-2 py-1 text-xs"
+                        onClick={() =>
+                          form.setValue(
+                            'levelIds',
+                            levels.map((l) => l.id),
+                            { shouldDirty: true },
+                          )
+                        }
+                      >
+                        Select all
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-2 py-1 text-xs"
+                        onClick={() => form.setValue('levelIds', [], { shouldDirty: true })}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Select one or more levels this subject applies to.
+                </p>
+                {levelsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading levels…</p>
+                ) : levels.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No levels for this sub-system and branch. Create levels under Academic
+                    structure first.
+                  </p>
+                ) : (
+                  <ScrollArea className="h-40 rounded-md border p-3">
+                    <div className="space-y-2">
+                      {levels.map((level) => {
+                        const checked = (levelIds ?? []).includes(level.id);
+                        return (
+                          <div key={level.id} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`subject-level-${level.id}`}
+                              checked={checked}
+                              onCheckedChange={(value) =>
+                                toggleLevel(level.id, value === true)
+                              }
+                            />
+                            <Label
+                              htmlFor={`subject-level-${level.id}`}
+                              className="cursor-pointer text-sm font-normal"
+                            >
+                              {levelDisplayLabel(level)}
+                            </Label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
                 <FormMessage />
               </FormItem>
             )}

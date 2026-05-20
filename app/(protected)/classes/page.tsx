@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Settings } from '@/lib/icons';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -133,7 +135,8 @@ export default function ClassRostersPage() {
       title="Acadia College — Class rosters"
       description="Students enrolled by academic year, sub-system, branch, specialty, and level."
     >
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
         <CurrentAcademicYearBadge />
         <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
         <Select
@@ -172,6 +175,13 @@ export default function ClassRostersPage() {
             ))}
           </SelectContent>
         </Select>
+        </div>
+        <Button size="sm" variant="outline" asChild>
+          <Link href="/academics/classes">
+            <Settings className="size-4" />
+            Manage class structure
+          </Link>
+        </Button>
       </div>
 
       <SupabaseTableList scopeByAcademicYear

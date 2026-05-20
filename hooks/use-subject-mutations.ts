@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { timeStringToMinutes } from '@/lib/acadia/timetable';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import { replaceSubjectLevels } from '@/lib/supabase/queries/subject-levels';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 function mutationErrorMessage(error: unknown): string {
@@ -96,6 +97,7 @@ export function useSubjectMutations() {
         throw error;
       }
       await replaceSubjectSubBranches(supabase, tenantId, id, values, now);
+      await replaceSubjectLevels(supabase, tenantId, id, values.levelIds, now);
       return id;
     },
     onSuccess: (id) => {
@@ -160,6 +162,7 @@ export function useSubjectMutations() {
         throw error;
       }
       await replaceSubjectSubBranches(supabase, tenantId, id, values, now);
+      await replaceSubjectLevels(supabase, tenantId, id, values.levelIds, now);
     },
     onSuccess: () => {
       invalidateSubjectQueries(queryClient);

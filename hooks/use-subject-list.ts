@@ -30,6 +30,7 @@ export type SubjectListRow = {
   deactivatedAt: string | null;
   specialtyId: string;
   levelId: string;
+  levelIds: string[];
   termId: string | null;
   groupingId: string | null;
   Specialty?: {
@@ -42,6 +43,7 @@ export type SubjectListRow = {
   Term?: { number?: number; academicYearId?: string } | null;
   SubjectGrouping?: { id?: string; nameEn?: string; nameFr?: string } | null;
   SubjectSubBranch?: SubjectSubBranchRow[] | null;
+  SubjectLevel?: { levelId: string; Level?: { labelEn?: string | null; number?: number; name?: string } | null }[] | null;
 };
 
 export type SubjectListRowView = SubjectListRow & {
@@ -87,7 +89,11 @@ export function useSubjectList(filters: CatalogFilters) {
           Level!Subject_levelId_tenantId_fkey ( labelEn, number ),
           Term!Subject_semesterId_tenantId_fkey ( number, academicYearId ),
           SubjectGrouping!Subject_groupingId_tenantId_fkey ( id, nameEn, nameFr ),
-          SubjectSubBranch ( id, name, nameFr, coefficient, sortOrder )
+          SubjectSubBranch ( id, name, nameFr, coefficient, sortOrder ),
+          SubjectLevel (
+            levelId,
+            Level!SubjectLevel_levelId_tenantId_fkey ( labelEn, number )
+          )
         `,
         )
         .eq('tenantId', tenantId!)
@@ -97,7 +103,7 @@ export function useSubjectList(filters: CatalogFilters) {
         throw error;
       }
 
-      const rows = (data ?? []) as SubjectListRow[];
+      const rows = (data ?? []) as unknown as SubjectListRow[];
       return rows
         .map((row): SubjectListRowView => {
           const specialty = unwrapRelation<{
@@ -118,6 +124,14 @@ export function useSubjectList(filters: CatalogFilters) {
           const subBranches = Array.isArray(row.SubjectSubBranch)
             ? [...row.SubjectSubBranch].sort((a, b) => a.sortOrder - b.sortOrder)
             : [];
+          const subjectLevels = Array.isArray(row.SubjectLevel) ? row.SubjectLevel : [];
+          const normalizedSubjectLevels = subjectLevels.map((sl) => ({
+            levelId: sl.levelId,
+            Level: unwrapRelation<{ labelEn?: string | null; number?: number; name?: string }>(
+              sl.Level,
+            ),
+          }));
+          const levelIds = normalizedSubjectLevels.map((sl) => sl.levelId);
           return {
             ...row,
             Specialty: specialty,
@@ -125,6 +139,8 @@ export function useSubjectList(filters: CatalogFilters) {
             Term: term,
             SubjectGrouping: grouping,
             SubjectSubBranch: subBranches,
+            SubjectLevel: normalizedSubjectLevels,
+            levelIds: levelIds.length > 0 ? levelIds : [row.levelId],
             subSystem: specialty?.subSystem,
             branch: specialty?.branch,
           };

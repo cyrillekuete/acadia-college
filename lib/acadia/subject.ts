@@ -23,7 +23,7 @@ export function buildSubjectRow(
     credits: DEFAULT_SUBJECT_CREDITS,
     hours: DEFAULT_SUBJECT_HOURS,
     specialtyId: values.specialtyId,
-    levelId: values.levelId,
+    levelId: values.levelIds[0],
     academicYearId: values.academicYearId,
     termId: null as string | null,
     subjectType,
@@ -70,6 +70,7 @@ export function rowMatchesSubjectListFilters(
     deactivatedAt: string | null;
     groupingId?: string | null;
     levelId?: string;
+    levelIds?: string[];
     termId?: string | null;
   },
   filters: SubjectListFilters,
@@ -84,7 +85,10 @@ export function rowMatchesSubjectListFilters(
     return false;
   }
   if (filters.levelId && row.levelId !== filters.levelId) {
-    return false;
+    const extra = row.levelIds ?? [];
+    if (!extra.includes(filters.levelId)) {
+      return false;
+    }
   }
   if (filters.termId && row.termId != null && row.termId !== filters.termId) {
     return false;

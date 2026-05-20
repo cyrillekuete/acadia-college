@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import { fetchSubjectIdsForLevel } from '@/lib/supabase/queries/subject-levels';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -20,6 +21,7 @@ type SubjectRow = {
   code: string;
   nameEn: string;
   specialtyId: string;
+  levelId: string;
   academicYearId: string | null;
   termId: string | null;
   Specialty?: {
@@ -66,7 +68,9 @@ export function useSubjectsForClass(filters: {
     ],
     queryFn: async (): Promise<SubjectForClassOption[]> => {
       const supabase = requireBrowserClient();
-      const { data, error } = await supabase
+      const linkedIds = await fetchSubjectIdsForLevel(supabase, tenantId!, levelId);
+
+      let query = supabase
         .from('Subject')
         .select(
           `
@@ -74,6 +78,7 @@ export function useSubjectsForClass(filters: {
           code,
           nameEn,
           specialtyId,
+          levelId,
           academicYearId,
           termId,
           Specialty!Subject_specialtyId_tenantId_fkey ( subSystem, branch ),
@@ -81,33 +86,59 @@ export function useSubjectsForClass(filters: {
         `,
         )
         .eq('tenantId', tenantId!)
-        .eq('levelId', levelId)
         .is('deactivatedAt', null)
         .order('code', { ascending: true });
+
+      if (linkedIds.length > 0) {
+        const primaryFilter = `levelId.eq.${levelId}`;
+        const linkedFilter = `id.in.(${linkedIds.join(',')})`;
+        query = query.or(`${primaryFilter},${linkedFilter}`);
+      } else {
+        query = query.eq('levelId', levelId);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         throw error;
       }
 
       const specialtyId = filters.specialtyId?.trim() || '';
+      const seen = new Set<string>();
 
       return (data ?? [])
         .filter((row) => {
           const subject = row as SubjectRow;
+          const id = subject.id as string;
+          if (seen.has(id)) {
+            return false;
+          }
           if (!subjectMatchesAcademicYear(subject, filters.academicYearId)) {
             return false;
           }
-          if (specialtyId) {
-            return subject.specialtyId === specialtyId;
+          const matchesLevel =
+            subject.levelId === levelId || linkedIds.includes(id);
+          if (!matchesLevel) {
+            return false;
           }
-          const specialty = unwrapRelation<{
-            subSystem?: AcademicSubSystem;
-            branch?: AcademicBranch;
-          }>(subject.Specialty);
-          return (
-            specialty?.subSystem === filters.subSystem &&
-            specialty?.branch === filters.branch
-          );
+          if (specialtyId) {
+            if (subject.specialtyId !== specialtyId) {
+              return false;
+            }
+          } else {
+            const specialty = unwrapRelation<{
+              subSystem?: AcademicSubSystem;
+              branch?: AcademicBranch;
+            }>(subject.Specialty);
+            if (
+              specialty?.subSystem !== filters.subSystem ||
+              specialty?.branch !== filters.branch
+            ) {
+              return false;
+            }
+          }
+          seen.add(id);
+          return true;
         })
         .map((row) => ({
           id: row.id as string,

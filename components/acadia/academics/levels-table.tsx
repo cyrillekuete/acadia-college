@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { InputWrapper } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
+import { Button } from '@/components/ui/button';
 
 function subSystemTableLabel(value: string | null | undefined): string {
   if (!value) return '—';
@@ -42,12 +43,14 @@ function truncateCell(text: string) {
 
 export function LevelsTable({
   filters,
+  onCreate,
   onEdit,
   onDelete,
 }: {
   filters: CatalogFilters;
-  onEdit: (row: LevelListRow) => void;
-  onDelete: (row: LevelListRow) => void;
+  onCreate?: () => void;
+  onEdit?: (row: LevelListRow) => void;
+  onDelete?: (row: LevelListRow) => void;
 }) {
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
@@ -123,7 +126,7 @@ export function LevelsTable({
         size: 72,
         enableSorting: true,
       },
-      ...(canManage
+      ...(canManage && onEdit
         ? [
             {
               id: 'actions',
@@ -131,7 +134,7 @@ export function LevelsTable({
               cell: ({ row }: { row: { original: LevelListRow } }) => (
                 <RegistryRowActions
                   onEdit={() => onEdit(row.original)}
-                  onDelete={() => onDelete(row.original)}
+                  onDelete={onDelete ? () => onDelete(row.original) : undefined}
                 />
               ),
               size: 68,
@@ -195,9 +198,18 @@ export function LevelsTable({
           ) : isLoading ? (
             <Skeleton className="m-5 h-40 w-full" />
           ) : recordCount === 0 ? (
-            <p className="p-5 text-sm text-muted-foreground">
-              No levels match your filters.
-            </p>
+            <div className="flex flex-col items-start gap-3 p-5">
+              <p className="text-sm text-muted-foreground">
+                {data.length === 0
+                  ? 'No levels defined yet for this tenant.'
+                  : 'No levels match your filters.'}
+              </p>
+              {data.length === 0 && onCreate ? (
+                <Button type="button" size="sm" onClick={onCreate}>
+                  Create first level
+                </Button>
+              ) : null}
+            </div>
           ) : (
             <DataGridTable />
           )}

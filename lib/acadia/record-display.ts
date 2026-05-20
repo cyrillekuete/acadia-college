@@ -51,11 +51,36 @@ export function specialtyLabel(
   return code || name || '—';
 }
 
-export function levelLabel(level: { number?: number } | null): string {
-  if (!level || level.number === undefined) {
+export function levelLabel(level: { number?: number; name?: string; labelEn?: string | null } | null): string {
+  if (!level) {
     return '—';
   }
-  return `Level ${level.number}`;
+  const name = level.labelEn?.trim() || level.name?.trim();
+  if (name) {
+    return name;
+  }
+  if (level.number !== undefined) {
+    return `Level ${level.number}`;
+  }
+  return '—';
+}
+
+export function formatSubjectLevelsLabel(
+  primary: { number?: number; name?: string; labelEn?: string | null } | null,
+  extra: { number?: number; name?: string; labelEn?: string | null }[],
+): string {
+  const labels: string[] = [];
+  const primaryLabel = levelLabel(primary);
+  if (primaryLabel !== '—') {
+    labels.push(primaryLabel);
+  }
+  for (const level of extra) {
+    const label = levelLabel(level);
+    if (label !== '—' && !labels.includes(label)) {
+      labels.push(label);
+    }
+  }
+  return labels.length > 0 ? labels.join(', ') : '—';
 }
 
 const TERM_ORDINALS = [

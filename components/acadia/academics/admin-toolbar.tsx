@@ -4,7 +4,7 @@ import { ReactNode } from 'react';
 import { Plus } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { isAdmin } from '@/lib/acadia/roles';
+import { canWriteRegistry } from '@/lib/acadia/roles';
 import { cn } from '@/lib/utils';
 
 export function AdminToolbar({
@@ -19,7 +19,7 @@ export function AdminToolbar({
   className?: string;
 }) {
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = isAdmin(session?.roleSlug);
+  const canManage = canWriteRegistry(session?.roleSlug);
 
   if (!canManage) {
     return null;

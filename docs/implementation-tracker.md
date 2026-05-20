@@ -62,7 +62,8 @@
 | F-013b | Terms | `done` | `/academics/terms` | DataGrid + structure card | Per-year `termsPerYear` on `AcademicYear`; provision terms |
 | F-013g | Sequences | `done` | `/academics/sequences` | DataGrid + structure card | Per-year `sequencesPerTerm` / `sequencesPerYear`; distribution preview |
 | F-013c | Departments | `done` | `/academics/departments` | DataGrid list | |
-| F-013d | Levels | `done` | `/academics/levels` | DataGrid list | |
+| F-013d | Levels | `done` | `/academics/levels` | DataGrid + dialog CRUD | Catalog import; delete confirm dialog |
+| F-013h | Class structure CRUD | `done` | `/academics/classes` | DataGrid + dialog CRUD | Split from combined page; subjects + teacher on form |
 | F-013e | Specialties | `done` | `/academics/specialties` | DataGrid list | |
 | F-013f | Rooms | `done` | `/academics/rooms` | DataGrid list | |
 | F-014 | Subjects catalog list | `done` | `/subjects` | account/members/teams | Catalog filters, placement columns, bilingual names |
@@ -181,7 +182,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 |----|---------|-----|--------|------------------|-----------------|-------|
 | F-077 | Subject create/edit | FR-3.2.1 | `done` | `/subjects/new`, `/subjects/[id]/edit` | teams form | `subject-schemas.ts`, `SubjectForm`, term + catalog placement |
 | F-078 | SubjectAssignment (teacher ↔ subject) | FR-3.1.2, FR-3.2.2 | `done` | `/subjects/[id]` | — | `SubjectAssignmentPanel` CRUD |
-| F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `done` | `/classes` | DataGrid | Year + catalog + specialty/level filters |
+| F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `done` | `/classes` | DataGrid | Year + catalog + specialty/level filters; link to `/academics/classes` |
 | F-080 | Timetable slot create/edit | FR-3.1.4 | `done` | `/timetable` | DataGrid + form | `TimetableSlotFormDialog` + edit/delete |
 | F-081 | Subject-specific resources (course materials) | FR-3.2.3, FR-8.1.1 | `done` | `/subjects/[id]` | — | `CourseworkTask` via `SubjectMaterialsPanel` |
 

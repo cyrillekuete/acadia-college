@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
@@ -37,8 +37,10 @@ import {
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
 import { levelFormSchema, type LevelFormValues } from '@/lib/acadia/structure-schemas';
+import { levelCreateConfirmCopy } from '@/lib/acadia/structure-messages';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
 import { type LevelListRow } from '@/hooks/use-level-list';
+import { RegistryCreateConfirmDialog } from '@/components/acadia/academics/registry-create-confirm-dialog';
 
 export function LevelFormDialog({
   open,
@@ -54,6 +56,9 @@ export function LevelFormDialog({
   const { createLevel, updateLevel } = useAcademicStructureMutations();
   const isEdit = !!record;
   const pending = createLevel.isPending || updateLevel.isPending;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingValues, setPendingValues] = useState<LevelFormValues | null>(null);
+  const createConfirm = levelCreateConfirmCopy();
 
   const form = useForm<LevelFormValues>({
     resolver: zodResolver(levelFormSchema),
@@ -66,6 +71,8 @@ export function LevelFormDialog({
 
   useEffect(() => {
     if (!open) {
+      setConfirmOpen(false);
+      setPendingValues(null);
       return;
     }
     if (record) {
@@ -84,17 +91,33 @@ export function LevelFormDialog({
   }, [open, record, defaultFilters, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
-    try {
-      if (isEdit && record) {
+    if (isEdit && record) {
+      try {
         await updateLevel.mutateAsync({ id: record.id, values });
-      } else {
-        await createLevel.mutateAsync(values);
+        onOpenChange(false);
+      } catch {
+        // Toast is shown by mutation onError; keep dialog open for correction.
       }
+      return;
+    }
+    setPendingValues(values);
+    setConfirmOpen(true);
+  });
+
+  const confirmCreate = async () => {
+    if (!pendingValues) {
+      return;
+    }
+    try {
+      await createLevel.mutateAsync(pendingValues);
+      setConfirmOpen(false);
+      setPendingValues(null);
       onOpenChange(false);
     } catch {
-      // Toast is shown by mutation onError; keep dialog open for correction.
+      setConfirmOpen(false);
+      // Toast is shown by mutation onError; keep form dialog open for correction.
     }
-  });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,6 +202,14 @@ export function LevelFormDialog({
           </form>
         </Form>
       </DialogContent>
+      <RegistryCreateConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={createConfirm.title}
+        description={createConfirm.description}
+        onConfirm={() => void confirmCreate()}
+        pending={createLevel.isPending}
+      />
     </Dialog>
   );
 }

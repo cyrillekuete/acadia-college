@@ -11,7 +11,7 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Search } from '@/lib/icons';
+import { BookOpen, Search } from '@/lib/icons';
 import { branchLabel } from '@/lib/acadia/education-system';
 import type { CatalogFilters } from '@/lib/acadia/education-system';
 import { unwrapRelation } from '@/lib/acadia/record-display';
@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { InputWrapper } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
+import { Button } from '@/components/ui/button';
 
 function subSystemTableLabel(value: string | null | undefined): string {
   if (!value) return '—';
@@ -56,12 +57,16 @@ function classLevelName(row: ClassListRow): string {
 
 export function ClassesTable({
   filters,
+  onCreate,
   onEdit,
   onDelete,
+  onAssignSubjects,
 }: {
   filters: CatalogFilters;
-  onEdit: (row: ClassListRow) => void;
-  onDelete: (row: ClassListRow) => void;
+  onCreate?: () => void;
+  onEdit?: (row: ClassListRow) => void;
+  onDelete?: (row: ClassListRow) => void;
+  onAssignSubjects?: (row: ClassListRow) => void;
 }) {
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
@@ -200,16 +205,29 @@ export function ClassesTable({
         size: 76,
         enableSorting: true,
       },
-      ...(canManage
+      ...(canManage && onEdit
         ? [
             {
               id: 'actions',
               header: () => <span className="sr-only">Actions</span>,
               cell: ({ row }: { row: { original: ClassListRow } }) => (
-                <RegistryRowActions
-                  onEdit={() => onEdit(row.original)}
-                  onDelete={() => onDelete(row.original)}
-                />
+                <div className="flex justify-end gap-1">
+                  {onAssignSubjects ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onAssignSubjects(row.original)}
+                      aria-label="Assign subjects"
+                    >
+                      <BookOpen className="size-4" />
+                    </Button>
+                  ) : null}
+                  <RegistryRowActions
+                    onEdit={() => onEdit(row.original)}
+                    onDelete={onDelete ? () => onDelete(row.original) : undefined}
+                  />
+                </div>
               ),
               size: 68,
               enableSorting: false,
@@ -217,7 +235,7 @@ export function ClassesTable({
           ]
         : []),
     ],
-    [canManage, onDelete, onEdit],
+    [canManage, onDelete, onEdit, onAssignSubjects],
   );
 
   const table = useReactTable({
@@ -272,9 +290,18 @@ export function ClassesTable({
           ) : isLoading ? (
             <Skeleton className="m-5 h-40 w-full" />
           ) : recordCount === 0 ? (
-            <p className="p-5 text-sm text-muted-foreground">
-              No classes match your filters.
-            </p>
+            <div className="flex flex-col items-start gap-3 p-5">
+              <p className="text-sm text-muted-foreground">
+                {data.length === 0
+                  ? 'No classes defined yet. Create levels first, then add classes.'
+                  : 'No classes match your filters.'}
+              </p>
+              {data.length === 0 && onCreate ? (
+                <Button type="button" size="sm" onClick={onCreate}>
+                  Create first class
+                </Button>
+              ) : null}
+            </div>
           ) : (
             <DataGridTable />
           )}

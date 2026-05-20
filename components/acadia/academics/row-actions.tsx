@@ -3,7 +3,7 @@
 import { Pencil, Trash2 } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { isAdmin } from '@/lib/acadia/roles';
+import { canWriteRegistry } from '@/lib/acadia/roles';
 
 export function RegistryRowActions({
   onEdit,
@@ -13,7 +13,7 @@ export function RegistryRowActions({
   onDelete?: () => void;
 }) {
   const { data: session } = useAcadiaCollegeSession();
-  if (!isAdmin(session?.roleSlug)) {
+  if (!canWriteRegistry(session?.roleSlug)) {
     return null;
   }
 

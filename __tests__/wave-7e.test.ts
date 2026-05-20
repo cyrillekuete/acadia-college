@@ -29,7 +29,7 @@ const baseSubjectValues = {
   subSystem: 'ENGLISH' as const,
   branch: 'GRAMMAR' as const,
   specialtyId: 'spec-1',
-  levelId: 'level-1',
+  levelIds: ['level-1'],
   coefficient: 2,
   groupingId: '',
   hasSubBranches: false,
@@ -129,7 +129,7 @@ describe('rowMatchesSubjectListFilters', () => {
   const row = {
     deactivatedAt: null,
     groupingId: 'grp-1',
-    levelId: 'level-1',
+    levelIds: ['level-1'],
     termId: 'term-1',
   };
 
@@ -160,7 +160,7 @@ describe('rowMatchesSubjectListFilters', () => {
       rowMatchesSubjectListFilters(row, {
         status: 'all',
         groupingId: 'grp-1',
-        levelId: 'level-1',
+        levelIds: ['level-1'],
         termId: 'term-1',
       }),
     ).toBe(true);
@@ -256,7 +256,7 @@ describe('buildSubjectRow', () => {
         subSystem: 'ENGLISH',
         branch: 'GRAMMAR',
         specialtyId: 'spec-1',
-        levelId: 'level-1',
+        levelIds: ['level-1'],
         coefficient: 3,
         groupingId: 'grp-1',
         hasSubBranches: true,
@@ -275,6 +275,7 @@ describe('buildSubjectRow', () => {
     expect(row.coefficient).toBe(3);
     expect(row.groupingId).toBe('grp-1');
     expect(row.hasSubBranches).toBe(true);
+    expect(row.levelId).toBe('level-1');
     expect(row.deactivatedAt).toBeNull();
   });
 

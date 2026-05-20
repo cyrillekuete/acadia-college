@@ -3306,6 +3306,52 @@ export type Database = {
           },
         ]
       }
+      SubjectLevel: {
+        Row: {
+          createdAt: string
+          id: string
+          levelId: string
+          subjectId: string
+          tenantId: string
+        }
+        Insert: {
+          createdAt?: string
+          id: string
+          levelId: string
+          subjectId: string
+          tenantId: string
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          levelId?: string
+          subjectId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectLevel_levelId_tenantId_fkey"
+            columns: ["levelId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Level"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectLevel_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectLevel_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       SubjectSubBranch: {
         Row: {
           coefficient: number | null

@@ -35,6 +35,7 @@ import {
   type SubjectListFilters,
 } from '@/lib/acadia/subject';
 import {
+  formatSubjectLevelsLabel,
   levelLabel,
   specialtyLabel,
   termLabel,
@@ -111,7 +112,15 @@ export function SubjectsTable({
       {
         id: 'level',
         header: 'Level',
-        cell: ({ row }) => levelLabel(row.original.Level),
+        cell: ({ row }) => {
+          const levels = (row.original.SubjectLevel ?? [])
+            .map((sl) => sl.Level)
+            .filter((l): l is NonNullable<typeof l> => l != null);
+          if (levels.length === 0) {
+            return levelLabel(row.original.Level);
+          }
+          return formatSubjectLevelsLabel(row.original.Level, levels);
+        },
       },
       {
         id: 'term',
