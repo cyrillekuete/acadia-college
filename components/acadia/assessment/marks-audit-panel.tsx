@@ -13,7 +13,7 @@ import { formatDateTime } from '@/lib/acadia/record-display';
 import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 
-const MARK_EVENTS = ['course_mark.created', 'course_mark.updated'] as const;
+const MARK_EVENTS = ['subject_mark.created', 'subject_mark.updated'] as const;
 
 export function MarksAuditPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =

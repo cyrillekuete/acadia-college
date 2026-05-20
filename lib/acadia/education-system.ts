@@ -89,6 +89,7 @@ export function specialtyStreamLabel(
 
 export function levelDisplayLabel(
   level: {
+    name?: string | null;
     number?: number;
     labelEn?: string | null;
     labelFr?: string | null;
@@ -96,6 +97,10 @@ export function levelDisplayLabel(
 ): string {
   if (!level) {
     return '—';
+  }
+  const name = level.name?.trim();
+  if (name) {
+    return name;
   }
   const label = level.labelEn?.trim() || level.labelFr?.trim();
   if (label) {

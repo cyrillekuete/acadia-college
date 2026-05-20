@@ -5,15 +5,18 @@ import { Plus } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { isAdmin } from '@/lib/acadia/roles';
+import { cn } from '@/lib/utils';
 
 export function AdminToolbar({
   onAdd,
   addLabel,
   children,
+  className,
 }: {
   onAdd?: () => void;
   addLabel?: string;
   children?: ReactNode;
+  className?: string;
 }) {
   const { data: session } = useAcadiaCollegeSession();
   const canManage = isAdmin(session?.roleSlug);
@@ -23,7 +26,7 @@ export function AdminToolbar({
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+    <div className={cn('mb-4 flex flex-wrap items-center justify-end gap-2', className)}>
       {children}
       {onAdd && addLabel ? (
         <Button type="button" size="sm" onClick={onAdd}>

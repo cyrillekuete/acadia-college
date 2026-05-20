@@ -50,11 +50,11 @@ describe('formatLocalDateInputValue', () => {
 });
 
 describe('attendanceSessionSchema', () => {
-  it('requires year, course, and session date', () => {
+  it('requires year, subject, and session date', () => {
     expect(
       attendanceSessionSchema.safeParse({
         academicYearId: 'year-1',
-        courseId: 'course-1',
+        subjectId: 'subject-1',
         sessionDate: '2026-05-19',
       }).success,
     ).toBe(true);

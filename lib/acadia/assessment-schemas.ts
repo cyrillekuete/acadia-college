@@ -9,7 +9,7 @@ const scoreField = z
 export const examSessionSchema = z
   .object({
     academicYearId: z.string().min(1, 'Academic year is required.'),
-    courseId: z.string().min(1, 'Course is required.'),
+    subjectId: z.string().min(1, 'Subject is required.'),
     termId: z.string().min(1, 'Term is required.'),
     sequenceId: z.string().optional().or(z.literal('')),
     type: z.enum(EXAM_SESSION_TYPES),
@@ -23,21 +23,21 @@ export const examSessionSchema = z
 
 export type ExamSessionFormValues = z.infer<typeof examSessionSchema>;
 
-export const courseMarkEntrySchema = z.object({
+export const subjectMarkEntrySchema = z.object({
   studentProfileId: z.string().min(1),
   caScore: scoreField,
   examScore: scoreField,
   isResitEligible: z.boolean().optional(),
 });
 
-export type CourseMarkEntryValues = z.infer<typeof courseMarkEntrySchema>;
+export type SubjectMarkEntryValues = z.infer<typeof subjectMarkEntrySchema>;
 
 export const marksEntryContextSchema = z.object({
   academicYearId: z.string().min(1),
   sequenceId: z.string().min(1),
-  courseId: z.string().min(1),
+  subjectId: z.string().min(1),
   examSessionId: z.string().min(1),
-  marks: z.array(courseMarkEntrySchema),
+  marks: z.array(subjectMarkEntrySchema),
 });
 
 export type MarksEntryContextValues = z.infer<typeof marksEntryContextSchema>;

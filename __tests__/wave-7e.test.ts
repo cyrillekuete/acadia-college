@@ -1,15 +1,16 @@
 /**
  * Wave 7E unit tests
- * Covers: course schemas, course helpers, timetable utilities
+ * Covers: subject schemas, subject helpers, timetable utilities
  */
 import { describe, it, expect } from 'vitest';
-import { buildCourseRow, canEditCourse } from '@/lib/acadia/course';
+import { subjectTypeLabel } from '@/lib/acadia/subject-catalog';
+import { buildSubjectRow, canEditSubject } from '@/lib/acadia/subject';
 import {
-  courseAssignmentSchema,
-  courseMaterialSchema,
-  courseSchema,
+  subjectAssignmentSchema,
+  subjectMaterialSchema,
+  subjectSchema,
   timetableSlotSchema,
-} from '@/lib/acadia/course-schemas';
+} from '@/lib/acadia/subject-schemas';
 import {
   dayOfWeekLabel,
   formatTimeRange,
@@ -17,9 +18,9 @@ import {
   timeStringToMinutes,
 } from '@/lib/acadia/timetable';
 
-describe('courseSchema', () => {
+describe('subjectSchema', () => {
   it('requires catalog placement and term', () => {
-    const result = courseSchema.safeParse({
+    const result = subjectSchema.safeParse({
       code: 'MATH101',
       nameEn: 'Mathematics',
       nameFr: 'Mathématiques',
@@ -31,12 +32,39 @@ describe('courseSchema', () => {
       specialtyId: 'spec-1',
       levelId: 'level-1',
       termId: 'term-1',
+      subjectType: 'TRADE_SUBJECTS',
+      coefficient: 2,
+      groupingId: '',
+      hasSubBranches: false,
+      subBranches: [],
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects invalid course code', () => {
-    const result = courseSchema.safeParse({
+  it('requires sub-branches when hasSubBranches is true', () => {
+    const result = subjectSchema.safeParse({
+      code: 'MATH101',
+      nameEn: 'Mathematics',
+      nameFr: 'Mathématiques',
+      credits: 3,
+      hours: 45,
+      academicYearId: 'year-1',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
+      specialtyId: 'spec-1',
+      levelId: 'level-1',
+      termId: 'term-1',
+      subjectType: 'OTHERS',
+      coefficient: 1,
+      groupingId: '',
+      hasSubBranches: true,
+      subBranches: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid subject code', () => {
+    const result = subjectSchema.safeParse({
       code: '',
       nameEn: 'Mathematics',
       nameFr: 'Mathématiques',
@@ -48,15 +76,27 @@ describe('courseSchema', () => {
       specialtyId: 'spec-1',
       levelId: 'level-1',
       termId: 'term-1',
+      subjectType: 'OTHERS',
+      coefficient: 1,
+      groupingId: '',
+      hasSubBranches: false,
+      subBranches: [],
     });
     expect(result.success).toBe(false);
   });
 });
 
-describe('courseAssignmentSchema', () => {
+describe('subjectTypeLabel', () => {
+  it('returns human-readable labels', () => {
+    expect(subjectTypeLabel('LANGUAGES')).toBe('Languages');
+    expect(subjectTypeLabel('TRADE_SUBJECTS')).toBe('Trade subjects');
+  });
+});
+
+describe('subjectAssignmentSchema', () => {
   it('requires teacher and academic year', () => {
     expect(
-      courseAssignmentSchema.safeParse({
+      subjectAssignmentSchema.safeParse({
         academicYearId: 'year-1',
         staffProfileId: 'staff-1',
         isLead: true,
@@ -71,7 +111,7 @@ describe('timetableSlotSchema', () => {
     expect(
       timetableSlotSchema.safeParse({
         academicYearId: 'year-1',
-        courseId: 'course-1',
+        subjectId: 'subject-1',
         staffProfileId: 'staff-1',
         roomId: 'room-1',
         dayOfWeek: 1,
@@ -82,7 +122,7 @@ describe('timetableSlotSchema', () => {
     expect(
       timetableSlotSchema.safeParse({
         academicYearId: 'year-1',
-        courseId: 'course-1',
+        subjectId: 'subject-1',
         staffProfileId: 'staff-1',
         roomId: 'room-1',
         dayOfWeek: 1,
@@ -93,10 +133,10 @@ describe('timetableSlotSchema', () => {
   });
 });
 
-describe('courseMaterialSchema', () => {
+describe('subjectMaterialSchema', () => {
   it('requires bilingual titles and due date', () => {
     expect(
-      courseMaterialSchema.safeParse({
+      subjectMaterialSchema.safeParse({
         academicYearId: 'year-1',
         titleEn: 'Chapter 1',
         titleFr: 'Chapitre 1',
@@ -108,11 +148,11 @@ describe('courseMaterialSchema', () => {
   });
 });
 
-describe('buildCourseRow', () => {
+describe('buildSubjectRow', () => {
   it('normalizes code and maps catalog fields', () => {
-    const row = buildCourseRow(
+    const row = buildSubjectRow(
       'tenant-1',
-      'course-1',
+      'subject-1',
       {
         code: ' math101 ',
         nameEn: 'Math',
@@ -125,19 +165,28 @@ describe('buildCourseRow', () => {
         specialtyId: 'spec-1',
         levelId: 'level-1',
         termId: 'term-1',
+        subjectType: 'RELATED_TRADE_SUBJECTS',
+        coefficient: 3,
+        groupingId: 'grp-1',
+        hasSubBranches: true,
+        subBranches: [{ name: 'Pure Maths', coefficient: 2 }],
       },
       '2026-05-19T00:00:00.000Z',
     );
     expect(row.code).toBe('MATH101');
     expect(row.termId).toBe('term-1');
+    expect(row.subjectType).toBe('RELATED_TRADE_SUBJECTS');
+    expect(row.coefficient).toBe(3);
+    expect(row.groupingId).toBe('grp-1');
+    expect(row.hasSubBranches).toBe(true);
     expect(row.deactivatedAt).toBeNull();
   });
 });
 
-describe('canEditCourse', () => {
+describe('canEditSubject', () => {
   it('returns false when deactivated', () => {
-    expect(canEditCourse('2026-01-01T00:00:00.000Z')).toBe(false);
-    expect(canEditCourse(null)).toBe(true);
+    expect(canEditSubject('2026-01-01T00:00:00.000Z')).toBe(false);
+    expect(canEditSubject(null)).toBe(true);
   });
 });
 

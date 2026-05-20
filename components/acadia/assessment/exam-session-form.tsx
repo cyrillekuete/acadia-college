@@ -38,7 +38,7 @@ import {
   sequenceOptionLabel,
   useSequenceOptions,
 } from '@/hooks/use-assessment-catalog-options';
-import { useCourseOptions } from '@/hooks/use-course-catalog-options';
+import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useAssessmentMutations } from '@/hooks/use-assessment-mutations';
 
 export type ExamSessionFormRecord = ExamSessionFormValues & { id: string };
@@ -58,7 +58,7 @@ export function ExamSessionForm({
     resolver: zodResolver(examSessionSchema),
     defaultValues: {
       academicYearId: '',
-      courseId: '',
+      subjectId: '',
       termId: '',
       sequenceId: '',
       type: 'NORMAL',
@@ -71,7 +71,7 @@ export function ExamSessionForm({
   const termId = form.watch('termId');
   const { data: terms = [] } = useTermOptions(academicYearId);
   const { data: sequences = [] } = useSequenceOptions(academicYearId);
-  const { data: courses = [] } = useCourseOptions(academicYearId);
+  const { data: subjects = [] } = useSubjectOptions(academicYearId);
 
   const sequencesForTerm = sequences.filter((s) => s.termId === termId);
 
@@ -81,7 +81,7 @@ export function ExamSessionForm({
     }
     form.reset({
       academicYearId: record.academicYearId,
-      courseId: record.courseId,
+      subjectId: record.subjectId,
       termId: record.termId,
       sequenceId: record.sequenceId ?? '',
       type: record.type,
@@ -138,18 +138,18 @@ export function ExamSessionForm({
 
         <FormField
           control={form.control}
-          name="courseId"
+          name="subjectId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Course</FormLabel>
+              <FormLabel>Subject</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select course" />
+                    <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {courses.map((c) => (
+                  {subjects.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.code} — {c.nameEn}
                     </SelectItem>

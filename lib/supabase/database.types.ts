@@ -162,8 +162,11 @@ export type Database = {
           isActive: boolean
           isCurrent: boolean
           label: string
+          sequencesPerTerm: number
+          sequencesPerYear: number
           startsOn: string
           tenantId: string
+          termsPerYear: number
           timetablePublishedAt: string | null
           timetablePublishedByUserId: string | null
           updatedAt: string
@@ -177,8 +180,11 @@ export type Database = {
           isActive?: boolean
           isCurrent?: boolean
           label: string
+          sequencesPerTerm?: number
+          sequencesPerYear?: number
           startsOn: string
           tenantId: string
+          termsPerYear?: number
           timetablePublishedAt?: string | null
           timetablePublishedByUserId?: string | null
           updatedAt: string
@@ -192,8 +198,11 @@ export type Database = {
           isActive?: boolean
           isCurrent?: boolean
           label?: string
+          sequencesPerTerm?: number
+          sequencesPerYear?: number
           startsOn?: string
           tenantId?: string
+          termsPerYear?: number
           timetablePublishedAt?: string | null
           timetablePublishedByUserId?: string | null
           updatedAt?: string
@@ -323,36 +332,36 @@ export type Database = {
       AttendanceSession: {
         Row: {
           academicYearId: string
-          courseId: string
           createdAt: string
           createdByUserId: string | null
           id: string
           label: string | null
           sessionDate: string
+          subjectId: string
           tenantId: string
           timetableSlotId: string | null
           updatedAt: string
         }
         Insert: {
           academicYearId: string
-          courseId: string
           createdAt?: string
           createdByUserId?: string | null
           id: string
           label?: string | null
           sessionDate: string
+          subjectId: string
           tenantId: string
           timetableSlotId?: string | null
           updatedAt: string
         }
         Update: {
           academicYearId?: string
-          courseId?: string
           createdAt?: string
           createdByUserId?: string | null
           id?: string
           label?: string | null
           sessionDate?: string
+          subjectId?: string
           tenantId?: string
           timetableSlotId?: string | null
           updatedAt?: string
@@ -366,18 +375,18 @@ export type Database = {
             referencedColumns: ["id", "tenantId"]
           },
           {
-            foreignKeyName: "AttendanceSession_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Course"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
             foreignKeyName: "AttendanceSession_createdByUserId_fkey"
             columns: ["createdByUserId"]
             isOneToOne: false
             referencedRelation: "User"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "AttendanceSession_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
           },
           {
             foreignKeyName: "AttendanceSession_tenantId_fkey"
@@ -392,6 +401,77 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "TimetableSlot"
             referencedColumns: ["id", "tenantId"]
+          },
+        ]
+      }
+      Class: {
+        Row: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
+          createdAt: string
+          id: string
+          levelId: string
+          name: string
+          specialtyId: string | null
+          staffProfileId: string | null
+          status: Database["public"]["Enums"]["ClassStatus"]
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
+          createdAt?: string
+          id: string
+          levelId: string
+          name: string
+          specialtyId?: string | null
+          staffProfileId?: string | null
+          status?: Database["public"]["Enums"]["ClassStatus"]
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
+          tenantId: string
+          updatedAt?: string
+        }
+        Update: {
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
+          createdAt?: string
+          id?: string
+          levelId?: string
+          name?: string
+          specialtyId?: string | null
+          staffProfileId?: string | null
+          status?: Database["public"]["Enums"]["ClassStatus"]
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Class_levelId_tenantId_fkey"
+            columns: ["tenantId", "levelId"]
+            isOneToOne: false
+            referencedRelation: "Level"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "Class_specialtyId_tenantId_fkey"
+            columns: ["tenantId", "specialtyId"]
+            isOneToOne: false
+            referencedRelation: "Specialty"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "Class_staffProfileId_tenantId_fkey"
+            columns: ["tenantId", "staffProfileId"]
+            isOneToOne: false
+            referencedRelation: "StaffProfile"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "Class_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -489,456 +569,55 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
-      }
-      Course: {
-        Row: {
-          code: string
-          createdAt: string
-          credits: number
-          deactivatedAt: string | null
-          hours: number
-          id: string
-          levelId: string
-          nameEn: string
-          nameFr: string
-          specialtyId: string
-          tenantId: string
-          termId: string
-          updatedAt: string
-        }
-        Insert: {
-          code: string
-          createdAt?: string
-          credits: number
-          deactivatedAt?: string | null
-          hours: number
-          id: string
-          levelId: string
-          nameEn: string
-          nameFr: string
-          specialtyId: string
-          tenantId: string
-          termId: string
-          updatedAt: string
-        }
-        Update: {
-          code?: string
-          createdAt?: string
-          credits?: number
-          deactivatedAt?: string | null
-          hours?: number
-          id?: string
-          levelId?: string
-          nameEn?: string
-          nameFr?: string
-          specialtyId?: string
-          tenantId?: string
-          termId?: string
-          updatedAt?: string
-        }
         Relationships: [
           {
-            foreignKeyName: "Course_levelId_tenantId_fkey"
-            columns: ["levelId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Level"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "Course_semesterId_tenantId_fkey"
-            columns: ["termId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Term"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "Course_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "Course_tenantId_fkey"
-            columns: ["tenantId"]
+            foreignKeyName: "classes_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "Tenant"
             referencedColumns: ["id"]
           },
         ]
       }
-      CourseAssignment: {
+      ClassSubject: {
         Row: {
-          academicYearId: string
-          courseId: string
+          classId: string
           createdAt: string
           id: string
-          isLead: boolean
-          notes: string | null
-          staffProfileId: string
-          teachesPrimaryHome: boolean
-          tenantId: string
-          updatedAt: string
-        }
-        Insert: {
-          academicYearId: string
-          courseId: string
-          createdAt?: string
-          id: string
-          isLead?: boolean
-          notes?: string | null
-          staffProfileId: string
-          teachesPrimaryHome?: boolean
-          tenantId: string
-          updatedAt: string
-        }
-        Update: {
-          academicYearId?: string
-          courseId?: string
-          createdAt?: string
-          id?: string
-          isLead?: boolean
-          notes?: string | null
-          staffProfileId?: string
-          teachesPrimaryHome?: boolean
-          tenantId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "CourseAssignment_academicYearId_tenantId_fkey"
-            columns: ["academicYearId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "AcademicYear"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseAssignment_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Course"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseAssignment_staffProfileId_tenantId_fkey"
-            columns: ["staffProfileId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "StaffProfile"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseAssignment_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      CourseAssignmentOffering: {
-        Row: {
-          courseAssignmentId: string
-          createdAt: string
-          id: string
-          offeringId: string
+          subjectId: string
           tenantId: string
         }
         Insert: {
-          courseAssignmentId: string
+          classId: string
           createdAt?: string
           id: string
-          offeringId: string
+          subjectId: string
           tenantId: string
         }
         Update: {
-          courseAssignmentId?: string
+          classId?: string
           createdAt?: string
           id?: string
-          offeringId?: string
+          subjectId?: string
           tenantId?: string
         }
         Relationships: [
           {
-            foreignKeyName: "CourseAssignmentOffering_courseAssignmentId_tenantId_fkey"
-            columns: ["courseAssignmentId", "tenantId"]
+            foreignKeyName: "ClassSubject_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
             isOneToOne: false
-            referencedRelation: "CourseAssignment"
-            referencedColumns: ["id", "tenantId"]
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
           },
           {
-            foreignKeyName: "CourseAssignmentOffering_offeringId_tenantId_fkey"
-            columns: ["offeringId", "tenantId"]
+            foreignKeyName: "ClassSubject_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
             isOneToOne: false
-            referencedRelation: "CourseSpecialtyOffering"
-            referencedColumns: ["id", "tenantId"]
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
           },
           {
-            foreignKeyName: "CourseAssignmentOffering_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      CourseDiscussionPost: {
-        Row: {
-          authorUserId: string
-          body: string
-          createdAt: string
-          hiddenAt: string | null
-          hiddenByUserId: string | null
-          id: string
-          tenantId: string
-          threadId: string
-          updatedAt: string
-        }
-        Insert: {
-          authorUserId: string
-          body: string
-          createdAt?: string
-          hiddenAt?: string | null
-          hiddenByUserId?: string | null
-          id: string
-          tenantId: string
-          threadId: string
-          updatedAt?: string
-        }
-        Update: {
-          authorUserId?: string
-          body?: string
-          createdAt?: string
-          hiddenAt?: string | null
-          hiddenByUserId?: string | null
-          id?: string
-          tenantId?: string
-          threadId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "CourseDiscussionPost_authorUserId_fkey"
-            columns: ["authorUserId"]
-            isOneToOne: false
-            referencedRelation: "User"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "CourseDiscussionPost_hiddenByUserId_fkey"
-            columns: ["hiddenByUserId"]
-            isOneToOne: false
-            referencedRelation: "User"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "CourseDiscussionPost_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "CourseDiscussionPost_threadId_tenantId_fkey"
-            columns: ["threadId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "CourseDiscussionThread"
-            referencedColumns: ["id", "tenantId"]
-          },
-        ]
-      }
-      CourseDiscussionThread: {
-        Row: {
-          academicYearId: string
-          courseId: string
-          createdAt: string
-          id: string
-          locked: boolean
-          tenantId: string
-          updatedAt: string
-        }
-        Insert: {
-          academicYearId: string
-          courseId: string
-          createdAt?: string
-          id: string
-          locked?: boolean
-          tenantId: string
-          updatedAt?: string
-        }
-        Update: {
-          academicYearId?: string
-          courseId?: string
-          createdAt?: string
-          id?: string
-          locked?: boolean
-          tenantId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "CourseDiscussionThread_academicYearId_tenantId_fkey"
-            columns: ["academicYearId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "AcademicYear"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseDiscussionThread_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Course"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseDiscussionThread_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      CourseMark: {
-        Row: {
-          caScore: number | null
-          courseId: string
-          createdAt: string
-          enteredByUserId: string | null
-          examScore: number | null
-          examSessionId: string
-          id: string
-          isResitEligible: boolean
-          studentProfileId: string
-          tenantId: string
-          totalScore: number | null
-          updatedAt: string
-        }
-        Insert: {
-          caScore?: number | null
-          courseId: string
-          createdAt?: string
-          enteredByUserId?: string | null
-          examScore?: number | null
-          examSessionId: string
-          id: string
-          isResitEligible?: boolean
-          studentProfileId: string
-          tenantId: string
-          totalScore?: number | null
-          updatedAt: string
-        }
-        Update: {
-          caScore?: number | null
-          courseId?: string
-          createdAt?: string
-          enteredByUserId?: string | null
-          examScore?: number | null
-          examSessionId?: string
-          id?: string
-          isResitEligible?: boolean
-          studentProfileId?: string
-          tenantId?: string
-          totalScore?: number | null
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "CourseMark_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Course"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseMark_enteredByUserId_fkey"
-            columns: ["enteredByUserId"]
-            isOneToOne: false
-            referencedRelation: "User"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "CourseMark_examSessionId_tenantId_fkey"
-            columns: ["examSessionId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "ExamSession"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseMark_studentProfileId_tenantId_fkey"
-            columns: ["studentProfileId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "StudentProfile"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseMark_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      CourseSpecialtyOffering: {
-        Row: {
-          courseId: string
-          createdAt: string
-          id: string
-          levelId: string
-          specialtyId: string
-          tenantId: string
-          termId: string
-        }
-        Insert: {
-          courseId: string
-          createdAt?: string
-          id: string
-          levelId: string
-          specialtyId: string
-          tenantId: string
-          termId: string
-        }
-        Update: {
-          courseId?: string
-          createdAt?: string
-          id?: string
-          levelId?: string
-          specialtyId?: string
-          tenantId?: string
-          termId?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "CourseSpecialtyOffering_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Course"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseSpecialtyOffering_levelId_tenantId_fkey"
-            columns: ["levelId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Level"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseSpecialtyOffering_semesterId_tenantId_fkey"
-            columns: ["termId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Term"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseSpecialtyOffering_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "CourseSpecialtyOffering_tenantId_fkey"
+            foreignKeyName: "ClassSubject_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"
@@ -1032,7 +711,6 @@ export type Database = {
       CourseworkTask: {
         Row: {
           academicYearId: string
-          courseId: string
           createdAt: string
           descriptionEn: string | null
           descriptionFr: string | null
@@ -1040,6 +718,7 @@ export type Database = {
           id: string
           isPublished: boolean
           maxScore: number
+          subjectId: string
           tenantId: string
           titleEn: string
           titleFr: string
@@ -1047,7 +726,6 @@ export type Database = {
         }
         Insert: {
           academicYearId: string
-          courseId: string
           createdAt?: string
           descriptionEn?: string | null
           descriptionFr?: string | null
@@ -1055,6 +733,7 @@ export type Database = {
           id: string
           isPublished?: boolean
           maxScore: number
+          subjectId: string
           tenantId: string
           titleEn: string
           titleFr: string
@@ -1062,7 +741,6 @@ export type Database = {
         }
         Update: {
           academicYearId?: string
-          courseId?: string
           createdAt?: string
           descriptionEn?: string | null
           descriptionFr?: string | null
@@ -1070,6 +748,7 @@ export type Database = {
           id?: string
           isPublished?: boolean
           maxScore?: number
+          subjectId?: string
           tenantId?: string
           titleEn?: string
           titleFr?: string
@@ -1084,10 +763,10 @@ export type Database = {
             referencedColumns: ["id", "tenantId"]
           },
           {
-            foreignKeyName: "CourseworkTask_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
+            foreignKeyName: "CourseworkTask_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
             isOneToOne: false
-            referencedRelation: "Course"
+            referencedRelation: "Subject"
             referencedColumns: ["id", "tenantId"]
           },
           {
@@ -1356,13 +1035,13 @@ export type Database = {
       ExamSession: {
         Row: {
           academicYearId: string
-          courseId: string
           createdAt: string
           endsOn: string
           finalizedAt: string | null
           id: string
           sequenceId: string | null
           startsOn: string
+          subjectId: string
           tenantId: string
           termId: string
           type: Database["public"]["Enums"]["ExamSessionType"]
@@ -1370,13 +1049,13 @@ export type Database = {
         }
         Insert: {
           academicYearId: string
-          courseId: string
           createdAt?: string
           endsOn: string
           finalizedAt?: string | null
           id: string
           sequenceId?: string | null
           startsOn: string
+          subjectId: string
           tenantId: string
           termId: string
           type?: Database["public"]["Enums"]["ExamSessionType"]
@@ -1384,13 +1063,13 @@ export type Database = {
         }
         Update: {
           academicYearId?: string
-          courseId?: string
           createdAt?: string
           endsOn?: string
           finalizedAt?: string | null
           id?: string
           sequenceId?: string | null
           startsOn?: string
+          subjectId?: string
           tenantId?: string
           termId?: string
           type?: Database["public"]["Enums"]["ExamSessionType"]
@@ -1402,13 +1081,6 @@ export type Database = {
             columns: ["academicYearId", "tenantId"]
             isOneToOne: false
             referencedRelation: "AcademicYear"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "ExamSession_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Course"
             referencedColumns: ["id", "tenantId"]
           },
           {
@@ -1424,6 +1096,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "AcademicSequence"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ExamSession_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
           },
           {
             foreignKeyName: "ExamSession_tenantId_fkey"
@@ -1612,7 +1291,6 @@ export type Database = {
       }
       LearningMaterial: {
         Row: {
-          courseId: string | null
           createdAt: string
           descriptionEn: string | null
           descriptionFr: string | null
@@ -1623,6 +1301,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["LearningMaterialKind"]
           mimeType: string | null
           storageKey: string | null
+          subjectId: string | null
           tenantId: string
           titleEn: string
           titleFr: string
@@ -1630,7 +1309,6 @@ export type Database = {
           uploadedByUserId: string
         }
         Insert: {
-          courseId?: string | null
           createdAt?: string
           descriptionEn?: string | null
           descriptionFr?: string | null
@@ -1641,6 +1319,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["LearningMaterialKind"]
           mimeType?: string | null
           storageKey?: string | null
+          subjectId?: string | null
           tenantId: string
           titleEn: string
           titleFr: string
@@ -1648,7 +1327,6 @@ export type Database = {
           uploadedByUserId: string
         }
         Update: {
-          courseId?: string | null
           createdAt?: string
           descriptionEn?: string | null
           descriptionFr?: string | null
@@ -1659,6 +1337,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["LearningMaterialKind"]
           mimeType?: string | null
           storageKey?: string | null
+          subjectId?: string | null
           tenantId?: string
           titleEn?: string
           titleFr?: string
@@ -1667,10 +1346,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "LearningMaterial_courseId_fkey"
-            columns: ["courseId"]
+            foreignKeyName: "LearningMaterial_subjectId_fkey"
+            columns: ["subjectId"]
             isOneToOne: false
-            referencedRelation: "Course"
+            referencedRelation: "Subject"
             referencedColumns: ["id"]
           },
           {
@@ -1691,43 +1370,42 @@ export type Database = {
       }
       Level: {
         Row: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           id: string
           labelEn: string | null
           labelFr: string | null
+          name: string
           number: number
           sortOrder: number | null
-          specialtyId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
         }
         Insert: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id: string
           labelEn?: string | null
           labelFr?: string | null
+          name: string
           number: number
           sortOrder?: number | null
-          specialtyId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
         }
         Update: {
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id?: string
           labelEn?: string | null
           labelFr?: string | null
+          name?: string
           number?: number
           sortOrder?: number | null
-          specialtyId?: string
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "Level_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
-          },
           {
             foreignKeyName: "Level_tenantId_fkey"
             columns: ["tenantId"]
@@ -2807,6 +2485,7 @@ export type Database = {
         Row: {
           academicYearId: string
           applicationId: string | null
+          classId: string | null
           createdAt: string
           id: string
           levelId: string
@@ -2819,6 +2498,7 @@ export type Database = {
         Insert: {
           academicYearId: string
           applicationId?: string | null
+          classId?: string | null
           createdAt?: string
           id: string
           levelId: string
@@ -2831,6 +2511,7 @@ export type Database = {
         Update: {
           academicYearId?: string
           applicationId?: string | null
+          classId?: string | null
           createdAt?: string
           id?: string
           levelId?: string
@@ -2854,6 +2535,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "EnrollmentApplication"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "StudentEnrollment_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "StudentEnrollment_levelId_tenantId_fkey"
@@ -3392,6 +3080,572 @@ export type Database = {
           },
         ]
       }
+      Subject: {
+        Row: {
+          code: string
+          coefficient: number
+          createdAt: string
+          credits: number
+          deactivatedAt: string | null
+          groupingId: string | null
+          hasSubBranches: boolean
+          hours: number
+          id: string
+          levelId: string
+          nameEn: string
+          nameFr: string
+          specialtyId: string
+          subjectType: Database["public"]["Enums"]["subject_type"]
+          tenantId: string
+          termId: string
+          updatedAt: string
+        }
+        Insert: {
+          code: string
+          coefficient?: number
+          createdAt?: string
+          credits: number
+          deactivatedAt?: string | null
+          groupingId?: string | null
+          hasSubBranches?: boolean
+          hours: number
+          id: string
+          levelId: string
+          nameEn: string
+          nameFr: string
+          specialtyId: string
+          subjectType?: Database["public"]["Enums"]["subject_type"]
+          tenantId: string
+          termId: string
+          updatedAt: string
+        }
+        Update: {
+          code?: string
+          coefficient?: number
+          createdAt?: string
+          credits?: number
+          deactivatedAt?: string | null
+          groupingId?: string | null
+          hasSubBranches?: boolean
+          hours?: number
+          id?: string
+          levelId?: string
+          nameEn?: string
+          nameFr?: string
+          specialtyId?: string
+          subjectType?: Database["public"]["Enums"]["subject_type"]
+          tenantId?: string
+          termId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Subject_groupingId_tenantId_fkey"
+            columns: ["groupingId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "SubjectGrouping"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "Subject_levelId_tenantId_fkey"
+            columns: ["levelId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Level"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "Subject_semesterId_tenantId_fkey"
+            columns: ["termId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Term"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "Subject_specialtyId_tenantId_fkey"
+            columns: ["specialtyId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Specialty"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "Subject_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectGrouping: {
+        Row: {
+          code: string | null
+          createdAt: string
+          id: string
+          nameEn: string
+          nameFr: string
+          sortOrder: number
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          code?: string | null
+          createdAt?: string
+          id: string
+          nameEn: string
+          nameFr: string
+          sortOrder?: number
+          tenantId: string
+          updatedAt: string
+        }
+        Update: {
+          code?: string | null
+          createdAt?: string
+          id?: string
+          nameEn?: string
+          nameFr?: string
+          sortOrder?: number
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectGrouping_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectSubBranch: {
+        Row: {
+          coefficient: number
+          createdAt: string
+          id: string
+          name: string
+          nameFr: string | null
+          sortOrder: number
+          subjectId: string
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          coefficient?: number
+          createdAt?: string
+          id: string
+          name: string
+          nameFr?: string | null
+          sortOrder?: number
+          subjectId: string
+          tenantId: string
+          updatedAt: string
+        }
+        Update: {
+          coefficient?: number
+          createdAt?: string
+          id?: string
+          name?: string
+          nameFr?: string | null
+          sortOrder?: number
+          subjectId?: string
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectSubBranch_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectSubBranch_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectAssignment: {
+        Row: {
+          academicYearId: string
+          createdAt: string
+          id: string
+          isLead: boolean
+          notes: string | null
+          staffProfileId: string
+          subjectId: string
+          teachesPrimaryHome: boolean
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          academicYearId: string
+          createdAt?: string
+          id: string
+          isLead?: boolean
+          notes?: string | null
+          staffProfileId: string
+          subjectId: string
+          teachesPrimaryHome?: boolean
+          tenantId: string
+          updatedAt: string
+        }
+        Update: {
+          academicYearId?: string
+          createdAt?: string
+          id?: string
+          isLead?: boolean
+          notes?: string | null
+          staffProfileId?: string
+          subjectId?: string
+          teachesPrimaryHome?: boolean
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectAssignment_academicYearId_tenantId_fkey"
+            columns: ["academicYearId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectAssignment_staffProfileId_tenantId_fkey"
+            columns: ["staffProfileId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "StaffProfile"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectAssignment_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectAssignment_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectAssignmentOffering: {
+        Row: {
+          createdAt: string
+          id: string
+          offeringId: string
+          subjectAssignmentId: string
+          tenantId: string
+        }
+        Insert: {
+          createdAt?: string
+          id: string
+          offeringId: string
+          subjectAssignmentId: string
+          tenantId: string
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          offeringId?: string
+          subjectAssignmentId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectAssignmentOffering_offeringId_tenantId_fkey"
+            columns: ["offeringId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "SubjectSpecialtyOffering"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectAssignmentOffering_subjectAssignmentId_tenantId_fkey"
+            columns: ["subjectAssignmentId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "SubjectAssignment"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectAssignmentOffering_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectDiscussionPost: {
+        Row: {
+          authorUserId: string
+          body: string
+          createdAt: string
+          hiddenAt: string | null
+          hiddenByUserId: string | null
+          id: string
+          tenantId: string
+          threadId: string
+          updatedAt: string
+        }
+        Insert: {
+          authorUserId: string
+          body: string
+          createdAt?: string
+          hiddenAt?: string | null
+          hiddenByUserId?: string | null
+          id: string
+          tenantId: string
+          threadId: string
+          updatedAt?: string
+        }
+        Update: {
+          authorUserId?: string
+          body?: string
+          createdAt?: string
+          hiddenAt?: string | null
+          hiddenByUserId?: string | null
+          id?: string
+          tenantId?: string
+          threadId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectDiscussionPost_authorUserId_fkey"
+            columns: ["authorUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SubjectDiscussionPost_hiddenByUserId_fkey"
+            columns: ["hiddenByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SubjectDiscussionPost_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SubjectDiscussionPost_threadId_tenantId_fkey"
+            columns: ["threadId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "SubjectDiscussionThread"
+            referencedColumns: ["id", "tenantId"]
+          },
+        ]
+      }
+      SubjectDiscussionThread: {
+        Row: {
+          academicYearId: string
+          createdAt: string
+          id: string
+          locked: boolean
+          subjectId: string
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          academicYearId: string
+          createdAt?: string
+          id: string
+          locked?: boolean
+          subjectId: string
+          tenantId: string
+          updatedAt?: string
+        }
+        Update: {
+          academicYearId?: string
+          createdAt?: string
+          id?: string
+          locked?: boolean
+          subjectId?: string
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectDiscussionThread_academicYearId_tenantId_fkey"
+            columns: ["academicYearId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectDiscussionThread_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectDiscussionThread_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectMark: {
+        Row: {
+          caScore: number | null
+          createdAt: string
+          enteredByUserId: string | null
+          examScore: number | null
+          examSessionId: string
+          id: string
+          isResitEligible: boolean
+          studentProfileId: string
+          subjectId: string
+          tenantId: string
+          totalScore: number | null
+          updatedAt: string
+        }
+        Insert: {
+          caScore?: number | null
+          createdAt?: string
+          enteredByUserId?: string | null
+          examScore?: number | null
+          examSessionId: string
+          id: string
+          isResitEligible?: boolean
+          studentProfileId: string
+          subjectId: string
+          tenantId: string
+          totalScore?: number | null
+          updatedAt: string
+        }
+        Update: {
+          caScore?: number | null
+          createdAt?: string
+          enteredByUserId?: string | null
+          examScore?: number | null
+          examSessionId?: string
+          id?: string
+          isResitEligible?: boolean
+          studentProfileId?: string
+          subjectId?: string
+          tenantId?: string
+          totalScore?: number | null
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectMark_enteredByUserId_fkey"
+            columns: ["enteredByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SubjectMark_examSessionId_tenantId_fkey"
+            columns: ["examSessionId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "ExamSession"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectMark_studentProfileId_tenantId_fkey"
+            columns: ["studentProfileId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "StudentProfile"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectMark_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectMark_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectSpecialtyOffering: {
+        Row: {
+          createdAt: string
+          id: string
+          levelId: string
+          specialtyId: string
+          subjectId: string
+          tenantId: string
+          termId: string
+        }
+        Insert: {
+          createdAt?: string
+          id: string
+          levelId: string
+          specialtyId: string
+          subjectId: string
+          tenantId: string
+          termId: string
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          levelId?: string
+          specialtyId?: string
+          subjectId?: string
+          tenantId?: string
+          termId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectSpecialtyOffering_levelId_tenantId_fkey"
+            columns: ["levelId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Level"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectSpecialtyOffering_semesterId_tenantId_fkey"
+            columns: ["termId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Term"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectSpecialtyOffering_specialtyId_tenantId_fkey"
+            columns: ["specialtyId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Specialty"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectSpecialtyOffering_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectSpecialtyOffering_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       SystemLog: {
         Row: {
           createdAt: string
@@ -3841,7 +4095,6 @@ export type Database = {
       TimetableSlot: {
         Row: {
           academicYearId: string
-          courseId: string
           createdAt: string
           dayOfWeek: number
           endMinutes: number
@@ -3849,12 +4102,12 @@ export type Database = {
           roomId: string
           staffProfileId: string
           startMinutes: number
+          subjectId: string
           tenantId: string
           updatedAt: string
         }
         Insert: {
           academicYearId: string
-          courseId: string
           createdAt?: string
           dayOfWeek: number
           endMinutes: number
@@ -3862,12 +4115,12 @@ export type Database = {
           roomId: string
           staffProfileId: string
           startMinutes: number
+          subjectId: string
           tenantId: string
           updatedAt: string
         }
         Update: {
           academicYearId?: string
-          courseId?: string
           createdAt?: string
           dayOfWeek?: number
           endMinutes?: number
@@ -3875,6 +4128,7 @@ export type Database = {
           roomId?: string
           staffProfileId?: string
           startMinutes?: number
+          subjectId?: string
           tenantId?: string
           updatedAt?: string
         }
@@ -3884,13 +4138,6 @@ export type Database = {
             columns: ["academicYearId", "tenantId"]
             isOneToOne: false
             referencedRelation: "AcademicYear"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "TimetableSlot_courseId_tenantId_fkey"
-            columns: ["courseId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Course"
             referencedColumns: ["id", "tenantId"]
           },
           {
@@ -3905,6 +4152,13 @@ export type Database = {
             columns: ["staffProfileId", "tenantId"]
             isOneToOne: false
             referencedRelation: "StaffProfile"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "TimetableSlot_subjectId_tenantId_fkey"
+            columns: ["subjectId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
             referencedColumns: ["id", "tenantId"]
           },
           {
@@ -4495,6 +4749,7 @@ export type Database = {
       AcademicSubSystem: "ENGLISH" | "FRENCH"
       AnnouncementAudience: "ALL" | "STAFF" | "STUDENTS" | "GUARDIANS"
       AttendanceRecordStatus: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED"
+      ClassStatus: "ACTIVE" | "INACTIVE"
       CourseworkSubmissionStatus: "DRAFT" | "SUBMITTED"
       DataExportJobStatus: "PENDING" | "READY" | "FAILED"
       DeploymentMode: "CLOUD" | "LAN"
@@ -4537,6 +4792,11 @@ export type Database = {
         | "CANCELLED"
       SchoolResourceType: "EQUIPMENT" | "BOOK" | "LAB" | "IT" | "OTHER"
       SpecialtyGradingSystem: "FRANCOPHONE" | "ANGLOPHONE"
+      subject_type:
+        | "LANGUAGES"
+        | "RELATED_TRADE_SUBJECTS"
+        | "TRADE_SUBJECTS"
+        | "OTHERS"
       StaffEmploymentType: "FULL_TIME" | "PART_TIME" | "ADJUNCT" | "VISITING"
       StudentEnrollmentStatus: "ENROLLED" | "WITHDRAWN"
       TenantStatus: "ONBOARDING" | "ACTIVE" | "SUSPENDED" | "ARCHIVED"
@@ -4687,6 +4947,7 @@ export const Constants = {
       AcademicSubSystem: ["ENGLISH", "FRENCH"],
       AnnouncementAudience: ["ALL", "STAFF", "STUDENTS", "GUARDIANS"],
       AttendanceRecordStatus: ["PRESENT", "ABSENT", "LATE", "EXCUSED"],
+      ClassStatus: ["ACTIVE", "INACTIVE"],
       CourseworkSubmissionStatus: ["DRAFT", "SUBMITTED"],
       DataExportJobStatus: ["PENDING", "READY", "FAILED"],
       DeploymentMode: ["CLOUD", "LAN"],

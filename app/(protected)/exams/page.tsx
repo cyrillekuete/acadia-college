@@ -16,7 +16,7 @@ import { canWriteOperations } from '@/lib/acadia/roles';
 type ExamRow = {
   id: string;
   type?: string;
-  Course?: unknown;
+  Subject?: unknown;
 } & Record<string, unknown>;
 
 const columns: ColumnDef<ExamRow>[] = [
@@ -31,7 +31,7 @@ const columns: ColumnDef<ExamRow>[] = [
       </Link>
     ),
   },
-  nestedFieldColumn<ExamRow>('course', 'Course', 'Course', 'code'),
+  nestedFieldColumn<ExamRow>('subject', 'Subject', 'Subject', 'code'),
   { accessorKey: 'startsOn', header: 'Starts' },
   { accessorKey: 'endsOn', header: 'Ends' },
   { accessorKey: 'finalizedAt', header: 'Finalized' },
@@ -44,7 +44,7 @@ const EXAM_SELECT = `
   endsOn,
   finalizedAt,
   createdAt,
-  Course:courseId ( code, nameEn )
+  Subject:subjectId ( code, nameEn )
 `;
 
 export default function ExamsPage() {

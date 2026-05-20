@@ -23,7 +23,7 @@ import {
   type AttendanceStatus,
 } from '@/lib/acadia/attendance';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
-import { useCourseOptions } from '@/hooks/use-course-catalog-options';
+import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import {
   useAcadiaCollegeSession,
   isAcadiaTenantQueryEnabled,
@@ -32,7 +32,7 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 
-const ALL_COURSES = '__all__';
+const ALL_SUBJECTS = '__all__';
 
 export function AttendancePercentagesPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -40,11 +40,11 @@ export function AttendancePercentagesPanel() {
   const tenantId = session?.tenantId ?? null;
   const { data: years = [] } = useAcademicYearOptions();
   const [academicYearId, setAcademicYearId] = useState('');
-  const [courseId, setCourseId] = useState(ALL_COURSES);
-  const { data: courses = [] } = useCourseOptions(academicYearId);
+  const [subjectId, setSubjectId] = useState(ALL_SUBJECTS);
+  const { data: subjects = [] } = useSubjectOptions(academicYearId);
 
   const query = useQuery({
-    queryKey: ['attendance-percentages', tenantId, academicYearId, courseId],
+    queryKey: ['attendance-percentages', tenantId, academicYearId, subjectId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let sessionQuery = supabase
@@ -52,8 +52,8 @@ export function AttendancePercentagesPanel() {
         .select('id')
         .eq('tenantId', tenantId!)
         .eq('academicYearId', academicYearId);
-      if (courseId !== ALL_COURSES) {
-        sessionQuery = sessionQuery.eq('courseId', courseId);
+      if (subjectId !== ALL_SUBJECTS) {
+        sessionQuery = sessionQuery.eq('subjectId', subjectId);
       }
       const { data: sessions, error: sessionError } = await sessionQuery;
       if (sessionError) {
@@ -124,7 +124,7 @@ export function AttendancePercentagesPanel() {
             value={academicYearId}
             onValueChange={(value) => {
               setAcademicYearId(value);
-              setCourseId(ALL_COURSES);
+              setSubjectId(ALL_SUBJECTS);
             }}
           >
             <SelectTrigger>
@@ -140,14 +140,14 @@ export function AttendancePercentagesPanel() {
           </Select>
         </div>
         <div className="min-w-[200px]">
-          <p className="text-sm font-medium mb-1.5">Course (optional)</p>
-          <Select value={courseId} onValueChange={setCourseId}>
+          <p className="text-sm font-medium mb-1.5">Subject (optional)</p>
+          <Select value={subjectId} onValueChange={setSubjectId}>
             <SelectTrigger>
-              <SelectValue placeholder="All courses" />
+              <SelectValue placeholder="All subjects" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_COURSES}>All courses</SelectItem>
-              {courses.map((c) => (
+              <SelectItem value={ALL_SUBJECTS}>All subjects</SelectItem>
+              {subjects.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.code}
                 </SelectItem>

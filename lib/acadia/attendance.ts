@@ -188,7 +188,7 @@ export function buildAttendanceSessionRow(
     id,
     tenantId,
     academicYearId: values.academicYearId,
-    courseId: values.courseId,
+    subjectId: values.subjectId,
     timetableSlotId: values.timetableSlotId?.trim()
       ? values.timetableSlotId
       : null,

@@ -128,13 +128,13 @@ describe('formatWeeklyHours', () => {
 });
 
 describe('formatTimetableSlotSummary', () => {
-  it('includes day, time, and course', () => {
+  it('includes day, time, and subject', () => {
     const text = formatTimetableSlotSummary({
       id: 's1',
       dayOfWeek: 1,
       startMinutes: 480,
       endMinutes: 540,
-      courseCode: 'MATH101',
+      subjectCode: 'MATH101',
     });
     expect(text).toContain('Monday');
     expect(text).toContain('MATH101');

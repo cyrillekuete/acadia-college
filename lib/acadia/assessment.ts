@@ -1,7 +1,11 @@
-import { termNumberForSequence } from '@/lib/acadia/academic-calendar';
+import {
+  type AcademicYearStructure,
+  buildSequenceDistribution,
+  DEFAULT_ACADEMIC_STRUCTURE,
+} from '@/lib/acadia/academic-calendar';
 import type {
-  CourseMarkEntryValues,
   ExamSessionFormValues,
+  SubjectMarkEntryValues,
 } from '@/lib/acadia/assessment-schemas';
 
 export const MAX_MARK_SCORE = 20;
@@ -104,17 +108,17 @@ export function rankStudents(
   });
 }
 
-export type CourseMarkSnapshot = {
+export type SubjectMarkSnapshot = {
   studentProfileId: string;
-  courseId: string;
+  subjectId: string;
   totalScore: number | null;
   sequenceId?: string | null;
   termId?: string | null;
 };
 
-/** Group marks by student and compute per-student course averages. */
-export function computeStudentCourseAverages(
-  marks: CourseMarkSnapshot[],
+/** Group marks by student and compute per-student subject averages. */
+export function computeStudentSubjectAverages(
+  marks: SubjectMarkSnapshot[],
 ): Map<string, number> {
   const byStudent = new Map<string, number[]>();
 
@@ -139,16 +143,49 @@ export function computeStudentCourseAverages(
 
 export function computeTermAverageFromSequences(
   sequenceAverages: { sequenceNumber: number; average: number }[],
+  structure: AcademicYearStructure = DEFAULT_ACADEMIC_STRUCTURE,
 ): number | null {
+  const { termNumberBySequence } = buildSequenceDistribution(structure);
   const byTerm = new Map<number, number[]>();
   for (const row of sequenceAverages) {
-    const termNumber = termNumberForSequence(row.sequenceNumber);
+    const termNumber = termNumberBySequence.get(row.sequenceNumber);
+    if (termNumber == null) {
+      continue;
+    }
     const list = byTerm.get(termNumber) ?? [];
     list.push(row.average);
     byTerm.set(termNumber, list);
   }
   const all = Array.from(byTerm.values()).flat();
   return averageScores(all);
+}
+
+/** Per-term average from sequence-level scores using the year's distribution. */
+export function computePerTermAveragesFromSequences(
+  sequenceAverages: { sequenceNumber: number; average: number }[],
+  structure: AcademicYearStructure = DEFAULT_ACADEMIC_STRUCTURE,
+): Map<number, number> {
+  const { termNumberBySequence } = buildSequenceDistribution(structure);
+  const byTerm = new Map<number, number[]>();
+
+  for (const row of sequenceAverages) {
+    const termNumber = termNumberBySequence.get(row.sequenceNumber);
+    if (termNumber == null) {
+      continue;
+    }
+    const list = byTerm.get(termNumber) ?? [];
+    list.push(row.average);
+    byTerm.set(termNumber, list);
+  }
+
+  const result = new Map<number, number>();
+  Array.from(byTerm.entries()).forEach(([termNumber, scores]) => {
+    const avg = averageScores(scores);
+    if (avg != null) {
+      result.set(termNumber, avg);
+    }
+  });
+  return result;
 }
 
 export function computeAnnualAverage(termAverages: (number | null)[]): number | null {
@@ -165,7 +202,7 @@ export function buildExamSessionRow(
     id,
     tenantId,
     academicYearId: values.academicYearId,
-    courseId: values.courseId,
+    subjectId: values.subjectId,
     termId: values.termId,
     sequenceId: values.sequenceId?.trim() ? values.sequenceId : null,
     type: values.type,
@@ -175,14 +212,14 @@ export function buildExamSessionRow(
   };
 }
 
-export function buildCourseMarkRow(
+export function buildSubjectMarkRow(
   tenantId: string,
   id: string,
   input: {
     examSessionId: string;
     studentProfileId: string;
-    courseId: string;
-    values: CourseMarkEntryValues;
+    subjectId: string;
+    values: SubjectMarkEntryValues;
     enteredByUserId: string;
   },
   now: string,
@@ -194,7 +231,7 @@ export function buildCourseMarkRow(
     tenantId,
     examSessionId: input.examSessionId,
     studentProfileId: input.studentProfileId,
-    courseId: input.courseId,
+    subjectId: input.subjectId,
     caScore,
     examScore,
     totalScore: computeTotalScore(caScore, examScore),

@@ -32,21 +32,21 @@ import {
 import {
   timetableSlotSchema,
   type TimetableSlotFormValues,
-} from '@/lib/acadia/course-schemas';
+} from '@/lib/acadia/subject-schemas';
 import { DAY_OF_WEEK_LABELS, minutesToTimeString } from '@/lib/acadia/timetable';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
 import {
   staffDisplayLabel,
-  useCourseOptions,
+  useSubjectOptions,
   useRoomOptions,
   useStaffOptions,
-} from '@/hooks/use-course-catalog-options';
-import { useCourseMutations } from '@/hooks/use-course-mutations';
+} from '@/hooks/use-subject-catalog-options';
+import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 
 export type TimetableSlotRecord = {
   id: string;
   academicYearId: string;
-  courseId: string;
+  subjectId: string;
   staffProfileId: string;
   roomId: string;
   dayOfWeek: number;
@@ -58,15 +58,15 @@ export function TimetableSlotFormDialog({
   open,
   onOpenChange,
   record,
-  defaultCourseId,
+  defaultSubjectId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record?: TimetableSlotRecord | null;
-  defaultCourseId?: string;
+  defaultSubjectId?: string;
 }) {
   const isEdit = !!record;
-  const { createTimetableSlot, updateTimetableSlot } = useCourseMutations();
+  const { createTimetableSlot, updateTimetableSlot } = useSubjectMutations();
   const { data: years = [] } = useAcademicYearOptions();
   const { data: staff = [] } = useStaffOptions();
   const { data: rooms = [] } = useRoomOptions();
@@ -75,7 +75,7 @@ export function TimetableSlotFormDialog({
     resolver: zodResolver(timetableSlotSchema),
     defaultValues: {
       academicYearId: '',
-      courseId: defaultCourseId ?? '',
+      subjectId: defaultSubjectId ?? '',
       staffProfileId: '',
       roomId: '',
       dayOfWeek: 1,
@@ -85,7 +85,7 @@ export function TimetableSlotFormDialog({
   });
 
   const academicYearId = form.watch('academicYearId');
-  const { data: courses = [] } = useCourseOptions(academicYearId);
+  const { data: subjects = [] } = useSubjectOptions(academicYearId);
 
   useEffect(() => {
     if (!open) {
@@ -94,7 +94,7 @@ export function TimetableSlotFormDialog({
     if (record) {
       form.reset({
         academicYearId: record.academicYearId,
-        courseId: record.courseId,
+        subjectId: record.subjectId,
         staffProfileId: record.staffProfileId,
         roomId: record.roomId,
         dayOfWeek: record.dayOfWeek,
@@ -105,7 +105,7 @@ export function TimetableSlotFormDialog({
       const currentYear = years.find((y) => y.isCurrent);
       form.reset({
         academicYearId: currentYear?.id ?? '',
-        courseId: defaultCourseId ?? '',
+        subjectId: defaultSubjectId ?? '',
         staffProfileId: '',
         roomId: '',
         dayOfWeek: 1,
@@ -113,7 +113,7 @@ export function TimetableSlotFormDialog({
         endTime: '09:00',
       });
     }
-  }, [open, record, years, defaultCourseId, form]);
+  }, [open, record, years, defaultSubjectId, form]);
 
   const pending =
     createTimetableSlot.isPending || updateTimetableSlot.isPending;
@@ -146,7 +146,7 @@ export function TimetableSlotFormDialog({
                       value={field.value}
                       onValueChange={(v) => {
                         field.onChange(v);
-                        form.setValue('courseId', '');
+                        form.setValue('subjectId', '');
                       }}
                     >
                       <FormControl>
@@ -168,20 +168,20 @@ export function TimetableSlotFormDialog({
               />
               <FormField
                 control={form.control}
-                name="courseId"
+                name="subjectId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Course</FormLabel>
+                    <FormLabel>Subject</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select course" />
+                          <SelectValue placeholder="Select subject" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {courses.map((course) => (
-                          <SelectItem key={course.id} value={course.id}>
-                            {course.code} — {course.nameEn}
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.id}>
+                            {subject.code} — {subject.nameEn}
                           </SelectItem>
                         ))}
                       </SelectContent>

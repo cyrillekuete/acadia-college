@@ -23,7 +23,7 @@ const TASK_SELECT = `
   isPublished,
   createdAt,
   updatedAt,
-  Course:courseId ( code, nameEn, nameFr ),
+  Subject:subjectId ( code, nameEn, nameFr ),
   AcademicYear:academicYearId ( label )
 `;
 
@@ -38,7 +38,7 @@ type CourseworkTaskDetail = {
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
-  Course: unknown;
+  Subject: unknown;
   AcademicYear: unknown;
 };
 
@@ -55,8 +55,8 @@ export default function CourseworkTaskDetailPage({
       TASK_SELECT,
     );
 
-  const course = unwrapRelation<{ code?: string; nameEn?: string }>(
-    data?.Course,
+  const subject = unwrapRelation<{ code?: string; nameEn?: string }>(
+    data?.Subject,
   );
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
 
@@ -107,7 +107,7 @@ export default function CourseworkTaskDetailPage({
           <RecordDetailCard
             title="Context"
             fields={[
-              { label: 'Course', value: specialtyLabel(course) },
+              { label: 'Subject', value: specialtyLabel(subject) },
               { label: 'Academic year', value: formatRecordValue(year?.label) },
             ]}
           />

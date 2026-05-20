@@ -13,7 +13,7 @@ import { Card, CardHeader, CardTable, CardFooter } from '@/components/ui/card';
 import { DataGrid } from '@/components/ui/data-grid';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
-import { Input } from '@/components/ui/input';
+import { Input, InputWrapper } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSupabaseTableList } from '@/hooks/use-supabase-table-list';
@@ -93,15 +93,14 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
       <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
         <h3 className="text-sm font-medium">{title}</h3>
         {searchKeys.length > 0 ? (
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <InputWrapper className="w-full max-w-xs">
+            <Search className="size-4 shrink-0 text-muted-foreground" />
             <Input
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="ps-9"
             />
-          </div>
+          </InputWrapper>
         ) : null}
       </CardHeader>
       <DataGrid table={tableInstance} recordCount={filtered.length} isLoading={isLoading}>

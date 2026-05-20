@@ -19,6 +19,7 @@ export type SpecialtyOption = {
 export type LevelForSpecialtyOption = {
   id: string;
   number: number;
+  name: string;
   labelEn: string | null;
   labelFr: string | null;
 };
@@ -58,20 +59,50 @@ export function useSpecialtyOptions(
   });
 }
 
-export function useLevelsForSpecialty(specialtyId?: string | null) {
+/** Unified levels filtered by sub-system and branch (no longer per-specialty). */
+export function useLevelsForSpecialty(
+  specialtyId?: string | null,
+  subSystem?: AcademicSubSystem | null,
+  branch?: AcademicBranch | null,
+) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
 
   return useQuery({
-    queryKey: ['level-for-specialty', tenantId, specialtyId],
+    queryKey: ['level-for-specialty', tenantId, specialtyId, subSystem, branch],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      const { data, error } = await supabase
+      let resolvedSubSystem = subSystem;
+      let resolvedBranch = branch;
+
+      if (specialtyId && (!resolvedSubSystem || !resolvedBranch)) {
+        const { data: specialty, error: specialtyError } = await supabase
+          .from('Specialty')
+          .select('subSystem, branch')
+          .eq('tenantId', tenantId!)
+          .eq('id', specialtyId)
+          .maybeSingle();
+        if (specialtyError) {
+          throw specialtyError;
+        }
+        resolvedSubSystem = specialty?.subSystem ?? resolvedSubSystem;
+        resolvedBranch = specialty?.branch ?? resolvedBranch;
+      }
+
+      let query = supabase
         .from('Level')
-        .select('id, number, labelEn, labelFr')
+        .select('id, number, name, labelEn, labelFr')
         .eq('tenantId', tenantId!)
-        .eq('specialtyId', specialtyId!)
         .order('number', { ascending: true });
+
+      if (resolvedSubSystem) {
+        query = query.eq('subSystem', resolvedSubSystem);
+      }
+      if (resolvedBranch) {
+        query = query.eq('branch', resolvedBranch);
+      }
+
+      const { data, error } = await query;
       if (error) {
         throw error;
       }
@@ -79,7 +110,57 @@ export function useLevelsForSpecialty(specialtyId?: string | null) {
     },
     enabled:
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId) &&
-      !!specialtyId,
+      (!!specialtyId || (!!subSystem && !!branch)),
+  });
+}
+
+export function useClassesForFilters(filters?: {
+  subSystem?: AcademicSubSystem | null;
+  branch?: AcademicBranch | null;
+  specialtyId?: string | null;
+  levelId?: string | null;
+}) {
+  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
+
+  return useQuery({
+    queryKey: [
+      'class-options',
+      tenantId,
+      filters?.subSystem ?? null,
+      filters?.branch ?? null,
+      filters?.specialtyId ?? null,
+      filters?.levelId ?? null,
+    ],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      let query = supabase
+        .from('Class')
+        .select('id, name, levelId, specialtyId, subSystem, branch')
+        .eq('tenantId', tenantId!)
+        .eq('status', 'ACTIVE')
+        .order('name', { ascending: true });
+
+      if (filters?.subSystem) {
+        query = query.eq('subSystem', filters.subSystem);
+      }
+      if (filters?.branch) {
+        query = query.eq('branch', filters.branch);
+      }
+      if (filters?.specialtyId) {
+        query = query.eq('specialtyId', filters.specialtyId);
+      }
+      if (filters?.levelId) {
+        query = query.eq('levelId', filters.levelId);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        throw error;
+      }
+      return data ?? [];
+    },
+    enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 }
 

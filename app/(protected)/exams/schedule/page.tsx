@@ -12,13 +12,13 @@ import {
 type ExamRow = {
   id: string;
   type?: string;
-  Course?: unknown;
+  Subject?: unknown;
   AcademicSequence?: unknown;
 } & Record<string, unknown>;
 
 const columns: ColumnDef<ExamRow>[] = [
   detailLinkColumn<ExamRow>('/exams', 'type', 'Type'),
-  nestedFieldColumn<ExamRow>('course', 'Course', 'Course', 'code'),
+  nestedFieldColumn<ExamRow>('subject', 'Subject', 'Subject', 'code'),
   nestedFieldColumn<ExamRow>(
     'sequence',
     'Sequence',
@@ -36,7 +36,7 @@ const EXAM_SELECT = `
   startsOn,
   endsOn,
   finalizedAt,
-  Course:courseId ( code, nameEn ),
+  Subject:subjectId ( code, nameEn ),
   AcademicSequence:sequenceId ( number )
 `;
 

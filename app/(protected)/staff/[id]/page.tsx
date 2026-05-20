@@ -23,8 +23,8 @@ const STAFF_SELECT = `
   isActive,
   createdAt,
   updatedAt,
-  User:userId ( id, email, name, status, country, timezone, lastSignInAt ),
-  Department:departmentId ( code, nameEn, nameFr )
+  User!StaffProfile_userId_tenantId_fkey ( id, email, name, status, country, timezone, lastSignInAt ),
+  Department!StaffProfile_departmentId_tenantId_fkey ( code, nameEn, nameFr )
 `;
 
 type StaffDetail = {

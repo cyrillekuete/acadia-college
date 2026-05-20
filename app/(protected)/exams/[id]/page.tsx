@@ -27,7 +27,7 @@ const EXAM_SELECT = `
   finalizedAt,
   createdAt,
   updatedAt,
-  Course:courseId ( code, nameEn, nameFr ),
+  Subject:subjectId ( code, nameEn, nameFr ),
   AcademicYear:academicYearId ( label ),
   Term:termId ( number ),
   AcademicSequence:sequenceId ( number, numberInTerm )
@@ -41,7 +41,7 @@ type ExamSessionDetail = {
   finalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  Course: unknown;
+  Subject: unknown;
   AcademicYear: unknown;
   Term: unknown;
   AcademicSequence: unknown;
@@ -61,7 +61,7 @@ export default function ExamSessionDetailPage({
     EXAM_SELECT,
   );
 
-  const course = unwrapRelation<{ code?: string; nameEn?: string }>(data?.Course);
+  const subject = unwrapRelation<{ code?: string; nameEn?: string }>(data?.Subject);
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
   const term = unwrapRelation<{ number?: number }>(data?.Term);
   const sequence = unwrapRelation<{ number?: number; numberInTerm?: number }>(
@@ -123,7 +123,7 @@ export default function ExamSessionDetailPage({
           <RecordDetailCard
             title="Academic context"
             fields={[
-              { label: 'Course', value: specialtyLabel(course) },
+              { label: 'Subject', value: specialtyLabel(subject) },
               { label: 'Academic year', value: formatRecordValue(year?.label) },
               { label: 'Term', value: termLabel(term) },
               { label: 'Sequence', value: sequenceLabel(sequence) },

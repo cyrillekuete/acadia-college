@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/table';
 import {
   averageScores,
-  computeStudentCourseAverages,
+  computeStudentSubjectAverages,
   formatMarkScore,
   isPassingScore,
   rankStudents,
@@ -156,7 +156,7 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
       }
 
       const { data: marks, error: marksError } = await supabase
-        .from('CourseMark')
+        .from('SubjectMark')
         .select('studentProfileId, totalScore, examSessionId')
         .eq('tenantId', tenantId!)
         .in('examSessionId', sessionIds);

@@ -26,7 +26,7 @@ import {
   type AttendanceStatus,
 } from '@/lib/acadia/attendance';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
-import { useCourseOptions } from '@/hooks/use-course-catalog-options';
+import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import {
   useAcadiaCollegeSession,
   isAcadiaTenantQueryEnabled,
@@ -35,7 +35,7 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 
-const ALL_COURSES = '__all__';
+const ALL_SUBJECTS = '__all__';
 
 export function AttendanceReportsView() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -43,17 +43,17 @@ export function AttendanceReportsView() {
   const tenantId = session?.tenantId ?? null;
   const { data: years = [] } = useAcademicYearOptions();
   const [academicYearId, setAcademicYearId] = useState('');
-  const [courseId, setCourseId] = useState(ALL_COURSES);
+  const [subjectId, setSubjectId] = useState(ALL_SUBJECTS);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const { data: courses = [] } = useCourseOptions(academicYearId);
+  const { data: subjects = [] } = useSubjectOptions(academicYearId);
 
   const query = useQuery({
     queryKey: [
       'attendance-reports',
       tenantId,
       academicYearId,
-      courseId,
+      subjectId,
       fromDate,
       toDate,
     ],
@@ -61,13 +61,13 @@ export function AttendanceReportsView() {
       const supabase = requireBrowserClient();
       let sessionQuery = supabase
         .from('AttendanceSession')
-        .select('id, sessionDate, label, Course:courseId ( code )')
+        .select('id, sessionDate, label, Subject:subjectId ( code )')
         .eq('tenantId', tenantId!)
         .eq('academicYearId', academicYearId)
         .order('sessionDate', { ascending: false });
 
-      if (courseId !== ALL_COURSES) {
-        sessionQuery = sessionQuery.eq('courseId', courseId);
+      if (subjectId !== ALL_SUBJECTS) {
+        sessionQuery = sessionQuery.eq('subjectId', subjectId);
       }
       if (fromDate) {
         sessionQuery = sessionQuery.gte('sessionDate', fromDate);
@@ -153,7 +153,7 @@ export function AttendanceReportsView() {
             value={academicYearId}
             onValueChange={(value) => {
               setAcademicYearId(value);
-              setCourseId(ALL_COURSES);
+              setSubjectId(ALL_SUBJECTS);
             }}
           >
             <SelectTrigger>
@@ -169,14 +169,14 @@ export function AttendanceReportsView() {
           </Select>
         </div>
         <div className="min-w-[200px]">
-          <p className="text-sm font-medium mb-1.5">Course</p>
-          <Select value={courseId} onValueChange={setCourseId}>
+          <p className="text-sm font-medium mb-1.5">Subject</p>
+          <Select value={subjectId} onValueChange={setSubjectId}>
             <SelectTrigger>
-              <SelectValue placeholder="All courses" />
+              <SelectValue placeholder="All subjects" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_COURSES}>All courses</SelectItem>
-              {courses.map((c) => (
+              <SelectItem value={ALL_SUBJECTS}>All subjects</SelectItem>
+              {subjects.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.code}
                 </SelectItem>
@@ -280,17 +280,17 @@ export function AttendanceReportsView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Course</TableHead>
+                  <TableHead>Subject</TableHead>
                   <TableHead>Label</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.sessions.slice(0, 20).map((s) => {
-                  const course = unwrapRelation<{ code?: string }>(s.Course);
+                  const subject = unwrapRelation<{ code?: string }>(s.Subject);
                   return (
                     <TableRow key={s.id as string}>
                       <TableCell>{s.sessionDate as string}</TableCell>
-                      <TableCell>{course?.code ?? '—'}</TableCell>
+                      <TableCell>{subject?.code ?? '—'}</TableCell>
                       <TableCell>{(s.label as string) ?? '—'}</TableCell>
                     </TableRow>
                   );

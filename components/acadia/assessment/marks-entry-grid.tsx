@@ -22,14 +22,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { computeTotalScore, formatMarkScore } from '@/lib/acadia/assessment';
-import type { CourseMarkEntryValues } from '@/lib/acadia/assessment-schemas';
+import type { SubjectMarkEntryValues } from '@/lib/acadia/assessment-schemas';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
 import {
   sequenceOptionLabel,
   useSequenceOptions,
 } from '@/hooks/use-assessment-catalog-options';
 import { useAssessmentMutations } from '@/hooks/use-assessment-mutations';
-import { useCourseOptions } from '@/hooks/use-course-catalog-options';
+import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
@@ -40,14 +40,14 @@ type StudentRow = {
   User?: unknown;
 };
 
-type MarkDraft = CourseMarkEntryValues & {
+type MarkDraft = SubjectMarkEntryValues & {
   totalPreview: number | null;
 };
 
 export type MarksEntryPreset = {
   academicYearId: string;
   sequenceId: string;
-  courseId: string;
+  subjectId: string;
   examSessionId: string;
   readOnly?: boolean;
 };
@@ -59,12 +59,12 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
   const { data: years = [] } = useAcademicYearOptions();
   const [academicYearId, setAcademicYearId] = useState(preset?.academicYearId ?? '');
   const [sequenceId, setSequenceId] = useState(preset?.sequenceId ?? '');
-  const [courseId, setCourseId] = useState(preset?.courseId ?? '');
+  const [subjectId, setSubjectId] = useState(preset?.subjectId ?? '');
   const [examSessionId, setExamSessionId] = useState(preset?.examSessionId ?? '');
   const [drafts, setDrafts] = useState<Record<string, MarkDraft>>({});
 
   const { data: sequences = [] } = useSequenceOptions(academicYearId);
-  const { data: courses = [] } = useCourseOptions(academicYearId);
+  const { data: subjects = [] } = useSubjectOptions(academicYearId);
   const { ensureSequenceExamSession, saveMarksEntry } = useAssessmentMutations();
 
   const selectedSequence = sequences.find((s) => s.id === sequenceId);
@@ -73,7 +73,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
     if (preset) {
       setAcademicYearId(preset.academicYearId);
       setSequenceId(preset.sequenceId);
-      setCourseId(preset.courseId);
+      setSubjectId(preset.subjectId);
       setExamSessionId(preset.examSessionId);
       return;
     }
@@ -88,19 +88,19 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
       'marks-entry',
       tenantId,
       academicYearId,
-      courseId,
+      subjectId,
       examSessionId,
     ],
     queryFn: async () => {
       const supabase = requireBrowserClient();
 
-      const { data: course, error: courseError } = await supabase
-        .from('Course')
+      const { data: subject, error: subjectError } = await supabase
+        .from('Subject')
         .select('specialtyId, levelId')
-        .eq('id', courseId)
+        .eq('id', subjectId)
         .single();
-      if (courseError) {
-        throw courseError;
+      if (subjectError) {
+        throw subjectError;
       }
 
       const { data: enrollments, error: enrollError } = await supabase
@@ -117,8 +117,8 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
         )
         .eq('tenantId', tenantId!)
         .eq('academicYearId', academicYearId)
-        .eq('specialtyId', course.specialtyId)
-        .eq('levelId', course.levelId)
+        .eq('specialtyId', subject.specialtyId)
+        .eq('levelId', subject.levelId)
         .eq('status', 'ACTIVE');
 
       if (enrollError) {
@@ -131,11 +131,11 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
       });
 
       const { data: marks, error: marksError } = await supabase
-        .from('CourseMark')
+        .from('SubjectMark')
         .select('id, studentProfileId, caScore, examScore, isResitEligible')
         .eq('tenantId', tenantId!)
         .eq('examSessionId', examSessionId)
-        .eq('courseId', courseId);
+        .eq('subjectId', subjectId);
 
       if (marksError) {
         throw marksError;
@@ -146,7 +146,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
     enabled:
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
       !!academicYearId &&
-      !!courseId &&
+      !!subjectId &&
       !!examSessionId,
   });
 
@@ -175,12 +175,12 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
   }, [rosterQuery.data]);
 
   const handleLoadSession = async () => {
-    if (!selectedSequence || !courseId || !academicYearId) {
+    if (!selectedSequence || !subjectId || !academicYearId) {
       return;
     }
     const id = await ensureSequenceExamSession.mutateAsync({
       academicYearId,
-      courseId,
+      subjectId,
       termId: selectedSequence.termId,
       sequenceId: selectedSequence.id,
     });
@@ -213,13 +213,13 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
   };
 
   const handleSave = async () => {
-    if (!examSessionId || !courseId || !academicYearId) {
+    if (!examSessionId || !subjectId || !academicYearId) {
       return;
     }
     await saveMarksEntry.mutateAsync({
       academicYearId,
       sequenceId,
-      courseId,
+      subjectId,
       examSessionId,
       marks: Object.values(drafts),
     });
@@ -267,13 +267,13 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
           </Select>
         </div>
         <div className="min-w-[200px]">
-          <p className="text-sm font-medium mb-1.5">Course</p>
-          <Select value={courseId} onValueChange={setCourseId}>
+          <p className="text-sm font-medium mb-1.5">Subject</p>
+          <Select value={subjectId} onValueChange={setSubjectId}>
             <SelectTrigger>
-              <SelectValue placeholder="Course" />
+              <SelectValue placeholder="Subject" />
             </SelectTrigger>
             <SelectContent>
-              {courses.map((c) => (
+              {subjects.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.code}
                 </SelectItem>
@@ -286,7 +286,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
           variant="outline"
           disabled={
             !sequenceId ||
-            !courseId ||
+            !subjectId ||
             ensureSequenceExamSession.isPending
           }
           onClick={() => void handleLoadSession()}

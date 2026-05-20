@@ -14,24 +14,24 @@ import { formatRecordValue, unwrapRelation } from '@/lib/acadia/record-display';
 const SESSION_SELECT = `
   id,
   academicYearId,
-  courseId,
+  subjectId,
   sessionDate,
   label,
   timetableSlotId,
   createdAt,
-  Course:courseId ( code, nameEn ),
+  Subject:subjectId ( code, nameEn ),
   AcademicYear:academicYearId ( label )
 `;
 
 type AttendanceSessionDetail = {
   id: string;
   academicYearId: string;
-  courseId: string;
+  subjectId: string;
   sessionDate: string;
   label: string | null;
   timetableSlotId: string | null;
   createdAt: string;
-  Course: unknown;
+  Subject: unknown;
   AcademicYear: unknown;
 };
 
@@ -50,7 +50,7 @@ export default function AttendanceSessionDetailPage({
       SESSION_SELECT,
     );
 
-  const course = unwrapRelation<{ code?: string; nameEn?: string }>(data?.Course);
+  const subject = unwrapRelation<{ code?: string; nameEn?: string }>(data?.Subject);
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
   const title = data?.sessionDate
     ? `Attendance — ${data.sessionDate}`
@@ -80,7 +80,7 @@ export default function AttendanceSessionDetailPage({
               title="Session"
               fields={[
                 { label: 'Date', value: data.sessionDate },
-                { label: 'Course', value: course?.code ?? '—' },
+                { label: 'Subject', value: subject?.code ?? '—' },
                 { label: 'Year', value: year?.label ?? '—' },
                 { label: 'Label', value: formatRecordValue(data.label) },
               ]}
@@ -90,7 +90,7 @@ export default function AttendanceSessionDetailPage({
               <AttendanceEntryGrid
                 attendanceSessionId={data.id}
                 academicYearId={data.academicYearId}
-                courseId={data.courseId}
+                subjectId={data.subjectId}
                 readOnly={!canManage}
               />
             </div>
@@ -102,7 +102,7 @@ export default function AttendanceSessionDetailPage({
                 record={{
                   id: data.id,
                   academicYearId: data.academicYearId,
-                  courseId: data.courseId,
+                  subjectId: data.subjectId,
                   sessionDate: data.sessionDate,
                   label: data.label ?? '',
                   timetableSlotId: data.timetableSlotId ?? '',

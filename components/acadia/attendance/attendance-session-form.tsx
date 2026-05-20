@@ -28,7 +28,7 @@ import {
 } from '@/lib/acadia/attendance-schemas';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
-import { useCourseOptions } from '@/hooks/use-course-catalog-options';
+import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useAttendanceMutations } from '@/hooks/use-attendance-mutations';
 
 export type AttendanceSessionFormRecord = AttendanceSessionFormValues & {
@@ -51,7 +51,7 @@ export function AttendanceSessionForm({
     resolver: zodResolver(attendanceSessionSchema),
     defaultValues: {
       academicYearId: '',
-      courseId: '',
+      subjectId: '',
       sessionDate: formatLocalDateInputValue(),
       label: '',
       timetableSlotId: '',
@@ -59,7 +59,7 @@ export function AttendanceSessionForm({
   });
 
   const academicYearId = form.watch('academicYearId');
-  const { data: courses = [] } = useCourseOptions(academicYearId);
+  const { data: subjects = [] } = useSubjectOptions(academicYearId);
 
   useEffect(() => {
     if (!record) {
@@ -67,7 +67,7 @@ export function AttendanceSessionForm({
     }
     form.reset({
       academicYearId: record.academicYearId,
-      courseId: record.courseId,
+      subjectId: record.subjectId,
       sessionDate: record.sessionDate,
       label: record.label ?? '',
       timetableSlotId: record.timetableSlotId ?? '',
@@ -125,10 +125,10 @@ export function AttendanceSessionForm({
 
         <FormField
           control={form.control}
-          name="courseId"
+          name="subjectId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Course</FormLabel>
+              <FormLabel>Subject</FormLabel>
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
@@ -136,11 +136,11 @@ export function AttendanceSessionForm({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select course" />
+                    <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {courses.map((c) => (
+                  {subjects.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.code} — {c.nameEn}
                     </SelectItem>

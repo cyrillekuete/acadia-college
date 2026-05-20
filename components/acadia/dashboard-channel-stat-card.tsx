@@ -26,7 +26,6 @@ export function DashboardChannelStatCard({
       >
         <KeenIcon
           icon={icon}
-          style="duotone"
           className="mt-4 ms-5 text-[1.75rem] text-primary"
           aria-hidden
         />

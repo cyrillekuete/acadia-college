@@ -12,7 +12,7 @@ import {
 } from '@/components/acadia/timetable/timetable-slot-form-dialog';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { useCourseMutations } from '@/hooks/use-course-mutations';
+import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import {
   dayOfWeekLabel,
   formatTimeRange,
@@ -23,13 +23,13 @@ import { canWriteRegistry } from '@/lib/acadia/roles';
 type Row = Record<string, unknown> & {
   id: string;
   academicYearId: string;
-  courseId: string;
+  subjectId: string;
   staffProfileId: string;
   roomId: string;
   dayOfWeek: number;
   startMinutes: number;
   endMinutes: number;
-  Course?: unknown;
+  Subject?: unknown;
   StaffProfile?: unknown;
   Room?: unknown;
   AcademicYear?: unknown;
@@ -40,7 +40,7 @@ export default function TimetablePage() {
   const [editingSlot, setEditingSlot] = useState<TimetableSlotRecord | null>(null);
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
-  const { deleteTimetableSlot } = useCourseMutations();
+  const { deleteTimetableSlot } = useSubjectMutations();
 
   const columns = useMemo<ColumnDef<Row>[]>(
     () => [
@@ -56,16 +56,16 @@ export default function TimetablePage() {
           formatTimeRange(row.original.startMinutes, row.original.endMinutes),
       },
       {
-        id: 'course',
-        header: 'Course',
+        id: 'subject',
+        header: 'Subject',
         cell: ({ row }) => {
-          const course = unwrapRelation<{ code?: string; nameEn?: string }>(
-            row.original.Course,
+          const subject = unwrapRelation<{ code?: string; nameEn?: string }>(
+            row.original.Subject,
           );
-          if (!course?.code) {
+          if (!subject?.code) {
             return '—';
           }
-          return `${course.code} — ${course.nameEn ?? ''}`.trim();
+          return `${subject.code} — ${subject.nameEn ?? ''}`.trim();
         },
       },
       {
@@ -114,7 +114,7 @@ export default function TimetablePage() {
                       setEditingSlot({
                         id: row.original.id,
                         academicYearId: row.original.academicYearId,
-                        courseId: row.original.courseId,
+                        subjectId: row.original.subjectId,
                         staffProfileId: row.original.staffProfileId,
                         roomId: row.original.roomId,
                         dayOfWeek: row.original.dayOfWeek,
@@ -148,7 +148,7 @@ export default function TimetablePage() {
   return (
     <AcadiaPageShell
       title="Acadia College — Timetable"
-      description="Weekly timetable slots by course, teacher, and room."
+      description="Weekly timetable slots by subject, teacher, and room."
     >
       <AdminToolbar
         addLabel="New slot"
@@ -160,7 +160,7 @@ export default function TimetablePage() {
       <SupabaseTableList
         table="TimetableSlot"
         title="Timetable slots"
-        select="id, academicYearId, courseId, staffProfileId, roomId, dayOfWeek, startMinutes, endMinutes, Course:courseId ( code, nameEn ), StaffProfile:staffProfileId ( staffCode, User:userId ( name ) ), Room:roomId ( code, nameEn ), AcademicYear:academicYearId ( label )"
+        select="id, academicYearId, subjectId, staffProfileId, roomId, dayOfWeek, startMinutes, endMinutes, Subject:subjectId ( code, nameEn ), StaffProfile:staffProfileId ( staffCode, User:userId ( name ) ), Room:roomId ( code, nameEn ), AcademicYear:academicYearId ( label )"
         columns={columns}
         searchKeys={[]}
       />

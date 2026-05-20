@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   EXAM_SESSION_TYPES,
   averageScores,
-  buildCourseMarkRow,
+  buildSubjectMarkRow,
   buildExamSessionRow,
   canEditExamSession,
   computeTotalScore,
@@ -16,7 +16,7 @@ import {
   rankStudents,
 } from '@/lib/acadia/assessment';
 import {
-  courseMarkEntrySchema,
+  subjectMarkEntrySchema,
   examSessionSchema,
 } from '@/lib/acadia/assessment-schemas';
 
@@ -25,7 +25,7 @@ describe('examSessionSchema', () => {
     expect(
       examSessionSchema.safeParse({
         academicYearId: 'year-1',
-        courseId: 'course-1',
+        subjectId: 'subject-1',
         termId: 'term-1',
         sequenceId: 'seq-1',
         type: 'NORMAL',
@@ -39,7 +39,7 @@ describe('examSessionSchema', () => {
     expect(
       examSessionSchema.safeParse({
         academicYearId: 'year-1',
-        courseId: 'course-1',
+        subjectId: 'subject-1',
         termId: 'term-1',
         type: 'GCE',
         startsOn: '2026-06-15',
@@ -49,10 +49,10 @@ describe('examSessionSchema', () => {
   });
 });
 
-describe('courseMarkEntrySchema', () => {
+describe('subjectMarkEntrySchema', () => {
   it('accepts scores on /20 scale', () => {
     expect(
-      courseMarkEntrySchema.safeParse({
+      subjectMarkEntrySchema.safeParse({
         studentProfileId: 'student-1',
         caScore: 14,
         examScore: 12,
@@ -111,7 +111,7 @@ describe('build rows', () => {
       'exam-1',
       {
         academicYearId: 'year-1',
-        courseId: 'course-1',
+        subjectId: 'subject-1',
         termId: 'term-1',
         sequenceId: '',
         type: 'NORMAL',
@@ -124,14 +124,14 @@ describe('build rows', () => {
     expect(row.type).toBe('NORMAL');
   });
 
-  it('builds course mark with computed total', () => {
-    const row = buildCourseMarkRow(
+  it('builds subject mark with computed total', () => {
+    const row = buildSubjectMarkRow(
       'tenant-1',
       'mark-1',
       {
         examSessionId: 'exam-1',
         studentProfileId: 'student-1',
-        courseId: 'course-1',
+        subjectId: 'subject-1',
         values: { studentProfileId: 'student-1', caScore: 10, examScore: 14 },
         enteredByUserId: 'user-1',
       },

@@ -27,7 +27,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
       { title: 'Terms', path: '/academics/terms' },
       { title: 'Sequences', path: '/academics/sequences' },
       { title: 'Departments', path: '/academics/departments' },
-      { title: 'Levels', path: '/academics/levels' },
+      { title: 'Classes & Levels', path: '/academics/levels' },
       { title: 'Specialties', path: '/academics/specialties' },
       { title: 'Rooms', path: '/academics/rooms' },
       { title: 'Room usage', path: '/academics/rooms/usage' },
@@ -36,9 +36,12 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     ],
   },
   {
-    title: 'Courses',
+    title: 'Subjects',
     icon: 'book',
-    path: '/courses',
+    children: [
+      { title: 'Catalog', path: '/subjects' },
+      { title: 'Groupings', path: '/subjects/groupings' },
+    ],
   },
   {
     title: 'Timetable',
@@ -184,7 +187,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
 
 const STUDENT_MENU: AcadiaMenuConfig = [
   { title: 'Dashboard', icon: 'element-11', path: '/' },
-  { title: 'My courses', icon: 'book', path: '/courses' },
+  { title: 'My subjects', icon: 'book', path: '/subjects' },
   { title: 'Timetable', icon: 'calendar-tick', path: '/timetable' },
   { title: 'Attendance', icon: 'calendar-tick', path: '/attendance' },
   { title: 'Marks', icon: 'document', path: '/marks' },
@@ -214,7 +217,7 @@ const STUDENT_MENU: AcadiaMenuConfig = [
 const STAFF_MENU: AcadiaMenuConfig = [
   { title: 'Dashboard', icon: 'element-11', path: '/' },
   { title: 'Students', icon: 'users', path: '/students' },
-  { title: 'Courses', icon: 'book', path: '/courses' },
+  { title: 'Subjects', icon: 'book', path: '/subjects' },
   { title: 'Timetable', icon: 'calendar-tick', path: '/timetable' },
   {
     title: 'Attendance',

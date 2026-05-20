@@ -24,6 +24,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DEFAULT_ACADEMIC_STRUCTURE } from '@/lib/acadia/academic-calendar';
+import {
   academicYearSchema,
   type AcademicYearFormValues,
 } from '@/lib/acadia/calendar-schemas';
@@ -58,6 +66,9 @@ export function AcademicYearFormDialog({
       endsOn: '',
       isCurrent: false,
       isActive: true,
+      termsPerYear: DEFAULT_ACADEMIC_STRUCTURE.termsPerYear,
+      sequencesPerTerm: DEFAULT_ACADEMIC_STRUCTURE.sequencesPerTerm,
+      sequencesPerYear: DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear,
     },
   });
 
@@ -80,6 +91,9 @@ export function AcademicYearFormDialog({
         endsOn: '',
         isCurrent: false,
         isActive: true,
+        termsPerYear: DEFAULT_ACADEMIC_STRUCTURE.termsPerYear,
+        sequencesPerTerm: DEFAULT_ACADEMIC_STRUCTURE.sequencesPerTerm,
+        sequencesPerYear: DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear,
       });
     }
   }, [open, record, form]);
@@ -106,8 +120,8 @@ export function AcademicYearFormDialog({
             <DialogBody className="space-y-4">
               {!isEdit ? (
                 <p className="text-sm text-muted-foreground">
-                  Saving creates three terms and six sequences automatically (Cameroon
-                  calendar).
+                  Set the term and sequence structure for this year. Records are created
+                  automatically (default: 3 terms, 6 sequences).
                 </p>
               ) : null}
               <FormField
@@ -151,6 +165,91 @@ export function AcademicYearFormDialog({
                   )}
                 />
               </div>
+              {!isEdit ? (
+                <div className="grid gap-4 rounded-lg border p-3 sm:grid-cols-3">
+                  <FormField
+                    control={form.control}
+                    name="termsPerYear"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Terms / year</FormLabel>
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(v) => field.onChange(Number(v))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5, 6].map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                {n}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sequencesPerTerm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Seq. / term</FormLabel>
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(v) => field.onChange(Number(v))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {[1, 2, 3, 4].map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                {n}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sequencesPerYear"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Seq. / year</FormLabel>
+                        <Select
+                          value={String(field.value)}
+                          onValueChange={(v) => field.onChange(Number(v))}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                {n}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ) : null}
               <FormField
                 control={form.control}
                 name="isCurrent"
@@ -196,3 +295,4 @@ export function AcademicYearFormDialog({
     </Dialog>
   );
 }
+

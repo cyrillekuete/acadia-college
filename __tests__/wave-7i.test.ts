@@ -19,9 +19,9 @@ import {
 } from '@/lib/acadia/promotion-schemas';
 
 const levels = [
-  { id: 'lvl-1', specialtyId: 'spec-a', number: 1 },
-  { id: 'lvl-2', specialtyId: 'spec-a', number: 2 },
-  { id: 'lvl-3', specialtyId: 'spec-a', number: 3 },
+  { id: 'lvl-1', number: 1, subSystem: 'ENGLISH', branch: 'GRAMMAR' },
+  { id: 'lvl-2', number: 2, subSystem: 'ENGLISH', branch: 'GRAMMAR' },
+  { id: 'lvl-3', number: 3, subSystem: 'ENGLISH', branch: 'GRAMMAR' },
 ];
 
 describe('recommendedPromotionAction', () => {
@@ -37,7 +37,7 @@ describe('recommendedPromotionAction', () => {
 });
 
 describe('findNextLevel', () => {
-  it('returns the next level in the same specialty', () => {
+  it('returns the next level in the same stream', () => {
     expect(findNextLevel(levels, 'spec-a', 'lvl-1')?.id).toBe('lvl-2');
     expect(findNextLevel(levels, 'spec-a', 'lvl-3')).toBeNull();
   });

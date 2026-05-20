@@ -165,7 +165,7 @@ async function countTeachersCreatedSince(
 function categorizeActivity(action: string): AdminActivityItem['category'] {
   const lower = action.toLowerCase();
   if (lower.includes('login') || lower.includes('sign')) return 'auth';
-  if (lower.includes('exam') || lower.includes('class') || lower.includes('course')) {
+  if (lower.includes('exam') || lower.includes('class') || lower.includes('subject')) {
     return 'academic';
   }
   if (lower.includes('report')) return 'report';

@@ -83,7 +83,7 @@ All implementation work **must** be reflected in **[docs/implementation-tracker.
 
 ## 1. Executive summary
 
-**Acadia College** is a school management web application for **Cameroon secondary schools**, supporting day-to-day academic and administrative operations: student and staff records, courses, enrollment, attendance, grades, fees, transcripts, and messaging. The product models the Cameroon calendar (academic years, three terms, six sequences) and bilingual English/French sub-systems. For detailed stakeholder requirements on sub-systems, branches, and assessment, see [product-requirements-document.md](product-requirements-document.md).
+**Acadia College** is a school management web application for **Cameroon secondary schools**, supporting day-to-day academic and administrative operations: student and staff records, courses, enrollment, attendance, grades, fees, transcripts, and messaging. The product models the Cameroon calendar (academic years, configurable terms and sequences per year — default three terms and six sequences) and bilingual English/French sub-systems. For detailed stakeholder requirements on sub-systems, branches, and assessment, see [product-requirements-document.md](product-requirements-document.md).
 
 The product is built on the existing Metronic Next.js template (Demo 1 layout) using **only components already present in the template**, with Supabase as the database and authentication backend.
 
@@ -128,12 +128,12 @@ Acadia College uses a **year → term → sequence** hierarchy aligned with Came
 | Level | Count | Notes |
 |-------|-------|-------|
 | **Academic year** | 1 per school year | e.g. 2025–2026; enrollment and timetable scope |
-| **Term** | 3 per year | 1st, 2nd, and 3rd term; term report cards |
-| **Sequence** | 6 per year | 2 sequences per term; sequence exam results |
+| **Term** | Configurable per year (default 3) | Set on `/academics/terms`; term report cards |
+| **Sequence** | Configurable per year (default 6) | Set on `/academics/sequences`; `sequencesPerTerm` and `sequencesPerYear` (e.g. 5 or 6) |
 
 Assessment is recorded at **sequence** boundaries (end-of-sequence marks) and **term** boundaries (term report cards). Promotion uses term/year averages (see product requirements for automatic migration rules).
 
-Data model: `AcademicYear`, `Term`, `AcademicSequence` (replacing legacy `Semester` naming).
+Data model: `AcademicYear` (stores `termsPerYear`, `sequencesPerTerm`, `sequencesPerYear`), `Term`, `AcademicSequence` (replacing legacy `Semester` naming).
 
 ### 3.2 Cameroon educational system (English and French sub-systems)
 
@@ -203,7 +203,7 @@ Role-based access is enforced via `UserRole.slug`, RLS policies, and sidebar fil
 - Module UIs for registry, academics, curriculum, enrollment, attendance, finance, records, messaging, and administration (phased)—each built by **adapting an existing template page**, not greenfield UI.
 - Account/settings pages repurposed for institution profile, user profile, notifications, roles, and fees (same routes, same component tree, new data).
 - Bilingual-ready display (EN primary, FR secondary where schema provides `nameEn` / `nameFr`).
-- Cameroon educational model: English and French sub-systems, Grammar/Technical/Commercial branches, three terms and six sequences per year (§3.1–3.2).
+- Cameroon educational model: English and French sub-systems, Grammar/Technical/Commercial branches, configurable terms and sequences per academic year (default 3 terms, 6 sequences) (§3.1–3.2).
 - Stakeholder functional requirements catalogue (§10.6) traced to [product-requirements-document.md](product-requirements-document.md).
 
 ### 4.2 Out of scope (initial phases)

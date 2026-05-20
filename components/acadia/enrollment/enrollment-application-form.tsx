@@ -99,7 +99,7 @@ export function EnrollmentApplicationForm({
   const { data: specialties = [], isLoading: specialtiesLoading } =
     useSpecialtyOptions(subSystem, branch);
   const { data: levels = [], isLoading: levelsLoading } =
-    useLevelsForSpecialty(specialtyId);
+    useLevelsForSpecialty(specialtyId, subSystem, branch);
 
   useEffect(() => {
     if (!record) {

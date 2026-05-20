@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
@@ -29,11 +29,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  DEFAULT_ACADEMIC_STRUCTURE,
   numberInTermForSequence,
   termNumberForSequence,
 } from '@/lib/acadia/academic-calendar';
 import {
-  sequenceSchema,
+  sequenceSchemaForStructure,
   type SequenceFormValues,
 } from '@/lib/acadia/calendar-schemas';
 import { termLabel } from '@/lib/acadia/record-display';
@@ -42,6 +43,7 @@ import {
   useAcademicYearOptions,
   useTermOptions,
 } from '@/hooks/use-academic-calendar-options';
+import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
 
 type SequenceRow = {
   id: string;
@@ -55,17 +57,21 @@ export function SequenceFormDialog({
   open,
   onOpenChange,
   record,
+  defaultAcademicYearId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record?: SequenceRow | null;
+  defaultAcademicYearId?: string;
 }) {
   const { createSequence, updateSequence } = useAcademicCalendarMutations();
   const { data: years = [] } = useAcademicYearOptions();
   const isEdit = !!record;
 
   const form = useForm<SequenceFormValues>({
-    resolver: zodResolver(sequenceSchema),
+    resolver: zodResolver(
+      sequenceSchemaForStructure(DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear),
+    ),
     defaultValues: {
       academicYearId: '',
       termId: '',
@@ -75,7 +81,20 @@ export function SequenceFormDialog({
   });
 
   const academicYearId = form.watch('academicYearId');
+  const { data: yearStructure } = useAcademicYearStructure(academicYearId || null);
+  const structure = yearStructure ?? DEFAULT_ACADEMIC_STRUCTURE;
+
   const { data: terms = [], isLoading: termsLoading } = useTermOptions(academicYearId || null);
+
+  const sequenceNumbers = useMemo(
+    () => Array.from({ length: structure.sequencesPerYear }, (_, i) => i + 1),
+    [structure.sequencesPerYear],
+  );
+
+  const maxNumberInTerm = useMemo(() => {
+    const counts = structure.sequencesPerYear / structure.termsPerYear;
+    return Math.max(structure.sequencesPerTerm, Math.ceil(counts));
+  }, [structure]);
 
   useEffect(() => {
     if (!open) {
@@ -90,48 +109,55 @@ export function SequenceFormDialog({
       });
     } else {
       form.reset({
-        academicYearId: years[0]?.id ?? '',
+        academicYearId: defaultAcademicYearId ?? years[0]?.id ?? '',
         termId: '',
         number: 1,
         numberInTerm: 1,
       });
     }
-  }, [open, record, form, years]);
+  }, [open, record, form, years, defaultAcademicYearId]);
 
   const syncSequenceDerivedFields = useCallback(
     (sequenceNumber: number) => {
-      const termNum = termNumberForSequence(sequenceNumber);
+      const termNum = termNumberForSequence(sequenceNumber, structure);
       const match = terms.find((t) => t.number === termNum);
-      // Always write termId — empty string when terms haven't loaded yet so
-      // Zod validation fires immediately instead of leaving stale/blank state.
       form.setValue('termId', match?.id ?? '', { shouldValidate: true });
-      form.setValue('numberInTerm', numberInTermForSequence(sequenceNumber), {
+      form.setValue('numberInTerm', numberInTermForSequence(sequenceNumber, structure), {
         shouldValidate: true,
       });
     },
-    [terms, form],
+    [terms, form, structure],
   );
 
-  // Re-sync after useTermOptions resolves. Handles the race where the user
-  // already chose a sequence number before terms finished loading, and also
-  // re-syncs when the user switches academic years.
   useEffect(() => {
     if (termsLoading || terms.length === 0 || !academicYearId) {
       return;
     }
     syncSequenceDerivedFields(form.getValues('number'));
-  }, [terms, termsLoading, academicYearId, syncSequenceDerivedFields]);
+  }, [terms, termsLoading, academicYearId, syncSequenceDerivedFields, form]);
 
   const pending = createSequence.isPending || updateSequence.isPending;
 
   const onSubmit = form.handleSubmit(async (values) => {
+    const schema = sequenceSchemaForStructure(structure.sequencesPerYear, maxNumberInTerm);
+    const parsed = schema.safeParse(values);
+    if (!parsed.success) {
+      return;
+    }
     if (isEdit && record) {
-      await updateSequence.mutateAsync({ id: record.id, values });
+      await updateSequence.mutateAsync({ id: record.id, values: parsed.data });
     } else {
-      await createSequence.mutateAsync(values);
+      await createSequence.mutateAsync(parsed.data);
     }
     onOpenChange(false);
   });
+
+  const sequenceNumber = form.watch('number');
+  const numberInTermOptions = useMemo(() => {
+    const pos = numberInTermForSequence(sequenceNumber, structure);
+    const max = Math.max(maxNumberInTerm, pos);
+    return Array.from({ length: max }, (_, i) => i + 1);
+  }, [sequenceNumber, structure, maxNumberInTerm]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -177,7 +203,7 @@ export function SequenceFormDialog({
                 name="number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sequence number (1–6)</FormLabel>
+                    <FormLabel>Sequence number (1–{structure.sequencesPerYear})</FormLabel>
                     <Select
                       value={String(field.value)}
                       disabled={!!academicYearId && termsLoading}
@@ -193,7 +219,7 @@ export function SequenceFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {[1, 2, 3, 4, 5, 6].map((n) => (
+                        {sequenceNumbers.map((n) => (
                           <SelectItem key={n} value={String(n)}>
                             Sequence {n}
                           </SelectItem>
@@ -244,8 +270,11 @@ export function SequenceFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="1">1st in term</SelectItem>
-                        <SelectItem value="2">2nd in term</SelectItem>
+                        {numberInTermOptions.map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n === 1 ? '1st in term' : n === 2 ? '2nd in term' : `${n}th in term`}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

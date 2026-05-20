@@ -57,7 +57,7 @@ export function StudentExamsCertificates({
             type,
             startsOn,
             endsOn,
-            Course:courseId ( code, nameEn )
+            Subject:subjectId ( code, nameEn )
           `,
           )
           .eq('tenantId', tenantId!)
@@ -124,10 +124,10 @@ export function StudentExamsCertificates({
           exams.length === 0
             ? [{ label: 'Records', value: 'No exam sessions for enrolled years.' }]
             : exams.map((row) => {
-                const course = unwrapRelation<{ code?: string; nameEn?: string }>(
-                  row.Course,
+                const subject = unwrapRelation<{ code?: string; nameEn?: string }>(
+                  row.Subject,
                 );
-                const label = String(course?.nameEn ?? course?.code ?? row.id);
+                const label = String(subject?.nameEn ?? subject?.code ?? row.id);
                 return {
                   label,
                   value: (

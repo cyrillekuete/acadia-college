@@ -34,7 +34,7 @@ export const learningMaterialSchema = z
     descriptionEn: z.string().optional(),
     descriptionFr: z.string().optional(),
     kind: z.enum(learningMaterialKinds),
-    courseId: z.string().optional(),
+    subjectId: z.string().optional(),
     externalUrl: z.string().url().optional().or(z.literal('')),
     isPublished: z.boolean(),
   })

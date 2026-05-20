@@ -15,7 +15,7 @@ type AttendanceRow = {
   id: string;
   sessionDate?: string;
   label?: string;
-  Course?: unknown;
+  Subject?: unknown;
 } & Record<string, unknown>;
 
 const columns: ColumnDef<AttendanceRow>[] = [
@@ -31,7 +31,7 @@ const columns: ColumnDef<AttendanceRow>[] = [
       </Link>
     ),
   },
-  nestedFieldColumn<AttendanceRow>('course', 'Course', 'Course', 'code'),
+  nestedFieldColumn<AttendanceRow>('subject', 'Subject', 'Subject', 'code'),
   { accessorKey: 'label', header: 'Label' },
 ];
 
@@ -40,7 +40,7 @@ const ATTENDANCE_SELECT = `
   sessionDate,
   label,
   createdAt,
-  Course:courseId ( code, nameEn )
+  Subject:subjectId ( code, nameEn )
 `;
 
 export default function AttendancePage() {

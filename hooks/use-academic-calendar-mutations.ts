@@ -3,7 +3,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  provisionCameroonCalendar,
+  DEFAULT_ACADEMIC_STRUCTURE,
+  provisionAcademicCalendar,
   setCurrentAcademicYear,
 } from '@/lib/acadia/academic-calendar';
 import type {
@@ -35,6 +36,7 @@ function invalidateCalendarQueries(queryClient: ReturnType<typeof useQueryClient
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-year-options'] });
   void queryClient.invalidateQueries({ queryKey: ['term-options'] });
+  void queryClient.invalidateQueries({ queryKey: ['academic-year-structure'] });
 }
 
 export function useAcademicCalendarMutations() {
@@ -51,6 +53,14 @@ export function useAcademicCalendarMutations() {
       const id = generateAcadiaId('year');
       const now = new Date().toISOString();
 
+      const structure = {
+        termsPerYear: values.termsPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.termsPerYear,
+        sequencesPerTerm:
+          values.sequencesPerTerm ?? DEFAULT_ACADEMIC_STRUCTURE.sequencesPerTerm,
+        sequencesPerYear:
+          values.sequencesPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear,
+      };
+
       const { error } = await supabase.from('AcademicYear').insert({
         id,
         tenantId,
@@ -59,6 +69,9 @@ export function useAcademicCalendarMutations() {
         endsOn: values.endsOn,
         isCurrent: values.isCurrent,
         isActive: values.isActive,
+        termsPerYear: structure.termsPerYear,
+        sequencesPerTerm: structure.sequencesPerTerm,
+        sequencesPerYear: structure.sequencesPerYear,
         updatedAt: now,
       });
       if (error) {
@@ -69,12 +82,14 @@ export function useAcademicCalendarMutations() {
         await setCurrentAcademicYear(supabase, tenantId, id);
       }
 
-      await provisionCameroonCalendar(supabase, tenantId, id);
-      return id;
+      const provisioned = await provisionAcademicCalendar(supabase, tenantId, id, structure);
+      return { id, structure, provisioned };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateCalendarQueries(queryClient);
-      toast.success('Academic year created with 3 terms and 6 sequences.');
+      toast.success(
+        `Academic year created with ${result.structure.termsPerYear} terms and ${result.structure.sequencesPerYear} sequences.`,
+      );
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -136,18 +151,40 @@ export function useAcademicCalendarMutations() {
   });
 
   const provisionCalendar = useMutation({
-    mutationFn: async (academicYearId: string) => {
+    mutationFn: async ({
+      academicYearId,
+      termsOnly,
+      sequencesOnly,
+    }: {
+      academicYearId: string;
+      termsOnly?: boolean;
+      sequencesOnly?: boolean;
+    }) => {
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
-      return provisionCameroonCalendar(supabase, tenantId, academicYearId);
+      return provisionAcademicCalendar(supabase, tenantId, academicYearId, undefined, {
+        termsOnly,
+        sequencesOnly,
+      });
     },
     onSuccess: (result) => {
       invalidateCalendarQueries(queryClient);
-      toast.success(
-        `Provisioned ${result.terms} terms and ${result.sequences} sequences.`,
-      );
+      const parts: string[] = [];
+      if (result.termsCreated > 0) {
+        parts.push(`${result.termsCreated} term(s) created`);
+      }
+      if (result.sequencesCreated > 0) {
+        parts.push(`${result.sequencesCreated} sequence(s) created`);
+      }
+      if (parts.length === 0) {
+        toast.success(
+          `Calendar complete: ${result.terms} terms, ${result.sequences} sequences.`,
+        );
+      } else {
+        toast.success(`${parts.join('; ')} (${result.terms} terms, ${result.sequences} sequences total).`);
+      }
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });

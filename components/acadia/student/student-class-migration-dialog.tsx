@@ -29,7 +29,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { levelDisplayLabel } from '@/lib/acadia/education-system';
+import {
+  levelDisplayLabel,
+  type AcademicBranch,
+  type AcademicSubSystem,
+} from '@/lib/acadia/education-system';
 import {
   studentClassMigrationSchema,
   type StudentClassMigrationValues,
@@ -71,7 +75,11 @@ export function StudentClassMigrationDialog({
     subSystem as 'ENGLISH' | 'FRENCH',
     branch as 'GRAMMAR' | 'TECHNICAL' | 'COMMERCIAL',
   );
-  const { data: levels = [] } = useLevelsForSpecialty(specialtyId);
+  const { data: levels = [] } = useLevelsForSpecialty(
+    specialtyId,
+    subSystem as AcademicSubSystem,
+    branch as AcademicBranch,
+  );
 
   useEffect(() => {
     if (!open) {

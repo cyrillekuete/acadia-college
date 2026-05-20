@@ -90,7 +90,7 @@ export function useResourceMutations() {
         descriptionEn: input.values.descriptionEn || null,
         descriptionFr: input.values.descriptionFr || null,
         kind: input.values.kind,
-        courseId: input.values.courseId || null,
+        subjectId: input.values.subjectId || null,
         storageKey,
         externalUrl: input.values.externalUrl || null,
         fileSizeBytes,

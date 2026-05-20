@@ -34,6 +34,20 @@ const nextConfig = {
   assetPrefix: basePathEnv || '',
   images: {},
   output: 'standalone',
+  async redirects() {
+    return [
+      {
+        source: '/courses',
+        destination: '/subjects',
+        permanent: true,
+      },
+      {
+        source: '/courses/:path*',
+        destination: '/subjects/:path*',
+        permanent: true,
+      },
+    ];
+  },
   env: {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabaseKey,

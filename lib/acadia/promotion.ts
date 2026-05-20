@@ -10,8 +10,9 @@ export { PASSING_AVERAGE as PROMOTION_PASS_AVERAGE };
 
 export type LevelRow = {
   id: string;
-  specialtyId: string;
   number: number;
+  subSystem?: string;
+  branch?: string;
 };
 
 export type PromotionCandidateInput = {
@@ -74,16 +75,25 @@ export function recommendedPromotionAction(
 
 export function findNextLevel(
   levels: LevelRow[],
-  specialtyId: string,
+  _specialtyId: string,
   currentLevelId: string,
 ): LevelRow | null {
   const current = levels.find((l) => l.id === currentLevelId);
   if (!current) {
     return null;
   }
-  const candidates = levels.filter(
-    (l) => l.specialtyId === specialtyId && l.number === current.number + 1,
-  );
+  const candidates = levels.filter((l) => {
+    if (l.number !== current.number + 1) {
+      return false;
+    }
+    if (current.subSystem && l.subSystem && l.subSystem !== current.subSystem) {
+      return false;
+    }
+    if (current.branch && l.branch && l.branch !== current.branch) {
+      return false;
+    }
+    return true;
+  });
   return candidates.sort((a, b) => a.number - b.number)[0] ?? null;
 }
 

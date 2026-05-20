@@ -4,17 +4,23 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
+  DEFAULT_ACADEMIC_STRUCTURE,
   TERMS_PER_YEAR,
   SEQUENCES_PER_YEAR,
+  buildSequenceDistribution,
+  formatDistributionPreview,
   termNumberForSequence,
   numberInTermForSequence,
   buildTermRows,
   buildSequenceRows,
+  validateAcademicYearStructure,
 } from '@/lib/acadia/academic-calendar';
 import {
   academicYearSchema,
   termSchema,
+  termSchemaForStructure,
   sequenceSchema,
+  sequenceSchemaForStructure,
   calendarMilestoneSchema,
   CALENDAR_MILESTONE_KINDS,
 } from '@/lib/acadia/calendar-schemas';
@@ -84,13 +90,57 @@ describe('generateAcadiaId', () => {
 // ---------------------------------------------------------------------------
 // academic-calendar.ts — pure helpers
 // ---------------------------------------------------------------------------
-describe('TERMS_PER_YEAR / SEQUENCES_PER_YEAR constants', () => {
-  it('has 3 terms per year', () => {
+describe('DEFAULT_ACADEMIC_STRUCTURE / legacy constants', () => {
+  it('defaults to 3 terms per year', () => {
+    expect(DEFAULT_ACADEMIC_STRUCTURE.termsPerYear).toBe(3);
     expect(TERMS_PER_YEAR).toBe(3);
   });
 
-  it('has 6 sequences per year', () => {
+  it('defaults to 6 sequences per year', () => {
+    expect(DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear).toBe(6);
     expect(SEQUENCES_PER_YEAR).toBe(6);
+  });
+});
+
+describe('buildSequenceDistribution', () => {
+  it('distributes 6 sequences evenly across 3 terms (2 each)', () => {
+    const dist = buildSequenceDistribution({
+      termsPerYear: 3,
+      sequencesPerTerm: 2,
+      sequencesPerYear: 6,
+    });
+    expect(dist.countsPerTerm).toEqual([2, 2, 2]);
+  });
+
+  it('distributes 5 sequences across 3 terms as 2+2+1', () => {
+    const dist = buildSequenceDistribution({
+      termsPerYear: 3,
+      sequencesPerTerm: 2,
+      sequencesPerYear: 5,
+    });
+    expect(dist.countsPerTerm).toEqual([2, 2, 1]);
+    expect(formatDistributionPreview(dist)).toBe('Term 1: 2 · Term 2: 2 · Term 3: 1');
+  });
+});
+
+describe('validateAcademicYearStructure', () => {
+  it('rejects sequencesPerYear below termsPerYear', () => {
+    const result = validateAcademicYearStructure({
+      termsPerYear: 3,
+      sequencesPerTerm: 2,
+      sequencesPerYear: 2,
+    });
+    expect(result.valid).toBe(false);
+  });
+
+  it('warns when uniform product differs from sequencesPerYear', () => {
+    const result = validateAcademicYearStructure({
+      termsPerYear: 3,
+      sequencesPerTerm: 2,
+      sequencesPerYear: 5,
+    });
+    expect(result.valid).toBe(true);
+    expect(result.warnings.length).toBeGreaterThan(0);
   });
 });
 
@@ -105,6 +155,18 @@ describe('termNumberForSequence', () => {
   ];
   it.each(cases)('sequence %i → term %i', (seq, expectedTerm) => {
     expect(termNumberForSequence(seq)).toBe(expectedTerm);
+  });
+});
+
+describe('termNumberForSequence — 5 sequences / 3 terms layout', () => {
+  const structure = { termsPerYear: 3, sequencesPerTerm: 2, sequencesPerYear: 5 };
+
+  it('maps sequence 5 to term 3', () => {
+    expect(termNumberForSequence(5, structure)).toBe(3);
+  });
+
+  it('maps sequence 5 to position 1 in term', () => {
+    expect(numberInTermForSequence(5, structure)).toBe(1);
   });
 });
 
@@ -236,6 +298,9 @@ describe('academicYearSchema', () => {
     endsOn: '2026-07-31',
     isCurrent: true,
     isActive: true,
+    termsPerYear: 3,
+    sequencesPerTerm: 2,
+    sequencesPerYear: 6,
   };
 
   it('accepts a valid payload', () => {
@@ -273,24 +338,32 @@ describe('academicYearSchema', () => {
 });
 
 describe('termSchema', () => {
-  it('accepts valid term 1-3', () => {
+  const cameroonTermSchema = termSchemaForStructure(3);
+
+  it('accepts valid term 1-3 for Cameroon structure', () => {
     [1, 2, 3].forEach((n) => {
       expect(
-        termSchema.safeParse({ academicYearId: 'year-1', number: n }).success,
+        cameroonTermSchema.safeParse({ academicYearId: 'year-1', number: n }).success,
       ).toBe(true);
     });
   });
 
   it('rejects term number 0', () => {
     expect(
-      termSchema.safeParse({ academicYearId: 'year-1', number: 0 }).success,
+      cameroonTermSchema.safeParse({ academicYearId: 'year-1', number: 0 }).success,
     ).toBe(false);
   });
 
-  it('rejects term number 4', () => {
+  it('rejects term number 4 for Cameroon structure', () => {
+    expect(
+      cameroonTermSchema.safeParse({ academicYearId: 'year-1', number: 4 }).success,
+    ).toBe(false);
+  });
+
+  it('accepts term number 4 with wide schema', () => {
     expect(
       termSchema.safeParse({ academicYearId: 'year-1', number: 4 }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('rejects empty academicYearId', () => {
@@ -305,25 +378,34 @@ describe('sequenceSchema', () => {
     number: 3,
     numberInTerm: 1,
   };
+  const cameroonSequenceSchema = sequenceSchemaForStructure(6, 2);
 
   it('accepts valid sequence', () => {
-    expect(sequenceSchema.safeParse(valid).success).toBe(true);
+    expect(cameroonSequenceSchema.safeParse(valid).success).toBe(true);
   });
 
   it('rejects sequence number 0', () => {
-    expect(sequenceSchema.safeParse({ ...valid, number: 0 }).success).toBe(false);
+    expect(cameroonSequenceSchema.safeParse({ ...valid, number: 0 }).success).toBe(
+      false,
+    );
   });
 
-  it('rejects sequence number 7', () => {
-    expect(sequenceSchema.safeParse({ ...valid, number: 7 }).success).toBe(false);
+  it('rejects sequence number 7 for Cameroon structure', () => {
+    expect(cameroonSequenceSchema.safeParse({ ...valid, number: 7 }).success).toBe(
+      false,
+    );
   });
 
   it('rejects numberInTerm 0', () => {
-    expect(sequenceSchema.safeParse({ ...valid, numberInTerm: 0 }).success).toBe(false);
+    expect(
+      cameroonSequenceSchema.safeParse({ ...valid, numberInTerm: 0 }).success,
+    ).toBe(false);
   });
 
-  it('rejects numberInTerm 3', () => {
-    expect(sequenceSchema.safeParse({ ...valid, numberInTerm: 3 }).success).toBe(false);
+  it('rejects numberInTerm 3 for Cameroon structure', () => {
+    expect(
+      cameroonSequenceSchema.safeParse({ ...valid, numberInTerm: 3 }).success,
+    ).toBe(false);
   });
 });
 
@@ -381,8 +463,12 @@ describe('termLabel', () => {
     expect(termLabel({})).toBe('—');
   });
 
-  it('falls back to "Term N" for out-of-range number', () => {
-    expect(termLabel({ number: 10 })).toBe('Term 10');
+  it('returns ordinal label for extended range', () => {
+    expect(termLabel({ number: 10 })).toBe('10th Term');
+  });
+
+  it('falls back to "Term N" beyond ordinal table', () => {
+    expect(termLabel({ number: 20 })).toBe('Term 20');
   });
 });
 

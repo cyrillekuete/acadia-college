@@ -4,11 +4,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  buildCourseMarkRow,
+  buildSubjectMarkRow,
   buildExamSessionRow,
 } from '@/lib/acadia/assessment';
 import type {
-  CourseMarkEntryValues,
+  SubjectMarkEntryValues,
   ExamSessionFormValues,
   MarksEntryContextValues,
 } from '@/lib/acadia/assessment-schemas';
@@ -159,25 +159,25 @@ export function useAssessmentMutations() {
 
       for (const mark of input.marks) {
         const { data: existing, error: fetchError } = await supabase
-          .from('CourseMark')
+          .from('SubjectMark')
           .select('id, caScore, examScore, totalScore')
           .eq('tenantId', tenantId)
           .eq('examSessionId', input.examSessionId)
           .eq('studentProfileId', mark.studentProfileId)
-          .eq('courseId', input.courseId)
+          .eq('subjectId', input.subjectId)
           .maybeSingle();
 
         if (fetchError) {
           throw fetchError;
         }
 
-        const row = buildCourseMarkRow(
+        const row = buildSubjectMarkRow(
           tenantId,
           existing?.id ?? generateAcadiaId('mark'),
           {
             examSessionId: input.examSessionId,
             studentProfileId: mark.studentProfileId,
-            courseId: input.courseId,
+            subjectId: input.subjectId,
             values: mark,
             enteredByUserId: actorUserId,
           },
@@ -186,7 +186,7 @@ export function useAssessmentMutations() {
 
         if (existing?.id) {
           const { error } = await supabase
-            .from('CourseMark')
+            .from('SubjectMark')
             .update(row)
             .eq('id', existing.id);
           if (error) {
@@ -194,9 +194,9 @@ export function useAssessmentMutations() {
           }
           await appendSystemLog(supabase, {
             userId: actorUserId,
-            event: 'course_mark.updated',
+            event: 'subject_mark.updated',
             entityId: existing.id,
-            entityType: 'CourseMark',
+            entityType: 'SubjectMark',
             meta: {
               previous: {
                 caScore: existing.caScore,
@@ -211,7 +211,7 @@ export function useAssessmentMutations() {
             },
           });
         } else {
-          const { error } = await supabase.from('CourseMark').insert({
+          const { error } = await supabase.from('SubjectMark').insert({
             ...row,
             createdAt: now,
           });
@@ -220,9 +220,9 @@ export function useAssessmentMutations() {
           }
           await appendSystemLog(supabase, {
             userId: actorUserId,
-            event: 'course_mark.created',
+            event: 'subject_mark.created',
             entityId: row.id,
-            entityType: 'CourseMark',
+            entityType: 'SubjectMark',
             meta: { totalScore: row.totalScore },
           });
         }
@@ -238,7 +238,7 @@ export function useAssessmentMutations() {
   const ensureSequenceExamSession = useMutation({
     mutationFn: async (input: {
       academicYearId: string;
-      courseId: string;
+      subjectId: string;
       termId: string;
       sequenceId: string;
     }) => {
@@ -252,7 +252,7 @@ export function useAssessmentMutations() {
         .select('id')
         .eq('tenantId', tenantId)
         .eq('academicYearId', input.academicYearId)
-        .eq('courseId', input.courseId)
+        .eq('subjectId', input.subjectId)
         .eq('sequenceId', input.sequenceId)
         .eq('type', 'NORMAL')
         .maybeSingle();
@@ -271,7 +271,7 @@ export function useAssessmentMutations() {
         id,
         tenantId,
         academicYearId: input.academicYearId,
-        courseId: input.courseId,
+        subjectId: input.subjectId,
         termId: input.termId,
         sequenceId: input.sequenceId,
         type: 'NORMAL',
@@ -297,4 +297,4 @@ export function useAssessmentMutations() {
   };
 }
 
-export type { CourseMarkEntryValues };
+export type { SubjectMarkEntryValues };

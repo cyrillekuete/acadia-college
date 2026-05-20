@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
@@ -28,13 +28,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { termSchema, type TermFormValues } from '@/lib/acadia/calendar-schemas';
+import { DEFAULT_ACADEMIC_STRUCTURE } from '@/lib/acadia/academic-calendar';
+import { termSchemaForStructure, type TermFormValues } from '@/lib/acadia/calendar-schemas';
+import { levelDisplayLabel } from '@/lib/acadia/education-system';
 import { termLabel } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
 import {
   useAcademicYearOptions,
   useLevelOptions,
 } from '@/hooks/use-academic-calendar-options';
+import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
 
 type TermRow = {
   id: string;
@@ -47,10 +50,12 @@ export function TermFormDialog({
   open,
   onOpenChange,
   record,
+  defaultAcademicYearId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record?: TermRow | null;
+  defaultAcademicYearId?: string;
 }) {
   const { createTerm, updateTerm } = useAcademicCalendarMutations();
   const { data: years = [] } = useAcademicYearOptions();
@@ -58,13 +63,23 @@ export function TermFormDialog({
   const isEdit = !!record;
 
   const form = useForm<TermFormValues>({
-    resolver: zodResolver(termSchema),
+    resolver: zodResolver(termSchemaForStructure(DEFAULT_ACADEMIC_STRUCTURE.termsPerYear)),
     defaultValues: {
       academicYearId: '',
       number: 1,
       levelId: '',
     },
   });
+
+  const academicYearId = form.watch('academicYearId');
+  const { data: yearStructure } = useAcademicYearStructure(academicYearId || null);
+  const termsPerYear =
+    yearStructure?.termsPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.termsPerYear;
+
+  const termNumbers = useMemo(
+    () => Array.from({ length: termsPerYear }, (_, i) => i + 1),
+    [termsPerYear],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -78,20 +93,25 @@ export function TermFormDialog({
       });
     } else {
       form.reset({
-        academicYearId: years[0]?.id ?? '',
+        academicYearId: defaultAcademicYearId ?? years[0]?.id ?? '',
         number: 1,
         levelId: '',
       });
     }
-  }, [open, record, form, years]);
+  }, [open, record, form, years, defaultAcademicYearId]);
 
   const pending = createTerm.isPending || updateTerm.isPending;
 
   const onSubmit = form.handleSubmit(async (values) => {
+    const schema = termSchemaForStructure(termsPerYear);
+    const parsed = schema.safeParse(values);
+    if (!parsed.success) {
+      return;
+    }
     if (isEdit && record) {
-      await updateTerm.mutateAsync({ id: record.id, values });
+      await updateTerm.mutateAsync({ id: record.id, values: parsed.data });
     } else {
-      await createTerm.mutateAsync(values);
+      await createTerm.mutateAsync(parsed.data);
     }
     onOpenChange(false);
   });
@@ -146,7 +166,7 @@ export function TermFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {[1, 2, 3].map((n) => (
+                        {termNumbers.map((n) => (
                           <SelectItem key={n} value={String(n)}>
                             {termLabel({ number: n })}
                           </SelectItem>
@@ -178,7 +198,7 @@ export function TermFormDialog({
                         <SelectItem value="__none__">All levels</SelectItem>
                         {levels.map((l) => (
                           <SelectItem key={l.id} value={l.id}>
-                            Level {l.number}
+                            {levelDisplayLabel(l)}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Plus } from '@/lib/icons';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { StudentList } from '@/components/acadia/student/student-list';
+import { StudentRegistry } from '@/components/acadia/student/student-registry';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
@@ -27,7 +27,7 @@ export default function StudentsPage() {
         ) : undefined
       }
     >
-      <StudentList />
+      <StudentRegistry />
     </AcadiaPageShell>
   );
 }

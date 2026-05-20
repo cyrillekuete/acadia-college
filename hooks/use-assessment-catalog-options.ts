@@ -18,7 +18,7 @@ export type SequenceOption = {
 export type ExamSessionOption = {
   id: string;
   type: string;
-  courseId: string;
+  subjectId: string;
   sequenceId: string | null;
   startsOn: string;
   endsOn: string;
@@ -60,13 +60,13 @@ export function sequenceOptionLabel(seq: SequenceOption): string {
 
 export function useExamSessionOptions(filters?: {
   academicYearId?: string | null;
-  courseId?: string | null;
+  subjectId?: string | null;
   sequenceId?: string | null;
 }) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const academicYearId = filters?.academicYearId;
-  const courseId = filters?.courseId;
+  const subjectId = filters?.subjectId;
   const sequenceId = filters?.sequenceId;
 
   return useQuery({
@@ -74,7 +74,7 @@ export function useExamSessionOptions(filters?: {
       'exam-session-options',
       tenantId,
       academicYearId,
-      courseId,
+      subjectId,
       sequenceId,
     ],
     queryFn: async () => {
@@ -82,7 +82,7 @@ export function useExamSessionOptions(filters?: {
       let query = supabase
         .from('ExamSession')
         .select(
-          'id, type, courseId, sequenceId, startsOn, endsOn, finalizedAt, academicYearId',
+          'id, type, subjectId, sequenceId, startsOn, endsOn, finalizedAt, academicYearId',
         )
         .eq('tenantId', tenantId!)
         .order('startsOn', { ascending: false });
@@ -90,8 +90,8 @@ export function useExamSessionOptions(filters?: {
       if (academicYearId) {
         query = query.eq('academicYearId', academicYearId);
       }
-      if (courseId) {
-        query = query.eq('courseId', courseId);
+      if (subjectId) {
+        query = query.eq('subjectId', subjectId);
       }
       if (sequenceId) {
         query = query.eq('sequenceId', sequenceId);

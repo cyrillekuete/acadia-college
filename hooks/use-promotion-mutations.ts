@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { provisionCameroonCalendar, setCurrentAcademicYear } from '@/lib/acadia/academic-calendar';
+import { provisionAcademicCalendar, setCurrentAcademicYear } from '@/lib/acadia/academic-calendar';
 import {
   buildPromotionCandidates,
   computeYearAveragesFromMarks,
@@ -70,7 +70,7 @@ export function usePromotionMutations() {
           .eq('status', 'ENROLLED'),
         supabase
           .from('Level')
-          .select('id, specialtyId, number')
+          .select('id, number, subSystem, branch')
           .eq('tenantId', tenantId),
         supabase
           .from('ExamSession')
@@ -94,7 +94,7 @@ export function usePromotionMutations() {
 
       if (sessionIds.length > 0) {
         const { data: marks, error: marksError } = await supabase
-          .from('CourseMark')
+          .from('SubjectMark')
           .select('studentProfileId, totalScore, examSessionId')
           .eq('tenantId', tenantId)
           .in('examSessionId', sessionIds);
@@ -158,8 +158,9 @@ export function usePromotionMutations() {
         })),
         (levels ?? []).map((l) => ({
           id: l.id as string,
-          specialtyId: l.specialtyId as string,
           number: Number(l.number),
+          subSystem: l.subSystem as string | undefined,
+          branch: l.branch as string | undefined,
         })),
       );
 
@@ -241,7 +242,7 @@ export function usePromotionMutations() {
 
       const { data: levels, error: levelError } = await supabase
         .from('Level')
-        .select('id, specialtyId, number')
+        .select('id, number, subSystem, branch')
         .eq('tenantId', tenantId);
       if (levelError) {
         throw levelError;
@@ -271,8 +272,9 @@ export function usePromotionMutations() {
         ],
         (levels ?? []).map((l) => ({
           id: l.id as string,
-          specialtyId: l.specialtyId as string,
           number: Number(l.number),
+          subSystem: l.subSystem as string | undefined,
+          branch: l.branch as string | undefined,
         })),
       );
 
@@ -344,7 +346,7 @@ export function usePromotionMutations() {
         if (yearError) {
           throw yearError;
         }
-        await provisionCameroonCalendar(supabase, tenantId, targetYearId);
+        await provisionAcademicCalendar(supabase, tenantId, targetYearId);
       }
 
       if (!targetYearId?.trim()) {

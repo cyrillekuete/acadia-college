@@ -12,11 +12,16 @@ export type DummyStudent = {
   email: string;
   avatar: string | null;
   class_name: string;
+  subsystem: string | null;
+  branch: string | null;
   matricule_number: string | null;
   enrollment_status: StudentEnrollmentStatus;
   status: 'active' | 'inactive';
   enrollment_date: string;
   email_verified: boolean;
+  total_fees: number;
+  paid_fees: number;
+  fees_status: string | null;
 };
 
 const CLASS_NAMES = [
@@ -34,6 +39,21 @@ const ENROLLMENT_STATUSES: StudentEnrollmentStatus[] = [
   'active',
   'pending',
   'inactive',
+];
+
+const SUBSYSTEMS = ['english', 'french'] as const;
+const BRANCHES = ['grammar', 'technical', 'commercial'] as const;
+
+const FEE_SCENARIOS: Array<{
+  total_fees: number;
+  paid_fees: number;
+  fees_status: string;
+}> = [
+  { total_fees: 250_000, paid_fees: 250_000, fees_status: 'paid' },
+  { total_fees: 250_000, paid_fees: 125_000, fees_status: 'partial' },
+  { total_fees: 250_000, paid_fees: 0, fees_status: 'pending' },
+  { total_fees: 180_000, paid_fees: 90_000, fees_status: 'partial' },
+  { total_fees: 300_000, paid_fees: 0, fees_status: 'overdue' },
 ];
 
 type SeedUser = {
@@ -130,6 +150,7 @@ function buildStudents(): DummyStudent[] {
       ENROLLMENT_STATUSES[index % ENROLLMENT_STATUSES.length];
     const enrolled = new Date(baseDate);
     enrolled.setDate(enrolled.getDate() - index * 3);
+    const fees = FEE_SCENARIOS[index % FEE_SCENARIOS.length];
 
     return {
       id: stableId(index),
@@ -139,12 +160,17 @@ function buildStudents(): DummyStudent[] {
       email: user.email,
       avatar: user.avatar ? `/media/avatars/${user.avatar}` : null,
       class_name: CLASS_NAMES[index % CLASS_NAMES.length],
+      subsystem: SUBSYSTEMS[index % SUBSYSTEMS.length],
+      branch: BRANCHES[index % BRANCHES.length],
       matricule_number:
         index % 7 === 0 ? null : `MAT-2026-${String(1000 + index)}`,
       enrollment_status,
       status: enrollment_status === 'inactive' ? 'inactive' : 'active',
       enrollment_date: enrolled.toISOString(),
       email_verified: index % 5 !== 0,
+      total_fees: fees.total_fees,
+      paid_fees: fees.paid_fees,
+      fees_status: fees.fees_status,
     };
   });
 }

@@ -14,13 +14,13 @@ import { canWriteOperations } from '@/lib/acadia/roles';
 
 type Row = {
   id: string;
-  Course?: unknown;
+  Subject?: unknown;
   StudentProfile?: unknown;
 } & Record<string, unknown>;
 
 const columns: ColumnDef<Row>[] = [
   nestedFieldColumn<Row>('student', 'Student', 'StudentProfile', 'registrationNumber'),
-  nestedFieldColumn<Row>('course', 'Course', 'Course', 'code'),
+  nestedFieldColumn<Row>('subject', 'Subject', 'Subject', 'code'),
   { accessorKey: 'caScore', header: 'CA' },
   { accessorKey: 'examScore', header: 'Exam' },
   { accessorKey: 'totalScore', header: 'Total' },
@@ -34,7 +34,7 @@ const SELECT = `
   totalScore,
   isResitEligible,
   updatedAt,
-  Course:courseId ( code ),
+  Subject:subjectId ( code ),
   StudentProfile:studentProfileId ( registrationNumber )
 `;
 
@@ -45,7 +45,7 @@ export default function MarksPage() {
   return (
     <AcadiaPageShell
       title="Acadia College — Marks"
-      description="Course marks, averages, reports, and audit trail."
+      description="Subject marks, averages, reports, and audit trail."
     >
       <div className="mb-4 flex flex-wrap gap-2">
         {canEnter ? (
@@ -66,8 +66,8 @@ export default function MarksPage() {
         </TabsList>
         <TabsContent value="list">
           <SupabaseTableList
-            table="CourseMark"
-            title="Course marks"
+            table="SubjectMark"
+            title="Subject marks"
             select={SELECT}
             columns={columns}
             searchKeys={[]}

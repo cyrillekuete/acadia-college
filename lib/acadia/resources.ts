@@ -194,15 +194,15 @@ export type TimetableSlotForRoom = {
   dayOfWeek: number;
   startMinutes: number;
   endMinutes: number;
-  courseCode?: string | null;
-  courseName?: string | null;
+  subjectCode?: string | null;
+  subjectName?: string | null;
   staffName?: string | null;
 };
 
 export function formatTimetableSlotSummary(slot: TimetableSlotForRoom): string {
-  const course = slot.courseCode ?? slot.courseName ?? 'Course';
+  const subject = slot.subjectCode ?? slot.subjectName ?? 'Subject';
   const time = formatTimeRange(slot.startMinutes, slot.endMinutes);
-  return `${dayOfWeekLabel(slot.dayOfWeek)} ${time} — ${course}`;
+  return `${dayOfWeekLabel(slot.dayOfWeek)} ${time} — ${subject}`;
 }
 
 export type RoomUsageSlot = TimetableSlotForRoom & { roomId: string };

@@ -11,7 +11,7 @@ import {
 type TaskRow = {
   id: string;
   titleEn?: string;
-  Course?: unknown;
+  Subject?: unknown;
 } & Record<string, unknown>;
 
 type SubmissionRow = {
@@ -23,7 +23,7 @@ type SubmissionRow = {
 
 const taskColumns: ColumnDef<TaskRow>[] = [
   detailLinkColumn<TaskRow>('/coursework', 'titleEn', 'Task'),
-  nestedFieldColumn<TaskRow>('course', 'Course', 'Course', 'code'),
+  nestedFieldColumn<TaskRow>('subject', 'Subject', 'Subject', 'code'),
   { accessorKey: 'dueAt', header: 'Due' },
   { accessorKey: 'maxScore', header: 'Max score' },
   { accessorKey: 'isPublished', header: 'Published' },
@@ -59,7 +59,7 @@ const TASK_SELECT = `
   maxScore,
   isPublished,
   createdAt,
-  Course:courseId ( code, nameEn )
+  Subject:subjectId ( code, nameEn )
 `;
 
 const SUBMISSION_SELECT = `

@@ -51,7 +51,7 @@ export default function ClassRostersPage() {
   const branch = catalogFilters.branch ?? 'GRAMMAR';
 
   const { data: specialties = [] } = useSpecialtyOptions(subSystem, branch);
-  const { data: levels = [] } = useLevelsForSpecialty(specialtyId);
+  const { data: levels = [] } = useLevelsForSpecialty(specialtyId, subSystem, branch);
 
   useEffect(() => {
     if (!academicYearId && years.length > 0) {
@@ -198,7 +198,7 @@ export default function ClassRostersPage() {
       <SupabaseTableList
         table="StudentEnrollment"
         title="Class roster"
-        select="id, status, academicYearId, specialtyId, levelId, StudentProfile:studentProfileId ( id, registrationNumber ), AcademicYear:academicYearId ( label ), Specialty:specialtyId ( subSystem, branch, code, nameEn ), Level:levelId ( number, labelEn )"
+        select="id, status, academicYearId, specialtyId, levelId, StudentProfile:studentProfileId ( id, registrationNumber ), AcademicYear:academicYearId ( label ), Specialty:specialtyId ( subSystem, branch, code, nameEn ), Level:levelId ( number, name, labelEn )"
         columns={columns}
         searchKeys={['status']}
         rowFilter={rowFilter}

@@ -13,7 +13,7 @@ const ACTIONS = [
   },
   {
     label: 'Add New Teacher',
-    href: '/staff',
+    href: '/staff/new',
     icon: UserPlus,
   },
   {

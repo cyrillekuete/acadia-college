@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { formatTimetableSlotSummary } from '@/lib/acadia/resources';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
-import { useRoomOptions } from '@/hooks/use-course-catalog-options';
+import { useRoomOptions } from '@/hooks/use-subject-catalog-options';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -53,7 +53,7 @@ export function RoomAssignmentsPanel() {
           startMinutes,
           endMinutes,
           roomId,
-          Course:courseId ( code, nameEn ),
+          Subject:subjectId ( code, nameEn ),
           StaffProfile:staffProfileId ( User:userId ( name ) ),
           Room:roomId ( code, nameEn )
         `,
@@ -82,7 +82,7 @@ export function RoomAssignmentsPanel() {
       const room = unwrapRelation<{ id?: string; code?: string; nameEn?: string }>(
         row.Room,
       );
-      const course = unwrapRelation<{ code?: string; nameEn?: string }>(row.Course);
+      const subject = unwrapRelation<{ code?: string; nameEn?: string }>(row.Subject);
       const staff = unwrapRelation<{ User?: unknown }>(row.StaffProfile);
       const user = unwrapRelation<{ name?: string }>(staff?.User);
       const key = String(row.roomId);
@@ -96,8 +96,8 @@ export function RoomAssignmentsPanel() {
           dayOfWeek: Number(row.dayOfWeek),
           startMinutes: Number(row.startMinutes),
           endMinutes: Number(row.endMinutes),
-          courseCode: course?.code,
-          courseName: course?.nameEn,
+          subjectCode: subject?.code,
+          subjectName: subject?.nameEn,
           staffName: user?.name,
         }),
       );

@@ -26,9 +26,9 @@ export function AccountGetStartedContent() {
     },
     {
       icon: Book,
-      title: 'Courses',
-      desc: 'Course catalog and assignments.',
-      path: '/courses',
+      title: 'Subjects',
+      desc: 'Subject catalog and assignments.',
+      path: '/subjects',
     },
     {
       icon: FileText,

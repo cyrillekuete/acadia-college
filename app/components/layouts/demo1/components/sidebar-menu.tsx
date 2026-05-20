@@ -25,7 +25,6 @@ function MenuItemIcon({ icon }: { icon: KeenIconName }) {
   return (
     <KeenIcon
       icon={icon}
-      style="duotone"
       className="text-base shrink-0"
       data-slot="accordion-menu-icon"
     />

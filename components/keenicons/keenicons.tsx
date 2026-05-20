@@ -2,11 +2,11 @@
 
 import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
-import { KeeniconsProps } from './types';
+import { DEFAULT_KEENICONS_STYLE, KeeniconsProps } from './types';
 
 // KeenIcon using forwardRef to pass the ref and spread props
 export const KeenIcon = forwardRef<HTMLElement, KeeniconsProps>(
-  ({ icon, style = 'duotone', className = '', ...props }, ref) => {
+  ({ icon, style = DEFAULT_KEENICONS_STYLE, className = '', ...props }, ref) => {
     return (
       <i
         ref={ref}

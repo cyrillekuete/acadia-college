@@ -16,7 +16,7 @@ import { canWriteOperations } from '@/lib/acadia/roles';
 const SELECT = `
   id,
   academicYearId,
-  courseId,
+  subjectId,
   termId,
   sequenceId,
   type,
@@ -70,7 +70,7 @@ export default function EditExamSessionPage({
           record={{
             id: data.id,
             academicYearId: data.academicYearId,
-            courseId: data.courseId,
+            subjectId: data.subjectId,
             termId: data.termId,
             sequenceId: data.sequenceId ?? '',
             type: data.type as ExamSessionFormRecord['type'],

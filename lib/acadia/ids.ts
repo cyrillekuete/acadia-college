@@ -25,3 +25,13 @@ export function generateParentCode(year?: number): string {
   const n = Math.floor(Math.random() * 90000) + 10000;
   return `PAR-${y}-${n}`;
 }
+
+/**
+ * Staff / teacher business key.
+ * Format: TCH-YYYY-NNNNN (e.g. TCH-2026-12345)
+ */
+export function generateStaffCode(year?: number): string {
+  const y = year ?? new Date().getFullYear();
+  const n = Math.floor(Math.random() * 90000) + 10000;
+  return `TCH-${y}-${n}`;
+}

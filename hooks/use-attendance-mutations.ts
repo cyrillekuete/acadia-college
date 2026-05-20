@@ -44,7 +44,7 @@ type GuardianLinkRow = {
 
 type NotifyContext = {
   sessionDate: string;
-  courseCode: string;
+  subjectCode: string;
   studentName: string;
   status: string;
 };
@@ -143,13 +143,13 @@ async function notifyGuardiansForRecords(
         event: ATTENDANCE_NOTIFICATION_EVENT,
         titleEn: `Attendance: ${ctx.studentName}`,
         titleFr: `Présence : ${ctx.studentName}`,
-        bodyEn: `${ctx.studentName} was marked ${statusLabel} for ${ctx.courseCode} on ${ctx.sessionDate}.`,
-        bodyFr: `${ctx.studentName} a été marqué(e) ${record.status === 'ABSENT' ? 'absent(e)' : 'en retard'} pour ${ctx.courseCode} le ${ctx.sessionDate}.`,
+        bodyEn: `${ctx.studentName} was marked ${statusLabel} for ${ctx.subjectCode} on ${ctx.sessionDate}.`,
+        bodyFr: `${ctx.studentName} a été marqué(e) ${record.status === 'ABSENT' ? 'absent(e)' : 'en retard'} pour ${ctx.subjectCode} le ${ctx.sessionDate}.`,
         data: {
           studentProfileId: record.studentProfileId,
           status: record.status,
           sessionDate: ctx.sessionDate,
-          courseCode: ctx.courseCode,
+          subjectCode: ctx.subjectCode,
         },
         createdAt: now,
       });
@@ -278,7 +278,7 @@ export function useAttendanceMutations() {
         .select(
           `
           sessionDate,
-          Course:courseId ( code )
+          Subject:subjectId ( code )
         `,
         )
         .eq('id', input.attendanceSessionId)
@@ -288,11 +288,11 @@ export function useAttendanceMutations() {
         throw sessionError;
       }
 
-      const course = Array.isArray(sessionRow.Course)
-        ? sessionRow.Course[0]
-        : sessionRow.Course;
-      const courseCode =
-        (course as { code?: string } | null)?.code ?? 'course';
+      const subject = Array.isArray(sessionRow.Subject)
+        ? sessionRow.Subject[0]
+        : sessionRow.Subject;
+      const subjectCode =
+        (subject as { code?: string } | null)?.code ?? 'subject';
 
       const studentIds = input.records.map((r) => r.studentProfileId);
       const { data: students, error: studentsError } = await supabase
@@ -370,7 +370,7 @@ export function useAttendanceMutations() {
         for (const record of input.records) {
           contextByStudent.set(record.studentProfileId, {
             sessionDate: sessionRow.sessionDate as string,
-            courseCode,
+            subjectCode,
             studentName:
               nameByStudent.get(record.studentProfileId) ?? 'Student',
             status: record.status,

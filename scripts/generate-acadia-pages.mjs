@@ -32,10 +32,10 @@ const pages = [
     ],
   },
   {
-    route: 'courses',
-    title: 'Acadia College — Courses',
-    desc: 'Course catalog.',
-    table: 'Course',
+    route: 'subjects',
+    title: 'Acadia College — Subjects',
+    desc: 'Subject catalog.',
+    table: 'Subject',
     select: 'id, code, nameEn, nameFr, credits, hours',
     searchKeys: ['code', 'nameEn', 'nameFr'],
     columns: [
@@ -177,8 +177,8 @@ const pages = [
   {
     route: 'marks',
     title: 'Acadia College — Marks',
-    desc: 'Course marks.',
-    table: 'CourseMark',
+    desc: 'Subject marks.',
+    table: 'SubjectMark',
     select: 'id, score, maxScore, recordedAt',
     searchKeys: [],
     columns: [

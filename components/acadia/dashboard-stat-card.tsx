@@ -29,7 +29,7 @@ export function DashboardStatCard({
     <Card>
       <CardContent className="flex items-center gap-4 p-5">
         <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <KeenIcon icon={icon} style="duotone" className="text-2xl" aria-hidden />
+          <KeenIcon icon={icon} className="text-2xl" aria-hidden />
         </div>
         <div>
           <p className="text-sm text-muted-foreground">{title}</p>

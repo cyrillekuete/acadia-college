@@ -43,7 +43,7 @@ import {
   learningMaterialTitleDisplay,
 } from '@/lib/acadia/resources';
 import { getLearningMaterialPublicUrl } from '@/lib/supabase/storage';
-import { useCourseOptions } from '@/hooks/use-course-catalog-options';
+import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useResourceMutations } from '@/hooks/use-resource-mutations';
 import {
   isAcadiaTenantQueryEnabled,
@@ -60,7 +60,7 @@ export function LearningMaterialsLibraryPanel() {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const canManage = canManageResources(session?.roleSlug);
-  const { data: courses = [] } = useCourseOptions();
+  const { data: subjects = [] } = useSubjectOptions();
   const { uploadLearningMaterial } = useResourceMutations();
 
   const form = useForm<LearningMaterialFormValues>({
@@ -71,7 +71,7 @@ export function LearningMaterialsLibraryPanel() {
       descriptionEn: '',
       descriptionFr: '',
       kind: 'DOCUMENT',
-      courseId: '',
+      subjectId: '',
       externalUrl: '',
       isPublished: true,
     },
@@ -86,7 +86,7 @@ export function LearningMaterialsLibraryPanel() {
       const { data, error } = await supabase
         .from('LearningMaterial')
         .select(
-          'id, titleEn, titleFr, kind, courseId, storageKey, externalUrl, fileSizeBytes, isPublished, createdAt, Course:courseId ( code )',
+          'id, titleEn, titleFr, kind, subjectId, storageKey, externalUrl, fileSizeBytes, isPublished, createdAt, Subject:subjectId ( code )',
         )
         .eq('tenantId', tenantId!)
         .order('createdAt', { ascending: false });
@@ -112,7 +112,7 @@ export function LearningMaterialsLibraryPanel() {
       descriptionEn: '',
       descriptionFr: '',
       kind: 'DOCUMENT',
-      courseId: '',
+      subjectId: '',
       externalUrl: '',
       isPublished: true,
     });
@@ -189,10 +189,10 @@ export function LearningMaterialsLibraryPanel() {
               />
               <FormField
                 control={form.control}
-                name="courseId"
+                name="subjectId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Course (optional)</FormLabel>
+                    <FormLabel>Subject (optional)</FormLabel>
                     <Select
                       value={field.value || '__none__'}
                       onValueChange={(v) =>
@@ -206,9 +206,9 @@ export function LearningMaterialsLibraryPanel() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="__none__">School-wide</SelectItem>
-                        {courses.map((course) => (
-                          <SelectItem key={course.id} value={course.id}>
-                            {course.code} — {course.nameEn}
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.id}>
+                            {subject.code} — {subject.nameEn}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -46,12 +46,12 @@ type RecordDraft = AttendanceRecordEntryValues;
 export function AttendanceEntryGrid({
   attendanceSessionId,
   academicYearId,
-  courseId,
+  subjectId,
   readOnly = false,
 }: {
   attendanceSessionId: string;
   academicYearId: string;
-  courseId: string;
+  subjectId: string;
   readOnly?: boolean;
 }) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -67,18 +67,18 @@ export function AttendanceEntryGrid({
       tenantId,
       attendanceSessionId,
       academicYearId,
-      courseId,
+      subjectId,
     ],
     queryFn: async () => {
       const supabase = requireBrowserClient();
 
-      const { data: course, error: courseError } = await supabase
-        .from('Course')
+      const { data: subject, error: subjectError } = await supabase
+        .from('Subject')
         .select('specialtyId, levelId')
-        .eq('id', courseId)
+        .eq('id', subjectId)
         .single();
-      if (courseError) {
-        throw courseError;
+      if (subjectError) {
+        throw subjectError;
       }
 
       const { data: enrollments, error: enrollError } = await supabase
@@ -95,8 +95,8 @@ export function AttendanceEntryGrid({
         )
         .eq('tenantId', tenantId!)
         .eq('academicYearId', academicYearId)
-        .eq('specialtyId', course.specialtyId)
-        .eq('levelId', course.levelId)
+        .eq('specialtyId', subject.specialtyId)
+        .eq('levelId', subject.levelId)
         .eq('status', 'ACTIVE');
 
       if (enrollError) {
@@ -129,7 +129,7 @@ export function AttendanceEntryGrid({
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
       !!attendanceSessionId &&
       !!academicYearId &&
-      !!courseId,
+      !!subjectId,
   });
 
   useEffect(() => {

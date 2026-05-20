@@ -3,11 +3,12 @@
 import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { AcademicYearFilterSelect } from '@/components/acadia/academics/academic-year-filter-select';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
 import { SequenceFormDialog } from '@/components/acadia/academics/sequence-form-dialog';
+import { SequencesStructureCard } from '@/components/acadia/academics/sequences-structure-card';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
-import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { sequenceLabel, termLabel } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
 
@@ -18,10 +19,10 @@ type Row = {
   termId: string;
   academicYearId: string;
   Term?: unknown;
-  AcademicYear?: unknown;
 };
 
 export default function SequencesPage() {
+  const [academicYearId, setAcademicYearId] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const { deleteSequence } = useAcademicCalendarMutations();
@@ -37,7 +38,6 @@ export default function SequencesPage() {
             numberInTerm: row.original.numberInTerm,
           }),
       },
-      nestedFieldColumn<Row>('year', 'Academic year', 'AcademicYear', 'label'),
       {
         id: 'term',
         header: 'Term',
@@ -78,8 +78,16 @@ export default function SequencesPage() {
   return (
     <AcadiaPageShell
       title="Acadia College — Sequences"
-      description="Six sequences per academic year (two per term) for sequence exams and marks."
+      description="Define how many sequences each academic year has (per term and total), then manage sequence records for exams and marks."
     >
+      <div className="mb-6 space-y-6">
+        <div>
+          <p className="mb-2 text-sm font-medium">Academic year</p>
+          <AcademicYearFilterSelect value={academicYearId} onValueChange={setAcademicYearId} />
+        </div>
+        {academicYearId ? <SequencesStructureCard academicYearId={academicYearId} /> : null}
+      </div>
+
       <AdminToolbar
         addLabel="New sequence"
         onAdd={() => {
@@ -90,14 +98,20 @@ export default function SequencesPage() {
       <SupabaseTableList
         table="AcademicSequence"
         title="Sequences"
-        select="id, number, numberInTerm, termId, academicYearId, AcademicYear:academicYearId ( label ), Term:termId ( number )"
+        select="id, number, numberInTerm, termId, academicYearId, Term:termId ( number )"
         columns={columns}
         searchKeys={['number']}
+        rowFilter={
+          academicYearId
+            ? (row) => row.academicYearId === academicYearId
+            : undefined
+        }
       />
       <SequenceFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         record={editing}
+        defaultAcademicYearId={academicYearId || undefined}
       />
     </AcadiaPageShell>
   );

@@ -22,11 +22,11 @@ const EXAM_SELECT = `
   finalizedAt,
   startsOn,
   endsOn,
-  courseId,
+  subjectId,
   academicYearId,
   termId,
   sequenceId,
-  Course:courseId ( code, nameEn ),
+  Subject:subjectId ( code, nameEn ),
   Term:termId ( number ),
   AcademicSequence:sequenceId ( number, numberInTerm )
 `;
@@ -37,11 +37,11 @@ type ExamForResults = {
   finalizedAt: string | null;
   startsOn: string;
   endsOn: string;
-  courseId: string;
+  subjectId: string;
   academicYearId: string;
   termId: string;
   sequenceId: string | null;
-  Course: unknown;
+  Subject: unknown;
   Term: unknown;
   AcademicSequence: unknown;
 };
@@ -69,7 +69,7 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
     );
   }
 
-  const course = unwrapRelation<{ code?: string; nameEn?: string }>(data.Course);
+  const subject = unwrapRelation<{ code?: string; nameEn?: string }>(data.Subject);
   const term = unwrapRelation<{ number?: number }>(data.Term);
   const sequence = unwrapRelation<{ number?: number; numberInTerm?: number }>(
     data.AcademicSequence,
@@ -84,8 +84,8 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
           {examSessionTypeLabel(data.type)}
         </p>
         <p>
-          <span className="font-medium">Course:</span>{' '}
-          {course?.code} — {course?.nameEn}
+          <span className="font-medium">Subject:</span>{' '}
+          {subject?.code} — {subject?.nameEn}
         </p>
         <p>
           <span className="font-medium">Term:</span> {termLabel(term)}
@@ -136,7 +136,7 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
           preset={{
             academicYearId: data.academicYearId,
             sequenceId: data.sequenceId,
-            courseId: data.courseId,
+            subjectId: data.subjectId,
             examSessionId: data.id,
             readOnly: !editable,
           }}

@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  computeStudentCourseAverages,
+  computeStudentSubjectAverages,
   formatMarkScore,
   isPassingScore,
   rankStudents,
@@ -64,7 +64,7 @@ export function MarksAveragesPanel() {
       }
 
       const { data: marks, error: marksError } = await supabase
-        .from('CourseMark')
+        .from('SubjectMark')
         .select(
           `
           studentProfileId,
@@ -82,10 +82,10 @@ export function MarksAveragesPanel() {
         throw marksError;
       }
 
-      const averages = computeStudentCourseAverages(
+      const averages = computeStudentSubjectAverages(
         (marks ?? []).map((m) => ({
           studentProfileId: m.studentProfileId as string,
-          courseId: '',
+          subjectId: '',
           totalScore:
             m.totalScore != null ? Number(m.totalScore) : null,
         })),

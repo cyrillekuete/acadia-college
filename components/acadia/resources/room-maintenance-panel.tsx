@@ -37,7 +37,7 @@ import {
 } from '@/lib/acadia/resources-schemas';
 import { roomMaintenanceStatusLabel } from '@/lib/acadia/resources';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
-import { useRoomOptions } from '@/hooks/use-course-catalog-options';
+import { useRoomOptions } from '@/hooks/use-subject-catalog-options';
 import { useResourceMutations } from '@/hooks/use-resource-mutations';
 import {
   isAcadiaTenantQueryEnabled,

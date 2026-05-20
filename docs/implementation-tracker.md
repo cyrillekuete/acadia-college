@@ -59,8 +59,8 @@
 | F-012 | Staff list | `done` | `/staff` | user-management/users | |
 | F-012b | Staff detail | `done` | `/staff/[id]` | `account/home/user-profile` | Read-only profile cards + User/Department joins |
 | F-013 | Academic years | `done` | `/academics/years` | DataGrid list | |
-| F-013b | Terms | `done` | `/academics/terms` | DataGrid list | Cameroon 3 terms per academic year (`Term` table; was Semester) |
-| F-013g | Sequences | `done` | `/academics/sequences` | DataGrid list | 6 sequences per year (`AcademicSequence`) |
+| F-013b | Terms | `done` | `/academics/terms` | DataGrid + structure card | Per-year `termsPerYear` on `AcademicYear`; provision terms |
+| F-013g | Sequences | `done` | `/academics/sequences` | DataGrid + structure card | Per-year `sequencesPerTerm` / `sequencesPerYear`; distribution preview |
 | F-013c | Departments | `done` | `/academics/departments` | DataGrid list | |
 | F-013d | Levels | `done` | `/academics/levels` | DataGrid list | |
 | F-013e | Specialties | `done` | `/academics/specialties` | DataGrid list | |
@@ -133,9 +133,9 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 |----|---------|-----|--------|------------------|-----------------|-------|
 | F-050 | Deploy Cameroon `Term` / `AcademicSequence` migrations | — | `done` | `supabase/migrations/20260519120000_*`, `20260519120100_*`, `20260519120200_*` | — | Apply with `supabase db push` on linked project |
 | F-051 | Academic year create/edit + set current year | FR-DM-3 | `done` | `/academics/years` | user-management form pattern | Dialog CRUD + set current year action |
-| F-052 | Auto-provision 3 terms + 6 sequences on year create | — | `done` | `lib/acadia/academic-calendar.ts` | — | Called on academic year create |
-| F-053 | Term admin CRUD (per year) | — | `done` | `/academics/terms` | DataGrid + form | Dialog CRUD; year/level joins in list |
-| F-054 | Sequence admin CRUD (per year) | — | `done` | `/academics/sequences` | DataGrid + form | Dialog CRUD; auto term mapping from sequence # |
+| F-052 | Auto-provision terms + sequences on year create | — | `done` | `lib/acadia/academic-calendar.ts` | — | Uses per-year structure (default 3/6); idempotent gap fill |
+| F-053 | Term structure + admin CRUD (per year) | — | `done` | `/academics/terms` | Structure card + DataGrid | Configure `termsPerYear`; generate term rows |
+| F-054 | Sequence structure + admin CRUD (per year) | — | `done` | `/academics/sequences` | Structure card + DataGrid | Configure seq/term and seq/year; distribution preview |
 | F-055 | Calendar milestone create/edit | — | `done` | `/academics/calendar` | DataGrid + form | Dialog CRUD; optional `termId`; RLS in `20260519120200` |
 
 ### 7B — Cameroon educational system (§3.2)

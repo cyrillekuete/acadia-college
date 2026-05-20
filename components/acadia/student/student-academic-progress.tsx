@@ -46,7 +46,7 @@ export function StudentAcademicProgress({
           .eq('studentProfileId', studentProfileId)
           .order('createdAt', { ascending: false }),
         supabase
-          .from('CourseMark')
+          .from('SubjectMark')
           .select(
             `
             id,
@@ -54,7 +54,7 @@ export function StudentAcademicProgress({
             examScore,
             totalScore,
             createdAt,
-            Course:courseId ( code, nameEn ),
+            Subject:subjectId ( code, nameEn ),
             ExamSession:examSessionId ( type, startsOn )
           `,
           )
@@ -119,14 +119,14 @@ export function StudentAcademicProgress({
           marks.length === 0
             ? [{ label: 'Records', value: 'No marks recorded yet.' }]
             : marks.map((row, index) => {
-                const course = unwrapRelation<{ code?: string; nameEn?: string }>(
-                  row.Course,
+                const subject = unwrapRelation<{ code?: string; nameEn?: string }>(
+                  row.Subject,
                 );
                 const exam = unwrapRelation<{ type?: string; startsOn?: string }>(
                   row.ExamSession,
                 );
                 const courseLabel =
-                  course?.code ?? course?.nameEn ?? `Mark ${index + 1}`;
+                  subject?.code ?? subject?.nameEn ?? `Mark ${index + 1}`;
                 const score = formatRecordValue(
                   row.totalScore ?? row.examScore ?? row.caScore,
                 );

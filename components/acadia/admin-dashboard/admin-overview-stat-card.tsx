@@ -19,8 +19,8 @@ export function AdminOverviewStatCard({
   icon: KeenIconName;
 }) {
   return (
-    <Card className="h-full">
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+    <Card className="h-full text-center">
+      <CardHeader className="flex flex-row items-center justify-center gap-2 space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <StatIconBadge icon={icon} />
       </CardHeader>
@@ -42,7 +42,7 @@ export function AdminOverviewStatCard({
 function StatIconBadge({ icon }: { icon: KeenIconName }) {
   return (
     <div className="flex size-9 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
-      <KeenIcon icon={icon} style="duotone" className="text-base" aria-hidden />
+      <KeenIcon icon={icon} className="text-base" aria-hidden />
     </div>
   );
 }

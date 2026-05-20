@@ -14,7 +14,7 @@ export default function NewExamSessionPage() {
   return (
     <AcadiaPageShell
       title="New exam session"
-      description="Create an examination for a course (FR-4.2.1)."
+      description="Create an examination for a subject (FR-4.2.1)."
     >
       <div className="mb-4">
         <Button variant="outline" size="sm" asChild>

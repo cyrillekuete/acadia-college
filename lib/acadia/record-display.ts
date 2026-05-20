@@ -58,7 +58,20 @@ export function levelLabel(level: { number?: number } | null): string {
   return `Level ${level.number}`;
 }
 
-const TERM_ORDINALS = ['1st', '2nd', '3rd'] as const;
+const TERM_ORDINALS = [
+  '1st',
+  '2nd',
+  '3rd',
+  '4th',
+  '5th',
+  '6th',
+  '7th',
+  '8th',
+  '9th',
+  '10th',
+  '11th',
+  '12th',
+] as const;
 
 export function termLabel(term: { number?: number } | null): string {
   if (!term || term.number === undefined) {
