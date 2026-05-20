@@ -14,6 +14,7 @@ export type SystemLogEvent =
   | 'enrollment.application_updated'
   | 'enrollment.application_approved'
   | 'enrollment.application_rejected'
+  | 'enrollment.password_reset_failed'
   | 'student.created'
   | 'staff.created'
   | 'student.profile_updated'

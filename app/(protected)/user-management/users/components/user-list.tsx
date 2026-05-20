@@ -381,7 +381,7 @@ const UserList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
-              {roleList.map((role: User) => (
+              {roleList.map((role) => (
                 <SelectItem key={role.id} value={role.id}>
                   {role.name}
                 </SelectItem>

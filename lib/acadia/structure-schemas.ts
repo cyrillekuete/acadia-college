@@ -20,7 +20,7 @@ export const classFormSchema = z.object({
   specialtyId: z.string().optional(),
   staffProfileId: z.string().optional(),
   status: z.enum(CLASS_STATUSES),
-  subjectIds: z.array(z.string()).default([]),
+  subjectIds: z.array(z.string()),
 });
 
 export type ClassFormValues = z.infer<typeof classFormSchema>;

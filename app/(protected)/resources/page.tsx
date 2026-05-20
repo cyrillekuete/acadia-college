@@ -18,9 +18,6 @@ export default function ResourcesPage() {
         <Button size="sm" variant="outline" asChild>
           <Link href="/resources/requests">Resource requests</Link>
         </Button>
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/academics/rooms">Rooms & facilities</Link>
-        </Button>
       </div>
       <ResourcesOverviewPanel />
     </AcadiaPageShell>

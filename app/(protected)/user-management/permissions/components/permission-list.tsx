@@ -51,7 +51,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserPermission, UserRole } from '@/app/models/user';
+import { UserPermission } from '@/app/models/user';
 import { useRoleSelectQuery } from '../../roles/hooks/use-role-select-query';
 import PermissionDeleteDialog from './permission-delete-dialog';
 import PermissionEditDialog from './permission-edit-dialog';
@@ -359,7 +359,7 @@ const PermissionList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
-              {roleList.map((role: UserRole) => (
+              {roleList.map((role) => (
                 <SelectItem key={role.id} value={role.id}>
                   {role.name}
                 </SelectItem>

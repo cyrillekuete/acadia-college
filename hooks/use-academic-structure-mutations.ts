@@ -9,6 +9,10 @@ import {
   throwMutationError,
 } from '@/lib/acadia/query-errors';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import {
+  insertClassSubjects,
+  syncClassSubjects,
+} from '@/lib/supabase/queries/class-subjects';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 function invalidateStructureQueries(queryClient: ReturnType<typeof useQueryClient>) {

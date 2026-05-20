@@ -35,7 +35,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LoaderCircleIcon } from 'lucide-react';
-import { UserRole } from '@/app/models/user';
 import { useRoleSelectQuery } from '../../roles/hooks/use-role-select-query';
 import { UserAddSchema, UserAddSchemaType } from '../forms/user-add-schema';
 
@@ -177,7 +176,7 @@ const UserAddDialog = ({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            {roleList?.map((role: UserRole) => (
+                            {roleList?.map((role) => (
                               <SelectItem key={role.id} value={role.id}>
                                 {role.name}
                               </SelectItem>
