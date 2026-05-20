@@ -34,13 +34,21 @@ export type SubjectListRow = {
   SubjectSubBranch?: SubjectSubBranchRow[] | null;
 };
 
+export type SubjectListRowView = SubjectListRow & {
+  subSystem?: AcademicSubSystem;
+  branch?: AcademicBranch;
+  Specialty: { subSystem?: AcademicSubSystem; branch?: AcademicBranch } | null;
+  SubjectGrouping: { nameEn?: string; nameFr?: string } | null;
+  SubjectSubBranch: SubjectSubBranchRow[];
+};
+
 export function useSubjectList(filters: CatalogFilters) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
 
   return useQuery({
     queryKey: ['subject-list', tenantId, filters.subSystem, filters.branch],
-    queryFn: async () => {
+    queryFn: async (): Promise<SubjectListRowView[]> => {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
         .from('Subject')
@@ -69,9 +77,14 @@ export function useSubjectList(filters: CatalogFilters) {
 
       const rows = (data ?? []) as SubjectListRow[];
       return rows
-        .map((row) => {
-          const specialty = unwrapRelation(row.Specialty);
-          const grouping = unwrapRelation(row.SubjectGrouping);
+        .map((row): SubjectListRowView => {
+          const specialty = unwrapRelation<{
+            subSystem?: AcademicSubSystem;
+            branch?: AcademicBranch;
+          }>(row.Specialty);
+          const grouping = unwrapRelation<{ nameEn?: string; nameFr?: string }>(
+            row.SubjectGrouping,
+          );
           const subBranches = Array.isArray(row.SubjectSubBranch)
             ? [...row.SubjectSubBranch].sort((a, b) => a.sortOrder - b.sortOrder)
             : [];

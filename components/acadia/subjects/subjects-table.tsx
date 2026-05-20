@@ -24,7 +24,7 @@ import {
 } from '@/lib/acadia/subject-catalog';
 import { canEditSubject } from '@/lib/acadia/subject';
 import type { CatalogFilters } from '@/lib/acadia/education-system';
-import { useSubjectList, type SubjectListRow } from '@/hooks/use-subject-list';
+import { useSubjectList, type SubjectListRowView } from '@/hooks/use-subject-list';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 
 export function SubjectsTable({ filters }: { filters: CatalogFilters }) {
@@ -46,7 +46,7 @@ export function SubjectsTable({ filters }: { filters: CatalogFilters }) {
     );
   }, [data, search]);
 
-  const columns = useMemo<ColumnDef<SubjectListRow>[]>(
+  const columns = useMemo<ColumnDef<SubjectListRowView>[]>(
     () => [
       { accessorKey: 'nameEn', header: 'Name' },
       { accessorKey: 'code', header: 'Code' },
