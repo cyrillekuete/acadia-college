@@ -203,7 +203,7 @@ export async function fetchTimetableSlotsForClass(
     throw error;
   }
 
-  return (data ?? []) as TimetableSlotListRow[];
+  return (data ?? []) as unknown as TimetableSlotListRow[];
 }
 
 export async function fetchTimetableSlotsForTeacher(
@@ -225,7 +225,7 @@ export async function fetchTimetableSlotsForTeacher(
     throw error;
   }
 
-  return (data ?? []) as TimetableSlotListRow[];
+  return (data ?? []) as unknown as TimetableSlotListRow[];
 }
 
 export async function fetchStudentEnrolledClassId(

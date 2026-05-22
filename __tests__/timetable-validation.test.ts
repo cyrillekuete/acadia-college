@@ -90,7 +90,7 @@ describe('groupTimetableSlotsByDay', () => {
       { dayOfWeek: 2, startMinutes: 480, id: 'early' },
     ]);
 
-    expect([...grouped.keys()].sort((a, b) => a - b)).toEqual([1, 2]);
+    expect(Array.from(grouped.keys()).sort((a, b) => a - b)).toEqual([1, 2]);
     expect(grouped.get(2)?.map((slot) => slot.id)).toEqual(['early', 'late']);
   });
 });

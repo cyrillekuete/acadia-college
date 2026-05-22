@@ -50,6 +50,11 @@ export type StudentEnrollmentSummary = {
   className: string;
 };
 
+type StudentEnrollmentSummaryRow = {
+  classId: string | null;
+  Class?: unknown;
+};
+
 export async function fetchStudentEnrollmentSummary(
   supabase: Client,
   tenantId: string,
@@ -74,14 +79,16 @@ export async function fetchStudentEnrollmentSummary(
     throw error;
   }
 
-  if (!data?.classId) {
+  const row = data as unknown as StudentEnrollmentSummaryRow | null;
+
+  if (!row?.classId) {
     return null;
   }
 
-  const classRow = unwrapRelation<{ name?: string }>(data.Class);
+  const classRow = unwrapRelation<{ name?: string }>(row.Class);
 
   return {
-    classId: data.classId as string,
+    classId: row.classId,
     className: classRow?.name?.trim() || 'Your class',
   };
 }

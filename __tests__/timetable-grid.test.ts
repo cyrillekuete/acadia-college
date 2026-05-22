@@ -19,6 +19,8 @@ function makeRow(overrides: Partial<TimetableSlotListRow> = {}): TimetableSlotLi
     dayOfWeek: 2,
     startMinutes: 480,
     endMinutes: 540,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     Subject: { code: 'MATH', nameEn: 'Mathematics' },
     Class: { name: 'Form 5A' },
     StaffProfile: {
