@@ -12,6 +12,7 @@ import {
   DialogBody,
   DialogContent,
   DialogFooter,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -171,28 +172,24 @@ export function ClassFormDialog({
     }
   }, [subSystem, branch, levels, form]);
 
-  useEffect(() => {
-    if (subjectsLoading || availableSubjects.length === 0) {
-      return;
-    }
-    const current = form.getValues('subjectSelections') ?? [];
-    const next = normalizeSubjectSelections(current, availableSubjects);
-    if (JSON.stringify(next) !== JSON.stringify(current)) {
-      form.setValue('subjectSelections', next);
-    }
-  }, [levelId, availableSubjects, subjectsLoading, form]);
-
   const onSubmit = form.handleSubmit(async (values) => {
+    const normalized = {
+      ...values,
+      subjectSelections: normalizeSubjectSelections(
+        values.subjectSelections ?? [],
+        availableSubjects,
+      ),
+    };
     if (isEdit && record) {
       try {
-        await updateClass.mutateAsync({ id: record.id, values });
+        await updateClass.mutateAsync({ id: record.id, values: normalized });
         onOpenChange(false);
       } catch {
         // Toast is shown by mutation onError; keep dialog open for correction.
       }
       return;
     }
-    setPendingValues(values);
+    setPendingValues(normalized);
     setConfirmOpen(true);
   });
 
@@ -222,6 +219,11 @@ export function ClassFormDialog({
       <DialogContent className="max-h-[min(90dvh,720px)] max-w-lg overflow-hidden">
         <DialogHeader className="shrink-0">
           <DialogTitle>{isEdit ? 'Edit class' : 'New class'}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {isEdit
+              ? 'Update class details, assigned subjects, and class teacher.'
+              : 'Create a class and assign subjects for the selected level and stream.'}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
@@ -326,7 +328,11 @@ export function ClassFormDialog({
                         <SubjectClassMultiSelect
                           options={availableSubjects}
                           value={field.value ?? []}
-                          onChange={field.onChange}
+                          onChange={(selections) =>
+                            field.onChange(
+                              normalizeSubjectSelections(selections, availableSubjects),
+                            )
+                          }
                           loading={subjectsLoading}
                           error={subjectsErrorMessage}
                           emptyMessage="No subjects found for this level and stream."

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronsUpDown, X } from 'lucide-react';
+import { ChevronsUpDown, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   type ClassSubjectSelection,
@@ -17,7 +17,7 @@ import {
 } from '@/lib/acadia/class-subject-selections';
 import type { SubjectForClassOption } from '@/hooks/use-subjects-for-class';
 import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
-import { Badge, BadgeButton } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -25,17 +25,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -60,19 +52,19 @@ type SubjectClassMultiSelectProps = {
 function subjectSearchValue(subject: SubjectForClassOption): string {
   const branchNames = subject.subBranches.map((branch) => branch.name).join(' ');
   const grouping = subject.groupingNameEn ?? '';
-  return `${subject.code} ${subject.nameEn} ${grouping} ${branchNames}`.trim();
+  return `${subject.code} ${subject.nameEn} ${grouping} ${branchNames}`.trim().toLowerCase();
 }
 
 function SubjectGroupingOverride({
   subject,
   selection,
-  groupingNames,
+  groupings,
   onChange,
   disabled,
 }: {
   subject: SubjectForClassOption;
   selection: ClassSubjectSelection;
-  groupingNames: Map<string, string>;
+  groupings: { id: string; nameEn: string }[];
   onChange: (groupingId: string | null) => void;
   disabled?: boolean;
 }) {
@@ -85,9 +77,12 @@ function SubjectGroupingOverride({
       <Label className="shrink-0 text-xs text-muted-foreground">Grouping</Label>
       <Select
         value={selection.groupingId ?? SUBJECT_DEFAULT_GROUPING}
-        onValueChange={(next) =>
-          onChange(next === SUBJECT_DEFAULT_GROUPING ? null : next)
-        }
+        onValueChange={(next) => {
+          const groupingId = next === SUBJECT_DEFAULT_GROUPING ? null : next;
+          if (groupingId !== (selection.groupingId ?? null)) {
+            onChange(groupingId);
+          }
+        }}
         disabled={disabled}
       >
         <SelectTrigger className="h-8 text-xs">
@@ -95,9 +90,9 @@ function SubjectGroupingOverride({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={SUBJECT_DEFAULT_GROUPING}>{defaultLabel}</SelectItem>
-          {Array.from(groupingNames.entries()).map(([id, name]) => (
-            <SelectItem key={id} value={id}>
-              {name}
+          {groupings.map((grouping) => (
+            <SelectItem key={grouping.id} value={grouping.id}>
+              {grouping.nameEn}
             </SelectItem>
           ))}
         </SelectContent>
@@ -111,33 +106,31 @@ function SubjectOptionRow({
   value,
   onChange,
   expandedSubjects,
-  toggleExpanded,
+  setSubjectExpanded,
 }: {
   subject: SubjectForClassOption;
   value: ClassSubjectSelection[];
   onChange: (value: ClassSubjectSelection[]) => void;
   expandedSubjects: Set<string>;
-  toggleExpanded: (subjectId: string) => void;
+  setSubjectExpanded: (subjectId: string, open: boolean) => void;
 }) {
   const selection = getSubjectSelection(value, subject.id);
-  const searchValue = subjectSearchValue(subject);
 
   if (!subject.hasSubBranches || subject.subBranches.length === 0) {
     const checked = isSubjectFullySelected(selection, 0);
     return (
-      <CommandItem
-        key={subject.id}
-        value={searchValue}
-        onSelect={() => {
-          onChange(toggleFullSubject(value, subject.id, !checked));
-        }}
-        className="flex items-center gap-2"
-      >
-        <Checkbox checked={checked} className="pointer-events-none" />
+      <label className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+        <Checkbox
+          checked={checked}
+          disabled={false}
+          onCheckedChange={(next) => {
+            onChange(toggleFullSubject(value, subject.id, next === true));
+          }}
+        />
         <span className="truncate">
           {subject.code} — {subject.nameEn}
         </span>
-      </CommandItem>
+      </label>
     );
   }
 
@@ -150,67 +143,58 @@ function SubjectOptionRow({
 
   return (
     <Collapsible
-      key={subject.id}
       open={expanded}
-      onOpenChange={() => toggleExpanded(subject.id)}
+      onOpenChange={(open) => setSubjectExpanded(subject.id, open)}
+      className="rounded-sm"
     >
-      <CommandItem
-        value={searchValue}
-        onSelect={() => {
-          onChange(toggleFullSubject(value, subject.id, !fullySelected));
-        }}
-        className="flex items-center gap-2 p-0"
-      >
-        <div className="flex w-full items-center gap-2 px-2 py-1.5">
-          <Checkbox
-            checked={partiallySelected ? 'indeterminate' : fullySelected}
-            className="pointer-events-none"
-          />
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex min-w-0 flex-1 items-center gap-2 text-left"
-              onClick={(event) => {
-                event.stopPropagation();
-                toggleExpanded(subject.id);
-              }}
-            >
-              <ChevronsUpDown
-                className={cn(
-                  'size-3.5 shrink-0 opacity-60 transition-transform',
-                  expanded && 'rotate-180',
-                )}
-              />
-              <span className="truncate">
-                {subject.code} — {subject.nameEn}
-              </span>
-            </button>
-          </CollapsibleTrigger>
-        </div>
-      </CommandItem>
-      <CollapsibleContent>
+      <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent">
+        <Checkbox
+          checked={partiallySelected ? 'indeterminate' : fullySelected}
+          onCheckedChange={(next) => {
+            onChange(toggleFullSubject(value, subject.id, next === true));
+          }}
+        />
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm"
+          >
+            <ChevronsUpDown
+              className={cn(
+                'size-3.5 shrink-0 opacity-60 transition-transform',
+                expanded && 'rotate-180',
+              )}
+            />
+            <span className="truncate">
+              {subject.code} — {subject.nameEn}
+            </span>
+          </button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent className="space-y-0.5 pb-1">
         {subject.subBranches.map((branch) => {
           const branchChecked = isSubBranchSelected(selection, branch.id);
           return (
-            <CommandItem
+            <label
               key={branch.id}
-              value={`${searchValue} ${branch.name}`}
-              onSelect={() => {
-                onChange(
-                  toggleSubBranch(
-                    value,
-                    subject.id,
-                    branch.id,
-                    subject.subBranches.map((item) => item.id),
-                    !branchChecked,
-                  ),
-                );
-              }}
-              className="flex items-center gap-2 ps-9"
+              className="flex cursor-pointer items-center gap-2 rounded-sm py-1.5 ps-9 pe-2 text-sm hover:bg-accent"
             >
-              <Checkbox checked={branchChecked} className="pointer-events-none" />
+              <Checkbox
+                checked={branchChecked}
+                onCheckedChange={(next) => {
+                  onChange(
+                    toggleSubBranch(
+                      value,
+                      subject.id,
+                      branch.id,
+                      subject.subBranches.map((item) => item.id),
+                      next === true,
+                    ),
+                  );
+                }}
+              />
               <span className="truncate">{branch.name}</span>
-            </CommandItem>
+            </label>
           );
         })}
       </CollapsibleContent>
@@ -229,6 +213,7 @@ export function SubjectClassMultiSelect({
   placeholder = 'Select subjects…',
 }: SubjectClassMultiSelectProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   const { data: groupings = [] } = useSubjectGroupingOptions();
 
@@ -244,13 +229,27 @@ export function SubjectClassMultiSelect({
 
   const groupedOptions = useMemo(() => groupOptionsByGrouping(options), [options]);
 
-  const toggleExpanded = (subjectId: string) => {
+  const filteredGroupedOptions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return groupedOptions;
+    }
+
+    return groupedOptions
+      .map((group) => ({
+        ...group,
+        options: group.options.filter((subject) => subjectSearchValue(subject).includes(query)),
+      }))
+      .filter((group) => group.options.length > 0);
+  }, [groupedOptions, search]);
+
+  const setSubjectExpanded = (subjectId: string, open: boolean) => {
     setExpandedSubjects((prev) => {
       const next = new Set(prev);
-      if (next.has(subjectId)) {
-        next.delete(subjectId);
-      } else {
+      if (open) {
         next.add(subjectId);
+      } else {
+        next.delete(subjectId);
       }
       return next;
     });
@@ -279,6 +278,8 @@ export function SubjectClassMultiSelect({
       ? placeholder
       : `${value.length} subject${value.length === 1 ? '' : 's'} selected`;
 
+  const hasVisibleOptions = filteredGroupedOptions.some((group) => group.options.length > 0);
+
   return (
     <div className="space-y-2">
       {value.length > 0 ? (
@@ -291,24 +292,33 @@ export function SubjectClassMultiSelect({
             return (
               <div key={selection.subjectId} className="space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="gap-1">
                     {formatSelectionLabel(option, selection, groupingNames)}
-                    <BadgeButton
+                    <button
                       type="button"
+                      className="inline-flex size-3.5 items-center justify-center rounded-md opacity-60 transition-opacity hover:opacity-100"
                       onClick={() => removeSelection(selection.subjectId)}
                       disabled={disabled}
+                      aria-label={`Remove ${option.code}`}
                     >
-                      <X />
-                    </BadgeButton>
+                      <X className="size-3.5" />
+                    </button>
                   </Badge>
                 </div>
                 <SubjectGroupingOverride
                   subject={option}
                   selection={selection}
-                  groupingNames={groupingNames}
-                  onChange={(groupingId) =>
-                    onChange(setSelectionGrouping(value, selection.subjectId, groupingId))
-                  }
+                  groupings={groupings}
+                  onChange={(groupingId) => {
+                    const next = setSelectionGrouping(
+                      value,
+                      selection.subjectId,
+                      groupingId,
+                    );
+                    if (JSON.stringify(next) !== JSON.stringify(value)) {
+                      onChange(next);
+                    }
+                  }}
                   disabled={disabled}
                 />
               </div>
@@ -344,7 +354,15 @@ export function SubjectClassMultiSelect({
         ) : null}
       </div>
 
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setSearch('');
+          }
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -363,14 +381,27 @@ export function SubjectClassMultiSelect({
         <PopoverContent
           className="w-[var(--radix-popover-trigger-width)] p-0"
           align="start"
+          onOpenAutoFocus={(event) => event.preventDefault()}
         >
-          <Command>
-            <CommandInput placeholder="Search subjects…" />
-            <CommandList>
-              <ScrollArea viewportClassName="max-h-[280px] [&>div]:!block">
-                <CommandEmpty>{emptyMessage}</CommandEmpty>
-                {groupedOptions.map((group) => (
-                  <CommandGroup key={group.groupingId ?? 'ungrouped'} heading={group.groupingName}>
+          <div className="flex items-center border-b border-border px-3">
+            <Search className="me-2 size-4 shrink-0 opacity-50" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search subjects…"
+              className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+            />
+          </div>
+          <div className="max-h-[280px] overflow-y-auto p-1.5">
+            {!hasVisibleOptions ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+            ) : (
+              filteredGroupedOptions.map((group) => (
+                <div key={group.groupingId ?? 'ungrouped'} className="mb-2 last:mb-0">
+                  <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    {group.groupingName}
+                  </p>
+                  <div className="space-y-0.5">
                     {group.options.map((subject) => (
                       <SubjectOptionRow
                         key={subject.id}
@@ -378,14 +409,14 @@ export function SubjectClassMultiSelect({
                         value={value}
                         onChange={onChange}
                         expandedSubjects={expandedSubjects}
-                        toggleExpanded={toggleExpanded}
+                        setSubjectExpanded={setSubjectExpanded}
                       />
                     ))}
-                  </CommandGroup>
-                ))}
-              </ScrollArea>
-            </CommandList>
-          </Command>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </PopoverContent>
       </Popover>
 
