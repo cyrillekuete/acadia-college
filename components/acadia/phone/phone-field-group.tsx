@@ -8,6 +8,7 @@ import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import {
   getDialCodeForCountryName,
   getPhonePlaceholder,
+  normalizeNationalPhoneDigits,
 } from '@/lib/acadia/phone';
 
 type PhoneFieldGroupProps = {
@@ -24,10 +25,6 @@ type PhoneFieldGroupProps = {
   phoneId?: string;
   hideCountry?: boolean;
 };
-
-function stripToNationalDigits(value: string): string {
-  return value.replace(/\D/g, '');
-}
 
 export function PhoneFieldGroup({
   country,
@@ -82,7 +79,12 @@ export function PhoneFieldGroup({
             disabled={disabled}
             value={phone}
             onChange={(event) => {
-              onPhoneChange(stripToNationalDigits(event.target.value));
+              onPhoneChange(
+                normalizeNationalPhoneDigits(
+                  resolvedCountry,
+                  event.target.value,
+                ),
+              );
             }}
           />
         </div>

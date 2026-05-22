@@ -627,62 +627,6 @@ export type Database = {
           },
         ]
       }
-      ClassSubjectSubBranch: {
-        Row: {
-          classId: string
-          createdAt: string
-          id: string
-          subjectId: string
-          subjectSubBranchId: string
-          tenantId: string
-        }
-        Insert: {
-          classId: string
-          createdAt?: string
-          id: string
-          subjectId: string
-          subjectSubBranchId: string
-          tenantId: string
-        }
-        Update: {
-          classId?: string
-          createdAt?: string
-          id?: string
-          subjectId?: string
-          subjectSubBranchId?: string
-          tenantId?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ClassSubjectSubBranch_classId_tenantId_fkey"
-            columns: ["tenantId", "classId"]
-            isOneToOne: false
-            referencedRelation: "Class"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
-            foreignKeyName: "ClassSubjectSubBranch_subjectId_tenantId_fkey"
-            columns: ["tenantId", "subjectId"]
-            isOneToOne: false
-            referencedRelation: "Subject"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
-            foreignKeyName: "ClassSubjectSubBranch_subjectSubBranchId_tenantId_fkey"
-            columns: ["tenantId", "subjectSubBranchId"]
-            isOneToOne: false
-            referencedRelation: "SubjectSubBranch"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
-            foreignKeyName: "ClassSubjectSubBranch_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ClassSubject: {
         Row: {
           classId: string
@@ -732,6 +676,62 @@ export type Database = {
           },
           {
             foreignKeyName: "ClassSubject_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ClassSubjectSubBranch: {
+        Row: {
+          classId: string
+          createdAt: string
+          id: string
+          subjectId: string
+          subjectSubBranchId: string
+          tenantId: string
+        }
+        Insert: {
+          classId: string
+          createdAt?: string
+          id: string
+          subjectId: string
+          subjectSubBranchId: string
+          tenantId: string
+        }
+        Update: {
+          classId?: string
+          createdAt?: string
+          id?: string
+          subjectId?: string
+          subjectSubBranchId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ClassSubjectSubBranch_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubjectSubBranch_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubjectSubBranch_subjectSubBranchId_tenantId_fkey"
+            columns: ["tenantId", "subjectSubBranchId"]
+            isOneToOne: false
+            referencedRelation: "SubjectSubBranch"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubjectSubBranch_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"
@@ -2420,24 +2420,24 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "StaffClassAssignment_academicYearId_tenantId_fkey"
-            columns: ["academicYearId", "tenantId"]
+            columns: ["tenantId", "academicYearId"]
             isOneToOne: false
             referencedRelation: "AcademicYear"
-            referencedColumns: ["id", "tenantId"]
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "StaffClassAssignment_classId_tenantId_fkey"
-            columns: ["classId", "tenantId"]
+            columns: ["tenantId", "classId"]
             isOneToOne: false
             referencedRelation: "Class"
-            referencedColumns: ["id", "tenantId"]
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "StaffClassAssignment_staffProfileId_tenantId_fkey"
-            columns: ["staffProfileId", "tenantId"]
+            columns: ["tenantId", "staffProfileId"]
             isOneToOne: false
             referencedRelation: "StaffProfile"
-            referencedColumns: ["id", "tenantId"]
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "StaffClassAssignment_tenantId_fkey"
@@ -4301,6 +4301,7 @@ export type Database = {
       TimetableSlot: {
         Row: {
           academicYearId: string
+          classId: string | null
           createdAt: string
           dayOfWeek: number
           endMinutes: number
@@ -4314,6 +4315,7 @@ export type Database = {
         }
         Insert: {
           academicYearId: string
+          classId?: string | null
           createdAt?: string
           dayOfWeek: number
           endMinutes: number
@@ -4327,6 +4329,7 @@ export type Database = {
         }
         Update: {
           academicYearId?: string
+          classId?: string | null
           createdAt?: string
           dayOfWeek?: number
           endMinutes?: number
@@ -4345,6 +4348,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "AcademicYear"
             referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "TimetableSlot_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "TimetableSlot_classSubject_tenantId_fkey"
+            columns: ["tenantId", "classId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "ClassSubject"
+            referencedColumns: ["tenantId", "classId", "subjectId"]
           },
           {
             foreignKeyName: "TimetableSlot_roomId_tenantId_fkey"

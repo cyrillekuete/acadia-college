@@ -13,9 +13,12 @@ import type {
 } from '@/lib/acadia/subject-schemas';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateAcadiaId } from '@/lib/acadia/ids';
-import { timeStringToMinutes } from '@/lib/acadia/timetable';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { replaceSubjectLevels } from '@/lib/supabase/queries/subject-levels';
+import {
+  assertTimetableSlotValid,
+  buildTimetableSlotWritePayload,
+} from '@/lib/supabase/queries/timetable';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 function mutationErrorMessage(error: unknown): string {
@@ -32,6 +35,7 @@ function invalidateSubjectQueries(queryClient: ReturnType<typeof useQueryClient>
   void queryClient.invalidateQueries({ queryKey: ['subject-assignments'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-materials'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-timetable'] });
+  void queryClient.invalidateQueries({ queryKey: ['timetable-slots'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-options'] });
 }
 
@@ -347,17 +351,12 @@ export function useSubjectMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertTimetableSlotValid(supabase, tenantId, values);
       const now = new Date().toISOString();
       const { error } = await supabase.from('TimetableSlot').insert({
         id: generateAcadiaId('slot'),
         tenantId,
-        academicYearId: values.academicYearId,
-        subjectId: values.subjectId,
-        staffProfileId: values.staffProfileId,
-        roomId: values.roomId,
-        dayOfWeek: values.dayOfWeek,
-        startMinutes: timeStringToMinutes(values.startTime),
-        endMinutes: timeStringToMinutes(values.endTime),
+        ...buildTimetableSlotWritePayload(values),
         createdAt: now,
         updatedAt: now,
       });
@@ -384,16 +383,11 @@ export function useSubjectMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertTimetableSlotValid(supabase, tenantId, values, id);
       const { error } = await supabase
         .from('TimetableSlot')
         .update({
-          academicYearId: values.academicYearId,
-          subjectId: values.subjectId,
-          staffProfileId: values.staffProfileId,
-          roomId: values.roomId,
-          dayOfWeek: values.dayOfWeek,
-          startMinutes: timeStringToMinutes(values.startTime),
-          endMinutes: timeStringToMinutes(values.endTime),
+          ...buildTimetableSlotWritePayload(values),
           updatedAt: new Date().toISOString(),
         })
         .eq('id', id)

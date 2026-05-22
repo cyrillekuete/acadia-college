@@ -206,6 +206,7 @@ describe('timetableSlotSchema', () => {
     expect(
       timetableSlotSchema.safeParse({
         academicYearId: 'year-1',
+        classId: 'class-1',
         subjectId: 'subject-1',
         staffProfileId: 'staff-1',
         roomId: 'room-1',
@@ -217,6 +218,7 @@ describe('timetableSlotSchema', () => {
     expect(
       timetableSlotSchema.safeParse({
         academicYearId: 'year-1',
+        classId: 'class-1',
         subjectId: 'subject-1',
         staffProfileId: 'staff-1',
         roomId: 'room-1',

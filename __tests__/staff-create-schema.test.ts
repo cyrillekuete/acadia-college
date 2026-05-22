@@ -48,6 +48,17 @@ describe('staffCreateSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('accepts Cameroon phone with country code or trunk prefix', () => {
+    expect(staffCreateSchema.safeParse({
+      ...basePayload,
+      phone: '237677123456',
+    }).success).toBe(true);
+    expect(staffCreateSchema.safeParse({
+      ...basePayload,
+      phone: '0677123456',
+    }).success).toBe(true);
+  });
+
   it('requires academic year id', () => {
     const result = staffCreateSchema.safeParse({
       ...basePayload,

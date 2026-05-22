@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { UserStatus } from '@/app/models/user';
 import { validateAcadiaProfile } from '@/lib/auth/acadia-profile-gate';
 import {
@@ -13,6 +13,11 @@ import {
 } from '@/lib/auth/app-origin';
 import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
 import { normalizeSignInError } from '@/lib/auth/sign-in-errors';
+import {
+  clearStaleSupabaseSession,
+  getSupabaseUserOrClearStaleSession,
+  isStaleRefreshTokenError,
+} from '@/lib/auth/stale-session';
 import type { AcadiaUserProfile } from '@/lib/supabase/queries/user';
 
 function activeProfile(
@@ -102,6 +107,85 @@ describe('getSafeRedirectPath', () => {
     expect(getSafeRedirectPath(null, '/dashboard/admin')).toBe(
       '/dashboard/admin',
     );
+  });
+});
+
+describe('stale Supabase session helpers', () => {
+  it('detects refresh_token_not_found by code', () => {
+    expect(
+      isStaleRefreshTokenError({
+        code: 'refresh_token_not_found',
+        message: 'Invalid Refresh Token: Refresh Token Not Found',
+      }),
+    ).toBe(true);
+  });
+
+  it('detects invalid refresh token by message', () => {
+    expect(
+      isStaleRefreshTokenError(new Error('Invalid Refresh Token: Refresh Token Not Found')),
+    ).toBe(true);
+  });
+
+  it('ignores unrelated auth errors', () => {
+    expect(
+      isStaleRefreshTokenError({
+        code: 'invalid_credentials',
+        message: 'Invalid login credentials',
+      }),
+    ).toBe(false);
+  });
+
+  it('clears stale sessions and returns null user', async () => {
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const supabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: null },
+          error: {
+            code: 'refresh_token_not_found',
+            message: 'Invalid Refresh Token: Refresh Token Not Found',
+          },
+        }),
+        signOut,
+      },
+    };
+
+    const user = await getSupabaseUserOrClearStaleSession(
+      supabase as never,
+    );
+
+    expect(user).toBeNull();
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('returns user when session is valid', async () => {
+    const mockUser = { id: 'user-1' };
+    const supabase = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: mockUser },
+          error: null,
+        }),
+        signOut: vi.fn(),
+      },
+    };
+
+    const user = await getSupabaseUserOrClearStaleSession(
+      supabase as never,
+    );
+
+    expect(user).toBe(mockUser);
+    expect(supabase.auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('swallows sign-out failures during stale cleanup', async () => {
+    const supabase = {
+      auth: {
+        signOut: vi.fn().mockRejectedValue(new Error('sign out failed')),
+      },
+    };
+
+    await expect(clearStaleSupabaseSession(supabase as never)).resolves.toBeUndefined();
   });
 });
 

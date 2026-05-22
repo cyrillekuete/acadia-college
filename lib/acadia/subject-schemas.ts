@@ -57,6 +57,7 @@ export type SubjectAssignmentFormValues = z.infer<typeof subjectAssignmentSchema
 export const timetableSlotSchema = z
   .object({
     academicYearId: z.string().min(1, 'Academic year is required.'),
+    classId: z.string().min(1, 'Class is required.'),
     subjectId: z.string().min(1, 'Subject is required.'),
     staffProfileId: z.string().min(1, 'Teacher is required.'),
     roomId: z.string().min(1, 'Room is required.'),

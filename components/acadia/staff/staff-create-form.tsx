@@ -133,16 +133,33 @@ export function StaffCreateForm() {
     resolver: zodResolver(staffCreateSchema),
     defaultValues: {
       title: 'Mr',
+      firstName: '',
+      lastName: '',
+      dateOfBirth: '',
+      nationality: 'Cameroonian',
+      idNumber: '',
+      personalEmail: '',
+      phoneCountry: DEFAULT_COUNTRY_NAME,
+      phone: '',
+      address: '',
+      city: '',
+      region: '',
+      qualifications: '',
+      teachingExperience: '',
       employmentType: 'FULL_TIME',
       isActive: true,
       roleId: defaultRoleId,
-      phoneCountry: DEFAULT_COUNTRY_NAME,
       emergencyContactPhoneCountry: DEFAULT_COUNTRY_NAME,
-      nationality: 'Cameroonian',
+      emergencyContactPhone: '',
+      emergencyContactName: '',
       subSystem: 'ENGLISH',
       subjectIds: [],
       classIds: [],
       academicYearId: '',
+      hireDate: '',
+      staffCode: '',
+      departmentId: '',
+      bio: '',
     },
   });
 
@@ -603,7 +620,19 @@ export function StaffCreateForm() {
                   <FormItem>
                     <FormLabel>Monthly salary</FormLabel>
                     <FormControl>
-                      <Input type="number" min={0} step="1" {...field} />
+                      <Input
+                        type="number"
+                        min={0}
+                        step="1"
+                        name={field.name}
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        value={field.value ?? ''}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          field.onChange(next === '' ? undefined : next);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

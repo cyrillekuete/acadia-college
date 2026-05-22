@@ -16,6 +16,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -36,17 +37,19 @@ import {
 import { DAY_OF_WEEK_LABELS, minutesToTimeString } from '@/lib/acadia/timetable';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
 import {
   staffDisplayLabel,
-  useSubjectOptions,
+  useClassSubjectOptions,
   useRoomOptions,
-  useStaffOptions,
+  useSubjectTeacherOptions,
 } from '@/hooks/use-subject-catalog-options';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 
 export type TimetableSlotRecord = {
   id: string;
   academicYearId: string;
+  classId: string | null;
   subjectId: string;
   staffProfileId: string;
   roomId: string;
@@ -60,23 +63,28 @@ export function TimetableSlotFormDialog({
   onOpenChange,
   record,
   defaultSubjectId,
+  defaultClassId,
+  defaultDayOfWeek,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   record?: TimetableSlotRecord | null;
   defaultSubjectId?: string;
+  defaultClassId?: string;
+  defaultDayOfWeek?: number;
 }) {
   const isEdit = !!record;
   const { createTimetableSlot, updateTimetableSlot } = useSubjectMutations();
   const { activeYearId } = useActiveAcademicYear();
-  const { data: staff = [] } = useStaffOptions();
+  const { data: classes = [] } = useClassesForFilters();
   const { data: rooms = [] } = useRoomOptions();
 
   const form = useForm<TimetableSlotFormValues>({
     resolver: zodResolver(timetableSlotSchema),
     defaultValues: {
       academicYearId: '',
-      subjectId: defaultSubjectId ?? '',
+      classId: '',
+      subjectId: '',
       staffProfileId: '',
       roomId: '',
       dayOfWeek: 1,
@@ -86,7 +94,14 @@ export function TimetableSlotFormDialog({
   });
 
   const academicYearId = form.watch('academicYearId') || activeYearId || '';
-  const { data: subjects = [] } = useSubjectOptions(academicYearId);
+  const classId = form.watch('classId');
+  const subjectId = form.watch('subjectId');
+  const staffProfileId = form.watch('staffProfileId');
+
+  const { data: subjects = [], isLoading: subjectsLoading } =
+    useClassSubjectOptions(classId);
+  const { data: teachers = [], isLoading: teachersLoading } =
+    useSubjectTeacherOptions(subjectId, academicYearId);
 
   useEffect(() => {
     if (!open) {
@@ -95,6 +110,7 @@ export function TimetableSlotFormDialog({
     if (record) {
       form.reset({
         academicYearId: record.academicYearId,
+        classId: record.classId ?? '',
         subjectId: record.subjectId,
         staffProfileId: record.staffProfileId,
         roomId: record.roomId,
@@ -105,15 +121,43 @@ export function TimetableSlotFormDialog({
     } else {
       form.reset({
         academicYearId: activeYearId ?? '',
+        classId: defaultClassId ?? '',
         subjectId: defaultSubjectId ?? '',
         staffProfileId: '',
         roomId: '',
-        dayOfWeek: 1,
+        dayOfWeek: defaultDayOfWeek ?? 1,
         startTime: '08:00',
         endTime: '09:00',
       });
     }
-  }, [open, record, activeYearId, defaultSubjectId, form]);
+  }, [
+    open,
+    record,
+    activeYearId,
+    defaultSubjectId,
+    defaultClassId,
+    defaultDayOfWeek,
+    form,
+  ]);
+
+  useEffect(() => {
+    if (!open || !subjectId || subjectsLoading) {
+      return;
+    }
+    if (!subjects.some((subject) => subject.id === subjectId)) {
+      form.setValue('subjectId', '');
+      form.setValue('staffProfileId', '');
+    }
+  }, [open, subjectId, subjects, subjectsLoading, form]);
+
+  useEffect(() => {
+    if (!open || !staffProfileId) {
+      return;
+    }
+    if (!teachers.some((teacher) => teacher.id === staffProfileId)) {
+      form.setValue('staffProfileId', '');
+    }
+  }, [open, staffProfileId, teachers, form]);
 
   const pending =
     createTimetableSlot.isPending || updateTimetableSlot.isPending;
@@ -150,16 +194,68 @@ export function TimetableSlotFormDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="classId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Class <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('subjectId', '');
+                        form.setValue('staffProfileId', '');
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select class" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {classes.map((classRow) => (
+                          <SelectItem key={classRow.id} value={classRow.id}>
+                            {classRow.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="subjectId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subject</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <FormLabel>
+                      Subject <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('staffProfileId', '');
+                      }}
+                      disabled={!classId || subjectsLoading}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select subject" />
+                          <SelectValue
+                            placeholder={
+                              classId
+                                ? subjectsLoading
+                                  ? 'Loading subjects…'
+                                  : 'Select subject'
+                                : 'Select a class first'
+                            }
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -170,31 +266,57 @@ export function TimetableSlotFormDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    {classId && !subjectsLoading && subjects.length === 0 ? (
+                      <FormDescription>
+                        No subjects are assigned to this class yet. Assign subjects on
+                        the class or subject page first.
+                      </FormDescription>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="staffProfileId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Teacher</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <FormLabel>
+                        Teacher <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!subjectId || teachersLoading}
+                      >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select teacher" />
+                            <SelectValue
+                              placeholder={
+                                subjectId
+                                  ? teachersLoading
+                                    ? 'Loading teachers…'
+                                    : 'Select teacher'
+                                  : 'Select a subject first'
+                              }
+                            />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {staff.map((member) => (
+                          {teachers.map((member) => (
                             <SelectItem key={member.id} value={member.id}>
                               {staffDisplayLabel(member)}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {subjectId && !teachersLoading && teachers.length === 0 ? (
+                        <FormDescription>
+                          No teachers are assigned to this subject for the active year.
+                        </FormDescription>
+                      ) : null}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -204,7 +326,9 @@ export function TimetableSlotFormDialog({
                   name="roomId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Room</FormLabel>
+                      <FormLabel>
+                        Room <span className="text-destructive">*</span>
+                      </FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger>
@@ -224,6 +348,7 @@ export function TimetableSlotFormDialog({
                   )}
                 />
               </div>
+
               <FormField
                 control={form.control}
                 name="dayOfWeek"
@@ -251,6 +376,7 @@ export function TimetableSlotFormDialog({
                   </FormItem>
                 )}
               />
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}

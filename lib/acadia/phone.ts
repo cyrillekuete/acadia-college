@@ -31,6 +31,29 @@ function stripToNationalDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
+/** Strip formatting and apply country-specific local normalisation (e.g. CM +237 / trunk 0). */
+export function normalizeNationalPhoneDigits(
+  countryName: string,
+  nationalInput: string,
+): string {
+  let digits = stripToNationalDigits(nationalInput);
+  if (!digits) {
+    return '';
+  }
+
+  const iso = getCountryIso(countryName);
+  if (iso === 'CM') {
+    if (digits.startsWith('237') && digits.length > 9) {
+      digits = digits.slice(3);
+    }
+    if (digits.startsWith('0') && digits.length > 9) {
+      digits = digits.slice(1);
+    }
+  }
+
+  return digits;
+}
+
 /** Resolve dial code prefix for a country name, e.g. "Cameroon" → "+237". */
 export function getDialCodeForCountryName(countryName: string): string {
   const iso = getCountryIso(countryName);
@@ -58,7 +81,7 @@ export function validateNationalPhone(
   countryName: string,
   nationalInput: string,
 ): string | null {
-  const nationalDigits = stripToNationalDigits(nationalInput);
+  const nationalDigits = normalizeNationalPhoneDigits(countryName, nationalInput);
   if (!nationalDigits) {
     return null;
   }
@@ -89,7 +112,7 @@ export function composePhoneE164(
   countryName: string,
   nationalInput: string,
 ): string {
-  const nationalDigits = stripToNationalDigits(nationalInput);
+  const nationalDigits = normalizeNationalPhoneDigits(countryName, nationalInput);
   if (!nationalDigits) {
     return '';
   }

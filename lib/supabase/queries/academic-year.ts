@@ -11,6 +11,7 @@ export type CurrentAcademicYear = {
   termsPerYear: number;
   sequencesPerTerm: number;
   sequencesPerYear: number;
+  timetablePublishedAt: string | null;
 };
 
 export type AcademicYearSetupStatus = {
@@ -20,7 +21,7 @@ export type AcademicYearSetupStatus = {
 };
 
 const CURRENT_YEAR_SELECT =
-  'id, label, startsOn, endsOn, isCurrent, isActive, termsPerYear, sequencesPerTerm, sequencesPerYear';
+  'id, label, startsOn, endsOn, isCurrent, isActive, termsPerYear, sequencesPerTerm, sequencesPerYear, timetablePublishedAt';
 
 function mapYearRow(row: {
   id: string;
@@ -32,6 +33,7 @@ function mapYearRow(row: {
   termsPerYear: number | null;
   sequencesPerTerm: number | null;
   sequencesPerYear: number | null;
+  timetablePublishedAt: string | null;
 }): CurrentAcademicYear {
   return {
     id: row.id,
@@ -45,6 +47,7 @@ function mapYearRow(row: {
       row.sequencesPerTerm ?? DEFAULT_ACADEMIC_STRUCTURE.sequencesPerTerm,
     sequencesPerYear:
       row.sequencesPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear,
+    timetablePublishedAt: row.timetablePublishedAt ?? null,
   };
 }
 

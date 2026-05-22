@@ -131,3 +131,108 @@ export function staffDisplayLabel(staff: StaffOption): string {
   }
   return name ?? staff.staffCode ?? staff.id;
 }
+
+export function useClassSubjectOptions(classId: string | null | undefined) {
+  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
+  const resolvedClassId = classId?.trim() ?? '';
+
+  return useQuery({
+    queryKey: ['class-subject-options', tenantId, resolvedClassId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('ClassSubject')
+        .select(
+          `
+          subjectId,
+          Subject!ClassSubject_subjectId_tenantId_fkey ( id, code, nameEn )
+        `,
+        )
+        .eq('tenantId', tenantId!)
+        .eq('classId', resolvedClassId);
+
+      if (error) {
+        throw error;
+      }
+
+      const options: SubjectOption[] = [];
+      for (const row of data ?? []) {
+        const subject = Array.isArray(row.Subject) ? row.Subject[0] : row.Subject;
+        if (!subject?.id) {
+          continue;
+        }
+        options.push({
+          id: subject.id as string,
+          code: subject.code as string,
+          nameEn: subject.nameEn as string,
+        });
+      }
+
+      return options.sort((a, b) => a.code.localeCompare(b.code));
+    },
+    enabled:
+      resolvedClassId.length > 0 &&
+      isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
+  });
+}
+
+export function useSubjectTeacherOptions(
+  subjectId: string | null | undefined,
+  academicYearId: string | null | undefined,
+) {
+  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
+  const resolvedSubjectId = subjectId?.trim() ?? '';
+  const resolvedYearId = academicYearId?.trim() ?? '';
+
+  return useQuery({
+    queryKey: [
+      'subject-teacher-options',
+      tenantId,
+      resolvedSubjectId,
+      resolvedYearId,
+    ],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('SubjectAssignment')
+        .select(
+          `
+          staffProfileId,
+          StaffProfile!SubjectAssignment_staffProfileId_tenantId_fkey ( id, staffCode, User!StaffProfile_userId_tenantId_fkey ( name ) )
+        `,
+        )
+        .eq('tenantId', tenantId!)
+        .eq('subjectId', resolvedSubjectId)
+        .eq('academicYearId', resolvedYearId);
+
+      if (error) {
+        throw error;
+      }
+
+      const options: StaffOption[] = [];
+      for (const row of data ?? []) {
+        const staff = Array.isArray(row.StaffProfile)
+          ? row.StaffProfile[0]
+          : row.StaffProfile;
+        if (!staff?.id) {
+          continue;
+        }
+        options.push({
+          id: staff.id as string,
+          staffCode: (staff.staffCode as string | null) ?? null,
+          User: staff.User as StaffOption['User'],
+        });
+      }
+
+      return options.sort((a, b) =>
+        staffDisplayLabel(a).localeCompare(staffDisplayLabel(b)),
+      );
+    },
+    enabled:
+      resolvedSubjectId.length > 0 &&
+      resolvedYearId.length > 0 &&
+      isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
+  });
+}

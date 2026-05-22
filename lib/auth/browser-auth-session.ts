@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { getSupabaseUserOrClearStaleSession } from '@/lib/auth/stale-session';
 import { createClientOrNull, createSignInClient } from '@/lib/supabase/client';
 
 /**
@@ -28,9 +29,7 @@ export async function getBrowserAuthSession(): Promise<{
     if (seen.has(supabase)) continue;
     seen.add(supabase);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSupabaseUserOrClearStaleSession(supabase);
 
     if (user) {
       return { user, supabase };

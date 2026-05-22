@@ -50,6 +50,7 @@ export const FK = {
   TimetableSlot_staffProfile: 'TimetableSlot_staffProfileId_tenantId_fkey',
   TimetableSlot_room: 'TimetableSlot_roomId_tenantId_fkey',
   TimetableSlot_academicYear: 'TimetableSlot_academicYearId_tenantId_fkey',
+  TimetableSlot_class: 'TimetableSlot_classId_tenantId_fkey',
 
   // ExamSession
   ExamSession_subject: 'ExamSession_subjectId_tenantId_fkey',

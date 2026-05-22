@@ -8,6 +8,7 @@ import {
   requiresSupabaseSession,
 } from '@/lib/auth/routes';
 import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
+import { getSupabaseUserOrClearStaleSession } from '@/lib/auth/stale-session';
 import { getSupabaseEnvOrNull } from '@/lib/supabase/env';
 
 export async function updateSession(request: NextRequest) {
@@ -35,9 +36,7 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSupabaseUserOrClearStaleSession(supabase);
 
   const { pathname, search } = request.nextUrl;
   const origin = request.nextUrl.origin;

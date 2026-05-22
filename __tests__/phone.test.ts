@@ -22,6 +22,13 @@ describe('phone utilities', () => {
 
   it('composes Cameroon numbers to E.164', () => {
     expect(composePhoneE164('Cameroon', '677123456')).toBe('+237677123456');
+    expect(composePhoneE164('Cameroon', '237677123456')).toBe('+237677123456');
+    expect(composePhoneE164('Cameroon', '0677123456')).toBe('+237677123456');
+  });
+
+  it('accepts Cameroon numbers with country code or trunk prefix', () => {
+    expect(validateNationalPhone('Cameroon', '237677123456')).toBeNull();
+    expect(validateNationalPhone('Cameroon', '0677123456')).toBeNull();
   });
 
   it('composes US numbers to E.164', () => {
