@@ -129,9 +129,9 @@ export function groupTimetableSlotsByDay<
     list.push(slot);
     map.set(slot.dayOfWeek, list);
   }
-  for (const [day, list] of map) {
+  map.forEach((list, day) => {
     list.sort((a, b) => a.startMinutes - b.startMinutes);
     map.set(day, list);
-  }
+  });
   return map;
 }
