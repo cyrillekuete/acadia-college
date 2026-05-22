@@ -48,7 +48,7 @@ export function useStudentMutations() {
         .from('StudentProfile')
         .update({
           registrationNumber: values.registrationNumber.trim(),
-          matriculeNumber: values.matriculeNumber,
+          matriculeNumber: values.matriculeNumber ?? null,
           isActive: values.isActive,
           alumniDirectoryOptIn: values.alumniDirectoryOptIn,
           alumniSince: values.alumniSince?.trim() || null,

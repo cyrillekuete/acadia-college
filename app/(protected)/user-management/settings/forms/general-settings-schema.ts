@@ -43,7 +43,7 @@ export const GeneralSettingsSchema = z
     const { supportPhoneCountry: _supportPhoneCountry, ...rest } = data;
     return {
       ...rest,
-      supportPhone: rest.supportPhone?.trim() ? rest.supportPhone : null,
+      supportPhone: rest.supportPhone?.trim() ? rest.supportPhone : undefined,
     };
   });
 

@@ -15,7 +15,7 @@ export const studentProfileEditSchema = z.object({
     .max(40, 'Matricule must be at most 40 characters.')
     .optional()
     .or(z.literal(''))
-    .transform((value) => (value?.trim() ? value.trim() : null)),
+    .transform((value) => (value?.trim() ? value.trim() : undefined)),
   isActive: z.boolean(),
   alumniDirectoryOptIn: z.boolean(),
   alumniSince: z.string().optional().or(z.literal('')),

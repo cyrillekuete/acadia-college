@@ -215,7 +215,7 @@ export default function Page() {
 
   const handleChangeLogo = (
     e: ChangeEvent<HTMLInputElement>,
-    field: ControllerRenderProps<GeneralSettingsSchemaType, 'logoFile'>,
+    field: ControllerRenderProps<GeneralSettingsFormValues, 'logoFile'>,
   ) => {
     const file = e.target.files?.[0] || null;
     field.onChange(file);
@@ -240,9 +240,8 @@ export default function Page() {
     mutation.mutate(values);
   };
 
-  const handleError = (errors: FieldErrors<GeneralSettingsSchemaType>) => {
-    // Cast keys as an array of keys of SocialSettingsSchemaType
-    const keys = Object.keys(errors) as (keyof GeneralSettingsSchemaType)[];
+  const handleError = (errors: FieldErrors<GeneralSettingsFormValues>) => {
+    const keys = Object.keys(errors) as (keyof GeneralSettingsFormValues)[];
     const firstErrorKey = keys[0];
     const firstErrorMessage = errors[firstErrorKey]?.message;
 
