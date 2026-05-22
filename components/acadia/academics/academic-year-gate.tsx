@@ -11,6 +11,7 @@ const EXEMPT_PATH_PREFIXES = [
   '/academics/years',
   '/academics/terms',
   '/academics/sequences',
+  '/academics/calendar',
   '/dashboard/admin',
   '/account/',
   '/admin/users',

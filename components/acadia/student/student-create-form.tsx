@@ -46,6 +46,12 @@ import { isCityValidForLocation } from '@/lib/acadia/locations';
 const SECTION_GRID =
   'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-center';
 
+const ROW_GRID_4 =
+  'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4 lg:items-center';
+
+const ROW_GRID_2 =
+  'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:items-center';
+
 const FIELD_ITEM =
   'flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-4';
 
@@ -262,24 +268,6 @@ export function StudentCreateForm() {
               </StudentFieldItem>
             )} />
 
-            <div className="sm:col-span-2 lg:col-span-3">
-              <PhoneFormFields
-                control={form.control}
-                countryName="phone_country"
-                phoneName="phone"
-              />
-            </div>
-
-            <FormField control={form.control} name="address" render={({ field }) => (
-              <StudentFieldItem>
-                <StudentFieldLabel>Address</StudentFieldLabel>
-                <StudentFieldControl>
-                  <FormControl><Input className="w-full" {...field} /></FormControl>
-                  <FormMessage />
-                </StudentFieldControl>
-              </StudentFieldItem>
-            )} />
-
             <FormField control={form.control} name="country" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>Country</StudentFieldLabel>
@@ -290,11 +278,30 @@ export function StudentCreateForm() {
                       value={field.value}
                       onValueChange={(value) => {
                         field.onChange(value);
+                        form.setValue('phone_country', value, { shouldDirty: true });
                         form.setValue('region', '', { shouldDirty: true });
                         form.setValue('city', '', { shouldDirty: true });
                       }}
                     />
                   </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
+
+            <PhoneFormFields
+              control={form.control}
+              countryName="phone_country"
+              phoneName="phone"
+              hideCountry
+              className={cn(FIELD_ITEM, 'space-y-0')}
+            />
+
+            <FormField control={form.control} name="address" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>Address</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
                 </StudentFieldControl>
               </StudentFieldItem>
@@ -540,39 +547,58 @@ export function StudentCreateForm() {
           <CardHeader>
             <CardTitle>Parent / Guardian</CardTitle>
           </CardHeader>
-          <CardContent className={SECTION_GRID}>
-            <FormField control={form.control} name="parent_name" render={({ field }) => (
-              <StudentFieldItem>
-                <StudentFieldLabel>Full name <span className="text-destructive">*</span></StudentFieldLabel>
-                <StudentFieldControl>
-                  <FormControl><Input className="w-full" {...field} /></FormControl>
-                  <FormMessage />
-                </StudentFieldControl>
-              </StudentFieldItem>
-            )} />
+          <CardContent className="space-y-5">
+            <div className={ROW_GRID_4}>
+              <FormField control={form.control} name="parent_name" render={({ field }) => (
+                <StudentFieldItem>
+                  <StudentFieldLabel>Full name <span className="text-destructive">*</span></StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" {...field} /></FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
+              )} />
 
-            <FormField control={form.control} name="parent_email" render={({ field }) => (
-              <StudentFieldItem>
-                <StudentFieldLabel>Email</StudentFieldLabel>
-                <StudentFieldControl>
-                  <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
-                  <FormDescription>
-                    Optional — used for portal login if provided.
-                  </FormDescription>
-                  <FormMessage />
-                </StudentFieldControl>
-              </StudentFieldItem>
-            )} />
+              <FormField control={form.control} name="parent_email" render={({ field }) => (
+                <StudentFieldItem>
+                  <StudentFieldLabel>Email</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
+                    <FormDescription>
+                      Optional — used for portal login if provided.
+                    </FormDescription>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
+              )} />
 
-            <div className="sm:col-span-2 lg:col-span-3">
+              <FormField control={form.control} name="parent_phone_country" render={({ field }) => (
+                <StudentFieldItem>
+                  <StudentFieldLabel>Country</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl>
+                      <CountryCombobox
+                        className="w-full"
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
+              )} />
+
               <PhoneFormFields
                 control={form.control}
                 countryName="parent_phone_country"
                 phoneName="parent_phone"
                 required
+                hideCountry
+                className={cn(FIELD_ITEM, 'space-y-0')}
               />
             </div>
 
+            <div className={SECTION_GRID}>
             <FormField control={form.control} name="parent_relationship" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>Relationship <span className="text-destructive">*</span></StudentFieldLabel>
@@ -614,6 +640,7 @@ export function StudentCreateForm() {
                 </StudentFieldControl>
               </StudentFieldItem>
             )} />
+            </div>
           </CardContent>
         </Card>
 
@@ -623,10 +650,10 @@ export function StudentCreateForm() {
             <CardTitle>Emergency contact &amp; medical (optional)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className={SECTION_GRID}>
+            <div className={ROW_GRID_2}>
               <FormField control={form.control} name="emergency_contact_name" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Emergency contact name</StudentFieldLabel>
+                  <StudentFieldLabel>Contact name</StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl><Input className="w-full" {...field} /></FormControl>
                     <FormMessage />
@@ -634,18 +661,34 @@ export function StudentCreateForm() {
                 </StudentFieldItem>
               )} />
 
-              <div className="sm:col-span-2 lg:col-span-3">
-                <PhoneFormFields
-                  control={form.control}
-                  countryName="emergency_contact_phone_country"
-                  phoneName="emergency_contact_phone"
-                  phoneLabel="Emergency contact phone"
-                />
-              </div>
+              <FormField control={form.control} name="emergency_contact_phone_country" render={({ field }) => (
+                <StudentFieldItem>
+                  <StudentFieldLabel>Country</StudentFieldLabel>
+                  <StudentFieldControl>
+                    <FormControl>
+                      <CountryCombobox
+                        className="w-full"
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </StudentFieldControl>
+                </StudentFieldItem>
+              )} />
+
+              <PhoneFormFields
+                control={form.control}
+                countryName="emergency_contact_phone_country"
+                phoneName="emergency_contact_phone"
+                phoneLabel="Phone"
+                hideCountry
+                className={cn(FIELD_ITEM, 'space-y-0')}
+              />
 
               <FormField control={form.control} name="emergency_contact_relationship" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Emergency contact relationship</StudentFieldLabel>
+                  <StudentFieldLabel>Relationship</StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl><Input className="w-full" {...field} /></FormControl>
                     <FormMessage />

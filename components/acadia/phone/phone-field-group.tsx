@@ -22,6 +22,7 @@ type PhoneFieldGroupProps = {
   className?: string;
   countryId?: string;
   phoneId?: string;
+  hideCountry?: boolean;
 };
 
 function stripToNationalDigits(value: string): string {
@@ -40,6 +41,7 @@ export function PhoneFieldGroup({
   className,
   countryId,
   phoneId,
+  hideCountry = false,
 }: PhoneFieldGroupProps) {
   const resolvedCountry = country.trim() || DEFAULT_COUNTRY_NAME;
   const dialCode = getDialCodeForCountryName(resolvedCountry);
@@ -47,18 +49,20 @@ export function PhoneFieldGroup({
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={countryId}>
-          {countryLabel}
-          {required ? <span className="text-destructive"> *</span> : null}
-        </Label>
-        <CountryCombobox
-          value={resolvedCountry}
-          onValueChange={onCountryChange}
-          disabled={disabled}
-          className="w-full"
-        />
-      </div>
+      {!hideCountry ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={countryId}>
+            {countryLabel}
+            {required ? <span className="text-destructive"> *</span> : null}
+          </Label>
+          <CountryCombobox
+            value={resolvedCountry}
+            onValueChange={onCountryChange}
+            disabled={disabled}
+            className="w-full"
+          />
+        </div>
+      ) : null}
       <div className="flex flex-col gap-2">
         <Label htmlFor={phoneId}>
           {phoneLabel}

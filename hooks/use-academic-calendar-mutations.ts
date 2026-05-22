@@ -32,12 +32,18 @@ function mutationErrorMessage(error: unknown): string {
   return 'Operation failed.';
 }
 
+function optionalDateField(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function invalidateCalendarQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-year-options'] });
   void queryClient.invalidateQueries({ queryKey: ['current-academic-year'] });
   void queryClient.invalidateQueries({ queryKey: ['term-options'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-year-structure'] });
+  void queryClient.invalidateQueries({ queryKey: ['academic-calendar-milestones'] });
   void queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
 }
 
@@ -74,6 +80,8 @@ export function useAcademicCalendarMutations() {
         termsPerYear: structure.termsPerYear,
         sequencesPerTerm: structure.sequencesPerTerm,
         sequencesPerYear: structure.sequencesPerYear,
+        enrollmentOpensAt: optionalDateField(values.enrollmentOpensAt),
+        enrollmentClosesAt: optionalDateField(values.enrollmentClosesAt),
         updatedAt: now,
       });
       if (error) {
@@ -118,6 +126,11 @@ export function useAcademicCalendarMutations() {
           endsOn: values.endsOn,
           isCurrent: values.isCurrent,
           isActive: values.isActive,
+          termsPerYear: values.termsPerYear,
+          sequencesPerTerm: values.sequencesPerTerm,
+          sequencesPerYear: values.sequencesPerYear,
+          enrollmentOpensAt: optionalDateField(values.enrollmentOpensAt),
+          enrollmentClosesAt: optionalDateField(values.enrollmentClosesAt),
           updatedAt: now,
         })
         .eq('id', id)

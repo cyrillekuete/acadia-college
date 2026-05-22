@@ -1,6 +1,7 @@
 'use client';
 
 import type { Control, FieldPath, FieldValues } from 'react-hook-form';
+import { useWatch } from 'react-hook-form';
 import {
   FormControl,
   FormField,
@@ -18,6 +19,7 @@ type PhoneFormFieldsProps<TFieldValues extends FieldValues> = {
   phoneLabel?: string;
   disabled?: boolean;
   className?: string;
+  hideCountry?: boolean;
 };
 
 export function PhoneFormFields<TFieldValues extends FieldValues>({
@@ -29,7 +31,38 @@ export function PhoneFormFields<TFieldValues extends FieldValues>({
   phoneLabel,
   disabled,
   className,
+  hideCountry = false,
 }: PhoneFormFieldsProps<TFieldValues>) {
+  const watchedCountry = useWatch({ control, name: countryName });
+
+  if (hideCountry) {
+    return (
+      <FormField
+        control={control}
+        name={phoneName}
+        render={({ field: phoneField }) => (
+          <FormItem className={className}>
+            <FormControl>
+              <PhoneFieldGroup
+                country={typeof watchedCountry === 'string' ? watchedCountry : ''}
+                onCountryChange={() => {}}
+                phone={phoneField.value ?? ''}
+                onPhoneChange={phoneField.onChange}
+                required={required}
+                disabled={disabled}
+                countryLabel={countryLabel}
+                phoneLabel={phoneLabel}
+                phoneId={phoneField.name}
+                hideCountry
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    );
+  }
+
   return (
     <FormField
       control={control}

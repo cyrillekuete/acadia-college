@@ -1,15 +1,30 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { CalendarWindowGate } from '@/components/acadia/academics/calendar-window-gate';
 import { ExamSessionForm } from '@/components/acadia/assessment/exam-session-form';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { Button } from '@/components/ui/button';
+import { checkExamPeriodWindow } from '@/lib/acadia/calendar-milestones';
+import { canManageInstitution, canWriteOperations } from '@/lib/acadia/roles';
+import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { canWriteOperations } from '@/lib/acadia/roles';
 
 export default function NewExamSessionPage() {
   const { data: session } = useAcadiaCollegeSession();
+  const { activeYearId } = useActiveAcademicYear();
   const canManage = canWriteOperations(session?.roleSlug);
+  const { data: calendarContext, isLoading: calendarLoading } =
+    useAcademicCalendarMilestones(activeYearId);
+
+  const examWindow = useMemo(() => {
+    if (!calendarContext) {
+      return undefined;
+    }
+    return checkExamPeriodWindow(calendarContext.milestones);
+  }, [calendarContext]);
 
   return (
     <AcadiaPageShell
@@ -22,7 +37,14 @@ export default function NewExamSessionPage() {
         </Button>
       </div>
       {canManage ? (
-        <ExamSessionForm onCancelHref="/exams" />
+        <CalendarWindowGate
+          featureLabel="New exam sessions"
+          window={examWindow}
+          loading={calendarLoading}
+          bypass={canManageInstitution(session?.roleSlug)}
+        >
+          <ExamSessionForm onCancelHref="/exams" />
+        </CalendarWindowGate>
       ) : (
         <p className="text-sm text-muted-foreground">
           You do not have permission to create exam sessions.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -37,8 +37,13 @@ import {
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import { splitPhoneE164 } from '@/lib/acadia/phone';
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
+import { CalendarWindowGate } from '@/components/acadia/academics/calendar-window-gate';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { checkEnrollmentWindow } from '@/lib/acadia/calendar-milestones';
+import { canManageInstitution } from '@/lib/acadia/roles';
+import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import {
   useLevelsForStream,
   useStudentProfileOptions,
@@ -75,6 +80,19 @@ export function EnrollmentApplicationForm({
   const isEdit = !!record;
   const { createApplication, updateApplication } = useEnrollmentMutations();
   const { activeYearId } = useActiveAcademicYear();
+  const { data: session, isLoading: sessionLoading } = useAcadiaCollegeSession();
+  const { data: calendarContext, isLoading: calendarLoading } =
+    useAcademicCalendarMilestones(activeYearId);
+
+  const enrollmentWindow = useMemo(() => {
+    if (!calendarContext) {
+      return undefined;
+    }
+    return checkEnrollmentWindow(calendarContext.milestones, {
+      enrollmentOpensAt: calendarContext.enrollmentOpensAt,
+      enrollmentClosesAt: calendarContext.enrollmentClosesAt,
+    });
+  }, [calendarContext]);
 
   const form = useForm<
     EnrollmentApplicationFormValues,
@@ -164,8 +182,14 @@ export function EnrollmentApplicationForm({
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <CalendarWindowGate
+      featureLabel="New enrollment applications"
+      window={enrollmentWindow}
+      loading={!isEdit && (calendarLoading || sessionLoading)}
+      bypass={isEdit || canManageInstitution(session?.roleSlug)}
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
@@ -461,5 +485,6 @@ export function EnrollmentApplicationForm({
         </div>
       </form>
     </Form>
+    </CalendarWindowGate>
   );
 }

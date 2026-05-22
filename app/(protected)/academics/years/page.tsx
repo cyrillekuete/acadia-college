@@ -92,7 +92,7 @@ export default function AcademicYearsPage() {
       <SupabaseTableList
         table="AcademicYear"
         title="Academic years"
-        select="id, label, startsOn, endsOn, isCurrent, isActive"
+        select="id, label, startsOn, endsOn, isCurrent, isActive, termsPerYear, sequencesPerTerm, sequencesPerYear, enrollmentOpensAt, enrollmentClosesAt"
         columns={columns}
         searchKeys={['label']}
       />

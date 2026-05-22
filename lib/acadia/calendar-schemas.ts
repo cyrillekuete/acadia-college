@@ -18,6 +18,12 @@ const dateString = z
   .min(1, 'Date is required')
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
 
+const optionalDateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+  .optional()
+  .or(z.literal(''));
+
 const structureFields = {
   termsPerYear: z.coerce
     .number()
@@ -73,6 +79,8 @@ export const academicYearSchema = z
     termsPerYear: structureFields.termsPerYear,
     sequencesPerTerm: structureFields.sequencesPerTerm,
     sequencesPerYear: structureFields.sequencesPerYear,
+    enrollmentOpensAt: optionalDateString,
+    enrollmentClosesAt: optionalDateString,
   })
   .refine((v) => v.endsOn >= v.startsOn, {
     message: 'End date must be on or after start date',
@@ -81,7 +89,21 @@ export const academicYearSchema = z
   .refine((v) => v.sequencesPerYear >= v.termsPerYear, {
     message: 'Sequences per year must be at least equal to terms per year',
     path: ['sequencesPerYear'],
-  });
+  })
+  .refine(
+    (v) => {
+      const open = v.enrollmentOpensAt?.trim();
+      const close = v.enrollmentClosesAt?.trim();
+      if (!open || !close) {
+        return true;
+      }
+      return close >= open;
+    },
+    {
+      message: 'Enrollment close must be on or after enrollment open',
+      path: ['enrollmentClosesAt'],
+    },
+  );
 
 export type AcademicYearFormValues = z.infer<typeof academicYearSchema>;
 

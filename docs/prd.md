@@ -450,7 +450,7 @@ Sidebar (`config/menu.config.tsx`) uses **Lucide icons only** (template conventi
 | F-012 | Staff list and detail | P1 | `not_started` |
 | F-013 | Academic structure CRUD (years, terms, sequences, departments, levels, specialties, rooms) | P1 | `not_started` |
 | F-014 | Courses list and detail | P1 | `not_started` |
-| F-015 | Academic calendar milestones view | P2 | `not_started` |
+| F-015 | Academic calendar milestones view | P2 | `done` |
 
 ### 10.3 Operations
 

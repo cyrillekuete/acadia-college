@@ -3,13 +3,16 @@
 import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { AcademicCalendarMonthView } from '@/components/acadia/academics/academic-calendar-month-view';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CalendarMilestoneFormDialog } from '@/components/acadia/academics/calendar-milestone-form-dialog';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { formatRecordValue, termLabel } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
+import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
 
 type Row = {
   id: string;
@@ -35,6 +38,8 @@ export default function AcademicCalendarPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const { deleteMilestone } = useAcademicCalendarMutations();
+  const { activeYearId } = useActiveAcademicYear();
+  const { data: calendarContext } = useAcademicCalendarMilestones(activeYearId);
 
   const columns = useMemo<ColumnDef<Row>[]>(
     () => [
@@ -82,7 +87,7 @@ export default function AcademicCalendarPage() {
   return (
     <AcadiaPageShell
       title="Acadia College — Academic calendar"
-      description="Key dates for enrollment, instruction, exams, and mark entry."
+      description="Key dates for enrollment, instruction, exams, and mark entry. Milestones can gate those operations when configured."
     >
       <AdminToolbar
         addLabel="New milestone"
@@ -91,7 +96,14 @@ export default function AcademicCalendarPage() {
           setDialogOpen(true);
         }}
       />
-      <SupabaseTableList scopeByAcademicYear
+
+      <AcademicCalendarMonthView
+        milestones={calendarContext?.milestones ?? []}
+        className="mb-6"
+      />
+
+      <SupabaseTableList
+        scopeByAcademicYear
         table="AcademicCalendarMilestone"
         title="Calendar milestones"
         select="id, kind, onDate, labelEn, labelFr, academicYearId, termId, AcademicYear!AcademicCalendarMilestone_academicYearId_tenantId_fkey ( label ), Term!AcademicCalendarMilestone_semesterId_tenantId_fkey ( number )"

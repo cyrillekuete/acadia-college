@@ -1,15 +1,31 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { CalendarWindowGate } from '@/components/acadia/academics/calendar-window-gate';
 import { MarksEntryGrid } from '@/components/acadia/assessment/marks-entry-grid';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { Button } from '@/components/ui/button';
+import { checkMarkEntryWindow } from '@/lib/acadia/calendar-milestones';
+import { canManageInstitution } from '@/lib/acadia/roles';
+import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
 
 export default function MarksEntryPage() {
   const { data: session } = useAcadiaCollegeSession();
+  const { activeYearId } = useActiveAcademicYear();
   const canEnter = canWriteOperations(session?.roleSlug);
+  const { data: calendarContext, isLoading: calendarLoading } =
+    useAcademicCalendarMilestones(activeYearId);
+
+  const markEntryWindow = useMemo(() => {
+    if (!calendarContext) {
+      return undefined;
+    }
+    return checkMarkEntryWindow(calendarContext.milestones);
+  }, [calendarContext]);
 
   return (
     <AcadiaPageShell
@@ -22,7 +38,14 @@ export default function MarksEntryPage() {
         </Button>
       </div>
       {canEnter ? (
-        <MarksEntryGrid />
+        <CalendarWindowGate
+          featureLabel="Marks entry"
+          window={markEntryWindow}
+          loading={calendarLoading}
+          bypass={canManageInstitution(session?.roleSlug)}
+        >
+          <MarksEntryGrid />
+        </CalendarWindowGate>
       ) : (
         <p className="text-sm text-muted-foreground">
           You do not have permission to enter marks.
