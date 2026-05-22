@@ -60,7 +60,12 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(
-    { staffId: result.staffId, staffCode: result.staffCode },
+    {
+      staffId: result.staffId,
+      staffCode: result.staffCode,
+      loginEmail: result.loginEmail,
+      temporaryPassword: result.temporaryPassword,
+    },
     { status: 201 },
   );
 }

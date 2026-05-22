@@ -109,7 +109,7 @@ export default function Page() {
   const form = useForm<SigninSchemaType>({
     resolver: zodResolver(getSigninSchema()),
     defaultValues: {
-      email: '',
+      identifier: '',
       password: '',
       rememberMe: false,
     },
@@ -126,9 +126,29 @@ export default function Page() {
         return;
       }
 
+      let loginEmail = values.identifier.trim();
+      if (!loginEmail.includes('@')) {
+        const resolveRes = await fetch('/api/auth/resolve-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: loginEmail }),
+        });
+        const resolveJson = (await resolveRes.json()) as {
+          email?: string;
+          message?: string;
+        };
+        if (!resolveRes.ok || !resolveJson.email) {
+          setError(resolveJson.message ?? 'Invalid email or Teacher ID.');
+          return;
+        }
+        loginEmail = resolveJson.email;
+      } else {
+        loginEmail = loginEmail.toLowerCase();
+      }
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword(
         {
-          email: values.email,
+          email: loginEmail,
           password: values.password,
         },
       );
@@ -209,12 +229,16 @@ export default function Page() {
 
         <FormField
           control={form.control}
-          name="email"
+          name="identifier"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Email or Teacher ID</FormLabel>
               <FormControl>
-                <Input placeholder="you@acadia.edu" type="email" {...field} />
+                <Input
+                  placeholder="you@acadia-college.edu or TCH-2026-12345"
+                  autoComplete="username"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -90,7 +90,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
-    let rows = rowFilter ? data.filter(rowFilter) : data;
+    const rows = rowFilter ? data.filter(rowFilter) : data;
     if (!search.trim() || searchKeys.length === 0) {
       return rows;
     }

@@ -23,6 +23,7 @@ export type SubjectOption = {
   id: string;
   code: string;
   nameEn: string;
+  subSystem?: string | null;
 };
 
 export function useStaffOptions(options?: { enabled?: boolean }) {
@@ -83,7 +84,7 @@ export function useSubjectOptions(academicYearId?: string | null) {
       const supabase = requireBrowserClient();
       const query = supabase
         .from('Subject')
-        .select('id, code, nameEn, termId, academicYearId, Term!Subject_semesterId_tenantId_fkey ( academicYearId )')
+        .select('id, code, nameEn, subSystem, termId, academicYearId, Term!Subject_semesterId_tenantId_fkey ( academicYearId )')
         .eq('tenantId', tenantId!)
         .is('deactivatedAt', null)
         .order('code', { ascending: true });
@@ -100,7 +101,12 @@ export function useSubjectOptions(academicYearId?: string | null) {
       })[];
 
       if (!academicYearId) {
-        return rows.map(({ id, code, nameEn }) => ({ id, code, nameEn }));
+        return rows.map(({ id, code, nameEn, subSystem }) => ({
+          id,
+          code,
+          nameEn,
+          subSystem,
+        }));
       }
 
       return rows
@@ -111,7 +117,7 @@ export function useSubjectOptions(academicYearId?: string | null) {
           const term = Array.isArray(row.Term) ? row.Term[0] : row.Term;
           return term?.academicYearId === academicYearId;
         })
-        .map(({ id, code, nameEn }) => ({ id, code, nameEn }));
+        .map(({ id, code, nameEn, subSystem }) => ({ id, code, nameEn, subSystem }));
     },
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });

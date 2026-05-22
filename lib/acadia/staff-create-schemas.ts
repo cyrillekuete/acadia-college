@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ACADEMIC_SUB_SYSTEMS } from '@/lib/acadia/education-system';
 import {
   phoneCountryField,
   phoneNationalField,
@@ -12,34 +13,103 @@ export const staffEmploymentTypeEnum = z.enum([
   'VISITING',
 ]);
 
+export const staffTitleEnum = z.enum([
+  'Mr',
+  'Mrs',
+  'Ms',
+  'Miss',
+  'Dr',
+  'Prof',
+  'Rev',
+  'Other',
+]);
+
+export const staffGenderEnum = z.enum(['male', 'female']);
+
+export const staffEmergencyRelationshipEnum = z.enum([
+  'spouse',
+  'parent',
+  'sibling',
+  'child',
+  'friend',
+  'other',
+]);
+
 export const staffCreateSchema = z
   .object({
-  name: z.string().min(1, 'Name is required').max(120),
-  email: z.string().email('Valid email is required'),
-  employmentType: staffEmploymentTypeEnum,
-  staffCode: z.string().max(40).optional().or(z.literal('')),
-  title: z.string().max(120).optional().or(z.literal('')),
-  departmentId: z.string().optional().or(z.literal('')),
-  hireDate: z.string().optional().or(z.literal('')),
-  officePhoneCountry: phoneCountryField(),
-  officePhone: phoneNationalField(),
-  officeRoom: z.string().max(40).optional().or(z.literal('')),
-  bio: z.string().max(2000).optional().or(z.literal('')),
-  isActive: z.boolean().default(true),
-  roleId: z.string().optional().or(z.literal('')),
-})
+    title: staffTitleEnum,
+    firstName: z.string().min(1, 'First name is required').max(80),
+    lastName: z.string().min(1, 'Last name is required').max(80),
+    dateOfBirth: z.string().optional().or(z.literal('')),
+    gender: staffGenderEnum.optional(),
+    nationality: z.string().max(80).optional().or(z.literal('')),
+    idNumber: z.string().max(80).optional().or(z.literal('')),
+
+    personalEmail: z
+      .string()
+      .email('Valid contact email is required')
+      .max(200),
+    phoneCountry: phoneCountryField(),
+    phone: phoneNationalField(true, 'Phone number is required'),
+
+    address: z.string().max(500).optional().or(z.literal('')),
+    city: z.string().max(120).optional().or(z.literal('')),
+    region: z.string().max(120).optional().or(z.literal('')),
+    qualifications: z.string().max(2000).optional().or(z.literal('')),
+    teachingExperience: z.string().max(2000).optional().or(z.literal('')),
+
+    subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
+    subjectIds: z.array(z.string()).default([]),
+    classIds: z.array(z.string()).default([]),
+    academicYearId: z.string().min(1, 'Active academic year is required'),
+
+    employmentType: staffEmploymentTypeEnum,
+    hireDate: z.string().optional().or(z.literal('')),
+    monthlySalary: z.coerce
+      .number()
+      .min(0, 'Salary must be zero or positive')
+      .optional(),
+    emergencyContactName: z.string().max(120).optional().or(z.literal('')),
+    emergencyContactRelationship: staffEmergencyRelationshipEnum.optional(),
+    emergencyContactPhoneCountry: phoneCountryField(),
+    emergencyContactPhone: phoneNationalField(),
+
+    staffCode: z.string().max(40).optional().or(z.literal('')),
+    departmentId: z.string().optional().or(z.literal('')),
+    bio: z.string().max(2000).optional().or(z.literal('')),
+    isActive: z.boolean().default(true),
+    roleId: z.string().optional().or(z.literal('')),
+  })
   .superRefine((data, ctx) => {
     refinePhoneWithCountry(
       data,
-      { phoneKey: 'officePhone', countryKey: 'officePhoneCountry' },
+      { phoneKey: 'phone', countryKey: 'phoneCountry', required: true },
+      ctx,
+    );
+    refinePhoneWithCountry(
+      data,
+      {
+        phoneKey: 'emergencyContactPhone',
+        countryKey: 'emergencyContactPhoneCountry',
+      },
       ctx,
     );
   })
   .transform((data) => {
-    const { officePhoneCountry: _officePhoneCountry, ...rest } = data;
+    const {
+      phoneCountry: _phoneCountry,
+      emergencyContactPhoneCountry: _emergencyPhoneCountry,
+      ...rest
+    } = data;
+
     return {
       ...rest,
-      officePhone: rest.officePhone?.trim() ? rest.officePhone : '',
+      subjectIds: rest.subjectIds ?? [],
+      classIds: rest.classIds ?? [],
+      monthlySalary:
+        rest.monthlySalary === undefined || Number.isNaN(rest.monthlySalary)
+          ? undefined
+          : rest.monthlySalary,
     };
   });
 

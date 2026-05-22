@@ -95,7 +95,7 @@
     "@vitest/coverage-v8": "^4.1.6",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.30.0",
-    "eslint-config-next": "15.3.4",
+    "eslint-config-next": "16.1.6",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -110,7 +110,6 @@
     "vitest": "^4.1.6"
   },
   "overrides": {
-    "minimatch": "^10.2.1",
-    "ajv": ">=8.18.0"
+    "minimatch": "^10.2.1"
   }
 }

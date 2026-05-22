@@ -35,9 +35,10 @@ export default function NewStaffPage() {
     <Container>
       <Toolbar>
         <ToolbarHeading>
-          <ToolbarPageTitle>Add staff</ToolbarPageTitle>
+          <ToolbarPageTitle>Add teacher</ToolbarPageTitle>
           <ToolbarDescription>
-            Creates the staff account, sends a password-setup email, and links a teacher profile.
+            Register a new teacher, assign subjects and classes, and download login credentials
+            (Teacher ID, system email, and temporary password).
           </ToolbarDescription>
         </ToolbarHeading>
         <ToolbarActions>

@@ -2392,50 +2392,160 @@ export type Database = {
           },
         ]
       }
+      StaffClassAssignment: {
+        Row: {
+          academicYearId: string
+          classId: string
+          createdAt: string
+          id: string
+          staffProfileId: string
+          tenantId: string
+        }
+        Insert: {
+          academicYearId: string
+          classId: string
+          createdAt?: string
+          id: string
+          staffProfileId: string
+          tenantId: string
+        }
+        Update: {
+          academicYearId?: string
+          classId?: string
+          createdAt?: string
+          id?: string
+          staffProfileId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "StaffClassAssignment_academicYearId_tenantId_fkey"
+            columns: ["academicYearId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "StaffClassAssignment_classId_tenantId_fkey"
+            columns: ["classId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "StaffClassAssignment_staffProfileId_tenantId_fkey"
+            columns: ["staffProfileId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "StaffProfile"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "StaffClassAssignment_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       StaffProfile: {
         Row: {
+          address: string | null
           bio: string | null
+          city: string | null
           createdAt: string
+          dateOfBirth: string | null
           departmentId: string | null
+          emergencyContactName: string | null
+          emergencyContactPhone: string | null
+          emergencyContactRelationship: string | null
           employmentType: Database["public"]["Enums"]["StaffEmploymentType"]
+          firstName: string | null
+          gender: string | null
           hireDate: string | null
           id: string
+          idNumber: string | null
           isActive: boolean
+          lastName: string | null
+          monthlySalary: number | null
+          nationality: string | null
           officePhone: string | null
           officeRoom: string | null
+          personalEmail: string | null
+          phone: string | null
+          qualifications: string | null
+          region: string | null
           staffCode: string | null
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"] | null
+          teachingExperience: string | null
           tenantId: string
           title: string | null
           updatedAt: string
           userId: string
         }
         Insert: {
+          address?: string | null
           bio?: string | null
+          city?: string | null
           createdAt?: string
+          dateOfBirth?: string | null
           departmentId?: string | null
+          emergencyContactName?: string | null
+          emergencyContactPhone?: string | null
+          emergencyContactRelationship?: string | null
           employmentType?: Database["public"]["Enums"]["StaffEmploymentType"]
+          firstName?: string | null
+          gender?: string | null
           hireDate?: string | null
           id: string
+          idNumber?: string | null
           isActive?: boolean
+          lastName?: string | null
+          monthlySalary?: number | null
+          nationality?: string | null
           officePhone?: string | null
           officeRoom?: string | null
+          personalEmail?: string | null
+          phone?: string | null
+          qualifications?: string | null
+          region?: string | null
           staffCode?: string | null
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"] | null
+          teachingExperience?: string | null
           tenantId: string
           title?: string | null
           updatedAt: string
           userId: string
         }
         Update: {
+          address?: string | null
           bio?: string | null
+          city?: string | null
           createdAt?: string
+          dateOfBirth?: string | null
           departmentId?: string | null
+          emergencyContactName?: string | null
+          emergencyContactPhone?: string | null
+          emergencyContactRelationship?: string | null
           employmentType?: Database["public"]["Enums"]["StaffEmploymentType"]
+          firstName?: string | null
+          gender?: string | null
           hireDate?: string | null
           id?: string
+          idNumber?: string | null
           isActive?: boolean
+          lastName?: string | null
+          monthlySalary?: number | null
+          nationality?: string | null
           officePhone?: string | null
           officeRoom?: string | null
+          personalEmail?: string | null
+          phone?: string | null
+          qualifications?: string | null
+          region?: string | null
           staffCode?: string | null
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"] | null
+          teachingExperience?: string | null
           tenantId?: string
           title?: string | null
           updatedAt?: string

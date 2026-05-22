@@ -8,6 +8,24 @@ export function formatLocalDateInputValue(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Parse YYYY-MM-DD from form state to a local Date (for calendar pickers). */
+export function parseLocalDateInputValue(
+  value: string | null | undefined,
+): Date | undefined {
+  if (!value?.trim()) {
+    return undefined;
+  }
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return undefined;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 const DATETIME_LOCAL_INPUT_RE =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 

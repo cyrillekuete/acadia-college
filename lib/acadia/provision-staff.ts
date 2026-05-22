@@ -1,12 +1,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendPasswordRecoveryEmail } from '@/lib/auth/password-recovery';
 import { UserStatus } from '@/app/models/user';
-import { generateStaffCode } from '@/lib/acadia/ids';
+import { generateAcadiaId, generateStaffCode } from '@/lib/acadia/ids';
+import { generateTemporaryPassword } from '@/lib/acadia/generate-temporary-password';
+import {
+  formatStaffDisplayName,
+  resolveStaffSystemEmail,
+} from '@/lib/acadia/staff-email';
 import type { StaffCreateInput } from '@/lib/acadia/staff-create-schemas';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export type ProvisionStaffResult =
-  | { ok: true; staffId: string; staffCode: string }
+  | {
+      ok: true;
+      staffId: string;
+      staffCode: string;
+      loginEmail: string;
+      temporaryPassword: string;
+    }
   | { ok: false; message: string; status: number };
 
 const STAFF_ROLE_SLUGS = ['teacher', 'lecturer', 'staff'] as const;
@@ -49,10 +59,87 @@ async function rollbackStaff(
   supabase: SupabaseClient,
   admin: ReturnType<typeof createAdminClient>,
   authId: string,
+  tenantId: string,
 ) {
+  await supabase
+    .from('StaffClassAssignment')
+    .delete()
+    .eq('staffProfileId', authId)
+    .eq('tenantId', tenantId);
+  await supabase
+    .from('SubjectAssignment')
+    .delete()
+    .eq('staffProfileId', authId)
+    .eq('tenantId', tenantId);
   await supabase.from('StaffProfile').delete().eq('id', authId);
   await supabase.from('User').delete().eq('id', authId);
   await admin.auth.admin.deleteUser(authId);
+}
+
+async function insertSubjectAssignments(
+  supabase: SupabaseClient,
+  tenantId: string,
+  staffProfileId: string,
+  academicYearId: string,
+  subjectIds: string[],
+  now: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (subjectIds.length === 0) {
+    return { ok: true };
+  }
+
+  const rows = subjectIds.map((subjectId) => ({
+    id: generateAcadiaId('assign'),
+    tenantId,
+    subjectId,
+    academicYearId,
+    staffProfileId,
+    isLead: false,
+    teachesPrimaryHome: false,
+    notes: null,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  const { error } = await supabase.from('SubjectAssignment').insert(rows);
+  if (error) {
+    return {
+      ok: false,
+      message: error.message ?? 'Failed to assign subjects.',
+    };
+  }
+  return { ok: true };
+}
+
+async function insertClassAssignments(
+  supabase: SupabaseClient,
+  tenantId: string,
+  staffProfileId: string,
+  academicYearId: string,
+  classIds: string[],
+  now: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (classIds.length === 0) {
+    return { ok: true };
+  }
+
+  const rows = classIds.map((classId) => ({
+    id: generateAcadiaId('staff-class'),
+    tenantId,
+    staffProfileId,
+    classId,
+    academicYearId,
+    createdAt: now,
+  }));
+
+  const { error } = await supabase.from('StaffClassAssignment').insert(rows);
+  if (error) {
+    return {
+      ok: false,
+      message: error.message ?? 'Failed to assign classes.',
+    };
+  }
+  return { ok: true };
 }
 
 export async function provisionStaff(
@@ -63,9 +150,12 @@ export async function provisionStaff(
 ): Promise<ProvisionStaffResult> {
   const admin = createAdminClient();
   const now = new Date().toISOString();
-  const email = input.email.trim().toLowerCase();
-  const name = input.name.trim();
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
   const staffCode = emptyToNull(input.staffCode) ?? generateStaffCode();
+  const temporaryPassword = generateTemporaryPassword();
+  const displayName = formatStaffDisplayName(input.title, firstName, lastName);
+  const personalEmail = input.personalEmail.trim().toLowerCase();
 
   const roleId = await resolveStaffRoleId(supabase, input.roleId);
   if (!roleId) {
@@ -76,17 +166,40 @@ export async function provisionStaff(
     };
   }
 
+  let loginEmail: string;
+  try {
+    loginEmail = await resolveStaffSystemEmail({
+      firstName,
+      lastName,
+      isEmailTaken: async (email) => {
+        const { data } = await supabase
+          .from('User')
+          .select('id')
+          .eq('email', email)
+          .limit(1);
+        return (data?.length ?? 0) > 0;
+      },
+    });
+  } catch {
+    return {
+      ok: false,
+      message: 'Unable to generate a unique login email for this teacher.',
+      status: 400,
+    };
+  }
+
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
-    email,
+    email: loginEmail,
+    password: temporaryPassword,
     email_confirm: true,
-    user_metadata: { name },
+    user_metadata: { name: displayName },
   });
 
   if (authError || !authData.user) {
     const message =
       authError?.message?.includes('already been registered') ||
       authError?.message?.includes('already exists')
-        ? 'A user with this email already exists.'
+        ? 'A user with this login email already exists.'
         : (authError?.message ?? 'Failed to create auth account.');
     return { ok: false, message, status: 400 };
   }
@@ -95,8 +208,8 @@ export async function provisionStaff(
 
   const { error: userError } = await supabase.from('User').insert({
     id: authId,
-    email,
-    name,
+    email: loginEmail,
+    name: displayName,
     roleId,
     tenantId,
     status: UserStatus.ACTIVE,
@@ -121,12 +234,30 @@ export async function provisionStaff(
     userId: authId,
     tenantId,
     staffCode,
-    title: emptyToNull(input.title),
+    title: input.title,
+    firstName,
+    lastName,
+    dateOfBirth: emptyToNull(input.dateOfBirth),
+    gender: input.gender ?? null,
+    nationality: emptyToNull(input.nationality),
+    idNumber: emptyToNull(input.idNumber),
+    personalEmail,
+    phone: emptyToNull(input.phone),
+    address: emptyToNull(input.address),
+    city: emptyToNull(input.city),
+    region: emptyToNull(input.region),
+    qualifications: emptyToNull(input.qualifications),
+    teachingExperience: emptyToNull(input.teachingExperience),
+    subSystem: input.subSystem,
     employmentType: input.employmentType,
     departmentId: emptyToNull(input.departmentId),
     hireDate: emptyToNull(input.hireDate),
-    officePhone: emptyToNull(input.officePhone),
-    officeRoom: emptyToNull(input.officeRoom),
+    monthlySalary: input.monthlySalary ?? null,
+    emergencyContactName: emptyToNull(input.emergencyContactName),
+    emergencyContactRelationship: input.emergencyContactRelationship ?? null,
+    emergencyContactPhone: emptyToNull(input.emergencyContactPhone),
+    officePhone: emptyToNull(input.phone),
+    officeRoom: null,
     bio: emptyToNull(input.bio),
     isActive: input.isActive ?? true,
     createdAt: now,
@@ -134,7 +265,7 @@ export async function provisionStaff(
   });
 
   if (staffError) {
-    await rollbackStaff(supabase, admin, authId);
+    await rollbackStaff(supabase, admin, authId, tenantId);
     return {
       ok: false,
       message: staffError.message ?? 'Failed to create staff profile.',
@@ -142,13 +273,37 @@ export async function provisionStaff(
     };
   }
 
-  const recovery = await sendPasswordRecoveryEmail(admin, email);
-  if (!recovery.ok) {
-    console.warn(
-      '[provisionStaff] Failed to send password setup email:',
-      recovery.message,
-    );
+  const subjectResult = await insertSubjectAssignments(
+    supabase,
+    tenantId,
+    authId,
+    input.academicYearId,
+    input.subjectIds,
+    now,
+  );
+  if (!subjectResult.ok) {
+    await rollbackStaff(supabase, admin, authId, tenantId);
+    return { ok: false, message: subjectResult.message, status: 400 };
   }
 
-  return { ok: true, staffId: authId, staffCode };
+  const classResult = await insertClassAssignments(
+    supabase,
+    tenantId,
+    authId,
+    input.academicYearId,
+    input.classIds,
+    now,
+  );
+  if (!classResult.ok) {
+    await rollbackStaff(supabase, admin, authId, tenantId);
+    return { ok: false, message: classResult.message, status: 400 };
+  }
+
+  return {
+    ok: true,
+    staffId: authId,
+    staffCode,
+    loginEmail,
+    temporaryPassword,
+  };
 }

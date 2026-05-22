@@ -7,6 +7,8 @@ import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 type CreateStaffResult = {
   staffId: string;
   staffCode: string;
+  loginEmail: string;
+  temporaryPassword: string;
 };
 
 export function useStaffCreateMutation() {
@@ -28,7 +30,21 @@ export function useStaffCreateMutation() {
         throw new Error((json.message as string | undefined) ?? 'Failed to create staff.');
       }
 
-      return json as unknown as CreateStaffResult;
+      const staffId = json.staffId;
+      const staffCode = json.staffCode;
+      const loginEmail = json.loginEmail;
+      const temporaryPassword = json.temporaryPassword;
+
+      if (
+        typeof staffId !== 'string' ||
+        typeof staffCode !== 'string' ||
+        typeof loginEmail !== 'string' ||
+        typeof temporaryPassword !== 'string'
+      ) {
+        throw new Error('Server returned an invalid staff creation response.');
+      }
+
+      return { staffId, staffCode, loginEmail, temporaryPassword };
     },
     onSuccess: () => {
       if (tenantId) {
