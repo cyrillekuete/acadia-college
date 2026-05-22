@@ -2,45 +2,57 @@
 
 import { useQuery } from '@tanstack/react-query';
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
-import { unwrapRelation } from '@/lib/acadia/record-display';
+import {
+  subjectMatchesClass,
+  type ClassSubjectEligibilityClass,
+  type ClassSubjectEligibilitySubject,
+} from '@/lib/acadia/class-subject-eligibility';
 import { requireBrowserClient } from '@/lib/supabase/client';
-import { fetchSubjectIdsForLevel } from '@/lib/supabase/queries/subject-levels';
+import {
+  fetchSubjectLevelIdsBatch,
+} from '@/lib/supabase/queries/subject-levels';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 
+export type SubjectSubBranchOption = {
+  id: string;
+  name: string;
+  nameFr: string | null;
+};
+
 export type SubjectForClassOption = {
   id: string;
   code: string;
   nameEn: string;
+  hasSubBranches: boolean;
+  subBranches: SubjectSubBranchOption[];
+  groupingId: string | null;
+  groupingNameEn: string | null;
 };
 
 type SubjectRow = {
   id: string;
   code: string;
   nameEn: string;
+  hasSubBranches: boolean;
   subSystem: AcademicSubSystem;
   branch: AcademicBranch;
   levelId: string;
+  groupingId: string | null;
   academicYearId: string | null;
   termId: string | null;
-  Term?: { academicYearId?: string } | { academicYearId?: string }[] | null;
+  deactivatedAt: string | null;
+  Term?: ClassSubjectEligibilitySubject['Term'];
+  SubjectGrouping?: { nameEn?: string | null } | { nameEn?: string | null }[] | null;
+  SubjectSubBranch?: {
+    id: string;
+    name: string;
+    nameFr: string | null;
+    sortOrder: number;
+  }[] | null;
 };
-
-function subjectMatchesAcademicYear(
-  row: SubjectRow,
-  academicYearId: string | null | undefined,
-): boolean {
-  if (!academicYearId) {
-    return true;
-  }
-  if (!row.termId) {
-    return row.academicYearId === academicYearId;
-  }
-  const term = unwrapRelation<{ academicYearId?: string }>(row.Term);
-  return term?.academicYearId === academicYearId;
-}
 
 export function useSubjectsForClass(filters: {
   levelId?: string;
@@ -63,21 +75,31 @@ export function useSubjectsForClass(filters: {
     ],
     queryFn: async (): Promise<SubjectForClassOption[]> => {
       const supabase = requireBrowserClient();
-      const linkedIds = await fetchSubjectIdsForLevel(supabase, tenantId!, levelId);
+      const classRow: ClassSubjectEligibilityClass = {
+        id: '',
+        levelId,
+        subSystem: filters.subSystem,
+        branch: filters.branch,
+      };
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('Subject')
         .select(
           `
           id,
           code,
           nameEn,
+          hasSubBranches,
           subSystem,
           branch,
           levelId,
+          groupingId,
           academicYearId,
           termId,
-          Term!Subject_semesterId_tenantId_fkey ( academicYearId )
+          deactivatedAt,
+          Term!Subject_semesterId_tenantId_fkey ( academicYearId ),
+          SubjectGrouping!Subject_groupingId_tenantId_fkey ( nameEn ),
+          SubjectSubBranch ( id, name, nameFr, sortOrder )
         `,
         )
         .eq('tenantId', tenantId!)
@@ -86,45 +108,66 @@ export function useSubjectsForClass(filters: {
         .is('deactivatedAt', null)
         .order('code', { ascending: true });
 
-      if (linkedIds.length > 0) {
-        const primaryFilter = `levelId.eq.${levelId}`;
-        const linkedFilter = `id.in.(${linkedIds.join(',')})`;
-        query = query.or(`${primaryFilter},${linkedFilter}`);
-      } else {
-        query = query.eq('levelId', levelId);
-      }
-
-      const { data, error } = await query;
-
       if (error) {
         throw error;
       }
 
-      const seen = new Set<string>();
+      const rows = (data ?? []) as SubjectRow[];
+      const levelIdsBySubject = await fetchSubjectLevelIdsBatch(
+        supabase,
+        tenantId!,
+        rows.map((row) => row.id),
+      );
 
-      return (data ?? [])
-        .filter((row) => {
-          const subject = row as SubjectRow;
-          const id = subject.id as string;
-          if (seen.has(id)) {
-            return false;
-          }
-          if (!subjectMatchesAcademicYear(subject, filters.academicYearId)) {
-            return false;
-          }
-          const matchesLevel =
-            subject.levelId === levelId || linkedIds.includes(id);
-          if (!matchesLevel) {
-            return false;
-          }
-          seen.add(id);
-          return true;
-        })
-        .map((row) => ({
-          id: row.id as string,
-          code: row.code as string,
-          nameEn: row.nameEn as string,
-        }));
+      const options: SubjectForClassOption[] = [];
+
+      for (const subjectRow of rows) {
+        const levelIds = levelIdsBySubject.get(subjectRow.id) ?? [];
+        const subject: ClassSubjectEligibilitySubject = {
+          id: subjectRow.id,
+          subSystem: subjectRow.subSystem,
+          branch: subjectRow.branch,
+          levelId: subjectRow.levelId,
+          levelIds: levelIds.length > 0 ? levelIds : [subjectRow.levelId],
+          academicYearId: subjectRow.academicYearId,
+          termId: subjectRow.termId,
+          deactivatedAt: subjectRow.deactivatedAt,
+          Term: subjectRow.Term,
+        };
+
+        if (
+          !subjectMatchesClass(subject, classRow, {
+            academicYearId: filters.academicYearId,
+          })
+        ) {
+          continue;
+        }
+
+        const subBranches = Array.isArray(subjectRow.SubjectSubBranch)
+          ? [...subjectRow.SubjectSubBranch].sort((a, b) => a.sortOrder - b.sortOrder)
+          : [];
+
+        const groupingRel = subjectRow.SubjectGrouping;
+        const groupingNameEn = Array.isArray(groupingRel)
+          ? groupingRel[0]?.nameEn ?? null
+          : groupingRel?.nameEn ?? null;
+
+        options.push({
+          id: subjectRow.id,
+          code: subjectRow.code,
+          nameEn: subjectRow.nameEn,
+          hasSubBranches: subjectRow.hasSubBranches && subBranches.length > 0,
+          subBranches: subBranches.map((branch) => ({
+            id: branch.id,
+            name: branch.name,
+            nameFr: branch.nameFr,
+          })),
+          groupingId: subjectRow.groupingId ?? null,
+          groupingNameEn: groupingNameEn?.trim() || null,
+        });
+      }
+
+      return options;
     },
     enabled:
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId) &&

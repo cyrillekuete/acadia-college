@@ -22,6 +22,40 @@ export async function fetchSubjectLevelIds(
   return (data ?? []).map((r) => r.levelId as string);
 }
 
+export async function fetchSubjectLevelIdsBatch(
+  supabase: Client,
+  tenantId: string,
+  subjectIds: string[],
+): Promise<Map<string, string[]>> {
+  const unique = Array.from(new Set(subjectIds.filter((id) => id.trim())));
+  const result = new Map<string, string[]>();
+
+  if (unique.length === 0) {
+    return result;
+  }
+
+  const { data, error } = await supabase
+    .from('SubjectLevel')
+    .select('subjectId, levelId')
+    .eq('tenantId', tenantId)
+    .in('subjectId', unique)
+    .order('createdAt', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    const subjectId = row.subjectId as string;
+    const levelId = row.levelId as string;
+    const list = result.get(subjectId) ?? [];
+    list.push(levelId);
+    result.set(subjectId, list);
+  }
+
+  return result;
+}
+
 export async function fetchSubjectIdsForLevel(
   supabase: Client,
   tenantId: string,

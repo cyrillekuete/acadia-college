@@ -7,6 +7,7 @@ import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { SubjectsTable } from '@/components/acadia/subjects/subjects-table';
+import { SubjectClassAssignDialog } from '@/components/acadia/subjects/subject-class-assign-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -18,6 +19,8 @@ import {
 import {
   branchLabel,
   EMPTY_CATALOG_FILTERS,
+  parseAcademicBranch,
+  parseAcademicSubSystem,
   subSystemLabel,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
@@ -28,9 +31,15 @@ import {
 } from '@/lib/acadia/subject';
 import { levelLabel, termLabel } from '@/lib/acadia/record-display';
 import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
-import { useSubjectList } from '@/hooks/use-subject-list';
-
+import { useSubjectList, type SubjectListRowView } from '@/hooks/use-subject-list';
 const ALL = '__all__';
+
+function resolveSubjectStream(row: SubjectListRowView) {
+  return {
+    subSystem: parseAcademicSubSystem(row.subSystem),
+    branch: parseAcademicBranch(row.branch),
+  };
+}
 
 function buildEmptyMessage(
   catalogFilters: CatalogFilters,
@@ -57,6 +66,7 @@ export default function SubjectsPage() {
   const [listFilters, setListFilters] = useState<SubjectListFilters>(
     DEFAULT_SUBJECT_LIST_FILTERS,
   );
+  const [assignSubject, setAssignSubject] = useState<SubjectListRowView | null>(null);
   const { data: groupings = [] } = useSubjectGroupingOptions();
   const { data: subjects = [] } = useSubjectList(catalogFilters);
 
@@ -81,6 +91,21 @@ export default function SubjectsPage() {
   }, [subjects]);
 
   const emptyMessage = buildEmptyMessage(catalogFilters, listFilters);
+
+  const assignSubjectStream = useMemo(
+    () => (assignSubject ? resolveSubjectStream(assignSubject) : null),
+    [assignSubject],
+  );
+  const handleAssignToClasses = (row: SubjectListRowView) => {
+    const { subSystem, branch } = resolveSubjectStream(row);
+    if (!subSystem || !branch) {
+      window.alert(
+        `"${row.nameEn}" is missing a valid sub-system or branch. Edit the subject before assigning classes.`,
+      );
+      return;
+    }
+    setAssignSubject(row);
+  };
 
   return (
     <AcadiaPageShell
@@ -200,7 +225,32 @@ export default function SubjectsPage() {
         catalogFilters={catalogFilters}
         listFilters={listFilters}
         emptyMessage={emptyMessage}
+        onAssignToClasses={handleAssignToClasses}
       />
+
+      {assignSubject &&
+      assignSubjectStream?.subSystem &&
+      assignSubjectStream?.branch ? (
+        <SubjectClassAssignDialog
+          open={assignSubject !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setAssignSubject(null);
+            }
+          }}
+          subjectId={assignSubject.id}
+          subjectCode={assignSubject.code}
+          subjectName={assignSubject.nameEn}
+          subSystem={assignSubjectStream.subSystem}
+          branch={assignSubjectStream.branch}
+          subjectDefaultGroupingId={assignSubject.groupingId}
+          subjectDefaultGroupingName={assignSubject.SubjectGrouping?.nameEn ?? null}
+          subBranches={assignSubject.SubjectSubBranch.map((branch) => ({
+            id: branch.id,
+            name: branch.name,
+          }))}
+        />
+      ) : null}
     </AcadiaPageShell>
   );
 }

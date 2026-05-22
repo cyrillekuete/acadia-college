@@ -12,6 +12,18 @@ export type LevelFormValues = z.infer<typeof levelFormSchema>;
 export const CLASS_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
 export type ClassStatus = (typeof CLASS_STATUSES)[number];
 
+export const classSubjectSelectionSchema = z.object({
+  subjectId: z.string(),
+  subBranchIds: z.array(z.string()).nullable(),
+  groupingId: z.string().nullable(),
+});
+
+export const subjectClassAssignmentSchema = z.object({
+  classId: z.string(),
+  subBranchIds: z.array(z.string()).nullable(),
+  groupingId: z.string().nullable(),
+});
+
 export const classFormSchema = z.object({
   name: z.string().trim().min(1, 'Class name is required').max(160),
   levelId: z.string().min(1, 'Level is required'),
@@ -19,7 +31,7 @@ export const classFormSchema = z.object({
   branch: z.enum(ACADEMIC_BRANCHES),
   staffProfileId: z.string().optional(),
   status: z.enum(CLASS_STATUSES),
-  subjectIds: z.array(z.string()),
+  subjectSelections: z.array(classSubjectSelectionSchema),
 });
 
 export type ClassFormValues = z.infer<typeof classFormSchema>;

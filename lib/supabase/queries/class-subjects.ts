@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
+import type { SubjectClassAssignment } from '@/lib/acadia/class-subject-selections';
 import {
   subjectMatchesClass,
   type ClassSubjectEligibilityClass,
@@ -10,6 +11,14 @@ import { generateAcadiaId } from '@/lib/acadia/ids';
 import { fetchSubjectLevelIds } from '@/lib/supabase/queries/subject-levels';
 
 type Client = SupabaseClient<Database>;
+
+export type ClassSubjectSelectionRow = {
+  subjectId: string;
+  subBranchIds: string[] | null;
+  groupingId: string | null;
+};
+
+export type SubjectClassAssignmentRow = SubjectClassAssignment;
 
 export async function fetchClassSubjectIds(
   supabase: Client,
@@ -28,6 +37,108 @@ export async function fetchClassSubjectIds(
   return (data ?? []).map((r) => r.subjectId as string);
 }
 
+export async function fetchClassSubjectSelections(
+  supabase: Client,
+  tenantId: string,
+  classId: string,
+): Promise<ClassSubjectSelectionRow[]> {
+  const { data: classSubjectRows, error } = await supabase
+    .from('ClassSubject')
+    .select('subjectId, groupingId')
+    .eq('tenantId', tenantId)
+    .eq('classId', classId);
+
+  if (error) {
+    throw error;
+  }
+
+  const subjectIds = (classSubjectRows ?? []).map((r) => r.subjectId as string);
+  if (subjectIds.length === 0) {
+    return [];
+  }
+
+  const { data: branchRows, error: branchError } = await supabase
+    .from('ClassSubjectSubBranch')
+    .select('subjectId, subjectSubBranchId')
+    .eq('tenantId', tenantId)
+    .eq('classId', classId);
+
+  if (branchError) {
+    throw branchError;
+  }
+
+  const branchesBySubject = new Map<string, string[]>();
+  for (const row of branchRows ?? []) {
+    const subjectId = row.subjectId as string;
+    const subBranchId = row.subjectSubBranchId as string;
+    const list = branchesBySubject.get(subjectId) ?? [];
+    list.push(subBranchId);
+    branchesBySubject.set(subjectId, list);
+  }
+
+  return (classSubjectRows ?? []).map((row) => {
+    const subjectId = row.subjectId as string;
+    const branches = branchesBySubject.get(subjectId);
+    return {
+      subjectId,
+      groupingId: (row.groupingId as string | null) ?? null,
+      subBranchIds:
+        !branches || branches.length === 0 ? null : branches,
+    };
+  });
+}
+
+export async function fetchSubjectClassAssignments(
+  supabase: Client,
+  tenantId: string,
+  subjectId: string,
+): Promise<SubjectClassAssignmentRow[]> {
+  const { data: classSubjectRows, error } = await supabase
+    .from('ClassSubject')
+    .select('classId, groupingId')
+    .eq('tenantId', tenantId)
+    .eq('subjectId', subjectId);
+
+  if (error) {
+    throw error;
+  }
+
+  const classIds = (classSubjectRows ?? []).map((r) => r.classId as string);
+  if (classIds.length === 0) {
+    return [];
+  }
+
+  const { data: branchRows, error: branchError } = await supabase
+    .from('ClassSubjectSubBranch')
+    .select('classId, subjectSubBranchId')
+    .eq('tenantId', tenantId)
+    .eq('subjectId', subjectId);
+
+  if (branchError) {
+    throw branchError;
+  }
+
+  const branchesByClass = new Map<string, string[]>();
+  for (const row of branchRows ?? []) {
+    const classId = row.classId as string;
+    const subBranchId = row.subjectSubBranchId as string;
+    const list = branchesByClass.get(classId) ?? [];
+    list.push(subBranchId);
+    branchesByClass.set(classId, list);
+  }
+
+  return (classSubjectRows ?? []).map((row) => {
+    const classId = row.classId as string;
+    const branches = branchesByClass.get(classId);
+    return {
+      classId,
+      groupingId: (row.groupingId as string | null) ?? null,
+      subBranchIds:
+        !branches || branches.length === 0 ? null : branches,
+    };
+  });
+}
+
 export async function insertClassSubjects(
   supabase: Client,
   tenantId: string,
@@ -44,6 +155,7 @@ export async function insertClassSubjects(
       tenantId,
       classId,
       subjectId,
+      groupingId: null,
       createdAt: now,
     })),
   );
@@ -77,6 +189,194 @@ export async function syncClassSubjects(
   }
 
   await insertClassSubjects(supabase, tenantId, classId, toAdd);
+}
+
+async function updateClassSubjectGroupings(
+  supabase: Client,
+  tenantId: string,
+  classId: string,
+  selections: ClassSubjectSelectionRow[],
+): Promise<void> {
+  for (const selection of selections) {
+    const { error } = await supabase
+      .from('ClassSubject')
+      .update({ groupingId: selection.groupingId })
+      .eq('tenantId', tenantId)
+      .eq('classId', classId)
+      .eq('subjectId', selection.subjectId);
+
+    if (error) {
+      throw error;
+    }
+  }
+}
+
+export async function syncClassSubjectSelections(
+  supabase: Client,
+  tenantId: string,
+  classId: string,
+  selections: ClassSubjectSelectionRow[],
+): Promise<void> {
+  const subjectIds = selections.map((selection) => selection.subjectId);
+  await syncClassSubjects(supabase, tenantId, classId, subjectIds);
+  await updateClassSubjectGroupings(supabase, tenantId, classId, selections);
+
+  const { error: deleteError } = await supabase
+    .from('ClassSubjectSubBranch')
+    .delete()
+    .eq('tenantId', tenantId)
+    .eq('classId', classId);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  const now = new Date().toISOString();
+  const toInsert = selections.flatMap((selection) => {
+    if (selection.subBranchIds === null || selection.subBranchIds.length === 0) {
+      return [];
+    }
+    return selection.subBranchIds.map((subjectSubBranchId) => ({
+      id: generateAcadiaId('cssb'),
+      tenantId,
+      classId,
+      subjectId: selection.subjectId,
+      subjectSubBranchId,
+      createdAt: now,
+    }));
+  });
+
+  if (toInsert.length > 0) {
+    const { error: insertError } = await supabase.from('ClassSubjectSubBranch').insert(toInsert);
+    if (insertError) {
+      throw insertError;
+    }
+  }
+}
+
+export async function insertClassSubjectSelections(
+  supabase: Client,
+  tenantId: string,
+  classId: string,
+  selections: ClassSubjectSelectionRow[],
+): Promise<void> {
+  await syncClassSubjectSelections(supabase, tenantId, classId, selections);
+}
+
+export async function syncSubjectClassAssignments(
+  supabase: Client,
+  tenantId: string,
+  subjectId: string,
+  assignments: SubjectClassAssignmentRow[],
+): Promise<void> {
+  const existingRows = await fetchSubjectClassAssignments(supabase, tenantId, subjectId);
+  const existingClassIds = existingRows.map((row) => row.classId);
+  const nextClassIds = assignments.map((row) => row.classId);
+  const nextSet = new Set(nextClassIds);
+  const toRemove = existingClassIds.filter((id) => !nextSet.has(id));
+  const existingSet = new Set(existingClassIds);
+  const toAdd = nextClassIds.filter((id) => !existingSet.has(id));
+
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from('ClassSubject')
+      .delete()
+      .eq('tenantId', tenantId)
+      .eq('subjectId', subjectId)
+      .in('classId', toRemove);
+    if (error) {
+      throw error;
+    }
+  }
+
+  if (toAdd.length > 0) {
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('ClassSubject').insert(
+      toAdd.map((classId) => ({
+        id: generateAcadiaId('csj'),
+        tenantId,
+        classId,
+        subjectId,
+        groupingId: null,
+        createdAt: now,
+      })),
+    );
+    if (error) {
+      throw error;
+    }
+  }
+
+  for (const assignment of assignments) {
+    const { error } = await supabase
+      .from('ClassSubject')
+      .update({ groupingId: assignment.groupingId })
+      .eq('tenantId', tenantId)
+      .eq('subjectId', subjectId)
+      .eq('classId', assignment.classId);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('ClassSubjectSubBranch')
+    .delete()
+    .eq('tenantId', tenantId)
+    .eq('subjectId', subjectId);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  const { data: validSubBranches, error: subBranchLookupError } = await supabase
+    .from('SubjectSubBranch')
+    .select('id')
+    .eq('tenantId', tenantId)
+    .eq('subjectId', subjectId);
+
+  if (subBranchLookupError) {
+    throw subBranchLookupError;
+  }
+
+  const validSubBranchIds = new Set((validSubBranches ?? []).map((row) => row.id));
+  const invalidSubBranchIds = new Set<string>();
+
+  const now = new Date().toISOString();
+  const toInsert = assignments.flatMap((assignment) => {
+    if (assignment.subBranchIds === null || assignment.subBranchIds.length === 0) {
+      return [];
+    }
+    return assignment.subBranchIds.flatMap((subjectSubBranchId) => {
+      if (!validSubBranchIds.has(subjectSubBranchId)) {
+        invalidSubBranchIds.add(subjectSubBranchId);
+        return [];
+      }
+      return [
+        {
+          id: generateAcadiaId('cssb'),
+          tenantId,
+          classId: assignment.classId,
+          subjectId,
+          subjectSubBranchId,
+          createdAt: now,
+        },
+      ];
+    });
+  });
+
+  if (invalidSubBranchIds.size > 0) {
+    throw new Error(
+      `Invalid sub-branch assignment(s) for subject ${subjectId}: ${Array.from(invalidSubBranchIds).join(', ')}`,
+    );
+  }
+
+  if (toInsert.length > 0) {
+    const { error: insertError } = await supabase.from('ClassSubjectSubBranch').insert(toInsert);
+    if (insertError) {
+      throw insertError;
+    }
+  }
 }
 
 export type BulkAssignClassSubjectsResult = {
@@ -203,6 +503,7 @@ export async function bulkAssignClassSubjects(
         tenantId,
         classId,
         subjectId,
+        groupingId: null,
         createdAt: now,
       })),
     );

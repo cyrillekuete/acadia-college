@@ -54,7 +54,19 @@ describe('classFormSchema', () => {
       branch: 'GRAMMAR',
       staffProfileId: '',
       status: 'ACTIVE',
-      subjectIds: ['sub-1'],
+      subjectSelections: [{ subjectId: 'sub-1', subBranchIds: null, groupingId: null }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts partial sub-branch selections', () => {
+    const result = classFormSchema.safeParse({
+      name: 'Form 5 Science',
+      levelId: 'lvl-abc',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
+      status: 'ACTIVE',
+      subjectSelections: [{ subjectId: 'sub-1', subBranchIds: ['sb-1'], groupingId: 'grp-1' }],
     });
     expect(result.success).toBe(true);
   });
@@ -66,7 +78,7 @@ describe('classFormSchema', () => {
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
       status: 'ACTIVE',
-      subjectIds: [],
+      subjectSelections: [],
     });
     expect(result.success).toBe(false);
   });

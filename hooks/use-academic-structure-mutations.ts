@@ -13,8 +13,8 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import {
   bulkAssignClassSubjects,
-  insertClassSubjects,
-  syncClassSubjects,
+  insertClassSubjectSelections,
+  syncClassSubjectSelections,
 } from '@/lib/supabase/queries/class-subjects';
 import {
   buildClassDeleteBlockedMessage,
@@ -39,6 +39,8 @@ function invalidateStructureQueries(queryClient: ReturnType<typeof useQueryClien
   void queryClient.invalidateQueries({ queryKey: ['class-options'] });
   void queryClient.invalidateQueries({ queryKey: ['level-for-stream'] });
   void queryClient.invalidateQueries({ queryKey: ['subjects-for-class'] });
+  void queryClient.invalidateQueries({ queryKey: ['classes-for-subject'] });
+  void queryClient.invalidateQueries({ queryKey: ['subject-list'] });
 }
 
 async function nextLevelNumber(
@@ -184,7 +186,12 @@ export function useAcademicStructureMutations() {
         throwMutationError(error);
       }
       try {
-        await insertClassSubjects(supabase, tenantId, classId, values.subjectIds ?? []);
+        await insertClassSubjectSelections(
+          supabase,
+          tenantId,
+          classId,
+          values.subjectSelections ?? [],
+        );
       } catch (subjectError) {
         throwMutationError(subjectError);
       }
@@ -219,7 +226,12 @@ export function useAcademicStructureMutations() {
         throwMutationError(error);
       }
       try {
-        await syncClassSubjects(supabase, tenantId, id, values.subjectIds ?? []);
+        await syncClassSubjectSelections(
+          supabase,
+          tenantId,
+          id,
+          values.subjectSelections ?? [],
+        );
       } catch (subjectError) {
         throwMutationError(subjectError);
       }

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { SubjectAssignmentPanel } from '@/components/acadia/subjects/subject-assignment-panel';
+import { SubjectClassAssignmentPanel } from '@/components/acadia/subjects/subject-class-assignment-panel';
 import { SubjectMaterialsPanel } from '@/components/acadia/subjects/subject-materials-panel';
 import { SubjectTimetablePanel } from '@/components/acadia/subjects/subject-timetable-panel';
 import { TimetableSlotFormDialog } from '@/components/acadia/timetable/timetable-slot-form-dialog';
@@ -17,6 +18,10 @@ import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canEditSubject } from '@/lib/acadia/subject';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import {
+  parseAcademicBranch,
+  parseAcademicSubSystem,
+} from '@/lib/acadia/education-system';
 import {
   formatDateTime,
   formatRecordValue,
@@ -49,10 +54,11 @@ const SUBJECT_SELECT = `
   updatedAt,
   subSystem,
   branch,
+  groupingId,
   Level!Subject_levelId_tenantId_fkey ( number, labelEn ),
   Term!Subject_semesterId_tenantId_fkey ( number ),
   SubjectGrouping!Subject_groupingId_tenantId_fkey ( nameEn, nameFr ),
-  SubjectSubBranch ( name, nameFr, coefficient, sortOrder )
+  SubjectSubBranch ( id, name, nameFr, coefficient, sortOrder )
 `;
 
 type SubjectDetail = {
@@ -71,10 +77,12 @@ type SubjectDetail = {
   updatedAt: string;
   subSystem: string | null;
   branch: string | null;
+  groupingId: string | null;
   Level: unknown;
   Term: unknown;
   SubjectGrouping: unknown;
   SubjectSubBranch?: {
+    id: string;
     name: string;
     nameFr: string | null;
     coefficient: number | null;
@@ -109,6 +117,9 @@ export default function SubjectDetailPage({
   );
 
   const isActive = data ? canEditSubject(data.deactivatedAt) : false;
+  const subjectSubSystem = data ? parseAcademicSubSystem(data.subSystem) : null;
+  const subjectBranch = data ? parseAcademicBranch(data.branch) : null;
+  const hasValidStream = subjectSubSystem !== null && subjectBranch !== null;
   const title = data?.code ? `Subject — ${data.code}` : 'Subject detail';
 
   return (
@@ -126,6 +137,7 @@ export default function SubjectDetailPage({
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="classes">Classes</TabsTrigger>
               <TabsTrigger value="teachers">Teachers</TabsTrigger>
               <TabsTrigger value="materials">Materials</TabsTrigger>
               <TabsTrigger value="timetable">Timetable</TabsTrigger>
@@ -214,6 +226,28 @@ export default function SubjectDetailPage({
                 ]}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="classes">
+            {hasValidStream ? (
+              <SubjectClassAssignmentPanel
+                subjectId={id}
+                subSystem={subjectSubSystem}
+                branch={subjectBranch}
+                subjectDefaultGroupingId={data.groupingId}
+                subjectDefaultGroupingName={grouping?.nameEn ?? null}
+                subBranches={subBranches.map((branch) => ({
+                  id: branch.id,
+                  name: branch.name,
+                }))}
+                canManage={canManage && isActive}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Class assignments require a valid sub-system and branch on this subject.
+                Edit the subject to set its academic stream before assigning classes.
+              </p>
+            )}
           </TabsContent>
 
           <TabsContent value="teachers">

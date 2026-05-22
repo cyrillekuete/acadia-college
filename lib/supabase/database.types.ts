@@ -627,12 +627,13 @@ export type Database = {
           },
         ]
       }
-      ClassSubject: {
+      ClassSubjectSubBranch: {
         Row: {
           classId: string
           createdAt: string
           id: string
           subjectId: string
+          subjectSubBranchId: string
           tenantId: string
         }
         Insert: {
@@ -640,11 +641,69 @@ export type Database = {
           createdAt?: string
           id: string
           subjectId: string
+          subjectSubBranchId: string
           tenantId: string
         }
         Update: {
           classId?: string
           createdAt?: string
+          id?: string
+          subjectId?: string
+          subjectSubBranchId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ClassSubjectSubBranch_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubjectSubBranch_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubjectSubBranch_subjectSubBranchId_tenantId_fkey"
+            columns: ["tenantId", "subjectSubBranchId"]
+            isOneToOne: false
+            referencedRelation: "SubjectSubBranch"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubjectSubBranch_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ClassSubject: {
+        Row: {
+          classId: string
+          createdAt: string
+          groupingId: string | null
+          id: string
+          subjectId: string
+          tenantId: string
+        }
+        Insert: {
+          classId: string
+          createdAt?: string
+          groupingId?: string | null
+          id: string
+          subjectId: string
+          tenantId: string
+        }
+        Update: {
+          classId?: string
+          createdAt?: string
+          groupingId?: string | null
           id?: string
           subjectId?: string
           tenantId?: string
@@ -655,6 +714,13 @@ export type Database = {
             columns: ["tenantId", "classId"]
             isOneToOne: false
             referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubject_groupingId_tenantId_fkey"
+            columns: ["tenantId", "groupingId"]
+            isOneToOne: false
+            referencedRelation: "SubjectGrouping"
             referencedColumns: ["tenantId", "id"]
           },
           {

@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
+import { normalizeSubjectSelections } from '@/lib/acadia/class-subject-selections';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogBody,
@@ -24,8 +24,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -48,7 +46,8 @@ import {
 } from '@/lib/acadia/structure-schemas';
 import { classCreateConfirmCopy } from '@/lib/acadia/structure-messages';
 import { RegistryCreateConfirmDialog } from '@/components/acadia/academics/registry-create-confirm-dialog';
-import { fetchClassSubjectIds } from '@/lib/supabase/queries/class-subjects';
+import { SubjectClassMultiSelect } from '@/components/acadia/academics/subject-class-multi-select';
+import { fetchClassSubjectSelections } from '@/lib/supabase/queries/class-subjects';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
 import { useLevelOptions } from '@/hooks/use-academic-calendar-options';
@@ -98,18 +97,22 @@ export function ClassFormDialog({
       branch: defaultFilters?.branch ?? 'GRAMMAR',
       staffProfileId: '',
       status: 'ACTIVE',
-      subjectIds: [],
+      subjectSelections: [],
     },
   });
 
   const subSystem = form.watch('subSystem');
   const branch = form.watch('branch');
   const levelId = form.watch('levelId');
-  const subjectIds = form.watch('subjectIds');
 
   const { data: levels = [] } = useLevelOptions({ subSystem, branch });
   const { data: staff = [] } = useStaffOptions({ enabled: open });
-  const { data: availableSubjects = [], isLoading: subjectsLoading } = useSubjectsForClass({
+  const {
+    data: availableSubjects = [],
+    isLoading: subjectsLoading,
+    isError: subjectsError,
+    error: subjectsQueryError,
+  } = useSubjectsForClass({
     levelId,
     subSystem,
     branch,
@@ -126,11 +129,15 @@ export function ClassFormDialog({
     async function resetForm() {
       if (record && tenantId) {
         const supabase = requireBrowserClient();
-        let assignedSubjectIds: string[] = [];
+        let assignedSelections: ClassFormValues['subjectSelections'] = [];
         try {
-          assignedSubjectIds = await fetchClassSubjectIds(supabase, tenantId, record.id);
+          assignedSelections = await fetchClassSubjectSelections(
+            supabase,
+            tenantId,
+            record.id,
+          );
         } catch {
-          assignedSubjectIds = [];
+          assignedSelections = [];
         }
         form.reset({
           name: record.name,
@@ -139,7 +146,7 @@ export function ClassFormDialog({
           branch: record.branch,
           staffProfileId: record.staffProfileId ?? '',
           status: record.status,
-          subjectIds: assignedSubjectIds,
+          subjectSelections: assignedSelections,
         });
       } else {
         form.reset({
@@ -149,7 +156,7 @@ export function ClassFormDialog({
           branch: defaultFilters?.branch ?? 'GRAMMAR',
           staffProfileId: '',
           status: 'ACTIVE',
-          subjectIds: [],
+          subjectSelections: [],
         });
       }
     }
@@ -159,34 +166,21 @@ export function ClassFormDialog({
 
   useEffect(() => {
     const currentLevel = form.getValues('levelId');
-    if (currentLevel && !levels.some((l) => l.id === currentLevel)) {
+    if (currentLevel && !levels.some((level) => level.id === currentLevel)) {
       form.setValue('levelId', '');
     }
   }, [subSystem, branch, levels, form]);
 
   useEffect(() => {
-    const validIds = new Set(availableSubjects.map((s) => s.id));
-    const current = form.getValues('subjectIds') ?? [];
-    const next = current.filter((id) => validIds.has(id));
-    if (next.length !== current.length) {
-      form.setValue('subjectIds', next);
-    }
-  }, [levelId, availableSubjects, form]);
-
-  const toggleSubject = (subjectId: string, checked: boolean) => {
-    const current = form.getValues('subjectIds') ?? [];
-    if (checked) {
-      if (!current.includes(subjectId)) {
-        form.setValue('subjectIds', [...current, subjectId], { shouldDirty: true });
-      }
+    if (subjectsLoading || availableSubjects.length === 0) {
       return;
     }
-    form.setValue(
-      'subjectIds',
-      current.filter((id) => id !== subjectId),
-      { shouldDirty: true },
-    );
-  };
+    const current = form.getValues('subjectSelections') ?? [];
+    const next = normalizeSubjectSelections(current, availableSubjects);
+    if (JSON.stringify(next) !== JSON.stringify(current)) {
+      form.setValue('subjectSelections', next);
+    }
+  }, [levelId, availableSubjects, subjectsLoading, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (isEdit && record) {
@@ -217,15 +211,21 @@ export function ClassFormDialog({
     }
   };
 
+  const subjectsErrorMessage = subjectsError
+    ? subjectsQueryError instanceof Error
+      ? subjectsQueryError.message
+      : 'Failed to load subjects.'
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-h-[min(90dvh,720px)] max-w-lg overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{isEdit ? 'Edit class' : 'New class'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={onSubmit}>
-            <DialogBody className="space-y-4">
+          <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
+            <DialogBody className="min-h-0 flex-1 space-y-4 overflow-y-auto">
               <FormField
                 control={form.control}
                 name="name"
@@ -313,75 +313,25 @@ export function ClassFormDialog({
               />
               <FormField
                 control={form.control}
-                name="subjectIds"
-                render={() => (
+                name="subjectSelections"
+                render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center justify-between gap-2">
-                      <FormLabel>Subjects</FormLabel>
-                      {availableSubjects.length > 0 ? (
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto px-2 py-1 text-xs"
-                            onClick={() =>
-                              form.setValue(
-                                'subjectIds',
-                                availableSubjects.map((s) => s.id),
-                                { shouldDirty: true },
-                              )
-                            }
-                          >
-                            Select all
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto px-2 py-1 text-xs"
-                            onClick={() => form.setValue('subjectIds', [], { shouldDirty: true })}
-                          >
-                            Clear
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
+                    <FormLabel>Subjects</FormLabel>
                     {!levelId ? (
                       <p className="text-sm text-muted-foreground">
                         Select a level to see subjects.
                       </p>
-                    ) : subjectsLoading ? (
-                      <p className="text-sm text-muted-foreground">Loading subjects…</p>
-                    ) : availableSubjects.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No subjects found for this level and stream.
-                      </p>
                     ) : (
-                      <ScrollArea className="h-40 rounded-md border p-3">
-                        <div className="space-y-2">
-                          {availableSubjects.map((subject) => {
-                            const checked = (subjectIds ?? []).includes(subject.id);
-                            return (
-                              <div key={subject.id} className="flex items-center gap-2">
-                                <Checkbox
-                                  id={`class-subject-${subject.id}`}
-                                  checked={checked}
-                                  onCheckedChange={(value) =>
-                                    toggleSubject(subject.id, value === true)
-                                  }
-                                />
-                                <Label
-                                  htmlFor={`class-subject-${subject.id}`}
-                                  className="cursor-pointer text-sm font-normal"
-                                >
-                                  {subject.code} — {subject.nameEn}
-                                </Label>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </ScrollArea>
+                      <FormControl>
+                        <SubjectClassMultiSelect
+                          options={availableSubjects}
+                          value={field.value ?? []}
+                          onChange={field.onChange}
+                          loading={subjectsLoading}
+                          error={subjectsErrorMessage}
+                          emptyMessage="No subjects found for this level and stream."
+                        />
+                      </FormControl>
                     )}
                     <FormMessage />
                   </FormItem>
@@ -448,7 +398,7 @@ export function ClassFormDialog({
               />
             </DialogBody>
             {isEdit && record ? (
-              <p className="px-6 pb-2 text-sm text-muted-foreground">
+              <p className="shrink-0 px-6 pb-2 text-sm text-muted-foreground">
                 <Link
                   href={
                     activeYearId
@@ -461,7 +411,7 @@ export function ClassFormDialog({
                 </Link>
               </p>
             ) : null}
-            <DialogFooter>
+            <DialogFooter className="shrink-0">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>

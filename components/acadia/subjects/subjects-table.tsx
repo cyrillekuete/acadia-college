@@ -49,10 +49,12 @@ export function SubjectsTable({
   catalogFilters,
   listFilters,
   emptyMessage,
+  onAssignToClasses,
 }: {
   catalogFilters: CatalogFilters;
   listFilters: SubjectListFilters;
   emptyMessage?: string;
+  onAssignToClasses?: (row: SubjectListRowView) => void;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -218,6 +220,9 @@ export function SubjectsTable({
           }
           return (
             <RegistryRowActions
+              onAssign={
+                onAssignToClasses ? () => onAssignToClasses(row.original) : undefined
+              }
               onEdit={() => router.push(`/subjects/${row.original.id}/edit`)}
               onDelete={() => {
                 if (
@@ -233,7 +238,7 @@ export function SubjectsTable({
     }
 
     return base;
-  }, [router, deactivateSubject, reactivateSubject, canManage]);
+  }, [router, deactivateSubject, reactivateSubject, canManage, onAssignToClasses]);
 
   const table = useReactTable({
     data: filtered,

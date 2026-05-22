@@ -1,6 +1,6 @@
 'use client';
 
-import { Pencil, Trash2 } from '@/lib/icons';
+import { BookOpen, Pencil, Trash2 } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
@@ -8,9 +8,11 @@ import { canWriteRegistry } from '@/lib/acadia/roles';
 export function RegistryRowActions({
   onEdit,
   onDelete,
+  onAssign,
 }: {
   onEdit: () => void;
   onDelete?: () => void;
+  onAssign?: () => void;
 }) {
   const { data: session } = useAcadiaCollegeSession();
   if (!canWriteRegistry(session?.roleSlug)) {
@@ -19,6 +21,17 @@ export function RegistryRowActions({
 
   return (
     <div className="flex justify-end gap-1">
+      {onAssign ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onAssign}
+          aria-label="Assign to classes"
+        >
+          <BookOpen className="size-4" />
+        </Button>
+      ) : null}
       <Button type="button" variant="ghost" size="icon" onClick={onEdit} aria-label="Edit">
         <Pencil className="size-4" />
       </Button>
