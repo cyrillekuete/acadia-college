@@ -74,7 +74,7 @@ export function AttendanceEntryGrid({
 
       const { data: subject, error: subjectError } = await supabase
         .from('Subject')
-        .select('specialtyId, levelId')
+        .select('subSystem, branch, levelId')
         .eq('id', subjectId)
         .single();
       if (subjectError) {
@@ -95,7 +95,8 @@ export function AttendanceEntryGrid({
         )
         .eq('tenantId', tenantId!)
         .eq('academicYearId', academicYearId)
-        .eq('specialtyId', subject.specialtyId)
+        .eq('subSystem', subject.subSystem)
+        .eq('branch', subject.branch)
         .eq('levelId', subject.levelId)
         .eq('status', 'ACTIVE');
 
@@ -210,7 +211,7 @@ export function AttendanceEntryGrid({
                     {user?.name ?? student.registrationNumber}
                   </span>
                   <span className="text-muted-foreground text-xs block">
-                    {student.registrationNumber}
+                    Student ID: {student.registrationNumber}
                   </span>
                 </TableCell>
                 <TableCell>

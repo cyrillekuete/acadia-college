@@ -1,5 +1,5 @@
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
-import type { EnrollmentApplicationFormValues } from '@/lib/acadia/enrollment-schemas';
+import type { EnrollmentApplicationInput } from '@/lib/acadia/enrollment-schemas';
 
 export function applicantDisplayName(
   firstNameEn?: string | null,
@@ -23,22 +23,18 @@ export function generateRegistrationNumber(academicYearLabel?: string): string {
   return `AC-${yearPart}-${suffix}`;
 }
 
-/** Matricule for manual student create; uses override when provided. */
-export function resolveStudentMatricule(
-  override: string | undefined,
-  academicYearLabel?: string,
-): string {
-  const trimmed = override?.trim();
-  if (trimmed) {
-    return trimmed;
-  }
-  return generateRegistrationNumber(academicYearLabel);
+/** Optional ministry matricule from manual input only (never auto-generated). */
+export function normalizeMatriculeNumber(
+  value: string | undefined | null,
+): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }
 
 export function buildEnrollmentApplicationRow(
   tenantId: string,
   id: string,
-  values: EnrollmentApplicationFormValues,
+  values: EnrollmentApplicationInput,
   now: string,
 ) {
   return {
@@ -57,7 +53,6 @@ export function buildEnrollmentApplicationRow(
     email: values.email.trim().toLowerCase(),
     phone: values.phone?.trim() || null,
     dateOfBirth: values.dateOfBirth ?? null,
-    specialtyId: values.specialtyId,
     levelId: values.levelId,
     academicYearId: values.academicYearId,
     subSystem: values.subSystem as AcademicSubSystem,

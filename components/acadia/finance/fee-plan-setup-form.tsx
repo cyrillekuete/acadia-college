@@ -24,15 +24,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  specialtyFeePlanSchema,
-  type SpecialtyFeePlanFormValues,
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+  branchLabel,
+  levelDisplayLabel,
+  subSystemLabel,
+} from '@/lib/acadia/education-system';
+import {
+  streamFeePlanSchema,
+  type StreamFeePlanFormValues,
 } from '@/lib/acadia/finance-schemas';
 import {
   formatMoneyMinor,
   parseMoneyToMinor,
   sumInstallmentTemplates,
 } from '@/lib/acadia/finance';
-import { useSpecialtyOptions } from '@/hooks/use-enrollment-catalog-options';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import {
   isAcadiaTenantQueryEnabled,
@@ -50,35 +56,37 @@ const defaultInstallment = {
 };
 
 export function FeePlanSetupForm() {
-  const { saveSpecialtyFeePlan } = useFinanceMutations();
-  const { data: specialties = [] } = useSpecialtyOptions();
+  const { saveStreamFeePlan } = useFinanceMutations();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
 
-  const form = useForm<SpecialtyFeePlanFormValues>({
-    resolver: zodResolver(specialtyFeePlanSchema),
+  const form = useForm<StreamFeePlanFormValues>({
+    resolver: zodResolver(streamFeePlanSchema),
     defaultValues: {
-      specialtyId: '',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
       installments: [{ ...defaultInstallment }],
     },
   });
 
-  const specialtyId = form.watch('specialtyId');
+  const subSystem = form.watch('subSystem');
+  const branch = form.watch('branch');
   const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'installments',
   });
 
   const planQuery = useQuery({
-    queryKey: ['fee-plan', tenantId, specialtyId],
+    queryKey: ['fee-plan', tenantId, subSystem, branch],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
-        .from('SpecialtyFeePlan')
+        .from('StreamFeePlan')
         .select('installments')
         .eq('tenantId', tenantId!)
-        .eq('specialtyId', specialtyId)
+        .eq('subSystem', subSystem)
+        .eq('branch', branch)
         .maybeSingle();
       if (error) {
         throw error;
@@ -86,12 +94,13 @@ export function FeePlanSetupForm() {
       return data;
     },
     enabled:
-      !!specialtyId &&
+      !!subSystem &&
+      !!branch &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
   useEffect(() => {
-    if (!specialtyId || planQuery.isLoading) {
+    if (!subSystem || !branch || planQuery.isLoading) {
       return;
     }
     const rows = planQuery.data?.installments;
@@ -108,7 +117,7 @@ export function FeePlanSetupForm() {
     } else {
       replace([{ ...defaultInstallment, installmentNumber: 1 }]);
     }
-  }, [specialtyId, planQuery.data, planQuery.isLoading, replace]);
+  }, [subSystem, branch, planQuery.data, planQuery.isLoading, replace]);
 
   const installments = form.watch('installments');
   const totalMinor = sumInstallmentTemplates(
@@ -119,36 +128,62 @@ export function FeePlanSetupForm() {
   );
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await saveSpecialtyFeePlan.mutateAsync(values);
+    await saveStreamFeePlan.mutateAsync(values);
   });
 
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} className="space-y-6 max-w-3xl">
-        <FormField
-          control={form.control}
-          name="specialtyId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Specialty</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select specialty" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {specialties.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.code} — {s.nameEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="subSystem"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sub-system</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select sub-system" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {ACADEMIC_SUB_SYSTEMS.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {subSystemLabel(value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="branch"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Branch</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {ACADEMIC_BRANCHES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {branchLabel(value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {planQuery.isError ? (
           <p className="text-sm text-destructive">
@@ -261,8 +296,8 @@ export function FeePlanSetupForm() {
         </div>
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={saveSpecialtyFeePlan.isPending}>
-            {saveSpecialtyFeePlan.isPending ? (
+          <Button type="submit" disabled={saveStreamFeePlan.isPending}>
+            {saveStreamFeePlan.isPending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : null}
             Save fee plan

@@ -10,7 +10,6 @@ import {
 const catalogFields = {
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
   branch: z.enum(ACADEMIC_BRANCHES),
-  specialtyId: z.string().min(1, 'Specialty is required.'),
   levelIds: z.array(z.string()).min(1, 'Select at least one level.'),
 };
 

@@ -8,7 +8,7 @@ import {
   buildEnrollmentApplicationRow,
   canEditEnrollmentApplication,
   generateRegistrationNumber,
-  resolveStudentMatricule,
+  normalizeMatriculeNumber,
 } from '@/lib/acadia/enrollment';
 import {
   enrollmentApplicationSchema,
@@ -29,7 +29,6 @@ describe('enrollmentApplicationSchema', () => {
       email: 'jane@school.edu',
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
-      specialtyId: 'spec-1',
       levelId: 'level-1',
       academicYearId: 'year-1',
       preferredLocale: 'en',
@@ -45,7 +44,6 @@ describe('enrollmentApplicationSchema', () => {
       email: 'jane@school.edu',
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
-      specialtyId: 'spec-1',
       levelId: 'level-1',
       academicYearId: 'year-1',
       preferredLocale: 'en',
@@ -62,7 +60,6 @@ describe('enrollmentApplicationSchema', () => {
       email: '',
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
-      specialtyId: 'spec-1',
       levelId: 'level-1',
       academicYearId: 'year-1',
       preferredLocale: 'en',
@@ -105,7 +102,6 @@ describe('enrollment helpers', () => {
         studentProfileId: '',
         subSystem: 'FRENCH',
         branch: 'TECHNICAL',
-        specialtyId: 'spec-fr-tech',
         levelId: 'level-2',
         academicYearId: 'year-2026',
       },
@@ -126,10 +122,11 @@ describe('enrollment helpers', () => {
     expect(generateRegistrationNumber('2025-2026')).toMatch(/^AC-2026-/);
   });
 
-  it('resolves student matricule from override or academic year', () => {
-    expect(resolveStudentMatricule('AC-2026-CUSTOM')).toBe('AC-2026-CUSTOM');
-    expect(resolveStudentMatricule('', '2025-2026')).toMatch(/^AC-2026-/);
-    expect(resolveStudentMatricule(undefined, '2024-2025')).toMatch(/^AC-2025-/);
+  it('normalizes optional ministry matricule', () => {
+    expect(normalizeMatriculeNumber('  GOV-123  ')).toBe('GOV-123');
+    expect(normalizeMatriculeNumber('')).toBeNull();
+    expect(normalizeMatriculeNumber(undefined)).toBeNull();
+    expect(normalizeMatriculeNumber('   ')).toBeNull();
   });
 
   it('only allows editing pending applications', () => {
@@ -142,6 +139,7 @@ describe('studentProfileEditSchema', () => {
   it('accepts valid profile edits', () => {
     const result = studentProfileEditSchema.safeParse({
       registrationNumber: 'AC-2026-001',
+      matriculeNumber: '',
       isActive: true,
       alumniDirectoryOptIn: false,
       alumniSince: '',
@@ -155,7 +153,8 @@ describe('studentProfileEditSchema', () => {
 describe('studentClassMigrationSchema', () => {
   it('requires target placement fields', () => {
     const result = studentClassMigrationSchema.safeParse({
-      specialtyId: 'spec-1',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
       levelId: 'level-2',
       academicYearId: 'year-1',
     });

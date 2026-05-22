@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  phoneCountryField,
+  phoneNationalField,
+  refinePhoneWithCountry,
+} from '@/lib/acadia/phone-schemas';
 
 export const subsystemEnum = z.enum(['english', 'french']);
 export const branchEnum = z.enum(['grammar', 'technical', 'commercial']);
@@ -19,18 +24,18 @@ export const studentCreateSchema = z
 
     // Contact
     email: z.string().email('Valid student email required'),
-    phone: z.string().optional(),
+    phone_country: phoneCountryField(),
+    phone: phoneNationalField(),
     address: z.string().optional(),
     country: z.string().optional(),
     city: z.string().optional(),
     region: z.string().optional(),
 
     // Academic
-    subsystem: subsystemEnum.optional(),
-    branch: branchEnum.optional(),
+    subsystem: subsystemEnum,
+    branch: branchEnum,
     academic_year: z.string().optional(),
     academic_year_id: z.string().min(1, 'Academic year is required'),
-    specialty_id: z.string().min(1, 'Specialty is required'),
     level_id: z.string().min(1, 'Level is required'),
     class_id: z.string().optional(),
     class_name: z.string().optional(),
@@ -40,6 +45,7 @@ export const studentCreateSchema = z
     enrollment_date: z.string().optional(),
     matricule_number: z
       .string()
+      .max(40, 'Matricule must be at most 40 characters.')
       .optional()
       .transform((value) => (value?.trim() ? value.trim() : undefined)),
 
@@ -53,21 +59,64 @@ export const studentCreateSchema = z
         (value) => !value || z.string().email().safeParse(value).success,
         'Valid parent email required',
       ),
-    parent_phone: z
-      .string()
-      .min(1, 'Parent / guardian phone is required')
-      .transform((value) => value.trim()),
+    parent_phone_country: phoneCountryField(),
+    parent_phone: phoneNationalField(
+      true,
+      'Parent / guardian phone is required',
+    ),
     parent_address: z.string().optional(),
     parent_occupation: z.string().optional(),
     parent_relationship: relationshipEnum,
 
     // Optional medical / emergency
     emergency_contact_name: z.string().optional(),
-    emergency_contact_phone: z.string().optional(),
+    emergency_contact_phone_country: phoneCountryField(),
+    emergency_contact_phone: phoneNationalField(),
     emergency_contact_relationship: z.string().optional(),
     blood_group: z.string().optional(),
     allergies: z.string().optional(),
     medical_conditions: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    refinePhoneWithCountry(
+      data,
+      { phoneKey: 'phone', countryKey: 'phone_country' },
+      ctx,
+    );
+    refinePhoneWithCountry(
+      data,
+      {
+        phoneKey: 'parent_phone',
+        countryKey: 'parent_phone_country',
+        required: true,
+        requiredMessage: 'Parent / guardian phone is required',
+      },
+      ctx,
+    );
+    refinePhoneWithCountry(
+      data,
+      {
+        phoneKey: 'emergency_contact_phone',
+        countryKey: 'emergency_contact_phone_country',
+      },
+      ctx,
+    );
+  })
+  .transform((data) => {
+    const {
+      phone_country: _phoneCountry,
+      parent_phone_country: _parentPhoneCountry,
+      emergency_contact_phone_country: _emergencyPhoneCountry,
+      ...rest
+    } = data;
+
+    return {
+      ...rest,
+      phone: rest.phone?.trim() ? rest.phone : undefined,
+      emergency_contact_phone: rest.emergency_contact_phone?.trim()
+        ? rest.emergency_contact_phone
+        : undefined,
+    };
   })
   .refine(
     (d) => {

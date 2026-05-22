@@ -10,7 +10,6 @@ export type ClassWithPolicy = {
   id: string;
   name: string;
   levelId: string;
-  specialtyId: string | null;
   subSystem: string;
   branch: string;
   policy: ClassPromotionPolicyRow | null;
@@ -92,7 +91,6 @@ export async function fetchActiveClassesForPromotion(
   filters?: {
     subSystem?: string;
     branch?: string;
-    specialtyId?: string;
     levelId?: string;
   },
 ): Promise<
@@ -100,14 +98,13 @@ export async function fetchActiveClassesForPromotion(
     id: string;
     name: string;
     levelId: string;
-    specialtyId: string | null;
     subSystem: string;
     branch: string;
   }[]
 > {
   let query = supabase
     .from('Class')
-    .select('id, name, levelId, specialtyId, subSystem, branch')
+    .select('id, name, levelId, subSystem, branch')
     .eq('tenantId', tenantId)
     .eq('status', 'ACTIVE')
     .order('name', { ascending: true });
@@ -123,9 +120,6 @@ export async function fetchActiveClassesForPromotion(
       'branch',
       filters.branch as Database['public']['Enums']['AcademicBranch'],
     );
-  }
-  if (filters?.specialtyId) {
-    query = query.eq('specialtyId', filters.specialtyId);
   }
   if (filters?.levelId) {
     query = query.eq('levelId', filters.levelId);
@@ -205,7 +199,8 @@ export async function fetchEnrollmentsForClassPromotion(
       `
       id,
       studentProfileId,
-      specialtyId,
+      subSystem,
+      branch,
       levelId,
       classId,
       StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
@@ -229,14 +224,15 @@ export async function fetchUnassignedEnrollments(
   supabase: Client,
   tenantId: string,
   academicYearId: string,
-  filters?: { specialtyId?: string; levelId?: string },
+  filters?: { subSystem?: string; branch?: string; levelId?: string },
 ) {
   let query = supabase
     .from('StudentEnrollment')
     .select(
       `
       studentProfileId,
-      specialtyId,
+      subSystem,
+      branch,
       levelId,
       StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
         registrationNumber,
@@ -249,8 +245,17 @@ export async function fetchUnassignedEnrollments(
     .eq('status', 'ENROLLED')
     .is('classId', null);
 
-  if (filters?.specialtyId) {
-    query = query.eq('specialtyId', filters.specialtyId);
+  if (filters?.subSystem) {
+    query = query.eq(
+      'subSystem',
+      filters.subSystem as Database['public']['Enums']['AcademicSubSystem'],
+    );
+  }
+  if (filters?.branch) {
+    query = query.eq(
+      'branch',
+      filters.branch as Database['public']['Enums']['AcademicBranch'],
+    );
   }
   if (filters?.levelId) {
     query = query.eq('levelId', filters.levelId);
@@ -507,7 +512,6 @@ export async function resolveClassIdsForBulkCompute(
   }
 
   const classes = await fetchActiveClassesForPromotion(supabase, tenantId, {
-    specialtyId: filters.specialtyId,
     subSystem: filters.subSystem,
     branch: filters.branch,
   });

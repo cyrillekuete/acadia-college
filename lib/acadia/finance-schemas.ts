@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+} from '@/lib/acadia/education-system';
+import {
   FEE_BUDGET_CATEGORIES,
   FEE_INSTALLMENT_STATUSES,
   FINANCE_LEDGER_TYPES,
@@ -17,22 +21,32 @@ export type FeeInstallmentTemplateValues = z.infer<
   typeof feeInstallmentTemplateSchema
 >;
 
-export const specialtyFeePlanSchema = z.object({
-  specialtyId: z.string().min(1, 'Specialty is required.'),
+export const streamFeePlanSchema = z.object({
+  subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
+    required_error: 'Sub-system is required.',
+  }),
+  branch: z.enum(ACADEMIC_BRANCHES, {
+    required_error: 'Branch is required.',
+  }),
   installments: z
     .array(feeInstallmentTemplateSchema)
     .min(1, 'Add at least one installment.'),
 });
 
-export type SpecialtyFeePlanFormValues = z.infer<typeof specialtyFeePlanSchema>;
+export type StreamFeePlanFormValues = z.infer<typeof streamFeePlanSchema>;
 
 export const createStudentFeeAccountSchema = z.object({
   studentProfileId: z.string().min(1, 'Student is required.'),
   academicYearId: z.string().min(1, 'Academic year is required.'),
-  specialtyId: z.string().min(1, 'Specialty is required.'),
+  subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
+    required_error: 'Sub-system is required.',
+  }),
+  branch: z.enum(ACADEMIC_BRANCHES, {
+    required_error: 'Branch is required.',
+  }),
   studentEnrollmentId: z.string().optional().or(z.literal('')),
   feeCurrency: z.string().min(1),
-  useSpecialtyPlan: z.boolean().optional(),
+  useStreamPlan: z.boolean().optional(),
 });
 
 export type CreateStudentFeeAccountValues = z.infer<

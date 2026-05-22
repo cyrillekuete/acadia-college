@@ -25,7 +25,8 @@ export type LevelRow = {
 
 export type PromotionCandidateInput = {
   studentProfileId: string;
-  specialtyId: string;
+  subSystem: string;
+  branch: string;
   levelId: string;
   classId: string;
   enrollmentId?: string;
@@ -38,7 +39,8 @@ export type PromotionCandidateInput = {
 
 export type PromotionCandidate = {
   studentProfileId: string;
-  specialtyId: string;
+  subSystem: string;
+  branch: string;
   classId: string;
   enrollmentId?: string;
   fromLevelId: string;
@@ -56,7 +58,8 @@ export type PromotionCandidate = {
 
 export type YearRolloverEnrollmentPlan = {
   studentProfileId: string;
-  specialtyId: string;
+  subSystem: string;
+  branch: string;
   targetLevelId: string;
   targetClassId: string | null;
   finalAction: PromotionAction;
@@ -146,7 +149,6 @@ export function recommendedPromotionAction(
 
 export function findNextLevel(
   levels: LevelRow[],
-  _specialtyId: string,
   currentLevelId: string,
 ): LevelRow | null {
   const current = levels.find((l) => l.id === currentLevelId);
@@ -189,14 +191,13 @@ export function resolveFinalPromotionAction(
   recommended: RecommendedPromotionResult,
   yearAverage: number | null,
   levels: LevelRow[],
-  specialtyId: string,
   fromLevelId: string,
   minPromotionAverage: number,
   manualFinalAction?: PromotionAction | null,
 ): { finalAction: PromotionAction; targetLevelId: string | null } {
   if (manualFinalAction) {
     if (manualFinalAction === 'PROMOTE') {
-      const next = findNextLevel(levels, specialtyId, fromLevelId);
+      const next = findNextLevel(levels, fromLevelId);
       return {
         finalAction: next ? 'PROMOTE' : 'GRADUATE',
         targetLevelId: next?.id ?? null,
@@ -212,7 +213,7 @@ export function resolveFinalPromotionAction(
     return { finalAction: 'REPEAT', targetLevelId: fromLevelId };
   }
 
-  const next = findNextLevel(levels, specialtyId, fromLevelId);
+  const next = findNextLevel(levels, fromLevelId);
   if (next) {
     return { finalAction: 'PROMOTE', targetLevelId: next.id };
   }
@@ -233,7 +234,8 @@ export function buildPromotionCandidates(
     if (!input.marksComplete && !input.manualFinalAction) {
       return {
         studentProfileId: input.studentProfileId,
-        specialtyId: input.specialtyId,
+        subSystem: input.subSystem,
+        branch: input.branch,
         classId: input.classId,
         enrollmentId: input.enrollmentId,
         fromLevelId: input.levelId,
@@ -259,7 +261,8 @@ export function buildPromotionCandidates(
     if (recommended === 'MANUAL_ONLY' && !manual) {
       return {
         studentProfileId: input.studentProfileId,
-        specialtyId: input.specialtyId,
+        subSystem: input.subSystem,
+        branch: input.branch,
         classId: input.classId,
         enrollmentId: input.enrollmentId,
         fromLevelId: input.levelId,
@@ -282,7 +285,6 @@ export function buildPromotionCandidates(
       recommended,
       input.yearAverage,
       levels,
-      input.specialtyId,
       input.levelId,
       input.policy.minPromotionAverage,
       manual,
@@ -294,7 +296,8 @@ export function buildPromotionCandidates(
 
     return {
       studentProfileId: input.studentProfileId,
-      specialtyId: input.specialtyId,
+      subSystem: input.subSystem,
+      branch: input.branch,
       classId: input.classId,
       enrollmentId: input.enrollmentId,
       fromLevelId: input.levelId,
@@ -438,7 +441,8 @@ export function planYearRollover(input: {
       graduated += 1;
       enrollments.push({
         studentProfileId: row.studentProfileId,
-        specialtyId: row.specialtyId,
+        subSystem: row.subSystem,
+        branch: row.branch,
         targetLevelId: row.fromLevelId,
         targetClassId: null,
         finalAction: 'GRADUATE',
@@ -456,7 +460,8 @@ export function planYearRollover(input: {
       promoted += 1;
       enrollments.push({
         studentProfileId: row.studentProfileId,
-        specialtyId: row.specialtyId,
+        subSystem: row.subSystem,
+        branch: row.branch,
         targetLevelId: row.targetLevelId,
         targetClassId: row.targetClassId,
         finalAction: 'PROMOTE',
@@ -474,7 +479,8 @@ export function planYearRollover(input: {
       repeated += 1;
       enrollments.push({
         studentProfileId: row.studentProfileId,
-        specialtyId: row.specialtyId,
+        subSystem: row.subSystem,
+        branch: row.branch,
         targetLevelId: row.fromLevelId,
         targetClassId: row.classId,
         finalAction: 'REPEAT',

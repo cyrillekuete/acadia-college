@@ -15,7 +15,6 @@ export const FK = {
   // StudentEnrollment
   StudentEnrollment_studentProfile: 'StudentEnrollment_studentProfileId_tenantId_fkey',
   StudentEnrollment_academicYear: 'StudentEnrollment_academicYearId_tenantId_fkey',
-  StudentEnrollment_specialty: 'StudentEnrollment_specialtyId_tenantId_fkey',
   StudentEnrollment_level: 'StudentEnrollment_levelId_tenantId_fkey',
   StudentEnrollment_class: 'StudentEnrollment_classId_tenantId_fkey',
 
@@ -34,12 +33,10 @@ export const FK = {
   // StudentFeeAccount
   StudentFeeAccount_studentProfile: 'StudentFeeAccount_studentProfileId_tenantId_fkey',
   StudentFeeAccount_academicYear: 'StudentFeeAccount_academicYearId_tenantId_fkey',
-  StudentFeeAccount_specialty: 'StudentFeeAccount_specialtyId_tenantId_fkey',
 
   // EnrollmentApplication
   EnrollmentApplication_studentProfile: 'EnrollmentApplication_studentProfileId_tenantId_fkey',
   EnrollmentApplication_academicYear: 'EnrollmentApplication_academicYearId_tenantId_fkey',
-  EnrollmentApplication_specialty: 'EnrollmentApplication_specialtyId_tenantId_fkey',
   EnrollmentApplication_level: 'EnrollmentApplication_levelId_tenantId_fkey',
 
   // CourseworkSubmission / CourseworkTask
@@ -60,13 +57,11 @@ export const FK = {
   ExamSession_term: 'ExamSession_semesterId_tenantId_fkey',
 
   // Subject
-  Subject_specialty: 'Subject_specialtyId_tenantId_fkey',
   Subject_level: 'Subject_levelId_tenantId_fkey',
   Subject_term: 'Subject_semesterId_tenantId_fkey',
   Subject_grouping: 'Subject_groupingId_tenantId_fkey',
 
   // StudentProfile (nested)
-  StudentProfile_specialty: 'StudentProfile_specialtyId_tenantId_fkey',
   StudentProfile_user: 'StudentProfile_userId_tenantId_fkey',
 
   // SubjectAssignment

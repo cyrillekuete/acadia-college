@@ -24,12 +24,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+  branchLabel,
+  subSystemLabel,
+} from '@/lib/acadia/education-system';
+import {
   createStudentFeeAccountSchema,
   type CreateStudentFeeAccountValues,
 } from '@/lib/acadia/finance-schemas';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
-import { useSpecialtyOptions } from '@/hooks/use-enrollment-catalog-options';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import {
   isAcadiaTenantQueryEnabled,
@@ -42,7 +47,6 @@ import { unwrapRelation } from '@/lib/acadia/record-display';
 export function CreateFeeAccountForm() {
   const { createStudentFeeAccount } = useFinanceMutations();
   const { activeYearId } = useActiveAcademicYear();
-  const { data: specialties = [] } = useSpecialtyOptions();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -52,10 +56,11 @@ export function CreateFeeAccountForm() {
     defaultValues: {
       studentProfileId: '',
       academicYearId: '',
-      specialtyId: '',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
       studentEnrollmentId: '',
       feeCurrency: 'XAF',
-      useSpecialtyPlan: true,
+      useStreamPlan: true,
     },
   });
 
@@ -71,7 +76,8 @@ export function CreateFeeAccountForm() {
           `
           id,
           studentProfileId,
-          specialtyId,
+          subSystem,
+          branch,
           StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             registrationNumber,
             User!StudentProfile_userId_tenantId_fkey ( name )
@@ -93,7 +99,8 @@ export function CreateFeeAccountForm() {
         return {
           enrollmentId: row.id as string,
           studentProfileId: row.studentProfileId as string,
-          specialtyId: row.specialtyId as string,
+          subSystem: row.subSystem as CreateStudentFeeAccountValues['subSystem'],
+          branch: row.branch as CreateStudentFeeAccountValues['branch'],
           label: `${profile?.registrationNumber ?? '—'} — ${user?.name ?? 'Student'}`,
         };
       });
@@ -149,7 +156,8 @@ export function CreateFeeAccountForm() {
                   );
                   if (row) {
                     form.setValue('studentEnrollmentId', row.enrollmentId);
-                    form.setValue('specialtyId', row.specialtyId);
+                    form.setValue('subSystem', row.subSystem);
+                    form.setValue('branch', row.branch);
                   }
                 }}
               >
@@ -176,30 +184,56 @@ export function CreateFeeAccountForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="specialtyId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Specialty</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select specialty" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {specialties.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.code} — {s.nameEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="subSystem"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Sub-system</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select sub-system" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {ACADEMIC_SUB_SYSTEMS.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {subSystemLabel(value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="branch"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Branch</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {ACADEMIC_BRANCHES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {branchLabel(value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="flex gap-2">
           <Button type="submit" disabled={createStudentFeeAccount.isPending || !activeYearId}>

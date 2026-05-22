@@ -7,7 +7,8 @@ export type StudentDetailRecord = DummyStudent & {
   profileId: string;
   userId: string;
   registrationNumber: string;
-  specialtyId: string | null;
+  subSystem: string | null;
+  branch: string | null;
   levelId: string | null;
   alumniDirectoryOptIn: boolean;
   alumniSince: string | null;
@@ -55,8 +56,10 @@ async function fetchFromStudentProfile(
       `
       id,
       registrationNumber,
+      matriculeNumber,
       isActive,
-      specialtyId,
+      subSystem,
+      branch,
       currentLevelId,
       alumniDirectoryOptIn,
       alumniSince,
@@ -67,8 +70,7 @@ async function fetchFromStudentProfile(
         country,
         timezone,
         emailVerifiedAt
-      ),
-      Specialty!StudentProfile_specialtyId_tenantId_fkey ( subSystem, branch )
+      )
     `,
     )
     .eq('id', profileId)
@@ -87,9 +89,7 @@ async function fetchFromStudentProfile(
     timezone?: string | null;
     emailVerifiedAt?: string | null;
   }>(profile.User);
-  const specialty = unwrapRelation<{ subSystem?: string; branch?: string }>(
-    profile.Specialty,
-  );
+
   const { first, last } = splitName(user?.name);
 
   let className = '—';
@@ -133,18 +133,19 @@ async function fetchFromStudentProfile(
 
   return {
     id: profile.id,
-    student_id: profile.id,
+    student_id: profile.registrationNumber,
     profileId: profile.id,
     userId: user?.id ?? '',
     registrationNumber: profile.registrationNumber,
+    registration_number: profile.registrationNumber,
     first_name: first,
     last_name: last,
     email: user?.email ?? '',
     avatar: null,
     class_name: className,
-    subsystem: specialty?.subSystem ?? null,
-    branch: specialty?.branch ?? null,
-    matricule_number: profile.registrationNumber,
+    subsystem: profile.subSystem as string | null,
+    branch: profile.branch as string | null,
+    matricule_number: (profile.matriculeNumber as string | null) ?? null,
     enrollment_status: enrollmentStatus,
     status: profile.isActive === false ? 'inactive' : 'active',
     enrollment_date: enrollmentDate,
@@ -152,7 +153,7 @@ async function fetchFromStudentProfile(
     total_fees: feeByProfile.total,
     paid_fees: feeByProfile.paid,
     fees_status: feeByProfile.status,
-    specialtyId: profile.specialtyId as string | null,
+    subSystem: profile.subSystem as string | null,
     levelId: profile.currentLevelId as string | null,
     alumniDirectoryOptIn: profile.alumniDirectoryOptIn as boolean,
     alumniSince: (profile.alumniSince as string | null) ?? null,
@@ -237,7 +238,8 @@ async function fetchLegacyStudentDetail(
     student_id: row.student_id,
     profileId: row.id,
     userId: (link?.user_id as string) ?? '',
-    registrationNumber: row.matricule_number ?? row.student_id,
+    registrationNumber: row.student_id,
+    registration_number: null,
     first_name: row.first_name,
     last_name: row.last_name,
     email: row.email ?? '',
@@ -253,7 +255,7 @@ async function fetchLegacyStudentDetail(
     total_fees: 0,
     paid_fees: 0,
     fees_status: null,
-    specialtyId: null,
+    subSystem: null,
     levelId: null,
     alumniDirectoryOptIn: false,
     alumniSince: null,
@@ -292,8 +294,9 @@ export async function fetchStudentDetail(
     ...dummy,
     profileId: dummy.id,
     userId: '',
-    registrationNumber: dummy.matricule_number ?? dummy.student_id,
-    specialtyId: null,
+    registrationNumber: dummy.registration_number ?? dummy.student_id,
+    subSystem: null,
+    branch: null,
     levelId: null,
     alumniDirectoryOptIn: false,
     alumniSince: null,

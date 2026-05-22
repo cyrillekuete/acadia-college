@@ -26,6 +26,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
+import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import {
   staffCreateSchema,
   type StaffCreateInput,
@@ -77,6 +79,7 @@ export function StaffCreateForm() {
       employmentType: 'FULL_TIME',
       isActive: true,
       roleId: defaultRoleId,
+      officePhoneCountry: DEFAULT_COUNTRY_NAME,
     },
   });
 
@@ -299,18 +302,11 @@ export function StaffCreateForm() {
             <CardTitle>Office &amp; bio</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField
+            <PhoneFormFields
               control={form.control}
-              name="officePhone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Office phone</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              countryName="officePhoneCountry"
+              phoneName="officePhone"
+              phoneLabel="Office phone"
             />
 
             <FormField

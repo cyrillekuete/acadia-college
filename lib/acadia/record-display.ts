@@ -1,3 +1,7 @@
+import { formatPhoneForDisplay } from '@/lib/acadia/phone';
+
+export { streamLabel } from '@/lib/acadia/education-system';
+
 export function formatRecordValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '—';
@@ -10,6 +14,17 @@ export function formatRecordValue(value: unknown): string {
   }
   const text = String(value).trim();
   return text.length > 0 ? text : '—';
+}
+
+export function formatPhoneRecordValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '—';
+  }
+  const text = String(value).trim();
+  if (!text) {
+    return '—';
+  }
+  return formatPhoneForDisplay(text) || text;
 }
 
 export function formatDateTime(value: unknown): string {
@@ -35,20 +50,6 @@ export function unwrapRelation<T extends Record<string, unknown>>(
     return row as T;
   }
   return null;
-}
-
-export function specialtyLabel(
-  specialty: { code?: string; nameEn?: string } | null,
-): string {
-  if (!specialty) {
-    return '—';
-  }
-  const code = specialty.code?.trim();
-  const name = specialty.nameEn?.trim();
-  if (code && name) {
-    return `${code} — ${name}`;
-  }
-  return code || name || '—';
 }
 
 export function levelLabel(level: { number?: number; name?: string; labelEn?: string | null } | null): string {

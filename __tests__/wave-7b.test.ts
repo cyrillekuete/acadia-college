@@ -9,11 +9,10 @@ import {
   EMPTY_CATALOG_FILTERS,
   ENGLISH_LEVEL_CATALOG,
   FRENCH_LEVEL_CATALOG,
-  SPECIALTY_STREAMS,
   levelCatalogForSubSystem,
   subSystemLabel,
   branchLabel,
-  specialtyStreamLabel,
+  streamLabel,
   levelDisplayLabel,
   rowMatchesCatalogFilters,
 } from '@/lib/acadia/education-system';
@@ -101,15 +100,20 @@ describe('levelCatalogForSubSystem', () => {
 });
 
 // ---------------------------------------------------------------------------
-// SPECIALTY_STREAMS
+// Academic streams (sub-system × branch)
 // ---------------------------------------------------------------------------
-describe('SPECIALTY_STREAMS', () => {
+describe('academic stream combinations', () => {
   it('has 6 streams (2 sub-systems × 3 branches)', () => {
-    expect(SPECIALTY_STREAMS).toHaveLength(6);
+    const combinations = ACADEMIC_SUB_SYSTEMS.flatMap((subSystem) =>
+      ACADEMIC_BRANCHES.map((branch) => ({ subSystem, branch })),
+    );
+    expect(combinations).toHaveLength(6);
   });
 
   it('covers every sub-system × branch combination exactly once', () => {
-    const keys = SPECIALTY_STREAMS.map((s) => `${s.subSystem}:${s.branch}`);
+    const keys = ACADEMIC_SUB_SYSTEMS.flatMap((subSystem) =>
+      ACADEMIC_BRANCHES.map((branch) => `${subSystem}:${branch}`),
+    );
     const unique = new Set(keys);
     expect(unique.size).toBe(6);
     expect(unique.has('ENGLISH:GRAMMAR')).toBe(true);
@@ -118,18 +122,6 @@ describe('SPECIALTY_STREAMS', () => {
     expect(unique.has('FRENCH:GRAMMAR')).toBe(true);
     expect(unique.has('FRENCH:TECHNICAL')).toBe(true);
     expect(unique.has('FRENCH:COMMERCIAL')).toBe(true);
-  });
-
-  it('all stream codes are unique', () => {
-    const codes = SPECIALTY_STREAMS.map((s) => s.code);
-    expect(new Set(codes).size).toBe(codes.length);
-  });
-
-  it('each stream has non-empty nameEn and nameFr', () => {
-    SPECIALTY_STREAMS.forEach((s) => {
-      expect(s.nameEn.trim()).not.toBe('');
-      expect(s.nameFr.trim()).not.toBe('');
-    });
   });
 });
 
@@ -166,27 +158,27 @@ describe('branchLabel', () => {
   });
 });
 
-describe('specialtyStreamLabel', () => {
+describe('streamLabel', () => {
   it('combines sub-system and branch with a dot separator', () => {
-    expect(specialtyStreamLabel('ENGLISH', 'GRAMMAR')).toBe(
+    expect(streamLabel('ENGLISH', 'GRAMMAR')).toBe(
       'English sub-system · Grammar',
     );
   });
 
   it('returns "—" when both are null', () => {
-    expect(specialtyStreamLabel(null, null)).toBe('—');
+    expect(streamLabel(null, null)).toBe('—');
   });
 
   it('returns sub-system label when branch is missing', () => {
-    expect(specialtyStreamLabel('FRENCH', null)).toBe('French sub-system');
+    expect(streamLabel('FRENCH', null)).toBe('French sub-system');
   });
 
   it('returns branch label when sub-system is missing', () => {
-    expect(specialtyStreamLabel(null, 'TECHNICAL')).toBe('Technical');
+    expect(streamLabel(null, 'TECHNICAL')).toBe('Technical');
   });
 
   it('returns "—" when both are empty strings', () => {
-    expect(specialtyStreamLabel('', '')).toBe('—');
+    expect(streamLabel('', '')).toBe('—');
   });
 });
 
@@ -282,34 +274,6 @@ describe('rowMatchesCatalogFilters', () => {
         subSystem: 'FRENCH',
         branch: 'TECHNICAL',
       }),
-    ).toBe(false);
-  });
-
-  it('reads subSystem/branch from nested Specialty relation (array form)', () => {
-    const row = {
-      Specialty: [{ subSystem: 'ENGLISH', branch: 'TECHNICAL' }],
-    };
-    expect(
-      rowMatchesCatalogFilters(row, { subSystem: 'ENGLISH', branch: 'TECHNICAL' }),
-    ).toBe(true);
-  });
-
-  it('reads subSystem/branch from nested Specialty relation (object form)', () => {
-    const row = {
-      Specialty: { subSystem: 'FRENCH', branch: 'GRAMMAR' },
-    };
-    expect(
-      rowMatchesCatalogFilters(row, { subSystem: 'FRENCH', branch: null }),
-    ).toBe(true);
-  });
-
-  it('row-level subSystem takes priority over Specialty relation', () => {
-    const row = {
-      subSystem: 'ENGLISH',
-      Specialty: { subSystem: 'FRENCH', branch: 'GRAMMAR' },
-    };
-    expect(
-      rowMatchesCatalogFilters(row, { subSystem: 'FRENCH', branch: null }),
     ).toBe(false);
   });
 

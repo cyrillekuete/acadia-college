@@ -5,10 +5,14 @@ import { createClient } from '@/lib/supabase/server';
 import { studentCreateSchema } from '@/lib/acadia/student-create-schemas';
 import { provisionStudentAndParent } from '@/lib/acadia/provision-accounts';
 import {
+  checkMatriculeAvailable,
   checkRegistrationNumberAvailable,
   checkRegistryStudentEmail,
 } from '@/lib/acadia/registry-lookups';
-import { resolveStudentMatricule } from '@/lib/acadia/enrollment';
+import {
+  generateRegistrationNumber,
+  normalizeMatriculeNumber,
+} from '@/lib/acadia/enrollment';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 
 export async function POST(request: Request) {
@@ -54,20 +58,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: emailCheck.message }, { status: 400 });
   }
 
-  const matricule = resolveStudentMatricule(
-    parsed.data.matricule_number,
+  const studentId = generateRegistrationNumber(
     parsed.data.academic_year ?? undefined,
   );
-  const matriculeCheck = await checkRegistrationNumberAvailable(
+  const studentIdCheck = await checkRegistrationNumberAvailable(
     supabase,
     auth.ctx.tenantId,
-    matricule,
+    studentId,
   );
-  if (!matriculeCheck.ok) {
+  if (!studentIdCheck.ok) {
     return NextResponse.json(
-      { message: matriculeCheck.message, field: 'matricule_number' },
+      { message: studentIdCheck.message, field: 'registrationNumber' },
       { status: 400 },
     );
+  }
+
+  const matricule = normalizeMatriculeNumber(parsed.data.matricule_number);
+  if (matricule) {
+    const matriculeCheck = await checkMatriculeAvailable(
+      supabase,
+      auth.ctx.tenantId,
+      matricule,
+    );
+    if (!matriculeCheck.ok) {
+      return NextResponse.json(
+        { message: matriculeCheck.message, field: 'matricule_number' },
+        { status: 400 },
+      );
+    }
   }
 
   const result = await provisionStudentAndParent(
@@ -75,6 +93,7 @@ export async function POST(request: Request) {
     parsed.data,
     auth.ctx.tenantId,
     auth.ctx.actorUserId,
+    studentId,
   );
 
   if (!result.ok) {

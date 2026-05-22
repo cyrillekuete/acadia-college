@@ -55,12 +55,17 @@ import {
   type PromotionOverrideValues,
 } from '@/lib/acadia/promotion-schemas';
 import { formatMarkScore } from '@/lib/acadia/assessment';
-import { levelDisplayLabel } from '@/lib/acadia/education-system';
+import {
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+  branchLabel,
+  levelDisplayLabel,
+  subSystemLabel,
+} from '@/lib/acadia/education-system';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
 import {
   useClassesForFilters,
-  useLevelsForSpecialty,
-  useSpecialtyOptions,
+  useLevelsForStream,
 } from '@/hooks/use-enrollment-catalog-options';
 import {
   isAcadiaTenantQueryEnabled,
@@ -91,7 +96,6 @@ export function PromotionAdminPanel() {
     deleteOrphanAutoDecisions,
   } = usePromotionMutations();
   const { data: years = [] } = useAcademicYearOptions();
-  const { data: specialties = [] } = useSpecialtyOptions();
 
   const filterForm = useForm<PromotionFiltersValues>({
     resolver: zodResolver(promotionFiltersSchema),
@@ -99,13 +103,15 @@ export function PromotionAdminPanel() {
       academicYearId: '',
       bulkMode: 'class',
       classId: '',
-      specialtyId: '',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
     },
   });
 
   const academicYearId = filterForm.watch('academicYearId');
   const bulkMode = filterForm.watch('bulkMode');
-  const specialtyId = filterForm.watch('specialtyId');
+  const subSystem = filterForm.watch('subSystem');
+  const branch = filterForm.watch('branch');
   const classId = filterForm.watch('classId');
 
   const { data: classes = [] } = useClassesForFilters();
@@ -120,11 +126,12 @@ export function PromotionAdminPanel() {
   } | null>(null);
 
   const overrideClass = classes.find((c) => c.id === overrideTarget?.classId);
-  const { data: levels = [] } = useLevelsForSpecialty(
-    overrideClass?.specialtyId ?? specialtyId,
-    overrideClass?.subSystem as 'ENGLISH' | 'FRENCH' | undefined,
-    overrideClass?.branch as 'GRAMMAR' | 'TECHNICAL' | 'COMMERCIAL' | undefined,
-  );
+  const streamSubSystem =
+    (overrideClass?.subSystem as PromotionFiltersValues['subSystem']) ??
+    subSystem;
+  const streamBranch =
+    (overrideClass?.branch as PromotionFiltersValues['branch']) ?? branch;
+  const { data: levels = [] } = useLevelsForStream(streamSubSystem, streamBranch);
 
   useEffect(() => {
     if (years.length > 0 && !academicYearId) {
@@ -218,11 +225,12 @@ export function PromotionAdminPanel() {
   });
 
   const unassignedQuery = useQuery({
-    queryKey: ['promotion-unassigned', tenantId, academicYearId, specialtyId],
+    queryKey: ['promotion-unassigned', tenantId, academicYearId, subSystem, branch],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       return fetchUnassignedEnrollments(supabase, tenantId!, academicYearId, {
-        specialtyId: specialtyId || undefined,
+        subSystem: subSystem || undefined,
+        branch: branch || undefined,
       });
     },
     enabled:
@@ -383,8 +391,8 @@ export function PromotionAdminPanel() {
                         <SelectItem key={mode} value={mode}>
                           {mode === 'class'
                             ? 'This class'
-                            : mode === 'specialty'
-                              ? 'All classes in specialty'
+                            : mode === 'stream'
+                              ? 'All classes in stream'
                               : 'Entire year'}
                         </SelectItem>
                       ))}
@@ -394,36 +402,67 @@ export function PromotionAdminPanel() {
                 </FormItem>
               )}
             />
-            {bulkMode === 'specialty' || bulkMode === 'year' ? (
-              <FormField
-                control={filterForm.control}
-                name="specialtyId"
-                render={({ field }) => (
-                  <FormItem className="min-w-[180px]">
-                    <FormLabel>
-                      {bulkMode === 'specialty' ? 'Specialty' : 'Specialty (optional)'}
-                    </FormLabel>
-                    <Select
-                      value={field.value ?? ''}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Specialty" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {specialties.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.code}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {bulkMode === 'stream' || bulkMode === 'year' ? (
+              <>
+                <FormField
+                  control={filterForm.control}
+                  name="subSystem"
+                  render={({ field }) => (
+                    <FormItem className="min-w-[180px]">
+                      <FormLabel>
+                        {bulkMode === 'stream' ? 'Sub-system' : 'Sub-system (optional)'}
+                      </FormLabel>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sub-system" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ACADEMIC_SUB_SYSTEMS.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {subSystemLabel(value)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={filterForm.control}
+                  name="branch"
+                  render={({ field }) => (
+                    <FormItem className="min-w-[160px]">
+                      <FormLabel>
+                        {bulkMode === 'stream' ? 'Branch' : 'Branch (optional)'}
+                      </FormLabel>
+                      <Select
+                        value={field.value ?? ''}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Branch" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ACADEMIC_BRANCHES.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {branchLabel(value)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
             ) : null}
             {bulkMode === 'class' ? (
               <FormField

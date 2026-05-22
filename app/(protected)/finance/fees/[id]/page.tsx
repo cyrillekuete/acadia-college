@@ -7,7 +7,7 @@ import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteFinance } from '@/lib/acadia/roles';
-import { formatRecordValue, unwrapRelation } from '@/lib/acadia/record-display';
+import { formatRecordValue, streamLabel, unwrapRelation } from '@/lib/acadia/record-display';
 import { formatMoneyMinor } from '@/lib/acadia/finance';
 
 const ACCOUNT_SELECT = `
@@ -20,7 +20,8 @@ const ACCOUNT_SELECT = `
     User!StudentProfile_userId_tenantId_fkey ( name )
   ),
   AcademicYear!StudentFeeAccount_academicYearId_tenantId_fkey ( label ),
-  Specialty!StudentFeeAccount_specialtyId_tenantId_fkey ( code, nameEn )
+  subSystem,
+  branch
 `;
 
 type FeeAccountDetail = {
@@ -30,7 +31,8 @@ type FeeAccountDetail = {
   createdAt: string;
   StudentProfile: unknown;
   AcademicYear: unknown;
-  Specialty: unknown;
+  subSystem: string;
+  branch: string;
 };
 
 export default function FeeAccountDetailPage({
@@ -53,9 +55,6 @@ export default function FeeAccountDetailPage({
   }>(data?.StudentProfile);
   const user = unwrapRelation<{ name?: string }>(profile?.User);
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
-  const specialty = unwrapRelation<{ code?: string; nameEn?: string }>(
-    data?.Specialty,
-  );
 
   const title = user?.name
     ? `Fees — ${user.name}`
@@ -81,7 +80,7 @@ export default function FeeAccountDetailPage({
               { label: 'Year', value: year?.label ?? '—' },
               {
                 label: 'Program',
-                value: `${specialty?.code ?? '—'} ${specialty?.nameEn ?? ''}`.trim(),
+                value: streamLabel(data.subSystem, data.branch),
               },
               {
                 label: 'Total fees',

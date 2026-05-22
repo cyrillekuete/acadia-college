@@ -411,7 +411,6 @@ export type Database = {
           id: string
           levelId: string
           name: string
-          specialtyId: string | null
           staffProfileId: string | null
           status: Database["public"]["Enums"]["ClassStatus"]
           subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -424,7 +423,6 @@ export type Database = {
           id: string
           levelId: string
           name: string
-          specialtyId?: string | null
           staffProfileId?: string | null
           status?: Database["public"]["Enums"]["ClassStatus"]
           subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -437,7 +435,6 @@ export type Database = {
           id?: string
           levelId?: string
           name?: string
-          specialtyId?: string | null
           staffProfileId?: string | null
           status?: Database["public"]["Enums"]["ClassStatus"]
           subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -450,13 +447,6 @@ export type Database = {
             columns: ["tenantId", "levelId"]
             isOneToOne: false
             referencedRelation: "Level"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
-            foreignKeyName: "Class_specialtyId_tenantId_fkey"
-            columns: ["tenantId", "specialtyId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
             referencedColumns: ["tenantId", "id"]
           },
           {
@@ -579,52 +569,6 @@ export type Database = {
           },
         ]
       }
-      ClassSubject: {
-        Row: {
-          classId: string
-          createdAt: string
-          id: string
-          subjectId: string
-          tenantId: string
-        }
-        Insert: {
-          classId: string
-          createdAt?: string
-          id: string
-          subjectId: string
-          tenantId: string
-        }
-        Update: {
-          classId?: string
-          createdAt?: string
-          id?: string
-          subjectId?: string
-          tenantId?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ClassSubject_classId_tenantId_fkey"
-            columns: ["tenantId", "classId"]
-            isOneToOne: false
-            referencedRelation: "Class"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
-            foreignKeyName: "ClassSubject_subjectId_tenantId_fkey"
-            columns: ["tenantId", "subjectId"]
-            isOneToOne: false
-            referencedRelation: "Subject"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
-            foreignKeyName: "ClassSubject_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       ClassPromotionPolicy: {
         Row: {
           academicYearId: string
@@ -676,6 +620,52 @@ export type Database = {
           },
           {
             foreignKeyName: "ClassPromotionPolicy_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ClassSubject: {
+        Row: {
+          classId: string
+          createdAt: string
+          id: string
+          subjectId: string
+          tenantId: string
+        }
+        Insert: {
+          classId: string
+          createdAt?: string
+          id: string
+          subjectId: string
+          tenantId: string
+        }
+        Update: {
+          classId?: string
+          createdAt?: string
+          id?: string
+          subjectId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ClassSubject_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubject_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ClassSubject_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"
@@ -969,7 +959,7 @@ export type Database = {
       EnrollmentApplication: {
         Row: {
           academicYearId: string
-          branch: Database["public"]["Enums"]["AcademicBranch"] | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           dateOfBirth: string | null
           documentStorageKeys: string[] | null
@@ -986,16 +976,15 @@ export type Database = {
           rejectionReason: string | null
           reviewedAt: string | null
           reviewedByUserId: string | null
-          specialtyId: string
           status: Database["public"]["Enums"]["EnrollmentApplicationStatus"]
           studentProfileId: string | null
-          subSystem: Database["public"]["Enums"]["AcademicSubSystem"] | null
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           updatedAt: string
         }
         Insert: {
           academicYearId: string
-          branch?: Database["public"]["Enums"]["AcademicBranch"] | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           dateOfBirth?: string | null
           documentStorageKeys?: string[] | null
@@ -1012,16 +1001,15 @@ export type Database = {
           rejectionReason?: string | null
           reviewedAt?: string | null
           reviewedByUserId?: string | null
-          specialtyId: string
           status?: Database["public"]["Enums"]["EnrollmentApplicationStatus"]
           studentProfileId?: string | null
-          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"] | null
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           updatedAt: string
         }
         Update: {
           academicYearId?: string
-          branch?: Database["public"]["Enums"]["AcademicBranch"] | null
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           dateOfBirth?: string | null
           documentStorageKeys?: string[] | null
@@ -1038,10 +1026,9 @@ export type Database = {
           rejectionReason?: string | null
           reviewedAt?: string | null
           reviewedByUserId?: string | null
-          specialtyId?: string
           status?: Database["public"]["Enums"]["EnrollmentApplicationStatus"]
           studentProfileId?: string | null
-          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"] | null
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId?: string
           updatedAt?: string
         }
@@ -1066,13 +1053,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "User"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "EnrollmentApplication_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
           },
           {
             foreignKeyName: "EnrollmentApplication_studentProfileId_tenantId_fkey"
@@ -2346,129 +2326,6 @@ export type Database = {
           },
         ]
       }
-      Specialty: {
-        Row: {
-          branch: Database["public"]["Enums"]["AcademicBranch"]
-          code: string
-          createdAt: string
-          customGradingBands: Json | null
-          departmentId: string
-          durationYears: number
-          feeAmountMinor: number
-          feeCurrency: string
-          gradingLockedAt: string | null
-          gradingSystem: Database["public"]["Enums"]["SpecialtyGradingSystem"]
-          id: string
-          isPublished: boolean
-          minimumCreditsToGraduate: number | null
-          nameEn: string
-          nameFr: string
-          publishedAt: string | null
-          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
-          tenantId: string
-          updatedAt: string
-        }
-        Insert: {
-          branch?: Database["public"]["Enums"]["AcademicBranch"]
-          code: string
-          createdAt?: string
-          customGradingBands?: Json | null
-          departmentId: string
-          durationYears: number
-          feeAmountMinor?: number
-          feeCurrency?: string
-          gradingLockedAt?: string | null
-          gradingSystem: Database["public"]["Enums"]["SpecialtyGradingSystem"]
-          id: string
-          isPublished?: boolean
-          minimumCreditsToGraduate?: number | null
-          nameEn: string
-          nameFr: string
-          publishedAt?: string | null
-          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
-          tenantId: string
-          updatedAt: string
-        }
-        Update: {
-          branch?: Database["public"]["Enums"]["AcademicBranch"]
-          code?: string
-          createdAt?: string
-          customGradingBands?: Json | null
-          departmentId?: string
-          durationYears?: number
-          feeAmountMinor?: number
-          feeCurrency?: string
-          gradingLockedAt?: string | null
-          gradingSystem?: Database["public"]["Enums"]["SpecialtyGradingSystem"]
-          id?: string
-          isPublished?: boolean
-          minimumCreditsToGraduate?: number | null
-          nameEn?: string
-          nameFr?: string
-          publishedAt?: string | null
-          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
-          tenantId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "Specialty_departmentId_tenantId_fkey"
-            columns: ["departmentId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Department"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "Specialty_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      SpecialtyFeePlan: {
-        Row: {
-          createdAt: string
-          id: string
-          installments: Json
-          specialtyId: string
-          tenantId: string
-          updatedAt: string
-        }
-        Insert: {
-          createdAt?: string
-          id: string
-          installments: Json
-          specialtyId: string
-          tenantId: string
-          updatedAt: string
-        }
-        Update: {
-          createdAt?: string
-          id?: string
-          installments?: Json
-          specialtyId?: string
-          tenantId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "SpecialtyFeePlan_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "SpecialtyFeePlan_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       StaffProfile: {
         Row: {
           bio: string | null
@@ -2542,43 +2399,84 @@ export type Database = {
           },
         ]
       }
+      StreamFeePlan: {
+        Row: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
+          createdAt: string
+          id: string
+          installments: Json
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
+          createdAt?: string
+          id: string
+          installments: Json
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
+          tenantId: string
+          updatedAt: string
+        }
+        Update: {
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
+          createdAt?: string
+          id?: string
+          installments?: Json
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "StreamFeePlan_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       StudentEnrollment: {
         Row: {
           academicYearId: string
           applicationId: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           classId: string | null
           createdAt: string
           id: string
           levelId: string
-          specialtyId: string
           status: Database["public"]["Enums"]["StudentEnrollmentStatus"]
           studentProfileId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           updatedAt: string
         }
         Insert: {
           academicYearId: string
           applicationId?: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           classId?: string | null
           createdAt?: string
           id: string
           levelId: string
-          specialtyId: string
           status?: Database["public"]["Enums"]["StudentEnrollmentStatus"]
           studentProfileId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           updatedAt: string
         }
         Update: {
           academicYearId?: string
           applicationId?: string | null
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           classId?: string | null
           createdAt?: string
           id?: string
           levelId?: string
-          specialtyId?: string
           status?: Database["public"]["Enums"]["StudentEnrollmentStatus"]
           studentProfileId?: string
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId?: string
           updatedAt?: string
         }
@@ -2612,13 +2510,6 @@ export type Database = {
             referencedColumns: ["id", "tenantId"]
           },
           {
-            foreignKeyName: "StudentEnrollment_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
             foreignKeyName: "StudentEnrollment_studentProfileId_tenantId_fkey"
             columns: ["studentProfileId", "tenantId"]
             isOneToOne: false
@@ -2637,36 +2528,39 @@ export type Database = {
       StudentFeeAccount: {
         Row: {
           academicYearId: string
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           feeCurrency: string
           id: string
-          specialtyId: string
           studentEnrollmentId: string | null
           studentProfileId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           totalAmountMinor: number
           updatedAt: string
         }
         Insert: {
           academicYearId: string
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           feeCurrency: string
           id: string
-          specialtyId: string
           studentEnrollmentId?: string | null
           studentProfileId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           totalAmountMinor: number
           updatedAt: string
         }
         Update: {
           academicYearId?: string
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           feeCurrency?: string
           id?: string
-          specialtyId?: string
           studentEnrollmentId?: string | null
           studentProfileId?: string
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId?: string
           totalAmountMinor?: number
           updatedAt?: string
@@ -2677,13 +2571,6 @@ export type Database = {
             columns: ["academicYearId", "tenantId"]
             isOneToOne: false
             referencedRelation: "AcademicYear"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "StudentFeeAccount_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
             referencedColumns: ["id", "tenantId"]
           },
           {
@@ -2789,12 +2676,14 @@ export type Database = {
         Row: {
           alumniDirectoryOptIn: boolean
           alumniSince: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           currentLevelId: string
           id: string
           isActive: boolean
+          matriculeNumber: string | null
           registrationNumber: string
-          specialtyId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           updatedAt: string
           userId: string
@@ -2802,12 +2691,14 @@ export type Database = {
         Insert: {
           alumniDirectoryOptIn?: boolean
           alumniSince?: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           currentLevelId: string
           id: string
           isActive?: boolean
+          matriculeNumber?: string | null
           registrationNumber: string
-          specialtyId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           updatedAt: string
           userId: string
@@ -2815,12 +2706,14 @@ export type Database = {
         Update: {
           alumniDirectoryOptIn?: boolean
           alumniSince?: string | null
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           currentLevelId?: string
           id?: string
           isActive?: boolean
+          matriculeNumber?: string | null
           registrationNumber?: string
-          specialtyId?: string
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId?: string
           updatedAt?: string
           userId?: string
@@ -2831,13 +2724,6 @@ export type Database = {
             columns: ["currentLevelId", "tenantId"]
             isOneToOne: false
             referencedRelation: "Level"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "StudentProfile_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
             referencedColumns: ["id", "tenantId"]
           },
           {
@@ -2860,6 +2746,7 @@ export type Database = {
         Row: {
           academicYearId: string
           appliedAt: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           classId: string | null
           createdAt: string
           decidedByUserId: string | null
@@ -2872,8 +2759,8 @@ export type Database = {
           policyStaleAt: string | null
           recommendedAction: Database["public"]["Enums"]["PromotionAction"]
           source: Database["public"]["Enums"]["PromotionDecisionSource"]
-          specialtyId: string
           studentProfileId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           targetClassId: string | null
           targetLevelId: string | null
           tenantId: string
@@ -2883,6 +2770,7 @@ export type Database = {
         Insert: {
           academicYearId: string
           appliedAt?: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           classId?: string | null
           createdAt?: string
           decidedByUserId?: string | null
@@ -2895,8 +2783,8 @@ export type Database = {
           policyStaleAt?: string | null
           recommendedAction: Database["public"]["Enums"]["PromotionAction"]
           source?: Database["public"]["Enums"]["PromotionDecisionSource"]
-          specialtyId: string
           studentProfileId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           targetClassId?: string | null
           targetLevelId?: string | null
           tenantId: string
@@ -2906,6 +2794,7 @@ export type Database = {
         Update: {
           academicYearId?: string
           appliedAt?: string | null
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           classId?: string | null
           createdAt?: string
           decidedByUserId?: string | null
@@ -2918,8 +2807,8 @@ export type Database = {
           policyStaleAt?: string | null
           recommendedAction?: Database["public"]["Enums"]["PromotionAction"]
           source?: Database["public"]["Enums"]["PromotionDecisionSource"]
-          specialtyId?: string
           studentProfileId?: string
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           targetClassId?: string | null
           targetLevelId?: string | null
           tenantId?: string
@@ -2928,17 +2817,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "StudentPromotionDecision_classId_tenantId_fkey"
-            columns: ["tenantId", "classId"]
-            isOneToOne: false
-            referencedRelation: "Class"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
             foreignKeyName: "StudentPromotionDecision_academicYearId_tenantId_fkey"
             columns: ["tenantId", "academicYearId"]
             isOneToOne: false
             referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StudentPromotionDecision_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
             referencedColumns: ["tenantId", "id"]
           },
           {
@@ -2949,6 +2838,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "StudentPromotionDecision_enrollmentId_fkey"
+            columns: ["enrollmentId"]
+            isOneToOne: false
+            referencedRelation: "StudentEnrollment"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "StudentPromotionDecision_fromLevelId_tenantId_fkey"
             columns: ["tenantId", "fromLevelId"]
             isOneToOne: false
@@ -2956,17 +2852,17 @@ export type Database = {
             referencedColumns: ["tenantId", "id"]
           },
           {
-            foreignKeyName: "StudentPromotionDecision_specialtyId_tenantId_fkey"
-            columns: ["tenantId", "specialtyId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["tenantId", "id"]
-          },
-          {
             foreignKeyName: "StudentPromotionDecision_studentProfileId_tenantId_fkey"
             columns: ["tenantId", "studentProfileId"]
             isOneToOne: false
             referencedRelation: "StudentProfile"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StudentPromotionDecision_targetClassId_tenantId_fkey"
+            columns: ["tenantId", "targetClassId"]
+            isOneToOne: false
+            referencedRelation: "Class"
             referencedColumns: ["tenantId", "id"]
           },
           {
@@ -3169,6 +3065,7 @@ export type Database = {
       Subject: {
         Row: {
           academicYearId: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           code: string
           coefficient: number
           createdAt: string
@@ -3181,14 +3078,15 @@ export type Database = {
           levelId: string
           nameEn: string
           nameFr: string
-          specialtyId: string
           subjectType: Database["public"]["Enums"]["subject_type"]
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           termId: string | null
           updatedAt: string
         }
         Insert: {
           academicYearId?: string | null
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           code: string
           coefficient?: number
           createdAt?: string
@@ -3201,14 +3099,15 @@ export type Database = {
           levelId: string
           nameEn: string
           nameFr: string
-          specialtyId: string
           subjectType?: Database["public"]["Enums"]["subject_type"]
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           termId?: string | null
           updatedAt: string
         }
         Update: {
           academicYearId?: string | null
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           code?: string
           coefficient?: number
           createdAt?: string
@@ -3221,19 +3120,26 @@ export type Database = {
           levelId?: string
           nameEn?: string
           nameFr?: string
-          specialtyId?: string
           subjectType?: Database["public"]["Enums"]["subject_type"]
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId?: string
           termId?: string | null
           updatedAt?: string
         }
         Relationships: [
           {
+            foreignKeyName: "Subject_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
             foreignKeyName: "Subject_groupingId_tenantId_fkey"
-            columns: ["groupingId", "tenantId"]
+            columns: ["tenantId", "groupingId"]
             isOneToOne: false
             referencedRelation: "SubjectGrouping"
-            referencedColumns: ["id", "tenantId"]
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "Subject_levelId_tenantId_fkey"
@@ -3250,152 +3156,7 @@ export type Database = {
             referencedColumns: ["id", "tenantId"]
           },
           {
-            foreignKeyName: "Subject_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
             foreignKeyName: "Subject_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      SubjectGrouping: {
-        Row: {
-          code: string | null
-          createdAt: string
-          id: string
-          nameEn: string
-          nameFr: string
-          sortOrder: number
-          tenantId: string
-          updatedAt: string
-        }
-        Insert: {
-          code?: string | null
-          createdAt?: string
-          id: string
-          nameEn: string
-          nameFr: string
-          sortOrder?: number
-          tenantId: string
-          updatedAt: string
-        }
-        Update: {
-          code?: string | null
-          createdAt?: string
-          id?: string
-          nameEn?: string
-          nameFr?: string
-          sortOrder?: number
-          tenantId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "SubjectGrouping_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      SubjectLevel: {
-        Row: {
-          createdAt: string
-          id: string
-          levelId: string
-          subjectId: string
-          tenantId: string
-        }
-        Insert: {
-          createdAt?: string
-          id: string
-          levelId: string
-          subjectId: string
-          tenantId: string
-        }
-        Update: {
-          createdAt?: string
-          id?: string
-          levelId?: string
-          subjectId?: string
-          tenantId?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "SubjectLevel_levelId_tenantId_fkey"
-            columns: ["levelId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Level"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "SubjectLevel_subjectId_tenantId_fkey"
-            columns: ["subjectId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Subject"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "SubjectLevel_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      SubjectSubBranch: {
-        Row: {
-          coefficient: number | null
-          createdAt: string
-          id: string
-          name: string
-          nameFr: string | null
-          sortOrder: number
-          subjectId: string
-          tenantId: string
-          updatedAt: string
-        }
-        Insert: {
-          coefficient?: number
-          createdAt?: string
-          id: string
-          name: string
-          nameFr?: string | null
-          sortOrder?: number
-          subjectId: string
-          tenantId: string
-          updatedAt: string
-        }
-        Update: {
-          coefficient?: number
-          createdAt?: string
-          id?: string
-          name?: string
-          nameFr?: string | null
-          sortOrder?: number
-          subjectId?: string
-          tenantId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "SubjectSubBranch_subjectId_tenantId_fkey"
-            columns: ["subjectId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Subject"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "SubjectSubBranch_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"
@@ -3498,7 +3259,7 @@ export type Database = {
             foreignKeyName: "SubjectAssignmentOffering_offeringId_tenantId_fkey"
             columns: ["offeringId", "tenantId"]
             isOneToOne: false
-            referencedRelation: "SubjectSpecialtyOffering"
+            referencedRelation: "SubjectStreamOffering"
             referencedColumns: ["id", "tenantId"]
           },
           {
@@ -3634,6 +3395,93 @@ export type Database = {
           },
         ]
       }
+      SubjectGrouping: {
+        Row: {
+          code: string | null
+          createdAt: string
+          id: string
+          nameEn: string
+          nameFr: string
+          sortOrder: number
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          code?: string | null
+          createdAt?: string
+          id: string
+          nameEn: string
+          nameFr: string
+          sortOrder?: number
+          tenantId: string
+          updatedAt?: string
+        }
+        Update: {
+          code?: string | null
+          createdAt?: string
+          id?: string
+          nameEn?: string
+          nameFr?: string
+          sortOrder?: number
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectGrouping_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectLevel: {
+        Row: {
+          createdAt: string
+          id: string
+          levelId: string
+          subjectId: string
+          tenantId: string
+        }
+        Insert: {
+          createdAt?: string
+          id: string
+          levelId: string
+          subjectId: string
+          tenantId: string
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          levelId?: string
+          subjectId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectLevel_levelId_tenantId_fkey"
+            columns: ["tenantId", "levelId"]
+            isOneToOne: false
+            referencedRelation: "Level"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SubjectLevel_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SubjectLevel_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       SubjectMark: {
         Row: {
           caScore: number | null
@@ -3715,65 +3563,112 @@ export type Database = {
           },
         ]
       }
-      SubjectSpecialtyOffering: {
+      SubjectStreamOffering: {
         Row: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           id: string
           levelId: string
-          specialtyId: string
           subjectId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           termId: string
         }
         Insert: {
+          branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id: string
           levelId: string
-          specialtyId: string
           subjectId: string
+          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId: string
           termId: string
         }
         Update: {
+          branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id?: string
           levelId?: string
-          specialtyId?: string
           subjectId?: string
+          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
           tenantId?: string
           termId?: string
         }
         Relationships: [
           {
-            foreignKeyName: "SubjectSpecialtyOffering_levelId_tenantId_fkey"
+            foreignKeyName: "SubjectStreamOffering_levelId_tenantId_fkey"
             columns: ["levelId", "tenantId"]
             isOneToOne: false
             referencedRelation: "Level"
             referencedColumns: ["id", "tenantId"]
           },
           {
-            foreignKeyName: "SubjectSpecialtyOffering_semesterId_tenantId_fkey"
+            foreignKeyName: "SubjectStreamOffering_semesterId_tenantId_fkey"
             columns: ["termId", "tenantId"]
             isOneToOne: false
             referencedRelation: "Term"
             referencedColumns: ["id", "tenantId"]
           },
           {
-            foreignKeyName: "SubjectSpecialtyOffering_specialtyId_tenantId_fkey"
-            columns: ["specialtyId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Specialty"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "SubjectSpecialtyOffering_subjectId_tenantId_fkey"
+            foreignKeyName: "SubjectStreamOffering_subjectId_tenantId_fkey"
             columns: ["subjectId", "tenantId"]
             isOneToOne: false
             referencedRelation: "Subject"
             referencedColumns: ["id", "tenantId"]
           },
           {
-            foreignKeyName: "SubjectSpecialtyOffering_tenantId_fkey"
+            foreignKeyName: "SubjectStreamOffering_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SubjectSubBranch: {
+        Row: {
+          coefficient: number | null
+          createdAt: string
+          id: string
+          name: string
+          nameFr: string | null
+          sortOrder: number
+          subjectId: string
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          coefficient?: number | null
+          createdAt?: string
+          id: string
+          name: string
+          nameFr?: string | null
+          sortOrder?: number
+          subjectId: string
+          tenantId: string
+          updatedAt?: string
+        }
+        Update: {
+          coefficient?: number | null
+          createdAt?: string
+          id?: string
+          name?: string
+          nameFr?: string | null
+          sortOrder?: number
+          subjectId?: string
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SubjectSubBranch_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SubjectSubBranch_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"
@@ -4899,10 +4794,10 @@ export type Database = {
         | "BACCALAUREAT"
       FeeInstallmentStatus: "PENDING" | "PAID" | "OVERDUE" | "WAIVED"
       FinanceLedgerEntryType: "INCOME" | "EXPENSE"
-      GradingMode: "FRANCOPHONE" | "ANGLOPHONE" | "PER_SPECIALTY"
+      GradingMode: "FRANCOPHONE" | "ANGLOPHONE" | "PER_STREAM"
       LearningMaterialKind: "DOCUMENT" | "VIDEO" | "LINK" | "OTHER"
       MarkEntryCalendarPolicy: "SESSION_DATES_ONLY" | "CALENDAR_AND_SESSION"
-      MessageGroupScope: "DEPARTMENT" | "SPECIALTY" | "LEVEL"
+      MessageGroupScope: "DEPARTMENT" | "STREAM" | "LEVEL"
       MessageThreadKind: "DIRECT" | "GROUP"
       PromotionAction: "PROMOTE" | "REPEAT" | "GRADUATE" | "WITHDRAW" | "DEFER"
       PromotionDecisionSource: "AUTO" | "MANUAL"
@@ -4926,14 +4821,13 @@ export type Database = {
         | "PUBLISHED"
         | "CANCELLED"
       SchoolResourceType: "EQUIPMENT" | "BOOK" | "LAB" | "IT" | "OTHER"
-      SpecialtyGradingSystem: "FRANCOPHONE" | "ANGLOPHONE"
+      StaffEmploymentType: "FULL_TIME" | "PART_TIME" | "ADJUNCT" | "VISITING"
+      StudentEnrollmentStatus: "ENROLLED" | "WITHDRAWN"
       subject_type:
         | "LANGUAGES"
         | "RELATED_TRADE_SUBJECTS"
         | "TRADE_SUBJECTS"
         | "OTHERS"
-      StaffEmploymentType: "FULL_TIME" | "PART_TIME" | "ADJUNCT" | "VISITING"
-      StudentEnrollmentStatus: "ENROLLED" | "WITHDRAWN"
       TenantStatus: "ONBOARDING" | "ACTIVE" | "SUSPENDED" | "ARCHIVED"
       TranscriptCopyRequestStatus: "PENDING" | "FULFILLED" | "REJECTED"
       TranscriptVersionStatus: "PENDING" | "READY" | "FAILED"
@@ -5098,10 +4992,10 @@ export const Constants = {
       ],
       FeeInstallmentStatus: ["PENDING", "PAID", "OVERDUE", "WAIVED"],
       FinanceLedgerEntryType: ["INCOME", "EXPENSE"],
-      GradingMode: ["FRANCOPHONE", "ANGLOPHONE", "PER_SPECIALTY"],
+      GradingMode: ["FRANCOPHONE", "ANGLOPHONE", "PER_STREAM"],
       LearningMaterialKind: ["DOCUMENT", "VIDEO", "LINK", "OTHER"],
       MarkEntryCalendarPolicy: ["SESSION_DATES_ONLY", "CALENDAR_AND_SESSION"],
-      MessageGroupScope: ["DEPARTMENT", "SPECIALTY", "LEVEL"],
+      MessageGroupScope: ["DEPARTMENT", "STREAM", "LEVEL"],
       MessageThreadKind: ["DIRECT", "GROUP"],
       PromotionAction: ["PROMOTE", "REPEAT", "GRADUATE", "WITHDRAW", "DEFER"],
       PromotionDecisionSource: ["AUTO", "MANUAL"],
@@ -5128,9 +5022,14 @@ export const Constants = {
         "CANCELLED",
       ],
       SchoolResourceType: ["EQUIPMENT", "BOOK", "LAB", "IT", "OTHER"],
-      SpecialtyGradingSystem: ["FRANCOPHONE", "ANGLOPHONE"],
       StaffEmploymentType: ["FULL_TIME", "PART_TIME", "ADJUNCT", "VISITING"],
       StudentEnrollmentStatus: ["ENROLLED", "WITHDRAWN"],
+      subject_type: [
+        "LANGUAGES",
+        "RELATED_TRADE_SUBJECTS",
+        "TRADE_SUBJECTS",
+        "OTHERS",
+      ],
       TenantStatus: ["ONBOARDING", "ACTIVE", "SUSPENDED", "ARCHIVED"],
       TranscriptCopyRequestStatus: ["PENDING", "FULFILLED", "REJECTED"],
       TranscriptVersionStatus: ["PENDING", "READY", "FAILED"],

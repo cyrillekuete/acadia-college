@@ -48,6 +48,7 @@ export function useStudentMutations() {
         .from('StudentProfile')
         .update({
           registrationNumber: values.registrationNumber.trim(),
+          matriculeNumber: values.matriculeNumber,
           isActive: values.isActive,
           alumniDirectoryOptIn: values.alumniDirectoryOptIn,
           alumniSince: values.alumniSince?.trim() || null,
@@ -106,7 +107,8 @@ export function useStudentMutations() {
       const { error: profileError } = await supabase
         .from('StudentProfile')
         .update({
-          specialtyId: values.specialtyId,
+          subSystem: values.subSystem,
+          branch: values.branch,
           currentLevelId: values.levelId,
           updatedAt: now,
         })
@@ -122,7 +124,8 @@ export function useStudentMutations() {
           supabase,
           tenantId,
           values.levelId,
-          values.specialtyId,
+          values.subSystem,
+          values.branch,
         );
       }
 
@@ -133,7 +136,8 @@ export function useStudentMutations() {
           tenantId,
           studentProfileId: profileId,
           academicYearId: values.academicYearId,
-          specialtyId: values.specialtyId,
+          subSystem: values.subSystem,
+          branch: values.branch,
           levelId: values.levelId,
           classId,
           status: 'ENROLLED',

@@ -12,12 +12,12 @@ import {
   applicantDisplayName,
   canEditEnrollmentApplication,
 } from '@/lib/acadia/enrollment';
-import { specialtyStreamLabel } from '@/lib/acadia/education-system';
 import {
   formatDateTime,
+  formatPhoneRecordValue,
   formatRecordValue,
   levelLabel,
-  specialtyLabel,
+  streamLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
@@ -37,12 +37,10 @@ const APPLICATION_SELECT = `
   dateOfBirth,
   subSystem,
   branch,
-  specialtyId,
   levelId,
   rejectionReason,
   reviewedAt,
   createdAt,
-  Specialty!EnrollmentApplication_specialtyId_tenantId_fkey ( code, nameEn ),
   Level!EnrollmentApplication_levelId_tenantId_fkey ( number, labelEn ),
   AcademicYear!EnrollmentApplication_academicYearId_tenantId_fkey ( label ),
   StudentProfile!EnrollmentApplication_studentProfileId_tenantId_fkey ( id, registrationNumber )
@@ -59,14 +57,12 @@ type ApplicationDetail = {
   email: string;
   phone?: string | null;
   dateOfBirth?: string | null;
-  subSystem?: string | null;
-  branch?: string | null;
-  specialtyId: string;
+  subSystem: string;
+  branch: string;
   levelId: string;
   rejectionReason?: string | null;
   reviewedAt?: string | null;
   createdAt: string;
-  Specialty?: unknown;
   Level?: unknown;
   AcademicYear?: unknown;
   StudentProfile?: unknown;
@@ -87,7 +83,6 @@ export default function EnrollmentApplicationDetailPage({
     APPLICATION_SELECT,
   );
 
-  const specialty = unwrapRelation<{ nameEn?: string; code?: string }>(data?.Specialty);
   const level = unwrapRelation<{ number?: number; labelEn?: string }>(data?.Level);
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
   const student = unwrapRelation<{ id?: string; registrationNumber?: string }>(
@@ -136,7 +131,8 @@ export default function EnrollmentApplicationDetailPage({
                   applicationId={id}
                   status={data.status}
                   levelId={data.levelId as string}
-                  specialtyId={data.specialtyId as string}
+                  subSystem={data.subSystem}
+                  branch={data.branch}
                 />
               ) : null}
             </div>
@@ -147,7 +143,7 @@ export default function EnrollmentApplicationDetailPage({
               title="Applicant"
               fields={[
                 { label: 'Email', value: formatRecordValue(data.email) },
-                { label: 'Phone', value: formatRecordValue(data.phone) },
+                { label: 'Phone', value: formatPhoneRecordValue(data.phone) },
                 {
                   label: 'Date of birth',
                   value: formatRecordValue(data.dateOfBirth),
@@ -162,9 +158,8 @@ export default function EnrollmentApplicationDetailPage({
                 { label: 'Academic year', value: formatRecordValue(year?.label) },
                 {
                   label: 'Sub-system / branch',
-                  value: specialtyStreamLabel(data.subSystem, data.branch),
+                  value: streamLabel(data.subSystem, data.branch),
                 },
-                { label: 'Specialty', value: specialtyLabel(specialty) },
                 { label: 'Level', value: levelLabel(level) },
               ]}
             />
@@ -185,7 +180,7 @@ export default function EnrollmentApplicationDetailPage({
               title="Student record"
               fields={[
                 {
-                  label: 'Matricule',
+                  label: 'Student ID',
                   value: (
                     <Link
                       href={`/students/${student.id}`}

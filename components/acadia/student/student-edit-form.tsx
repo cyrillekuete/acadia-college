@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
   studentProfileEditSchema,
+  type StudentProfileEditFormValues,
   type StudentProfileEditValues,
 } from '@/lib/acadia/student-schemas';
 import { useStudentMutations } from '@/hooks/use-student-mutations';
@@ -25,6 +26,7 @@ export type StudentEditRecord = {
   profileId: string;
   userId: string;
   registrationNumber: string;
+  matriculeNumber: string | null;
   isActive: boolean;
   alumniDirectoryOptIn: boolean;
   alumniSince: string | null;
@@ -37,10 +39,11 @@ export type StudentEditRecord = {
 export function StudentEditForm({ student }: { student: StudentEditRecord }) {
   const { updateStudentProfile } = useStudentMutations();
 
-  const form = useForm<StudentProfileEditValues>({
+  const form = useForm<StudentProfileEditFormValues, unknown, StudentProfileEditValues>({
     resolver: zodResolver(studentProfileEditSchema),
     defaultValues: {
       registrationNumber: student.registrationNumber,
+      matriculeNumber: student.matriculeNumber ?? '',
       isActive: student.isActive,
       alumniDirectoryOptIn: student.alumniDirectoryOptIn,
       alumniSince: student.alumniSince?.slice(0, 10) ?? '',
@@ -54,6 +57,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
   useEffect(() => {
     form.reset({
       registrationNumber: student.registrationNumber,
+      matriculeNumber: student.matriculeNumber ?? '',
       isActive: student.isActive,
       alumniDirectoryOptIn: student.alumniDirectoryOptIn,
       alumniSince: student.alumniSince?.slice(0, 10) ?? '',
@@ -80,9 +84,26 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="registrationNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Matricule</FormLabel>
+              <FormLabel>Student ID</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} readOnly className="bg-muted" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="matriculeNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Matricule (optional)</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ''}
+                  placeholder="Ministry-issued matricule"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

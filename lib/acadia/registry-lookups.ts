@@ -94,7 +94,7 @@ export async function checkRegistrationNumberAvailable(
   if (existing?.id) {
     return {
       ok: false,
-      message: 'This matricule / registration number is already in use.',
+      message: 'This student ID is already in use.',
     };
   }
 
@@ -108,7 +108,54 @@ export async function checkRegistrationNumberAvailable(
   if (legacy?.id) {
     return {
       ok: false,
-      message: 'This matricule / registration number is already in use.',
+      message: 'This student ID is already in use.',
+    };
+  }
+
+  return { ok: true };
+}
+
+export async function checkMatriculeAvailable(
+  supabase: SupabaseClient,
+  tenantId: string,
+  matricule: string,
+  excludeProfileId?: string,
+): Promise<RegistryEmailConflict> {
+  const trimmed = matricule.trim();
+  if (!trimmed) {
+    return { ok: true };
+  }
+
+  let query = supabase
+    .from('StudentProfile')
+    .select('id')
+    .eq('tenantId', tenantId)
+    .eq('matriculeNumber', trimmed);
+
+  if (excludeProfileId) {
+    query = query.neq('id', excludeProfileId);
+  }
+
+  const { data: existing } = await query.maybeSingle();
+
+  if (existing?.id) {
+    return {
+      ok: false,
+      message: 'This matricule is already in use.',
+    };
+  }
+
+  const { data: legacy } = await supabase
+    .from('students')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('matricule_number', trimmed)
+    .maybeSingle();
+
+  if (legacy?.id) {
+    return {
+      ok: false,
+      message: 'This matricule is already in use.',
     };
   }
 

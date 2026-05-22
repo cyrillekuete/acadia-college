@@ -7,6 +7,7 @@ export type StudentEnrollmentStatus = 'active' | 'pending' | 'inactive';
 export type DummyStudent = {
   id: string;
   student_id: string;
+  registration_number: string | null;
   first_name: string;
   last_name: string;
   email: string;
@@ -155,6 +156,7 @@ function buildStudents(): DummyStudent[] {
     return {
       id: stableId(index),
       student_id: `STU-${String(index + 1).padStart(4, '0')}`,
+      registration_number: `AC-2026-${String(1000 + index).slice(-6).padStart(6, '0')}`,
       first_name,
       last_name,
       email: user.email,
@@ -221,6 +223,7 @@ export function filterDummyStudents({
       fullName.includes(q) ||
       student.email.toLowerCase().includes(q) ||
       student.student_id.toLowerCase().includes(q) ||
+      (student.registration_number?.toLowerCase().includes(q) ?? false) ||
       (student.matricule_number?.toLowerCase().includes(q) ?? false)
     );
   });

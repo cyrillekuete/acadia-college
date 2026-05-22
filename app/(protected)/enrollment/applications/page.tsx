@@ -12,7 +12,7 @@ import { detailLinkColumn } from '@/lib/acadia/list-columns';
 import {
   EMPTY_CATALOG_FILTERS,
   rowMatchesCatalogFilters,
-  specialtyStreamLabel,
+  streamLabel,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
 import { applicantDisplayName } from '@/lib/acadia/enrollment';
@@ -27,7 +27,6 @@ type Row = Record<string, unknown> & {
   lastNameEn?: string;
   firstNameFr?: string | null;
   lastNameFr?: string | null;
-  Specialty?: unknown;
 };
 
 export default function EnrollmentApplicationsPage() {
@@ -60,7 +59,7 @@ export default function EnrollmentApplicationsPage() {
         id: 'stream',
         header: 'Sub-system / branch',
         cell: ({ row }) =>
-          specialtyStreamLabel(row.original.subSystem, row.original.branch),
+          streamLabel(row.original.subSystem, row.original.branch),
       },
       {
         accessorKey: 'createdAt',
@@ -90,7 +89,7 @@ export default function EnrollmentApplicationsPage() {
       <SupabaseTableList scopeByAcademicYear
         table="EnrollmentApplication"
         title="Applications"
-        select="id, status, kind, firstNameEn, lastNameEn, firstNameFr, lastNameFr, subSystem, branch, createdAt, specialtyId, Specialty!EnrollmentApplication_specialtyId_tenantId_fkey ( subSystem, branch )"
+        select="id, status, kind, firstNameEn, lastNameEn, firstNameFr, lastNameFr, subSystem, branch, createdAt"
         columns={columns}
         searchKeys={['status', 'kind', 'lastNameEn', 'firstNameEn']}
         rowFilter={(row) => rowMatchesCatalogFilters(row, catalogFilters)}

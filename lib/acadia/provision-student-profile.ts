@@ -11,9 +11,11 @@ export type ProvisionStudentProfileInput = {
   email: string;
   name: string;
   registrationNumber: string;
+  matriculeNumber?: string | null;
   tenantId: string;
   actorUserId: string;
-  specialtyId: string;
+  subSystem: 'ENGLISH' | 'FRENCH';
+  branch: 'GRAMMAR' | 'TECHNICAL' | 'COMMERCIAL';
   levelId: string;
   academicYearId: string;
   classId?: string | null;
@@ -87,7 +89,9 @@ export async function provisionStudentProfileAndEnrollment(
     tenantId: input.tenantId,
     userId: input.authUserId,
     registrationNumber: input.registrationNumber.trim(),
-    specialtyId: input.specialtyId,
+    matriculeNumber: input.matriculeNumber?.trim() || null,
+    subSystem: input.subSystem,
+    branch: input.branch,
     currentLevelId: input.levelId,
     isActive: true,
     alumniDirectoryOptIn: false,
@@ -109,7 +113,8 @@ export async function provisionStudentProfileAndEnrollment(
       supabase,
       input.tenantId,
       input.levelId,
-      input.specialtyId,
+      input.subSystem,
+      input.branch,
     );
     if (resolution.status === 'resolved') {
       classId = resolution.classId;
@@ -124,7 +129,8 @@ export async function provisionStudentProfileAndEnrollment(
       tenantId: input.tenantId,
       studentProfileId,
       academicYearId: input.academicYearId,
-      specialtyId: input.specialtyId,
+      subSystem: input.subSystem,
+      branch: input.branch,
       levelId: input.levelId,
       classId,
       status: 'ENROLLED',

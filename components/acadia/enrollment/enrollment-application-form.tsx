@@ -32,12 +32,15 @@ import {
 import {
   enrollmentApplicationSchema,
   type EnrollmentApplicationFormValues,
+  type EnrollmentApplicationInput,
 } from '@/lib/acadia/enrollment-schemas';
+import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
+import { splitPhoneE164 } from '@/lib/acadia/phone';
+import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
-  useLevelsForSpecialty,
-  useSpecialtyOptions,
+  useLevelsForStream,
   useStudentProfileOptions,
 } from '@/hooks/use-enrollment-catalog-options';
 import { unwrapRelation } from '@/lib/acadia/record-display';
@@ -58,7 +61,6 @@ export type EnrollmentApplicationRecord = {
   studentProfileId?: string | null;
   subSystem: string;
   branch: string;
-  specialtyId: string;
   levelId: string;
   academicYearId: string;
 };
@@ -74,7 +76,11 @@ export function EnrollmentApplicationForm({
   const { createApplication, updateApplication } = useEnrollmentMutations();
   const { activeYearId } = useActiveAcademicYear();
 
-  const form = useForm<EnrollmentApplicationFormValues>({
+  const form = useForm<
+    EnrollmentApplicationFormValues,
+    unknown,
+    EnrollmentApplicationInput
+  >({
     resolver: zodResolver(enrollmentApplicationSchema),
     defaultValues: {
       kind: 'NEW',
@@ -83,13 +89,13 @@ export function EnrollmentApplicationForm({
       firstNameFr: '',
       lastNameFr: '',
       email: '',
+      phoneCountry: DEFAULT_COUNTRY_NAME,
       phone: '',
       dateOfBirth: '',
       preferredLocale: 'en',
       studentProfileId: '',
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
-      specialtyId: '',
       levelId: '',
       academicYearId: '',
     },
@@ -98,18 +104,16 @@ export function EnrollmentApplicationForm({
   const applicationKind = form.watch('kind');
   const subSystem = form.watch('subSystem');
   const branch = form.watch('branch');
-  const specialtyId = form.watch('specialtyId');
   const { data: studentProfiles = [] } = useStudentProfileOptions();
 
-  const { data: specialties = [], isLoading: specialtiesLoading } =
-    useSpecialtyOptions(subSystem, branch);
   const { data: levels = [], isLoading: levelsLoading } =
-    useLevelsForSpecialty(specialtyId, subSystem, branch);
+    useLevelsForStream(subSystem, branch);
 
   useEffect(() => {
     if (!record) {
       return;
     }
+    const phoneSplit = splitPhoneE164(record.phone);
     form.reset({
       kind: record.kind,
       firstNameEn: record.firstNameEn,
@@ -117,7 +121,8 @@ export function EnrollmentApplicationForm({
       firstNameFr: record.firstNameFr ?? '',
       lastNameFr: record.lastNameFr ?? '',
       email: record.email,
-      phone: record.phone ?? '',
+      phoneCountry: phoneSplit.countryName,
+      phone: phoneSplit.nationalNumber,
       dateOfBirth: record.dateOfBirth
         ? String(record.dateOfBirth).slice(0, 10)
         : '',
@@ -125,26 +130,17 @@ export function EnrollmentApplicationForm({
       studentProfileId: record.studentProfileId ?? '',
       subSystem: record.subSystem as EnrollmentApplicationFormValues['subSystem'],
       branch: record.branch as EnrollmentApplicationFormValues['branch'],
-      specialtyId: record.specialtyId,
       levelId: record.levelId,
       academicYearId: record.academicYearId,
     });
   }, [record, form]);
 
   useEffect(() => {
-    const current = form.getValues('specialtyId');
-    if (current && !specialties.some((s) => s.id === current)) {
-      form.setValue('specialtyId', '');
-      form.setValue('levelId', '');
-    }
-  }, [subSystem, branch, specialties, form]);
-
-  useEffect(() => {
     const current = form.getValues('levelId');
     if (current && !levels.some((l) => l.id === current)) {
       form.setValue('levelId', '');
     }
-  }, [specialtyId, levels, form]);
+  }, [subSystem, branch, levels, form]);
 
   useEffect(() => {
     if (!record && activeYearId) {
@@ -155,7 +151,7 @@ export function EnrollmentApplicationForm({
   const pending =
     createApplication.isPending || updateApplication.isPending;
 
-  const onSubmit = (values: EnrollmentApplicationFormValues) => {
+  const onSubmit = (values: EnrollmentApplicationInput) => {
     if (isEdit && record) {
       updateApplication.mutate({
         id: record.id,
@@ -324,18 +320,10 @@ export function EnrollmentApplicationForm({
               </FormItem>
             )}
           />
-          <FormField
+          <PhoneFormFields
             control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            countryName="phoneCountry"
+            phoneName="phone"
           />
           <FormField
             control={form.control}
@@ -363,7 +351,6 @@ export function EnrollmentApplicationForm({
                   value={field.value}
                   onValueChange={(v) => {
                     field.onChange(v);
-                    form.setValue('specialtyId', '');
                     form.setValue('levelId', '');
                   }}
                 >
@@ -394,7 +381,6 @@ export function EnrollmentApplicationForm({
                   value={field.value}
                   onValueChange={(v) => {
                     field.onChange(v);
-                    form.setValue('specialtyId', '');
                     form.setValue('levelId', '');
                   }}
                 >
@@ -434,37 +420,6 @@ export function EnrollmentApplicationForm({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
-            name="specialtyId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Specialty</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={(v) => {
-                    field.onChange(v);
-                    form.setValue('levelId', '');
-                  }}
-                  disabled={specialtiesLoading || specialties.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select specialty" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {specialties.map((spec) => (
-                      <SelectItem key={spec.id} value={spec.id}>
-                        {spec.nameEn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
             name="levelId"
             render={({ field }) => (
               <FormItem>
@@ -472,7 +427,7 @@ export function EnrollmentApplicationForm({
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
-                  disabled={!specialtyId || levelsLoading || levels.length === 0}
+                  disabled={!subSystem || !branch || levelsLoading || levels.length === 0}
                 >
                   <FormControl>
                     <SelectTrigger>

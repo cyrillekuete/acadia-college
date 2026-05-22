@@ -16,7 +16,7 @@ import {
 import {
   financeLedgerEntrySchema,
   recordFeePaymentSchema,
-  specialtyFeePlanSchema,
+  streamFeePlanSchema,
 } from '@/lib/acadia/finance-schemas';
 
 describe('formatMoneyMinor', () => {
@@ -125,11 +125,12 @@ describe('aggregateFinanceSummary', () => {
   });
 });
 
-describe('specialtyFeePlanSchema', () => {
-  it('requires specialty and installments', () => {
+describe('streamFeePlanSchema', () => {
+  it('requires sub-system, branch, and installments', () => {
     expect(
-      specialtyFeePlanSchema.safeParse({
-        specialtyId: 'spec-1',
+      streamFeePlanSchema.safeParse({
+        subSystem: 'ENGLISH',
+        branch: 'GRAMMAR',
         installments: [
           {
             installmentNumber: 1,

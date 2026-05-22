@@ -26,7 +26,6 @@ import {
   subSystemLabel,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
-import { unwrapRelation } from '@/lib/acadia/record-display';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchSubjectLevelIds } from '@/lib/supabase/queries/subject-levels';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
@@ -96,7 +95,6 @@ export function ClassSubjectAssignDialog({
   const { data: singleClassSubjects = [], isLoading: singleSubjectsLoading } =
     useSubjectsForClass({
       levelId: singleClass?.levelId,
-      specialtyId: singleClass?.specialtyId ?? undefined,
       subSystem,
       branch,
       academicYearId: activeYearId,
@@ -120,12 +118,12 @@ export function ClassSubjectAssignDialog({
           id,
           code,
           nameEn,
-          specialtyId,
+          subSystem,
+          branch,
           levelId,
           academicYearId,
           termId,
           deactivatedAt,
-          Specialty!Subject_specialtyId_tenantId_fkey ( subSystem, branch ),
           Term!Subject_semesterId_tenantId_fkey ( academicYearId )
         `,
         )
@@ -140,7 +138,6 @@ export function ClassSubjectAssignDialog({
       const classRows: ClassSubjectEligibilityClass[] = selectedClasses.map((c) => ({
         id: c.id,
         levelId: c.levelId,
-        specialtyId: c.specialtyId,
         subSystem: c.subSystem,
         branch: c.branch,
       }));
@@ -151,13 +148,13 @@ export function ClassSubjectAssignDialog({
         const levelIds = await fetchSubjectLevelIds(supabase, tenantId!, row.id as string);
         const subject: ClassSubjectEligibilitySubject = {
           id: row.id as string,
-          specialtyId: row.specialtyId as string,
+          subSystem: row.subSystem as ClassSubjectEligibilitySubject['subSystem'],
+          branch: row.branch as ClassSubjectEligibilitySubject['branch'],
           levelId: row.levelId as string,
           levelIds: levelIds.length > 0 ? levelIds : [row.levelId as string],
           academicYearId: row.academicYearId as string | null,
           termId: row.termId as string | null,
           deactivatedAt: row.deactivatedAt as string | null,
-          Specialty: unwrapRelation(row.Specialty),
           Term: row.Term,
         };
 
@@ -341,7 +338,7 @@ export function ClassSubjectAssignDialog({
             ) : subjectOptions.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No subjects available for the selected class(es). Check subject levels and
-                specialty.
+                academic stream.
               </p>
             ) : (
               <ScrollArea className="h-36 rounded-md border p-3">

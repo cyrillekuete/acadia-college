@@ -41,6 +41,12 @@ import {
   academicReportFiltersSchema,
   type AcademicReportFiltersValues,
 } from '@/lib/acadia/assessment-schemas';
+import {
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+  branchLabel,
+  subSystemLabel,
+} from '@/lib/acadia/education-system';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useTermOptions } from '@/hooks/use-academic-calendar-options';
@@ -48,10 +54,7 @@ import {
   sequenceOptionLabel,
   useSequenceOptions,
 } from '@/hooks/use-assessment-catalog-options';
-import {
-  useLevelsForSpecialty,
-  useSpecialtyOptions,
-} from '@/hooks/use-enrollment-catalog-options';
+import { useLevelsForStream } from '@/hooks/use-enrollment-catalog-options';
 import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
@@ -79,7 +82,8 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
     resolver: zodResolver(academicReportFiltersSchema),
     defaultValues: {
       academicYearId: '',
-      specialtyId: '',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
       levelId: '',
       termId: '',
       sequenceId: '',
@@ -87,9 +91,9 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
   });
 
   const academicYearId = form.watch('academicYearId') || activeYearId || '';
-  const specialtyId = form.watch('specialtyId');
-  const { data: specialties = [] } = useSpecialtyOptions();
-  const { data: levels = [] } = useLevelsForSpecialty(specialtyId);
+  const subSystem = form.watch('subSystem');
+  const branch = form.watch('branch');
+  const { data: levels = [] } = useLevelsForStream(subSystem, branch);
   const { data: sequences = [] } = useSequenceOptions(academicYearId);
   const { data: terms = [] } = useTermOptions(academicYearId);
 
@@ -102,6 +106,13 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
       form.setValue('academicYearId', activeYearId);
     }
   }, [activeYearId, form]);
+
+  useEffect(() => {
+    const current = form.getValues('levelId');
+    if (current && !levels.some((l) => l.id === current)) {
+      form.setValue('levelId', '');
+    }
+  }, [subSystem, branch, levels, form]);
 
   const reportQuery = useQuery({
     queryKey: ['academic-report', kind, tenantId, submitted],
@@ -124,7 +135,8 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
         )
         .eq('tenantId', tenantId!)
         .eq('academicYearId', submitted.academicYearId)
-        .eq('specialtyId', submitted.specialtyId)
+        .eq('subSystem', submitted.subSystem)
+        .eq('branch', submitted.branch)
         .eq('levelId', submitted.levelId)
         .eq('status', 'ENROLLED');
 
@@ -266,20 +278,44 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
           />
           <FormField
             control={form.control}
-            name="specialtyId"
+            name="subSystem"
             render={({ field }) => (
               <FormItem className="min-w-[180px]">
-                <FormLabel>Specialty</FormLabel>
+                <FormLabel>Sub-system</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Specialty" />
+                      <SelectValue placeholder="Sub-system" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {specialties.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.code}
+                    {ACADEMIC_SUB_SYSTEMS.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {subSystemLabel(value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="branch"
+            render={({ field }) => (
+              <FormItem className="min-w-[160px]">
+                <FormLabel>Branch</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Branch" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {ACADEMIC_BRANCHES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {branchLabel(value)}
                       </SelectItem>
                     ))}
                   </SelectContent>

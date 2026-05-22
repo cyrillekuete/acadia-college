@@ -52,7 +52,6 @@ import { fetchClassSubjectIds } from '@/lib/supabase/queries/class-subjects';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
 import { useLevelOptions } from '@/hooks/use-academic-calendar-options';
-import { useSpecialtyOptions } from '@/hooks/use-enrollment-catalog-options';
 import { useStaffOptions } from '@/hooks/use-subject-catalog-options';
 import { useSubjectsForClass } from '@/hooks/use-subjects-for-class';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -65,7 +64,6 @@ type ClassRow = {
   levelId: string;
   subSystem: ClassFormValues['subSystem'];
   branch: ClassFormValues['branch'];
-  specialtyId?: string | null;
   staffProfileId?: string | null;
   status: ClassFormValues['status'];
 };
@@ -98,7 +96,6 @@ export function ClassFormDialog({
       levelId: '',
       subSystem: defaultFilters?.subSystem ?? 'ENGLISH',
       branch: defaultFilters?.branch ?? 'GRAMMAR',
-      specialtyId: '',
       staffProfileId: '',
       status: 'ACTIVE',
       subjectIds: [],
@@ -108,15 +105,12 @@ export function ClassFormDialog({
   const subSystem = form.watch('subSystem');
   const branch = form.watch('branch');
   const levelId = form.watch('levelId');
-  const specialtyId = form.watch('specialtyId');
   const subjectIds = form.watch('subjectIds');
 
   const { data: levels = [] } = useLevelOptions({ subSystem, branch });
-  const { data: specialties = [] } = useSpecialtyOptions(subSystem, branch);
   const { data: staff = [] } = useStaffOptions({ enabled: open });
   const { data: availableSubjects = [], isLoading: subjectsLoading } = useSubjectsForClass({
     levelId,
-    specialtyId: specialtyId || undefined,
     subSystem,
     branch,
     academicYearId: activeYearId,
@@ -143,7 +137,6 @@ export function ClassFormDialog({
           levelId: record.levelId,
           subSystem: record.subSystem,
           branch: record.branch,
-          specialtyId: record.specialtyId ?? '',
           staffProfileId: record.staffProfileId ?? '',
           status: record.status,
           subjectIds: assignedSubjectIds,
@@ -154,7 +147,6 @@ export function ClassFormDialog({
           levelId: '',
           subSystem: defaultFilters?.subSystem ?? 'ENGLISH',
           branch: defaultFilters?.branch ?? 'GRAMMAR',
-          specialtyId: '',
           staffProfileId: '',
           status: 'ACTIVE',
           subjectIds: [],
@@ -179,7 +171,7 @@ export function ClassFormDialog({
     if (next.length !== current.length) {
       form.setValue('subjectIds', next);
     }
-  }, [levelId, specialtyId, availableSubjects, form]);
+  }, [levelId, availableSubjects, form]);
 
   const toggleSubject = (subjectId: string, checked: boolean) => {
     const current = form.getValues('subjectIds') ?? [];
@@ -311,34 +303,6 @@ export function ClassFormDialog({
                         {ACADEMIC_BRANCHES.map((value) => (
                           <SelectItem key={value} value={value}>
                             {branchLabel(value)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="specialtyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Specialty (optional)</FormLabel>
-                    <Select
-                      value={field.value || '__none__'}
-                      onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="None" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">None</SelectItem>
-                        {specialties.map((spec) => (
-                          <SelectItem key={spec.id} value={spec.id}>
-                            {spec.nameEn}
                           </SelectItem>
                         ))}
                       </SelectContent>

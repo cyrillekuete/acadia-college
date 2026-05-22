@@ -4,23 +4,19 @@ import { unwrapRelation } from '@/lib/acadia/record-display';
 export type ClassSubjectEligibilityClass = {
   id: string;
   levelId: string;
-  specialtyId?: string | null;
   subSystem: AcademicSubSystem;
   branch: AcademicBranch;
 };
 
 export type ClassSubjectEligibilitySubject = {
   id: string;
-  specialtyId: string;
+  subSystem: AcademicSubSystem;
+  branch: AcademicBranch;
   levelId: string;
   levelIds?: string[];
   academicYearId?: string | null;
   termId?: string | null;
   deactivatedAt?: string | null;
-  Specialty?: {
-    subSystem?: AcademicSubSystem;
-    branch?: AcademicBranch;
-  } | null;
   Term?: { academicYearId?: string } | { academicYearId?: string }[] | null;
 };
 
@@ -65,20 +61,10 @@ export function subjectMatchesClass(
     return false;
   }
 
-  const classSpecialty = classRow.specialtyId?.trim() || '';
-  if (classSpecialty && subject.specialtyId !== classSpecialty) {
+  if (subject.subSystem !== classRow.subSystem) {
     return false;
   }
-
-  const specialty = unwrapRelation<{
-    subSystem?: AcademicSubSystem;
-    branch?: AcademicBranch;
-  }>(subject.Specialty);
-
-  if (specialty?.subSystem && specialty.subSystem !== classRow.subSystem) {
-    return false;
-  }
-  if (specialty?.branch && specialty.branch !== classRow.branch) {
+  if (subject.branch !== classRow.branch) {
     return false;
   }
 

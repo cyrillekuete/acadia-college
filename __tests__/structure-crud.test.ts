@@ -52,7 +52,6 @@ describe('classFormSchema', () => {
       levelId: 'lvl-abc',
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
-      specialtyId: '',
       staffProfileId: '',
       status: 'ACTIVE',
       subjectIds: ['sub-1'],

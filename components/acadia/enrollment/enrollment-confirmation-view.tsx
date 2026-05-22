@@ -3,12 +3,12 @@
 import { Badge } from '@/components/ui/badge';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { applicantDisplayName } from '@/lib/acadia/enrollment';
-import { specialtyStreamLabel } from '@/lib/acadia/education-system';
 import {
   formatDateTime,
+  formatPhoneRecordValue,
   formatRecordValue,
   levelLabel,
-  specialtyLabel,
+  streamLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
 
@@ -27,7 +27,6 @@ export type EnrollmentConfirmationData = {
   branch?: string | null;
   reviewedAt?: string | null;
   createdAt: string;
-  Specialty?: unknown;
   Level?: unknown;
   AcademicYear?: unknown;
   StudentProfile?: unknown;
@@ -38,9 +37,6 @@ export function EnrollmentConfirmationView({
 }: {
   data: EnrollmentConfirmationData;
 }) {
-  const specialty = unwrapRelation<{ nameEn?: string; code?: string }>(
-    data.Specialty,
-  );
   const level = unwrapRelation<{ number?: number; labelEn?: string }>(data.Level);
   const year = unwrapRelation<{ label?: string }>(data.AcademicYear);
   const student = unwrapRelation<{ id?: string; registrationNumber?: string }>(
@@ -69,7 +65,7 @@ export function EnrollmentConfirmationView({
         fields={[
           { label: 'Name', value: applicant },
           { label: 'Email', value: formatRecordValue(data.email) },
-          { label: 'Phone', value: formatRecordValue(data.phone) },
+          { label: 'Phone', value: formatPhoneRecordValue(data.phone) },
           { label: 'Date of birth', value: formatRecordValue(data.dateOfBirth) },
           { label: 'Application type', value: formatRecordValue(data.kind) },
         ]}
@@ -81,9 +77,8 @@ export function EnrollmentConfirmationView({
           { label: 'Academic year', value: formatRecordValue(year?.label) },
           {
             label: 'Sub-system / branch',
-            value: specialtyStreamLabel(data.subSystem, data.branch),
+            value: streamLabel(data.subSystem, data.branch),
           },
-          { label: 'Specialty', value: specialtyLabel(specialty) },
           { label: 'Level', value: levelLabel(level) },
         ]}
       />
@@ -93,7 +88,7 @@ export function EnrollmentConfirmationView({
           title="Student record"
           fields={[
             {
-              label: 'Matricule',
+              label: 'Student ID',
               value: formatRecordValue(student.registrationNumber),
             },
             { label: 'Approved on', value: formatDateTime(data.reviewedAt) },

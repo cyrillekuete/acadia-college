@@ -55,7 +55,7 @@
 | ID | Feature | Status | Route | Template source | Notes |
 |----|---------|--------|-------|-----------------|-------|
 | F-010 | Students list | `done` | `/students` | user-management/users + DataGrid | `SupabaseTableList` |
-| F-011 | Student detail | `done` | `/students/[id]` | `account/home/user-profile` | Read-only profile cards + User/Specialty/Level joins |
+| F-011 | Student detail | `done` | `/students/[id]` | `account/home/user-profile` | Read-only profile cards + User/stream/Level joins |
 | F-012 | Staff list | `done` | `/staff` | user-management/users | |
 | F-012b | Staff detail | `done` | `/staff/[id]` | `account/home/user-profile` | Read-only profile cards + User/Department joins |
 | F-013 | Academic years | `done` | `/academics/years` | DataGrid list | |
@@ -144,10 +144,10 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-056 | Schema: English/French sub-system on catalog | FR-2.1.1 | `done` | `20260519130000_cameroon_subsystem_branch.sql` | — | `AcademicSubSystem` on `Specialty`, `EnrollmentApplication` |
-| F-057 | Schema: Grammar/Technical/Commercial branch | FR-2.1.2 | `done` | same migration | — | `AcademicBranch` on `Specialty`, `EnrollmentApplication` |
-| F-058 | Seed level catalog per sub-system | — | `done` | `20260519130100_cameroon_level_catalog_seed.sql`, `lib/acadia/education-system.ts` | — | 6 specialty streams × 7 levels (EN/FR labels) |
-| F-059 | Filter specialties/levels by sub-system + branch | FR-2.1.1, FR-2.1.2 | `done` | `CatalogFilterBar`, academics + enrollment lists | — | Specialties, levels, courses, applications |
+| F-056 | Schema: English/French sub-system on catalog | FR-2.1.1 | `done` | `20260519130000_cameroon_subsystem_branch.sql` | — | `AcademicSubSystem` on catalog tables (e.g. `EnrollmentApplication`) |
+| F-057 | Schema: Grammar/Technical/Commercial branch | FR-2.1.2 | `done` | same migration | — | `AcademicBranch` on catalog tables |
+| F-058 | Seed level catalog per sub-system | — | `done` | `20260519130100_cameroon_level_catalog_seed.sql`, `lib/acadia/education-system.ts` | — | 6 academic streams × 7 levels (EN/FR labels) |
+| F-059 | Filter levels by sub-system + branch | FR-2.1.1, FR-2.1.2 | `done` | `CatalogFilterBar`, academics + enrollment lists | — | Streams, levels, subjects, applications |
 
 ### 7C — User management & permissions
 
@@ -168,7 +168,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-070 | Enrollment application create/edit | FR-2.1.1, FR-2.1.2, FR-2.1.3 | `done` | `/enrollment/applications/new`, `[id]/edit` | user-management form | `enrollment-schemas.ts`, catalog-filtered specialty/level |
+| F-070 | Enrollment application create/edit | FR-2.1.1, FR-2.1.2, FR-2.1.3 | `done` | `/enrollment/applications/new`, `[id]/edit` | user-management form | `enrollment-schemas.ts`, catalog-filtered stream/level |
 | F-071 | Application approve/reject → enrollment | — | `done` | `/enrollment/applications/[id]` | — | API review route; provisions User + StudentProfile on NEW approve |
 | F-072 | Enrollment confirmation (print/PDF) | FR-2.1.4 | `done` | `/enrollment/applications/[id]/confirmation` | — | Print-friendly confirmation view |
 | F-073 | Student profile edit | FR-2.2.1 | `done` | `/students/[id]` | user-profile | `StudentEditForm` tab |
@@ -182,7 +182,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 |----|---------|-----|--------|------------------|-----------------|-------|
 | F-077 | Subject create/edit | FR-3.2.1 | `done` | `/subjects/new`, `/subjects/[id]/edit` | teams form | `subject-schemas.ts`, `SubjectForm`, term + catalog placement |
 | F-078 | SubjectAssignment (teacher ↔ subject) | FR-3.1.2, FR-3.2.2 | `done` | `/subjects/[id]` | — | `SubjectAssignmentPanel` CRUD |
-| F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `done` | `/classes` | DataGrid | Year + catalog + specialty/level filters; link to `/academics/classes` |
+| F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `done` | `/classes` | DataGrid | Year + catalog + stream/level filters; link to `/academics/classes` |
 | F-080 | Timetable slot create/edit | FR-3.1.4 | `done` | `/timetable` | DataGrid + form | `TimetableSlotFormDialog` + edit/delete |
 | F-081 | Subject-specific resources (course materials) | FR-3.2.3, FR-8.1.1 | `done` | `/subjects/[id]` | — | `CourseworkTask` via `SubjectMaterialsPanel` |
 
@@ -218,7 +218,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-100 | Tuition fee plans / setup | FR-6.1.1 | `done` | `/finance/fees/setup` | account/billing/basic | `FeePlanSetupForm`, `SpecialtyFeePlan` |
+| F-100 | Tuition fee plans / setup | FR-6.1.1 | `done` | `/finance/fees/setup` | account/billing/basic | `FeePlanSetupForm`, `StreamFeePlan` |
 | F-101 | Payment status tracking | FR-6.1.2 | `done` | `/finance/fees`, `/finance/fees/[id]` | billing | `FeeAccountInstallments`, status badges |
 | F-102 | Invoices and receipts | FR-6.1.3 | `done` | `/finance/fees/[id]/invoice` | — | `FeeInvoiceView` (print) |
 | F-103 | Outstanding balances view | FR-6.1.4 | `done` | `/finance/fees` | — | `FeeOutstandingPanel` tab |

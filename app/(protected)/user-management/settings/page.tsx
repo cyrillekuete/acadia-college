@@ -36,8 +36,12 @@ import { useSettings } from './components/settings-context';
 import TimezoneSelect from './components/timezone-select';
 import {
   GeneralSettingsSchema,
+  GeneralSettingsFormValues,
   GeneralSettingsSchemaType,
 } from './forms/general-settings-schema';
+import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
+import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
+import { splitPhoneE164 } from '@/lib/acadia/phone';
 
 const languages = [
   {
@@ -88,8 +92,10 @@ export default function Page() {
   );
   const logoFileRef = useRef<HTMLInputElement | null>(null);
 
+  const supportPhoneSplit = splitPhoneE164(settings?.supportPhone);
+
   // Ensure all fields have default values
-  const transformedSettings: GeneralSettingsSchemaType = {
+  const transformedSettings: GeneralSettingsFormValues = {
     ...settings,
     logoFile: null,
     logoAction: '',
@@ -99,7 +105,9 @@ export default function Page() {
     websiteURL: settings?.websiteURL || '',
     language: settings?.language || 'en',
     supportEmail: settings?.supportEmail || '',
-    supportPhone: settings?.supportPhone || '',
+    supportPhoneCountry:
+      supportPhoneSplit.countryName || DEFAULT_COUNTRY_NAME,
+    supportPhone: supportPhoneSplit.nationalNumber,
     currency: settings?.currency || 'USD',
     currencyFormat: settings?.currencyFormat || '$ {value}',
     timezone: settings?.timezone || 'Europe/London',
@@ -113,7 +121,7 @@ export default function Page() {
     }
   }, [settings]);
 
-  const form = useForm<GeneralSettingsSchemaType>({
+  const form = useForm<GeneralSettingsFormValues, unknown, GeneralSettingsSchemaType>({
     resolver: zodResolver(GeneralSettingsSchema),
     defaultValues: transformedSettings,
     mode: 'onSubmit',
@@ -497,25 +505,11 @@ export default function Page() {
               )}
             />
 
-            {/* Support Phone */}
-            <FormField
+            <PhoneFormFields
               control={form.control}
-              name="supportPhone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Support Phone</FormLabel>
-                  <FormControl>
-                    <Input
-                      id="supportPhone"
-                      type="tel"
-                      placeholder="Enter support phone"
-                      value={field.value || ''}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              countryName="supportPhoneCountry"
+              phoneName="supportPhone"
+              phoneLabel="Support phone"
             />
 
             {/* Currency */}

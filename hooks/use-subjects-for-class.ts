@@ -20,14 +20,11 @@ type SubjectRow = {
   id: string;
   code: string;
   nameEn: string;
-  specialtyId: string;
+  subSystem: AcademicSubSystem;
+  branch: AcademicBranch;
   levelId: string;
   academicYearId: string | null;
   termId: string | null;
-  Specialty?: {
-    subSystem?: AcademicSubSystem;
-    branch?: AcademicBranch;
-  } | null;
   Term?: { academicYearId?: string } | { academicYearId?: string }[] | null;
 };
 
@@ -47,7 +44,6 @@ function subjectMatchesAcademicYear(
 
 export function useSubjectsForClass(filters: {
   levelId?: string;
-  specialtyId?: string;
   subSystem: AcademicSubSystem;
   branch: AcademicBranch;
   academicYearId?: string | null;
@@ -61,7 +57,6 @@ export function useSubjectsForClass(filters: {
       'subjects-for-class',
       tenantId,
       levelId,
-      filters.specialtyId ?? null,
       filters.subSystem,
       filters.branch,
       filters.academicYearId ?? null,
@@ -77,15 +72,17 @@ export function useSubjectsForClass(filters: {
           id,
           code,
           nameEn,
-          specialtyId,
+          subSystem,
+          branch,
           levelId,
           academicYearId,
           termId,
-          Specialty!Subject_specialtyId_tenantId_fkey ( subSystem, branch ),
           Term!Subject_semesterId_tenantId_fkey ( academicYearId )
         `,
         )
         .eq('tenantId', tenantId!)
+        .eq('subSystem', filters.subSystem)
+        .eq('branch', filters.branch)
         .is('deactivatedAt', null)
         .order('code', { ascending: true });
 
@@ -103,7 +100,6 @@ export function useSubjectsForClass(filters: {
         throw error;
       }
 
-      const specialtyId = filters.specialtyId?.trim() || '';
       const seen = new Set<string>();
 
       return (data ?? [])
@@ -120,22 +116,6 @@ export function useSubjectsForClass(filters: {
             subject.levelId === levelId || linkedIds.includes(id);
           if (!matchesLevel) {
             return false;
-          }
-          if (specialtyId) {
-            if (subject.specialtyId !== specialtyId) {
-              return false;
-            }
-          } else {
-            const specialty = unwrapRelation<{
-              subSystem?: AcademicSubSystem;
-              branch?: AcademicBranch;
-            }>(subject.Specialty);
-            if (
-              specialty?.subSystem !== filters.subSystem ||
-              specialty?.branch !== filters.branch
-            ) {
-              return false;
-            }
           }
           seen.add(id);
           return true;

@@ -56,8 +56,11 @@ function StudentHeroContent({
   const { copyToClipboard } = useCopyToClipboard();
   const [showCopied, setShowCopied] = useState(false);
 
+  const studentId =
+    student.registration_number ?? student.student_id;
+
   const handleStudentIdCopy = () => {
-    copyToClipboard(student.student_id);
+    copyToClipboard(studentId);
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
   };
@@ -82,7 +85,7 @@ function StudentHeroContent({
                   className="gap-1.5 px-2 py-0.5"
                   onClick={handleStudentIdCopy}
                 >
-                  <span>Student ID: {student.student_id}</span>
+                  <span>Student ID: {studentId}</span>
                   {showCopied ? <Check className="size-3 text-success" /> : null}
                 </Badge>
               </TooltipTrigger>

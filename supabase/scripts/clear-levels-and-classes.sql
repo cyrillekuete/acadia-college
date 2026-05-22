@@ -49,7 +49,7 @@ SELECT 'Level', count(*) FROM "Level", cfg WHERE "tenantId" = cfg.tenant_id
 UNION ALL
 SELECT 'Subject', count(*) FROM "Subject", cfg WHERE "tenantId" = cfg.tenant_id
 UNION ALL
-SELECT 'SubjectSpecialtyOffering', count(*) FROM "SubjectSpecialtyOffering", cfg WHERE "tenantId" = cfg.tenant_id
+SELECT 'SubjectStreamOffering', count(*) FROM "SubjectStreamOffering", cfg WHERE "tenantId" = cfg.tenant_id
 UNION ALL
 SELECT 'StudentProfile', count(*) FROM "StudentProfile", cfg WHERE "tenantId" = cfg.tenant_id
 UNION ALL
@@ -150,9 +150,9 @@ BEGIN
   RAISE NOTICE 'Class: % deleted', v_rows;
 
   -- Phase D: subjects and offerings (Subject.levelId FK → Level)
-  DELETE FROM "SubjectSpecialtyOffering" WHERE "tenantId" = v_tenant;
+  DELETE FROM "SubjectStreamOffering" WHERE "tenantId" = v_tenant;
   GET DIAGNOSTICS v_rows = ROW_COUNT;
-  RAISE NOTICE 'SubjectSpecialtyOffering: % deleted', v_rows;
+  RAISE NOTICE 'SubjectStreamOffering: % deleted', v_rows;
 
   DELETE FROM "Subject" WHERE "tenantId" = v_tenant;
   GET DIAGNOSTICS v_rows = ROW_COUNT;

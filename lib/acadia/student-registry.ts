@@ -152,6 +152,7 @@ export function filterStudentsRegistry(
       fullName.includes(q) ||
       student.email.toLowerCase().includes(q) ||
       student.student_id.toLowerCase().includes(q) ||
+      (student.registration_number?.toLowerCase().includes(q) ?? false) ||
       (student.matricule_number?.toLowerCase().includes(q) ?? false)
     );
   });

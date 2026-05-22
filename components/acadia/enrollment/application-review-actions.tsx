@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
 import { useEnrollmentMutations } from '@/hooks/use-enrollment-mutations';
 import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
 
@@ -33,12 +34,14 @@ export function ApplicationReviewActions({
   applicationId,
   status,
   levelId,
-  specialtyId,
+  subSystem,
+  branch,
 }: {
   applicationId: string;
   status: string;
   levelId?: string;
-  specialtyId?: string;
+  subSystem?: AcademicSubSystem | string;
+  branch?: AcademicBranch | string;
 }) {
   const { reviewApplication } = useEnrollmentMutations();
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -49,7 +52,8 @@ export function ApplicationReviewActions({
   const [classPickerMessage, setClassPickerMessage] = useState('');
 
   const { data: classOptions = [] } = useClassesForFilters({
-    specialtyId: specialtyId ?? null,
+    subSystem: (subSystem as AcademicSubSystem) ?? null,
+    branch: (branch as AcademicBranch) ?? null,
     levelId: levelId ?? null,
   });
 

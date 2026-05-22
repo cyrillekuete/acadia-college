@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { provisionAcademicCalendar, setCurrentAcademicYear } from '@/lib/acadia/academic-calendar';
 import { resolveClassIdForEnrollment } from '@/lib/acadia/class-assignment';
+import { requireAcademicStream } from '@/lib/acadia/education-system';
 import {
   buildPromotionCandidates,
   computeYearAverageForPromotionFromMarks,
@@ -200,7 +201,8 @@ async function computePromotionForClass(
       );
       return {
         studentProfileId: studentId,
-        specialtyId: e.specialtyId as string,
+        subSystem: e.subSystem as string,
+        branch: e.branch as string,
         levelId: e.levelId as string,
         classId: e.classId as string,
         enrollmentId: e.id as string,
@@ -247,11 +249,17 @@ async function computePromotionForClass(
 
     let targetClassId: string | null = null;
     if (c.finalAction === 'PROMOTE' && c.targetLevelId) {
+      const stream = requireAcademicStream(
+        c.subSystem,
+        c.branch,
+        'Promotion candidate',
+      );
       targetClassId = await resolveClassIdForEnrollment(
         supabase,
         tenantId,
         c.targetLevelId,
-        c.specialtyId,
+        stream.subSystem,
+        stream.branch,
       );
     } else if (c.finalAction === 'REPEAT') {
       targetClassId = c.classId;
@@ -262,7 +270,8 @@ async function computePromotionForClass(
       tenantId,
       studentProfileId: c.studentProfileId,
       academicYearId,
-      specialtyId: c.specialtyId,
+      subSystem: c.subSystem,
+      branch: c.branch,
       classId: c.classId,
       enrollmentId: c.enrollmentId ?? enrollmentByStudent.get(c.studentProfileId)?.id,
       fromLevelId: c.fromLevelId,
@@ -446,7 +455,7 @@ export function usePromotionMutations() {
 
       let enrollmentQuery = supabase
         .from('StudentEnrollment')
-        .select('id, specialtyId, levelId, classId')
+        .select('id, subSystem, branch, levelId, classId')
         .eq('tenantId', tenantId)
         .eq('studentProfileId', values.studentProfileId)
         .eq('academicYearId', values.academicYearId)
@@ -508,7 +517,8 @@ export function usePromotionMutations() {
         [
           {
             studentProfileId: values.studentProfileId,
-            specialtyId: enrollment.specialtyId as string,
+            subSystem: enrollment.subSystem as string,
+            branch: enrollment.branch as string,
             levelId: enrollment.levelId as string,
             classId,
             enrollmentId: enrollment.id as string,
@@ -537,11 +547,17 @@ export function usePromotionMutations() {
 
       let targetClassId: string | null = null;
       if (candidate.finalAction === 'PROMOTE' && candidate.targetLevelId) {
+        const stream = requireAcademicStream(
+          candidate.subSystem,
+          candidate.branch,
+          'Promotion override',
+        );
         targetClassId = await resolveClassIdForEnrollment(
           supabase,
           tenantId,
           candidate.targetLevelId,
-          candidate.specialtyId,
+          stream.subSystem,
+          stream.branch,
         );
       } else if (candidate.finalAction === 'REPEAT') {
         targetClassId = classId;
@@ -552,7 +568,8 @@ export function usePromotionMutations() {
         tenantId,
         studentProfileId: values.studentProfileId,
         academicYearId: values.academicYearId,
-        specialtyId: candidate.specialtyId,
+        subSystem: candidate.subSystem,
+        branch: candidate.branch,
         classId: candidate.classId,
         enrollmentId: enrollment.id as string,
         fromLevelId: candidate.fromLevelId,
@@ -690,7 +707,7 @@ export function usePromotionMutations() {
       const { data: decisions, error: decisionError } = await supabase
         .from('StudentPromotionDecision')
         .select(
-          'id, studentProfileId, specialtyId, classId, fromLevelId, targetLevelId, targetClassId, finalAction, yearAverage, recommendedAction, source',
+          'id, studentProfileId, subSystem, branch, classId, fromLevelId, targetLevelId, targetClassId, finalAction, yearAverage, recommendedAction, source',
         )
         .eq('tenantId', tenantId)
         .eq('academicYearId', values.sourceAcademicYearId);
@@ -707,7 +724,8 @@ export function usePromotionMutations() {
 
       const candidates = (decisions ?? []).map((d) => ({
         studentProfileId: d.studentProfileId as string,
-        specialtyId: d.specialtyId as string,
+        subSystem: d.subSystem as string,
+        branch: d.branch as string,
         classId: (d.classId as string | null) ?? '',
         fromLevelId: d.fromLevelId as string,
         yearAverage: d.yearAverage != null ? Number(d.yearAverage) : null,
@@ -750,11 +768,17 @@ export function usePromotionMutations() {
         if (item.createEnrollment) {
           let classId = item.targetClassId;
           if (!classId) {
+            const stream = requireAcademicStream(
+              item.subSystem,
+              item.branch,
+              'Year rollover enrollment',
+            );
             classId = await resolveClassIdForEnrollment(
               supabase,
               tenantId,
               item.targetLevelId,
-              item.specialtyId,
+              stream.subSystem,
+              stream.branch,
             );
           }
 
@@ -765,7 +789,8 @@ export function usePromotionMutations() {
               tenantId,
               studentProfileId: item.studentProfileId,
               academicYearId: targetYearId,
-              specialtyId: item.specialtyId,
+              subSystem: item.subSystem,
+              branch: item.branch,
               levelId: item.targetLevelId,
               classId,
               status: 'ENROLLED',
@@ -780,7 +805,8 @@ export function usePromotionMutations() {
           const { error: profileError } = await supabase
             .from('StudentProfile')
             .update({
-              specialtyId: item.specialtyId,
+              subSystem: item.subSystem,
+              branch: item.branch,
               currentLevelId: item.targetLevelId,
               updatedAt: now,
             })

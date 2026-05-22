@@ -48,6 +48,7 @@ export default function StudentEditPage() {
           profileId: student.profileId,
           userId: student.userId,
           registrationNumber: student.registrationNumber,
+          matriculeNumber: student.matricule_number,
           isActive: student.status === 'active',
           alumniDirectoryOptIn: student.alumniDirectoryOptIn,
           alumniSince: student.alumniSince,

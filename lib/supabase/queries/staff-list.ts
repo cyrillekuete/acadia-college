@@ -19,7 +19,7 @@ const STAFF_LIST_SELECT = `
     Subject!SubjectAssignment_subjectId_tenantId_fkey (
       nameEn,
       code,
-      Specialty!Subject_specialtyId_tenantId_fkey ( subSystem )
+      subSystem
     )
   )
 `;
@@ -27,7 +27,7 @@ const STAFF_LIST_SELECT = `
 type SubjectNested = {
   nameEn?: string;
   code?: string;
-  Specialty?: unknown;
+  subSystem?: string;
 };
 
 type AssignmentNested = {
@@ -86,9 +86,8 @@ function aggregateAssignments(
       subjects.add(name);
     }
 
-    const specialty = unwrapRelation<{ subSystem?: string }>(subject?.Specialty);
-    if (specialty?.subSystem) {
-      subsystems.add(specialty.subSystem);
+    if (subject?.subSystem) {
+      subsystems.add(subject.subSystem);
     }
   }
 

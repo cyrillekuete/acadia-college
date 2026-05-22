@@ -92,6 +92,16 @@ export function StudentProfile({
             </dd>
           </div>
           <div className="col-span-2 grid grid-cols-subgrid items-baseline">
+            <dt>Student ID:</dt>
+            <dd>{student.registration_number ?? student.student_id ?? '—'}</dd>
+          </div>
+          {student.matricule_number ? (
+            <div className="col-span-2 grid grid-cols-subgrid items-baseline">
+              <dt>Matricule:</dt>
+              <dd>{student.matricule_number}</dd>
+            </div>
+          ) : null}
+          <div className="col-span-2 grid grid-cols-subgrid items-baseline">
             <dt>Enrolled:</dt>
             <dd>
               {student.enrollment_date

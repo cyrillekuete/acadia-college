@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { reviewApplicationSchema } from '@/lib/acadia/enrollment-schemas';
 import { resolveClassForEnrollment } from '@/lib/acadia/class-assignment';
 import {
+  parseAcademicBranch,
+  parseAcademicSubSystem,
+} from '@/lib/acadia/education-system';
+import {
   applicantDisplayName,
   generateRegistrationNumber,
 } from '@/lib/acadia/enrollment';
@@ -58,7 +62,8 @@ export async function POST(request: Request, context: RouteContext) {
       firstNameFr,
       lastNameFr,
       email,
-      specialtyId,
+      subSystem,
+      branch,
       levelId,
       academicYearId,
       AcademicYear!EnrollmentApplication_academicYearId_tenantId_fkey ( label )
@@ -216,7 +221,8 @@ export async function POST(request: Request, context: RouteContext) {
       tenantId: auth.ctx.tenantId,
       userId,
       registrationNumber,
-      specialtyId: application.specialtyId,
+      subSystem: application.subSystem,
+      branch: application.branch,
       currentLevelId: application.levelId,
       isActive: true,
       alumniDirectoryOptIn: false,
@@ -290,11 +296,21 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  const subSystem = parseAcademicSubSystem(application.subSystem);
+  const branch = parseAcademicBranch(application.branch);
+  if (!subSystem || !branch) {
+    return NextResponse.json(
+      { message: 'Application is missing a valid sub-system or branch.' },
+      { status: 400 },
+    );
+  }
+
   const classResolution = await resolveClassForEnrollment(
     supabase,
     auth.ctx.tenantId,
     application.levelId as string,
-    application.specialtyId as string,
+    subSystem,
+    branch,
   );
 
   let classId: string | null = classResolution.classId;
@@ -304,7 +320,7 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json(
         {
           message:
-            'Multiple classes match this level and specialty. Select a class.',
+            'Multiple classes match this level and stream. Select a class.',
           candidateClassIds: classResolution.candidateIds,
         },
         { status: 400 },
@@ -323,7 +339,7 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json(
         {
           message:
-            'No class matches this level and specialty. Select a class to continue.',
+            'No class matches this level and stream. Select a class to continue.',
           candidateClassIds: [],
         },
         { status: 400 },
@@ -338,7 +354,8 @@ export async function POST(request: Request, context: RouteContext) {
     tenantId: auth.ctx.tenantId,
     studentProfileId,
     academicYearId: application.academicYearId,
-    specialtyId: application.specialtyId,
+    subSystem: application.subSystem,
+    branch: application.branch,
     levelId: application.levelId,
     classId,
     status: 'ENROLLED',

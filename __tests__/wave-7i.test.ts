@@ -3,7 +3,6 @@
  * Covers: class-based promotion logic, year rollover planning, retention preview
  */
 import { describe, it, expect } from 'vitest';
-import { pickMatches } from '@/lib/acadia/class-assignment';
 import {
   buildPromotionCandidates,
   computeYearAverageForPromotionFromMarks,
@@ -71,28 +70,10 @@ describe('meetsPromotionThreshold', () => {
   });
 });
 
-describe('class assignment specialty matching', () => {
-  it('prefers specialty match over level-only class', () => {
-    const rows = [
-      { id: 'cls-a', specialtyId: 'spec-1' },
-      { id: 'cls-b', specialtyId: null },
-    ];
-    expect(pickMatches(rows, 'spec-1').map((r) => r.id)).toEqual(['cls-a']);
-  });
-});
-
-describe('requireClassPromotionPolicy', () => {
-  it('throws when policy is missing', () => {
-    expect(() => requireClassPromotionPolicy(null, 'Form 1')).toThrow(
-      /Configure a promotion policy/,
-    );
-  });
-});
-
 describe('findNextLevel', () => {
   it('returns the next level in the same stream', () => {
-    expect(findNextLevel(levels, 'spec-a', 'lvl-1')?.id).toBe('lvl-2');
-    expect(findNextLevel(levels, 'spec-a', 'lvl-3')).toBeNull();
+    expect(findNextLevel(levels, 'lvl-1')?.id).toBe('lvl-2');
+    expect(findNextLevel(levels, 'lvl-3')).toBeNull();
   });
 });
 
@@ -102,7 +83,6 @@ describe('resolveFinalPromotionAction', () => {
       'PROMOTE',
       11,
       levels,
-      'spec-a',
       'lvl-3',
       10,
     );
@@ -115,7 +95,6 @@ describe('resolveFinalPromotionAction', () => {
       'PROMOTE',
       14,
       levels,
-      'spec-a',
       'lvl-1',
       10,
       'REPEAT',
@@ -131,7 +110,8 @@ describe('buildPromotionCandidates', () => {
       [
         {
           studentProfileId: 'stu-1',
-          specialtyId: 'spec-a',
+          subSystem: 'ENGLISH',
+          branch: 'GRAMMAR',
           levelId: 'lvl-1',
           classId: 'cls-1',
           yearAverage: 12,
@@ -151,7 +131,8 @@ describe('buildPromotionCandidates', () => {
       [
         {
           studentProfileId: 'stu-1',
-          specialtyId: 'spec-a',
+          subSystem: 'ENGLISH',
+          branch: 'GRAMMAR',
           levelId: 'lvl-1',
           classId: 'cls-1',
           yearAverage: 14,
@@ -169,7 +150,8 @@ describe('buildPromotionCandidates', () => {
       [
         {
           studentProfileId: 'stu-1',
-          specialtyId: 'spec-a',
+          subSystem: 'ENGLISH',
+          branch: 'GRAMMAR',
           levelId: 'lvl-1',
           classId: 'cls-1',
           yearAverage: null,
@@ -220,7 +202,8 @@ describe('planYearRollover', () => {
       candidates: [
         {
           studentProfileId: 'stu-1',
-          specialtyId: 'spec-a',
+          subSystem: 'ENGLISH',
+          branch: 'GRAMMAR',
           classId: 'cls-1',
           fromLevelId: 'lvl-1',
           yearAverage: 12,
@@ -235,7 +218,8 @@ describe('planYearRollover', () => {
         },
         {
           studentProfileId: 'stu-2',
-          specialtyId: 'spec-a',
+          subSystem: 'ENGLISH',
+          branch: 'GRAMMAR',
           classId: 'cls-1',
           fromLevelId: 'lvl-1',
           yearAverage: 8,
@@ -284,12 +268,13 @@ describe('promotion schemas', () => {
     ).toBe(true);
   });
 
-  it('validates specialty bulk mode', () => {
+  it('validates stream bulk mode', () => {
     expect(
       promotionFiltersSchema.safeParse({
         academicYearId: 'year-1',
-        bulkMode: 'specialty',
-        specialtyId: 'spec-1',
+        bulkMode: 'stream',
+        subSystem: 'ENGLISH',
+        branch: 'GRAMMAR',
       }).success,
     ).toBe(true);
   });
@@ -314,5 +299,13 @@ describe('promotion schemas', () => {
         archiveInactiveAfterYears: 3,
       }).success,
     ).toBe(true);
+  });
+});
+
+describe('requireClassPromotionPolicy', () => {
+  it('throws when policy is missing', () => {
+    expect(() => requireClassPromotionPolicy(null, 'Form 1')).toThrow(
+      /Configure a promotion policy/,
+    );
   });
 });

@@ -8,15 +8,7 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 
-export type SpecialtyOption = {
-  id: string;
-  code: string;
-  nameEn: string;
-  subSystem: AcademicSubSystem;
-  branch: AcademicBranch;
-};
-
-export type LevelForSpecialtyOption = {
+export type LevelCatalogOption = {
   id: string;
   number: number;
   name: string;
@@ -24,7 +16,8 @@ export type LevelForSpecialtyOption = {
   labelFr: string | null;
 };
 
-export function useSpecialtyOptions(
+/** Levels for a sub-system + branch stream. */
+export function useLevelsForStream(
   subSystem?: AcademicSubSystem | null,
   branch?: AcademicBranch | null,
 ) {
@@ -32,25 +25,27 @@ export function useSpecialtyOptions(
   const tenantId = session?.tenantId ?? null;
 
   return useQuery({
-    queryKey: ['specialty-options', tenantId, subSystem, branch],
+    queryKey: ['level-for-stream', tenantId, subSystem, branch],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let query = supabase
-        .from('Specialty')
-        .select('id, code, nameEn, subSystem, branch')
+        .from('Level')
+        .select('id, number, name, labelEn, labelFr')
         .eq('tenantId', tenantId!)
-        .order('nameEn', { ascending: true });
+        .order('number', { ascending: true });
+
       if (subSystem) {
         query = query.eq('subSystem', subSystem);
       }
       if (branch) {
         query = query.eq('branch', branch);
       }
+
       const { data, error } = await query;
       if (error) {
         throw error;
       }
-      return (data ?? []) as SpecialtyOption[];
+      return (data ?? []) as LevelCatalogOption[];
     },
     enabled:
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId) &&
@@ -59,65 +54,9 @@ export function useSpecialtyOptions(
   });
 }
 
-/** Unified levels filtered by sub-system and branch (no longer per-specialty). */
-export function useLevelsForSpecialty(
-  specialtyId?: string | null,
-  subSystem?: AcademicSubSystem | null,
-  branch?: AcademicBranch | null,
-) {
-  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
-  const tenantId = session?.tenantId ?? null;
-
-  return useQuery({
-    queryKey: ['level-for-specialty', tenantId, specialtyId, subSystem, branch],
-    queryFn: async () => {
-      const supabase = requireBrowserClient();
-      let resolvedSubSystem = subSystem;
-      let resolvedBranch = branch;
-
-      if (specialtyId && (!resolvedSubSystem || !resolvedBranch)) {
-        const { data: specialty, error: specialtyError } = await supabase
-          .from('Specialty')
-          .select('subSystem, branch')
-          .eq('tenantId', tenantId!)
-          .eq('id', specialtyId)
-          .maybeSingle();
-        if (specialtyError) {
-          throw specialtyError;
-        }
-        resolvedSubSystem = specialty?.subSystem ?? resolvedSubSystem;
-        resolvedBranch = specialty?.branch ?? resolvedBranch;
-      }
-
-      let query = supabase
-        .from('Level')
-        .select('id, number, name, labelEn, labelFr')
-        .eq('tenantId', tenantId!)
-        .order('number', { ascending: true });
-
-      if (resolvedSubSystem) {
-        query = query.eq('subSystem', resolvedSubSystem);
-      }
-      if (resolvedBranch) {
-        query = query.eq('branch', resolvedBranch);
-      }
-
-      const { data, error } = await query;
-      if (error) {
-        throw error;
-      }
-      return (data ?? []) as LevelForSpecialtyOption[];
-    },
-    enabled:
-      isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId) &&
-      (!!specialtyId || (!!subSystem && !!branch)),
-  });
-}
-
 export function useClassesForFilters(filters?: {
   subSystem?: AcademicSubSystem | null;
   branch?: AcademicBranch | null;
-  specialtyId?: string | null;
   levelId?: string | null;
 }) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
@@ -129,14 +68,13 @@ export function useClassesForFilters(filters?: {
       tenantId,
       filters?.subSystem ?? null,
       filters?.branch ?? null,
-      filters?.specialtyId ?? null,
       filters?.levelId ?? null,
     ],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let query = supabase
         .from('Class')
-        .select('id, name, levelId, specialtyId, subSystem, branch')
+        .select('id, name, levelId, subSystem, branch')
         .eq('tenantId', tenantId!)
         .eq('status', 'ACTIVE')
         .order('name', { ascending: true });
@@ -146,9 +84,6 @@ export function useClassesForFilters(filters?: {
       }
       if (filters?.branch) {
         query = query.eq('branch', filters.branch);
-      }
-      if (filters?.specialtyId) {
-        query = query.eq('specialtyId', filters.specialtyId);
       }
       if (filters?.levelId) {
         query = query.eq('levelId', filters.levelId);

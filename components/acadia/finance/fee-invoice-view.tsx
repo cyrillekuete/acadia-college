@@ -21,7 +21,7 @@ import {
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
-import { formatRecordValue, unwrapRelation } from '@/lib/acadia/record-display';
+import { formatRecordValue, streamLabel, unwrapRelation } from '@/lib/acadia/record-display';
 
 export function FeeInvoiceView({ accountId }: { accountId: string }) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -45,7 +45,8 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
             User!StudentProfile_userId_tenantId_fkey ( name, email )
           ),
           AcademicYear!StudentFeeAccount_academicYearId_tenantId_fkey ( label ),
-          Specialty!StudentFeeAccount_specialtyId_tenantId_fkey ( code, nameEn ),
+          subSystem,
+          branch,
           StudentFeeInstallment (
             installmentNumber,
             labelEn,
@@ -116,9 +117,6 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
   }>(account.StudentProfile);
   const user = unwrapRelation<{ name?: string; email?: string }>(profile?.User);
   const year = unwrapRelation<{ label?: string }>(account.AcademicYear);
-  const specialty = unwrapRelation<{ code?: string; nameEn?: string }>(
-    account.Specialty,
-  );
   const invoiceNumber = `INV-${String(account.id).slice(-8).toUpperCase()}`;
 
   return (
@@ -151,7 +149,7 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
           </p>
           <p>
             <span className="font-medium">Program:</span>{' '}
-            {specialty?.code ?? '—'} {specialty?.nameEn ?? ''}
+            {streamLabel(account.subSystem as string, account.branch as string)}
           </p>
           {user?.email ? (
             <p>

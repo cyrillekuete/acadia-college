@@ -26,7 +26,6 @@ export default function StudentDetailPage() {
             <div className="flex flex-wrap gap-2">
               <StudentClassMigrationDialog
                 profileId={profileId}
-                currentSpecialtyId={student.specialtyId ?? ''}
                 subSystem={(student.subsystem ?? 'ENGLISH').toUpperCase()}
                 branch={(student.branch ?? 'GRAMMAR').toUpperCase()}
               />

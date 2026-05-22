@@ -31,7 +31,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+  branchLabel,
   levelDisplayLabel,
+  subSystemLabel,
   type AcademicBranch,
   type AcademicSubSystem,
 } from '@/lib/acadia/education-system';
@@ -43,19 +47,16 @@ import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   useClassesForFilters,
-  useLevelsForSpecialty,
-  useSpecialtyOptions,
+  useLevelsForStream,
 } from '@/hooks/use-enrollment-catalog-options';
 import { useStudentMutations } from '@/hooks/use-student-mutations';
 
 export function StudentClassMigrationDialog({
   profileId,
-  currentSpecialtyId,
-  subSystem,
-  branch,
+  subSystem: initialSubSystem,
+  branch: initialBranch,
 }: {
   profileId: string;
-  currentSpecialtyId: string;
   subSystem: string;
   branch: string;
 }) {
@@ -66,7 +67,8 @@ export function StudentClassMigrationDialog({
   const form = useForm<StudentClassMigrationValues>({
     resolver: zodResolver(studentClassMigrationSchema),
     defaultValues: {
-      specialtyId: currentSpecialtyId,
+      subSystem: initialSubSystem as AcademicSubSystem,
+      branch: initialBranch as AcademicBranch,
       levelId: '',
       classId: '',
       academicYearId: '',
@@ -74,22 +76,14 @@ export function StudentClassMigrationDialog({
     },
   });
 
-  const specialtyId = form.watch('specialtyId');
+  const subSystem = form.watch('subSystem');
+  const branch = form.watch('branch');
   const levelId = form.watch('levelId');
-  const { data: specialties = [] } = useSpecialtyOptions(
-    subSystem as 'ENGLISH' | 'FRENCH',
-    branch as 'GRAMMAR' | 'TECHNICAL' | 'COMMERCIAL',
-  );
-  const { data: levels = [] } = useLevelsForSpecialty(
-    specialtyId,
-    subSystem as AcademicSubSystem,
-    branch as AcademicBranch,
-  );
+  const { data: levels = [] } = useLevelsForStream(subSystem, branch);
   const { data: classOptions = [] } = useClassesForFilters({
-    specialtyId,
     levelId,
-    subSystem: subSystem as AcademicSubSystem,
-    branch: branch as AcademicBranch,
+    subSystem,
+    branch,
   });
 
   useEffect(() => {
@@ -97,13 +91,22 @@ export function StudentClassMigrationDialog({
       return;
     }
     form.reset({
-      specialtyId: currentSpecialtyId,
+      subSystem: initialSubSystem as AcademicSubSystem,
+      branch: initialBranch as AcademicBranch,
       levelId: '',
       classId: '',
       academicYearId: activeYearId ?? '',
       note: '',
     });
-  }, [open, currentSpecialtyId, activeYearId, form]);
+  }, [open, initialSubSystem, initialBranch, activeYearId, form]);
+
+  useEffect(() => {
+    const current = form.getValues('levelId');
+    if (current && !levels.some((l) => l.id === current)) {
+      form.setValue('levelId', '');
+      form.setValue('classId', '');
+    }
+  }, [subSystem, branch, levels, form]);
 
   const onSubmit = (values: StudentClassMigrationValues) => {
     migrateStudentClass.mutate(
@@ -147,20 +150,58 @@ export function StudentClassMigrationDialog({
                 />
                 <FormField
                   control={form.control}
-                  name="specialtyId"
+                  name="subSystem"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Specialty</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <FormLabel>Sub-system</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) => {
+                          field.onChange(v);
+                          form.setValue('levelId', '');
+                          form.setValue('classId', '');
+                        }}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {specialties.map((spec) => (
-                            <SelectItem key={spec.id} value={spec.id}>
-                              {spec.nameEn}
+                          {ACADEMIC_SUB_SYSTEMS.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {subSystemLabel(value)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="branch"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Branch</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) => {
+                          field.onChange(v);
+                          form.setValue('levelId', '');
+                          form.setValue('classId', '');
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ACADEMIC_BRANCHES.map((value) => (
+                            <SelectItem key={value} value={value}>
+                              {branchLabel(value)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -175,7 +216,14 @@ export function StudentClassMigrationDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Level</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) => {
+                          field.onChange(v);
+                          form.setValue('classId', '');
+                        }}
+                        disabled={!subSystem || !branch || levels.length === 0}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select level" />

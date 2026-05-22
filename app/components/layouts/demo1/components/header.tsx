@@ -14,7 +14,6 @@ import {
   Menu,
   MessageCircleMore,
   Search,
-  SquareChevronRight,
 } from 'lucide-react';
 import { AcademicYearSwitcher } from '@/components/acadia/academics/academic-year-switcher';
 import { TenantLogo } from '@/components/acadia/tenant-logo';
@@ -32,14 +31,12 @@ import {
 } from '@/components/ui/sheet';
 import { Container } from '@/components/common/container';
 import { StoreClientTopbar } from '@/app/(protected)/store-client/components/common/topbar';
+import { AcadiaNavbarMenu } from './acadia-navbar-menu';
 import { Breadcrumb } from './breadcrumb';
-import { MegaMenu } from './mega-menu';
-import { MegaMenuMobile } from './mega-menu-mobile';
 import { SidebarMenu } from './sidebar-menu';
 
 export function Header() {
   const [isSidebarSheetOpen, setIsSidebarSheetOpen] = useState(false);
-  const [isMegaMenuSheetOpen, setIsMegaMenuSheetOpen] = useState(false);
 
   const pathname = usePathname();
   const mobileMode = useIsMobile();
@@ -50,7 +47,6 @@ export function Header() {
   // Close sheet when route changes
   useEffect(() => {
     setIsSidebarSheetOpen(false);
-    setIsMegaMenuSheetOpen(false);
   }, [pathname]);
 
   return (
@@ -89,36 +85,14 @@ export function Header() {
                 </SheetContent>
               </Sheet>
             )}
-            {mobileMode && (
-              <Sheet
-                open={isMegaMenuSheetOpen}
-                onOpenChange={setIsMegaMenuSheetOpen}
-              >
-                <SheetTrigger asChild>
-                  <Button variant="ghost" mode="icon">
-                    <SquareChevronRight className="text-muted-foreground/70" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent
-                  className="p-0 gap-0 w-[275px]"
-                  side="left"
-                  close={false}
-                >
-                  <SheetHeader className="p-0 space-y-0" />
-                  <SheetBody className="p-0 overflow-y-auto">
-                    <MegaMenuMobile />
-                  </SheetBody>
-                </SheetContent>
-              </Sheet>
-            )}
           </div>
         </div>
 
-        {/* Main Content (MegaMenu or Breadcrumbs) */}
+        {/* Main Content (AcadiaNavbarMenu or Breadcrumbs) */}
         {pathname.startsWith('/account') ? (
           <Breadcrumb />
         ) : (
-          !mobileMode && <MegaMenu />
+          !mobileMode && <AcadiaNavbarMenu />
         )}
 
         {/* HeaderTopbar */}

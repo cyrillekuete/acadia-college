@@ -27,7 +27,7 @@ import {
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
-import { unwrapRelation } from '@/lib/acadia/record-display';
+import { unwrapRelation, streamLabel } from '@/lib/acadia/record-display';
 import {
   getCoreRowModel,
   getFilteredRowModel,
@@ -48,9 +48,10 @@ type FeeAccountRow = {
   balanceMinor: number;
   progress: number | null;
   paymentStatus: string;
+  subSystem: string;
+  branch: string;
   StudentProfile?: unknown;
   AcademicYear?: unknown;
-  Specialty?: unknown;
 };
 
 const columns: ColumnDef<FeeAccountRow>[] = [
@@ -66,9 +67,13 @@ const columns: ColumnDef<FeeAccountRow>[] = [
       </Link>
     ),
   },
-  nestedFieldColumn<FeeAccountRow>('student', 'Student', 'StudentProfile', 'registrationNumber'),
+  nestedFieldColumn<FeeAccountRow>('student', 'Student ID', 'StudentProfile', 'registrationNumber'),
   nestedFieldColumn<FeeAccountRow>('year', 'Year', 'AcademicYear', 'label'),
-  nestedFieldColumn<FeeAccountRow>('specialty', 'Specialty', 'Specialty', 'code'),
+  {
+    id: 'stream',
+    header: 'Sub-system / branch',
+    cell: ({ row }) => streamLabel(row.original.subSystem, row.original.branch),
+  },
   {
     id: 'due',
     header: 'Due',
@@ -123,12 +128,13 @@ function FeeAccountsTable() {
           id,
           feeCurrency,
           totalAmountMinor,
+          subSystem,
+          branch,
           StudentProfile!StudentFeeAccount_studentProfileId_tenantId_fkey (
             registrationNumber,
             User!StudentProfile_userId_tenantId_fkey ( name )
           ),
           AcademicYear!StudentFeeAccount_academicYearId_tenantId_fkey ( label ),
-          Specialty!StudentFeeAccount_specialtyId_tenantId_fkey ( code ),
           StudentFeeInstallment ( amountMinor, status, paidAmountMinor, dueOn ),
           StudentScholarship ( discountMinor )
         `,
@@ -169,9 +175,10 @@ function FeeAccountsTable() {
           balanceMinor: totals.balanceMinor,
           progress: paymentProgressPercent(totals),
           paymentStatus: hasOverdue ? 'OVERDUE' : totals.balanceMinor > 0 ? 'PENDING' : 'PAID',
+          subSystem: String(account.subSystem ?? 'ENGLISH'),
+          branch: String(account.branch ?? 'GRAMMAR'),
           StudentProfile: account.StudentProfile,
           AcademicYear: account.AcademicYear,
-          Specialty: account.Specialty,
         } satisfies FeeAccountRow;
       });
     },

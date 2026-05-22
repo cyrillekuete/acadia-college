@@ -16,7 +16,6 @@ export type ClassListRow = {
   levelId: string;
   subSystem: AcademicSubSystem;
   branch: AcademicBranch;
-  specialtyId: string | null;
   staffProfileId: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
@@ -55,7 +54,6 @@ export function useClassList(filters?: {
           levelId,
           subSystem,
           branch,
-          specialtyId,
           staffProfileId,
           status,
           createdAt,
@@ -147,13 +145,13 @@ export type ClassOption = {
   id: string;
   name: string;
   levelId: string;
-  specialtyId: string | null;
+  subSystem: AcademicSubSystem;
+  branch: AcademicBranch;
 };
 
 export function useClassOptions(filters?: {
   subSystem?: AcademicSubSystem | null;
   branch?: AcademicBranch | null;
-  specialtyId?: string | null;
   levelId?: string | null;
 }) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
@@ -165,14 +163,13 @@ export function useClassOptions(filters?: {
       tenantId,
       filters?.subSystem ?? null,
       filters?.branch ?? null,
-      filters?.specialtyId ?? null,
       filters?.levelId ?? null,
     ],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let query = supabase
         .from('Class')
-        .select('id, name, levelId, specialtyId')
+        .select('id, name, levelId, subSystem, branch')
         .eq('tenantId', tenantId!)
         .eq('status', 'ACTIVE')
         .order('name', { ascending: true });
@@ -182,9 +179,6 @@ export function useClassOptions(filters?: {
       }
       if (filters?.branch) {
         query = query.eq('branch', filters.branch);
-      }
-      if (filters?.specialtyId) {
-        query = query.eq('specialtyId', filters.specialtyId);
       }
       if (filters?.levelId) {
         query = query.eq('levelId', filters.levelId);

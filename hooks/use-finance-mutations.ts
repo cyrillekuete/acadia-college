@@ -14,7 +14,7 @@ import type {
   FinanceBudgetLineFormValues,
   FinanceLedgerEntryFormValues,
   RecordFeePaymentValues,
-  SpecialtyFeePlanFormValues,
+  StreamFeePlanFormValues,
 } from '@/lib/acadia/finance-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
@@ -48,8 +48,8 @@ export function useFinanceMutations() {
   const tenantId = session?.tenantId;
   const userId = session?.profile?.id;
 
-  const saveSpecialtyFeePlan = useMutation({
-    mutationFn: async (values: SpecialtyFeePlanFormValues) => {
+  const saveStreamFeePlan = useMutation({
+    mutationFn: async (values: StreamFeePlanFormValues) => {
       if (!tenantId || !userId) {
         throw new Error('Session required.');
       }
@@ -58,24 +58,26 @@ export function useFinanceMutations() {
       const totalMinor = sumInstallmentTemplates(values.installments);
 
       const { data: existing, error: findError } = await supabase
-        .from('SpecialtyFeePlan')
+        .from('StreamFeePlan')
         .select('id')
         .eq('tenantId', tenantId)
-        .eq('specialtyId', values.specialtyId)
+        .eq('subSystem', values.subSystem)
+        .eq('branch', values.branch)
         .maybeSingle();
       if (findError) {
         throw findError;
       }
 
       const payload = {
-        specialtyId: values.specialtyId,
+        subSystem: values.subSystem,
+        branch: values.branch,
         installments: values.installments,
         updatedAt: nowIso,
       };
 
       if (existing?.id) {
         const { error } = await supabase
-          .from('SpecialtyFeePlan')
+          .from('StreamFeePlan')
           .update(payload)
           .eq('tenantId', tenantId)
           .eq('id', existing.id as string);
@@ -86,14 +88,14 @@ export function useFinanceMutations() {
           userId,
           event: 'fee_plan.saved',
           entityId: existing.id as string,
-          entityType: 'SpecialtyFeePlan',
+          entityType: 'StreamFeePlan',
           description: `Updated fee plan (${formatMinor(totalMinor)})`,
         });
         return existing.id as string;
       }
 
       const id = generateAcadiaId('fee-plan');
-      const { error } = await supabase.from('SpecialtyFeePlan').insert({
+      const { error } = await supabase.from('StreamFeePlan').insert({
         id,
         tenantId,
         ...payload,
@@ -106,7 +108,7 @@ export function useFinanceMutations() {
         userId,
         event: 'fee_plan.saved',
         entityId: id,
-        entityType: 'SpecialtyFeePlan',
+        entityType: 'StreamFeePlan',
         description: `Created fee plan (${formatMinor(totalMinor)})`,
       });
       return id;
@@ -128,18 +130,19 @@ export function useFinanceMutations() {
       let installments: Parameters<typeof sumInstallmentTemplates>[0] = [];
       let totalAmountMinor = 0;
 
-      if (values.useSpecialtyPlan !== false) {
+      if (values.useStreamPlan !== false) {
         const { data: plan, error: planError } = await supabase
-          .from('SpecialtyFeePlan')
+          .from('StreamFeePlan')
           .select('installments')
           .eq('tenantId', tenantId)
-          .eq('specialtyId', values.specialtyId)
+          .eq('subSystem', values.subSystem)
+          .eq('branch', values.branch)
           .maybeSingle();
         if (planError) {
           throw planError;
         }
         if (!plan?.installments || !Array.isArray(plan.installments)) {
-          throw new Error('No fee plan for this specialty. Set up a plan first.');
+          throw new Error('No fee plan for this stream. Set up a plan first.');
         }
         installments = plan.installments as Parameters<
           typeof sumInstallmentTemplates
@@ -157,7 +160,8 @@ export function useFinanceMutations() {
         tenantId,
         studentProfileId: values.studentProfileId,
         academicYearId: values.academicYearId,
-        specialtyId: values.specialtyId,
+        subSystem: values.subSystem,
+        branch: values.branch,
         studentEnrollmentId: values.studentEnrollmentId || null,
         totalAmountMinor,
         feeCurrency: values.feeCurrency || DEFAULT_FEE_CURRENCY,
@@ -355,7 +359,7 @@ export function useFinanceMutations() {
   });
 
   return {
-    saveSpecialtyFeePlan,
+    saveStreamFeePlan,
     createStudentFeeAccount,
     recordFeePayment,
     createLedgerEntry,

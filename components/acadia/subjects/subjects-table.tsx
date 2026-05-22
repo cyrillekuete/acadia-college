@@ -37,7 +37,6 @@ import {
 import {
   formatSubjectLevelsLabel,
   levelLabel,
-  specialtyLabel,
   termLabel,
   subjectTermScopeLabel,
 } from '@/lib/acadia/record-display';
@@ -105,9 +104,12 @@ export function SubjectsTable({
         cell: ({ row }) => (row.original.branch ? branchLabel(row.original.branch) : '—'),
       },
       {
-        id: 'specialty',
-        header: 'Specialty',
-        cell: ({ row }) => specialtyLabel(row.original.Specialty),
+        id: 'stream',
+        header: 'Stream',
+        cell: ({ row }) =>
+          row.original.subSystem && row.original.branch
+            ? `${subSystemLabel(row.original.subSystem)} · ${branchLabel(row.original.branch)}`
+            : '—',
       },
       {
         id: 'level',

@@ -37,7 +37,7 @@ function invalidateStructureQueries(queryClient: ReturnType<typeof useQueryClien
   void queryClient.invalidateQueries({ queryKey: ['levels-catalog'] });
   void queryClient.invalidateQueries({ queryKey: ['class-list'] });
   void queryClient.invalidateQueries({ queryKey: ['class-options'] });
-  void queryClient.invalidateQueries({ queryKey: ['level-for-specialty'] });
+  void queryClient.invalidateQueries({ queryKey: ['level-for-stream'] });
   void queryClient.invalidateQueries({ queryKey: ['subjects-for-class'] });
 }
 
@@ -175,7 +175,6 @@ export function useAcademicStructureMutations() {
         levelId: values.levelId,
         subSystem: values.subSystem,
         branch: values.branch,
-        specialtyId: values.specialtyId?.trim() || null,
         staffProfileId: values.staffProfileId?.trim() || null,
         status: values.status,
         createdAt: now,
@@ -210,7 +209,6 @@ export function useAcademicStructureMutations() {
           levelId: values.levelId,
           subSystem: values.subSystem,
           branch: values.branch,
-          specialtyId: values.specialtyId?.trim() || null,
           staffProfileId: values.staffProfileId?.trim() || null,
           status: values.status,
           updatedAt: new Date().toISOString(),

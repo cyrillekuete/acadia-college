@@ -159,6 +159,21 @@ export function StudentList({
         enableHiding: true,
       },
       {
+        accessorKey: 'registration_number',
+        id: 'registration_number',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Student ID" visibility column={column} />
+        ),
+        cell: (info) => (info.getValue() as string | null) ?? '—',
+        size: 175,
+        meta: {
+          headerTitle: 'Student ID',
+          skeleton: <Skeleton className="h-7 w-20" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
         accessorKey: 'matricule_number',
         id: 'matricule_number',
         header: ({ column }) => (
@@ -235,6 +250,7 @@ export function StudentList({
     'class_name',
     'branch',
     'enrollment_status',
+    'registration_number',
     'matricule_number',
     'fees',
     'actions',

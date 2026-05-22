@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+} from '@/lib/acadia/education-system';
 import { EXAM_SESSION_TYPES } from '@/lib/acadia/assessment';
 
 const scoreField = z
@@ -44,7 +48,12 @@ export type MarksEntryContextValues = z.infer<typeof marksEntryContextSchema>;
 
 export const academicReportFiltersSchema = z.object({
   academicYearId: z.string().min(1, 'Academic year is required.'),
-  specialtyId: z.string().min(1, 'Specialty is required.'),
+  subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
+    required_error: 'Sub-system is required.',
+  }),
+  branch: z.enum(ACADEMIC_BRANCHES, {
+    required_error: 'Branch is required.',
+  }),
   levelId: z.string().min(1, 'Level is required.'),
   termId: z.string().optional().or(z.literal('')),
   sequenceId: z.string().optional().or(z.literal('')),

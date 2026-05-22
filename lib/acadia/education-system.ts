@@ -4,6 +4,57 @@ export type AcademicSubSystem = (typeof ACADEMIC_SUB_SYSTEMS)[number];
 export const ACADEMIC_BRANCHES = ['GRAMMAR', 'TECHNICAL', 'COMMERCIAL'] as const;
 export type AcademicBranch = (typeof ACADEMIC_BRANCHES)[number];
 
+export function isAcademicSubSystem(value: unknown): value is AcademicSubSystem {
+  return (
+    typeof value === 'string' &&
+    (ACADEMIC_SUB_SYSTEMS as readonly string[]).includes(value)
+  );
+}
+
+export function isAcademicBranch(value: unknown): value is AcademicBranch {
+  return (
+    typeof value === 'string' &&
+    (ACADEMIC_BRANCHES as readonly string[]).includes(value)
+  );
+}
+
+function normalizeStreamToken(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+/** Parse DB or form values (uppercase enums or lowercase form input) to canonical enums. */
+export function parseAcademicSubSystem(value: unknown): AcademicSubSystem | null {
+  if (value == null) {
+    return null;
+  }
+  const normalized = normalizeStreamToken(String(value));
+  return isAcademicSubSystem(normalized) ? normalized : null;
+}
+
+export function parseAcademicBranch(value: unknown): AcademicBranch | null {
+  if (value == null) {
+    return null;
+  }
+  const normalized = normalizeStreamToken(String(value));
+  return isAcademicBranch(normalized) ? normalized : null;
+}
+
+export function requireAcademicStream(
+  subSystem: unknown,
+  branch: unknown,
+  context?: string,
+): { subSystem: AcademicSubSystem; branch: AcademicBranch } {
+  const parsedSubSystem = parseAcademicSubSystem(subSystem);
+  const parsedBranch = parseAcademicBranch(branch);
+  if (!parsedSubSystem || !parsedBranch) {
+    const prefix = context ? `${context}: ` : '';
+    throw new Error(
+      `${prefix}Invalid academic stream (subSystem=${String(subSystem)}, branch=${String(branch)}).`,
+    );
+  }
+  return { subSystem: parsedSubSystem, branch: parsedBranch };
+}
+
 export type CatalogFilters = {
   subSystem: AcademicSubSystem | null;
   branch: AcademicBranch | null;
@@ -72,7 +123,7 @@ export function branchLabel(value: string | null | undefined): string {
   return BRANCH_LABELS[value as AcademicBranch] ?? value;
 }
 
-export function specialtyStreamLabel(
+export function streamLabel(
   subSystem: string | null | undefined,
   branch: string | null | undefined,
 ): string {
@@ -115,29 +166,14 @@ export function levelDisplayLabel(
 type RowWithCatalog = Record<string, unknown> & {
   subSystem?: string | null;
   branch?: string | null;
-  Specialty?: unknown;
 };
-
-function specialtyFromRow(row: RowWithCatalog): {
-  subSystem?: string;
-  branch?: string;
-} | null {
-  const raw = row.Specialty;
-  const rel = Array.isArray(raw) ? raw[0] : raw;
-  if (rel && typeof rel === 'object') {
-    return rel as { subSystem?: string; branch?: string };
-  }
-  return null;
-}
 
 export function rowMatchesCatalogFilters(
   row: RowWithCatalog,
   filters: CatalogFilters,
 ): boolean {
-  const specialty = specialtyFromRow(row);
-  const subSystem =
-    row.subSystem ?? specialty?.subSystem ?? null;
-  const branch = row.branch ?? specialty?.branch ?? null;
+  const subSystem = row.subSystem ?? null;
+  const branch = row.branch ?? null;
 
   if (filters.subSystem && subSystem !== filters.subSystem) {
     return false;
@@ -148,53 +184,3 @@ export function rowMatchesCatalogFilters(
   return true;
 }
 
-export const SPECIALTY_STREAMS: {
-  subSystem: AcademicSubSystem;
-  branch: AcademicBranch;
-  code: string;
-  nameEn: string;
-  nameFr: string;
-}[] = [
-  {
-    subSystem: 'ENGLISH',
-    branch: 'GRAMMAR',
-    code: 'EN-GRAM',
-    nameEn: 'English — Grammar',
-    nameFr: 'Anglophone — Général',
-  },
-  {
-    subSystem: 'ENGLISH',
-    branch: 'TECHNICAL',
-    code: 'EN-TECH',
-    nameEn: 'English — Technical',
-    nameFr: 'Anglophone — Technique',
-  },
-  {
-    subSystem: 'ENGLISH',
-    branch: 'COMMERCIAL',
-    code: 'EN-COMM',
-    nameEn: 'English — Commercial',
-    nameFr: 'Anglophone — Commercial',
-  },
-  {
-    subSystem: 'FRENCH',
-    branch: 'GRAMMAR',
-    code: 'FR-GRAM',
-    nameEn: 'French — Grammar',
-    nameFr: 'Francophone — Général',
-  },
-  {
-    subSystem: 'FRENCH',
-    branch: 'TECHNICAL',
-    code: 'FR-TECH',
-    nameEn: 'French — Technical',
-    nameFr: 'Francophone — Technique',
-  },
-  {
-    subSystem: 'FRENCH',
-    branch: 'COMMERCIAL',
-    code: 'FR-COMM',
-    nameEn: 'French — Commercial',
-    nameFr: 'Francophone — Commercial',
-  },
-];

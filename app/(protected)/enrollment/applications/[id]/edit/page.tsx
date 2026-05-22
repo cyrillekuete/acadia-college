@@ -28,7 +28,6 @@ const APPLICATION_SELECT = `
   studentProfileId,
   subSystem,
   branch,
-  specialtyId,
   levelId,
   academicYearId
 `;

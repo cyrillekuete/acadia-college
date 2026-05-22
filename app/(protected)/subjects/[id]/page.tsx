@@ -22,7 +22,7 @@ import {
   formatRecordValue,
   levelLabel,
   subjectTermScopeLabel,
-  specialtyLabel,
+  streamLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
 
@@ -47,7 +47,8 @@ const SUBJECT_SELECT = `
   deactivatedAt,
   createdAt,
   updatedAt,
-  Specialty!Subject_specialtyId_tenantId_fkey ( code, nameEn, nameFr ),
+  subSystem,
+  branch,
   Level!Subject_levelId_tenantId_fkey ( number, labelEn ),
   Term!Subject_semesterId_tenantId_fkey ( number ),
   SubjectGrouping!Subject_groupingId_tenantId_fkey ( nameEn, nameFr ),
@@ -68,7 +69,8 @@ type SubjectDetail = {
   deactivatedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  Specialty: unknown;
+  subSystem: string | null;
+  branch: string | null;
   Level: unknown;
   Term: unknown;
   SubjectGrouping: unknown;
@@ -97,9 +99,6 @@ export default function SubjectDetailPage({
     SUBJECT_SELECT,
   );
 
-  const specialty = unwrapRelation<{ code?: string; nameEn?: string }>(
-    data?.Specialty,
-  );
   const level = unwrapRelation<{ number?: number; labelEn?: string }>(data?.Level);
   const term = unwrapRelation<{ number?: number }>(data?.Term);
   const grouping = unwrapRelation<{ nameEn?: string; nameFr?: string }>(
@@ -206,7 +205,10 @@ export default function SubjectDetailPage({
               <RecordDetailCard
                 title="Academic placement"
                 fields={[
-                  { label: 'Specialty', value: specialtyLabel(specialty) },
+                  {
+                    label: 'Sub-system / branch',
+                    value: streamLabel(data.subSystem, data.branch),
+                  },
                   { label: 'Level', value: levelLabel(level) },
                   { label: 'Term', value: subjectTermScopeLabel(term, data?.termId) },
                 ]}

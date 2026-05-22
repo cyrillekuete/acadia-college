@@ -8,7 +8,7 @@ import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import {
   formatDateTime,
   formatRecordValue,
-  specialtyLabel,
+  streamLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
 
@@ -23,7 +23,7 @@ const TASK_SELECT = `
   isPublished,
   createdAt,
   updatedAt,
-  Subject!CourseworkTask_subjectId_tenantId_fkey ( code, nameEn, nameFr ),
+  Subject!CourseworkTask_subjectId_tenantId_fkey ( code, nameEn, nameFr, subSystem, branch ),
   AcademicYear!CourseworkTask_academicYearId_tenantId_fkey ( label )
 `;
 
@@ -55,9 +55,12 @@ export default function CourseworkTaskDetailPage({
       TASK_SELECT,
     );
 
-  const subject = unwrapRelation<{ code?: string; nameEn?: string }>(
-    data?.Subject,
-  );
+  const subject = unwrapRelation<{
+    code?: string;
+    nameEn?: string;
+    subSystem?: string;
+    branch?: string;
+  }>(data?.Subject);
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
 
   const title = data?.titleEn ? `Coursework — ${data.titleEn}` : 'Coursework task';
@@ -107,7 +110,11 @@ export default function CourseworkTaskDetailPage({
           <RecordDetailCard
             title="Context"
             fields={[
-              { label: 'Subject', value: specialtyLabel(subject) },
+              { label: 'Subject', value: formatRecordValue(subject?.nameEn ?? subject?.code) },
+              {
+                label: 'Stream',
+                value: streamLabel(subject?.subSystem, subject?.branch),
+              },
               { label: 'Academic year', value: formatRecordValue(year?.label) },
             ]}
           />

@@ -17,7 +17,6 @@ export const classFormSchema = z.object({
   levelId: z.string().min(1, 'Level is required'),
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
   branch: z.enum(ACADEMIC_BRANCHES),
-  specialtyId: z.string().optional(),
   staffProfileId: z.string().optional(),
   status: z.enum(CLASS_STATUSES),
   subjectIds: z.array(z.string()),

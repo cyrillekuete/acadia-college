@@ -3,6 +3,11 @@ import {
   ACADEMIC_BRANCHES,
   ACADEMIC_SUB_SYSTEMS,
 } from '@/lib/acadia/education-system';
+import {
+  phoneCountryField,
+  phoneNationalField,
+  refinePhoneWithCountry,
+} from '@/lib/acadia/phone-schemas';
 
 export const ENROLLMENT_APPLICATION_KINDS = ['NEW', 'RE_ENROLL'] as const;
 export const ENROLLMENT_APPLICATION_STATUSES = [
@@ -24,7 +29,6 @@ const catalogFields = {
   branch: z.enum(ACADEMIC_BRANCHES, {
     required_error: 'Branch is required.',
   }),
-  specialtyId: z.string().min(1, 'Specialty is required.'),
   levelId: z.string().min(1, 'Level is required.'),
   academicYearId: z.string().min(1, 'Academic year is required.'),
 };
@@ -41,12 +45,27 @@ export const enrollmentApplicationSchema = z
     .trim()
     .min(1, 'Email is required.')
     .email('Please enter a valid email.'),
-  phone: z.string().optional().or(z.literal('')),
+  phoneCountry: phoneCountryField(),
+  phone: phoneNationalField(),
   dateOfBirth: dateString,
   preferredLocale: z.enum(['en', 'fr']),
   studentProfileId: z.string().optional().or(z.literal('')),
   ...catalogFields,
 })
+  .superRefine((data, ctx) => {
+    refinePhoneWithCountry(
+      data,
+      { phoneKey: 'phone', countryKey: 'phoneCountry' },
+      ctx,
+    );
+  })
+  .transform((data) => {
+    const { phoneCountry: _phoneCountry, ...rest } = data;
+    return {
+      ...rest,
+      phone: rest.phone?.trim() ? rest.phone : undefined,
+    };
+  })
   .refine(
     (d) =>
       d.kind !== 'RE_ENROLL' || Boolean(d.studentProfileId?.trim()),
@@ -56,7 +75,10 @@ export const enrollmentApplicationSchema = z
     },
   );
 
-export type EnrollmentApplicationFormValues = z.infer<
+export type EnrollmentApplicationFormValues = z.input<
+  typeof enrollmentApplicationSchema
+>;
+export type EnrollmentApplicationInput = z.output<
   typeof enrollmentApplicationSchema
 >;
 

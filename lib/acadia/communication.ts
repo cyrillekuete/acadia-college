@@ -4,7 +4,7 @@ import { localDateTimeInputToIso } from '@/lib/acadia/dates';
 export const MESSAGE_THREAD_KINDS = ['DIRECT', 'GROUP'] as const;
 export type MessageThreadKind = (typeof MESSAGE_THREAD_KINDS)[number];
 
-export const MESSAGE_GROUP_SCOPES = ['DEPARTMENT', 'SPECIALTY', 'LEVEL'] as const;
+export const MESSAGE_GROUP_SCOPES = ['DEPARTMENT', 'STREAM', 'LEVEL'] as const;
 export type MessageGroupScope = (typeof MESSAGE_GROUP_SCOPES)[number];
 
 export const ANNOUNCEMENT_KINDS = ['BROADCAST', 'EVENT'] as const;
@@ -42,7 +42,7 @@ export const MESSAGE_RECEIVED_EVENT = 'message.received' as const;
 
 const GROUP_SCOPE_LABELS: Record<MessageGroupScope, string> = {
   DEPARTMENT: 'Department',
-  SPECIALTY: 'Specialty',
+  STREAM: 'Academic stream',
   LEVEL: 'Level',
 };
 

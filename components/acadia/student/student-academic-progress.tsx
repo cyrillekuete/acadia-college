@@ -6,7 +6,7 @@ import {
   formatDateTime,
   formatRecordValue,
   levelLabel,
-  specialtyLabel,
+  streamLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
 import { requireBrowserClient } from '@/lib/supabase/client';
@@ -37,8 +37,9 @@ export function StudentAcademicProgress({
             id,
             status,
             createdAt,
+            subSystem,
+            branch,
             AcademicYear!StudentEnrollment_academicYearId_tenantId_fkey ( label ),
-            Specialty!StudentEnrollment_specialtyId_tenantId_fkey ( code, nameEn ),
             Level!StudentEnrollment_levelId_tenantId_fkey ( number, labelEn )
           `,
           )
@@ -100,15 +101,12 @@ export function StudentAcademicProgress({
             ? [{ label: 'Records', value: 'No enrollments yet.' }]
             : enrollments.map((row, index) => {
                 const year = unwrapRelation<{ label?: string }>(row.AcademicYear);
-                const specialty = unwrapRelation<{ nameEn?: string; code?: string }>(
-                  row.Specialty,
-                );
                 const level = unwrapRelation<{ number?: number; labelEn?: string }>(
                   row.Level,
                 );
                 return {
                   label: year?.label ?? `Enrollment ${index + 1}`,
-                  value: `${formatRecordValue(row.status)} · ${specialtyLabel(specialty)} · ${levelLabel(level)} · ${formatDateTime(row.createdAt)}`,
+                  value: `${formatRecordValue(row.status)} · ${streamLabel(row.subSystem, row.branch)} · ${levelLabel(level)} · ${formatDateTime(row.createdAt)}`,
                 };
               })
         }

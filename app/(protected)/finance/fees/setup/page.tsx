@@ -27,7 +27,7 @@ export default function FeePlanSetupPage() {
   return (
     <AcadiaPageShell
       title="Tuition fee plans"
-      description="Configure installment schedules per specialty (FR-6.1.1)."
+      description="Configure installment schedules per sub-system and branch (FR-6.1.1)."
     >
       <div className="mb-4">
         <Button variant="outline" size="sm" asChild>

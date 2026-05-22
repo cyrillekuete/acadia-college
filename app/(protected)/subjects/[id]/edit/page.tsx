@@ -24,7 +24,8 @@ const SUBJECT_EDIT_SELECT = `
   nameFr,
   credits,
   hours,
-  specialtyId,
+  subSystem,
+  branch,
   levelId,
   academicYearId,
   termId,
@@ -33,7 +34,6 @@ const SUBJECT_EDIT_SELECT = `
   groupingId,
   hasSubBranches,
   deactivatedAt,
-  Specialty!Subject_specialtyId_tenantId_fkey ( subSystem, branch ),
   Term!Subject_semesterId_tenantId_fkey ( academicYearId ),
   SubjectSubBranch ( name, nameFr, coefficient, sortOrder ),
   SubjectLevel ( levelId )
@@ -46,7 +46,8 @@ type SubjectEditDetail = {
   nameFr: string;
   credits: number;
   hours: number;
-  specialtyId: string;
+  subSystem: string;
+  branch: string;
   levelId: string;
   academicYearId: string | null;
   termId: string | null;
@@ -56,7 +57,6 @@ type SubjectEditDetail = {
   groupingId: string | null;
   hasSubBranches: boolean;
   deactivatedAt: string | null;
-  Specialty: unknown;
   Term: unknown;
   SubjectSubBranch?: {
     name: string;
@@ -80,9 +80,6 @@ export default function EditSubjectPage({
     SUBJECT_EDIT_SELECT,
   );
 
-  const specialty = unwrapRelation<{ subSystem?: string; branch?: string }>(
-    data?.Specialty,
-  );
   const term = unwrapRelation<{ academicYearId?: string }>(data?.Term);
 
   const subBranches = [...(data?.SubjectSubBranch ?? [])].sort(
@@ -100,15 +97,14 @@ export default function EditSubjectPage({
         : [];
 
   const record: SubjectFormRecord | null =
-    data && specialty?.subSystem && specialty?.branch && academicYearId
+    data && data.subSystem && data.branch && academicYearId
       ? {
           id: data.id,
           code: data.code,
           nameEn: data.nameEn,
-          specialtyId: data.specialtyId,
           levelIds,
-          subSystem: specialty.subSystem,
-          branch: specialty.branch,
+          subSystem: data.subSystem,
+          branch: data.branch,
           academicYearId,
           subjectType: data.subjectType,
           coefficient: data.coefficient,

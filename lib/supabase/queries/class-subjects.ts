@@ -8,7 +8,6 @@ import {
 } from '@/lib/acadia/class-subject-eligibility';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { fetchSubjectLevelIds } from '@/lib/supabase/queries/subject-levels';
-import { unwrapRelation } from '@/lib/acadia/record-display';
 
 type Client = SupabaseClient<Database>;
 
@@ -102,7 +101,7 @@ export async function bulkAssignClassSubjects(
 
   const { data: classes, error: classError } = await supabase
     .from('Class')
-    .select('id, levelId, specialtyId, subSystem, branch')
+    .select('id, levelId, subSystem, branch')
     .eq('tenantId', tenantId)
     .in('id', uniqueClassIds);
 
@@ -115,12 +114,12 @@ export async function bulkAssignClassSubjects(
     .select(
       `
       id,
-      specialtyId,
+      subSystem,
+      branch,
       levelId,
       academicYearId,
       termId,
       deactivatedAt,
-      Specialty!Subject_specialtyId_tenantId_fkey ( subSystem, branch ),
       Term!Subject_semesterId_tenantId_fkey ( academicYearId )
     `,
     )
@@ -141,16 +140,13 @@ export async function bulkAssignClassSubjects(
       const levelIds = await fetchSubjectLevelIds(supabase, tenantId, row.id as string);
       return {
         id: row.id as string,
-        specialtyId: row.specialtyId as string,
+        subSystem: row.subSystem as AcademicSubSystem,
+        branch: row.branch as AcademicBranch,
         levelId: row.levelId as string,
         levelIds: levelIds.length > 0 ? levelIds : [row.levelId as string],
         academicYearId: row.academicYearId as string | null,
         termId: row.termId as string | null,
         deactivatedAt: row.deactivatedAt as string | null,
-        Specialty: unwrapRelation<{
-          subSystem?: AcademicSubSystem;
-          branch?: AcademicBranch;
-        }>(row.Specialty),
         Term: row.Term as ClassSubjectEligibilitySubject['Term'],
       };
     }),

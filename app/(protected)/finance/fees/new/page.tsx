@@ -24,7 +24,7 @@ export default function NewFeeAccountPage() {
   return (
     <AcadiaPageShell
       title="New fee account"
-      description="Create a student fee account from the specialty installment plan."
+      description="Create a student fee account from the stream installment plan."
     >
       <div className="mb-4">
         <Button variant="outline" size="sm" asChild>

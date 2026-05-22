@@ -7,7 +7,7 @@ import {
   buildEnrollmentApplicationRow,
   canEditEnrollmentApplication,
 } from '@/lib/acadia/enrollment';
-import type { EnrollmentApplicationFormValues } from '@/lib/acadia/enrollment-schemas';
+import type { EnrollmentApplicationInput } from '@/lib/acadia/enrollment-schemas';
 import type { ReviewApplicationInput } from '@/lib/acadia/enrollment-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { checkRegistryStudentEmail } from '@/lib/acadia/registry-lookups';
@@ -43,7 +43,7 @@ export function useEnrollmentMutations() {
   const tenantId = session?.tenantId ?? null;
 
   const createApplication = useMutation({
-    mutationFn: async (values: EnrollmentApplicationFormValues) => {
+    mutationFn: async (values: EnrollmentApplicationInput) => {
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
@@ -85,7 +85,7 @@ export function useEnrollmentMutations() {
       currentStatus,
     }: {
       id: string;
-      values: EnrollmentApplicationFormValues;
+      values: EnrollmentApplicationInput;
       currentStatus: string;
     }) => {
       if (!tenantId) {
@@ -110,7 +110,6 @@ export function useEnrollmentMutations() {
           email: row.email,
           phone: row.phone,
           dateOfBirth: row.dateOfBirth,
-          specialtyId: row.specialtyId,
           levelId: row.levelId,
           academicYearId: row.academicYearId,
           subSystem: row.subSystem,

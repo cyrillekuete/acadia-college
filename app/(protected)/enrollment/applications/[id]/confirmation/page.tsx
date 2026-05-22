@@ -25,7 +25,6 @@ const CONFIRMATION_SELECT = `
   branch,
   reviewedAt,
   createdAt,
-  Specialty!EnrollmentApplication_specialtyId_tenantId_fkey ( code, nameEn ),
   Level!EnrollmentApplication_levelId_tenantId_fkey ( number, labelEn ),
   AcademicYear!EnrollmentApplication_academicYearId_tenantId_fkey ( label ),
   StudentProfile!EnrollmentApplication_studentProfileId_tenantId_fkey ( id, registrationNumber )

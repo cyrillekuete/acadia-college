@@ -1,4 +1,4 @@
-import { type AcadiaMenuConfig } from './types';
+import { type AcadiaMenuConfig, type AcadiaMenuItem } from './types';
 
 export const MENU_ACADIA: AcadiaMenuConfig = [
   {
@@ -28,7 +28,6 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
       { title: 'Sequences', path: '/academics/sequences' },
       { title: 'Levels', path: '/academics/levels' },
       { title: 'Classes', path: '/academics/classes' },
-      { title: 'Specialties', path: '/academics/specialties' },
       { title: 'Calendar', path: '/academics/calendar' },
     ],
   },
@@ -340,4 +339,56 @@ export function getMenuForRole(roleSlug: string | null | undefined): AcadiaMenuC
   }
 
   return MENU_ACADIA;
+}
+
+type NavbarRoleKey =
+  | 'default'
+  | 'financial-director'
+  | 'student'
+  | 'staff'
+  | 'guardian';
+
+const NAVBAR_QUICK_LINK_TITLES: Record<NavbarRoleKey, string[]> = {
+  default: [
+    'Academic structure',
+    'Enrollment',
+    'Finance',
+    'User Management',
+  ],
+  'financial-director': ['Finance', 'Transcripts', 'Students', 'Messages'],
+  student: ['Timetable', 'Marks', 'Fees', 'Messages'],
+  staff: ['Students', 'Attendance', 'Marks', 'Exams'],
+  guardian: ['Attendance', 'Marks', 'Fees', 'Messages'],
+};
+
+function resolveNavbarRoleKey(
+  roleSlug: string | null | undefined,
+): NavbarRoleKey {
+  const slug = roleSlug?.toLowerCase() ?? '';
+
+  if (slug === 'financial-director') {
+    return 'financial-director';
+  }
+  if (slug === 'student') {
+    return 'student';
+  }
+  if (slug === 'lecturer' || slug === 'staff' || slug === 'teacher') {
+    return 'staff';
+  }
+  if (slug === 'guardian' || slug === 'parent') {
+    return 'guardian';
+  }
+
+  return 'default';
+}
+
+export function getNavbarQuickLinksForRole(
+  roleSlug: string | null | undefined,
+): AcadiaMenuItem[] {
+  const menu = getMenuForRole(roleSlug);
+  const titles = NAVBAR_QUICK_LINK_TITLES[resolveNavbarRoleKey(roleSlug)];
+
+  return titles
+    .map((title) => menu.find((item) => item.title === title))
+    .filter((item): item is AcadiaMenuItem => !!item);
 }

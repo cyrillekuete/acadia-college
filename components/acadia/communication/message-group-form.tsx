@@ -30,6 +30,12 @@ import {
   type GroupThreadFormValues,
 } from '@/lib/acadia/communication-schemas';
 import { MESSAGE_GROUP_SCOPES, messageGroupScopeLabel } from '@/lib/acadia/communication';
+import {
+  ACADEMIC_BRANCHES,
+  ACADEMIC_SUB_SYSTEMS,
+  levelDisplayLabel,
+  streamLabel,
+} from '@/lib/acadia/education-system';
 import { useCommunicationMutations } from '@/hooks/use-communication-mutations';
 import { useTenantUserOptions } from '@/hooks/use-tenant-user-options';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -49,7 +55,7 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
     defaultValues: {
       subjectEn: '',
       subjectFr: '',
-      groupScope: 'SPECIALTY',
+      groupScope: 'STREAM',
       groupScopeId: '',
       memberUserIds: [],
       body: '',
@@ -76,35 +82,26 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
           label: `${row.code} — ${row.nameEn}`,
         }));
       }
-      if (groupScope === 'SPECIALTY') {
-        const { data, error } = await supabase
-          .from('Specialty')
-          .select('id, code, nameEn')
-          .eq('tenantId', tenantId!)
-          .order('nameEn');
-        if (error) {
-          throw error;
-        }
-        return (data ?? []).map((row) => ({
-          id: row.id as string,
-          label: `${row.code} — ${row.nameEn}`,
-        }));
+      if (groupScope === 'STREAM') {
+        return ACADEMIC_SUB_SYSTEMS.flatMap((subSystem) =>
+          ACADEMIC_BRANCHES.map((branch) => ({
+            id: `${subSystem}:${branch}`,
+            label: streamLabel(subSystem, branch),
+          })),
+        );
       }
       const { data, error } = await supabase
         .from('Level')
-        .select('id, number, labelEn, Specialty:specialtyId ( code )')
+        .select('id, number, labelEn, subSystem, branch')
         .eq('tenantId', tenantId!)
         .order('number');
       if (error) {
         throw error;
       }
-      return (data ?? []).map((row) => {
-        const specialty = row.Specialty as { code?: string } | null;
-        return {
-          id: row.id as string,
-          label: `${specialty?.code ?? '—'} — Level ${row.number}`,
-        };
-      });
+      return (data ?? []).map((row) => ({
+        id: row.id as string,
+        label: `${streamLabel(row.subSystem as string, row.branch as string)} — ${levelDisplayLabel(row)}`,
+      }));
     },
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });

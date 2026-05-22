@@ -24,7 +24,7 @@ type LevelBlockerCountTable =
   | 'EnrollmentApplication'
   | 'Subject'
   | 'SubjectLevel'
-  | 'SubjectSpecialtyOffering'
+  | 'SubjectStreamOffering'
   | 'Term'
   | 'StudentProfile'
   | 'StudentPromotionDecision';
@@ -113,7 +113,7 @@ export async function fetchLevelDeleteBlockers(
     countRows(supabase, 'EnrollmentApplication', tenantId, 'levelId', levelId),
     countRows(supabase, 'Subject', tenantId, 'levelId', levelId),
     countRows(supabase, 'SubjectLevel', tenantId, 'levelId', levelId),
-    countRows(supabase, 'SubjectSpecialtyOffering', tenantId, 'levelId', levelId),
+    countRows(supabase, 'SubjectStreamOffering', tenantId, 'levelId', levelId),
     countRows(supabase, 'Term', tenantId, 'levelId', levelId),
     countRows(supabase, 'StudentProfile', tenantId, 'currentLevelId', levelId),
     countRows(supabase, 'StudentPromotionDecision', tenantId, 'fromLevelId', levelId),
@@ -161,7 +161,7 @@ export function formatLevelDeleteBlockers(blockers: LevelDeleteBlockers): string
     lines.push(`${subjectRefs} subject level link(s) in the catalog`);
   }
   if (blockers.subjectOfferings > 0) {
-    lines.push(`${blockers.subjectOfferings} subject specialty offering(s)`);
+    lines.push(`${blockers.subjectOfferings} subject stream offering(s)`);
   }
   if (blockers.terms > 0) {
     lines.push(`${blockers.terms} term record(s)`);

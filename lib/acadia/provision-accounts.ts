@@ -6,10 +6,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendPasswordRecoveryEmail } from '@/lib/auth/password-recovery';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { resolveStudentMatricule } from '@/lib/acadia/enrollment';
+import { normalizeMatriculeNumber } from '@/lib/acadia/enrollment';
 import { generateStudentId, generateParentCode } from '@/lib/acadia/ids';
 import { normalizePhoneForLookup } from '@/lib/acadia/phone';
 import type { StudentCreateInput } from '@/lib/acadia/student-create-schemas';
+import { toAcademicBranch, toAcademicSubSystem } from '@/lib/acadia/catalog-maps';
 import {
   provisionStudentProfileAndEnrollment,
   type ProvisionStudentProfileInput,
@@ -56,6 +57,7 @@ export async function provisionStudentAndParent(
   input: StudentCreateInput,
   tenantId: string,
   actorUserId: string,
+  registrationNumber: string,
 ): Promise<ProvisionResult> {
   const admin = createAdminClient();
   const now = new Date().toISOString();
@@ -115,10 +117,7 @@ export async function provisionStudentAndParent(
 
   // -- Step 3: Insert students row --
   const studentId = generateStudentId();
-  const matriculeNumber = resolveStudentMatricule(
-    input.matricule_number,
-    input.academic_year ?? undefined,
-  );
+  const matriculeNumber = normalizeMatriculeNumber(input.matricule_number);
 
   const { error: studentInsertError } = await supabase.from('students').insert({
     student_id: studentId,
@@ -429,10 +428,12 @@ export async function provisionStudentAndParent(
     authUserId: studentAuthId,
     email: studentEmail,
     name: `${input.first_name.trim()} ${input.last_name.trim()}`,
-    registrationNumber: matriculeNumber,
+    registrationNumber,
+    matriculeNumber,
     tenantId,
     actorUserId,
-    specialtyId: input.specialty_id,
+    subSystem: toAcademicSubSystem(input.subsystem) ?? 'ENGLISH',
+    branch: toAcademicBranch(input.branch) ?? 'GRAMMAR',
     levelId: input.level_id,
     academicYearId: input.academic_year_id,
     classId: input.class_id ?? null,

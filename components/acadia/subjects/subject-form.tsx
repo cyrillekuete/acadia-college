@@ -37,7 +37,6 @@ import type { SubjectType } from '@/lib/acadia/subject-catalog';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { subjectSchema, type SubjectFormValues } from '@/lib/acadia/subject-schemas';
 import { useLevelOptions } from '@/hooks/use-academic-calendar-options';
-import { useSpecialtyOptions } from '@/hooks/use-enrollment-catalog-options';
 import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 
@@ -53,7 +52,6 @@ export type SubjectFormRecord = {
   id: string;
   code: string;
   nameEn: string;
-  specialtyId: string;
   levelIds: string[];
   subSystem: string;
   branch: string;
@@ -86,7 +84,6 @@ export function SubjectForm({
       academicYearId: '',
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
-      specialtyId: '',
       levelIds: [],
       coefficient: 1,
       groupingId: '',
@@ -102,12 +99,9 @@ export function SubjectForm({
 
   const subSystem = form.watch('subSystem');
   const branch = form.watch('branch');
-  const specialtyId = form.watch('specialtyId');
   const academicYearId = form.watch('academicYearId') || activeYearId || '';
   const hasSubBranches = form.watch('hasSubBranches');
 
-  const { data: specialties = [], isLoading: specialtiesLoading } =
-    useSpecialtyOptions(subSystem, branch);
   const { data: levels = [], isLoading: levelsLoading } = useLevelOptions({
     subSystem,
     branch,
@@ -124,7 +118,6 @@ export function SubjectForm({
       academicYearId: record.academicYearId,
       subSystem: record.subSystem as SubjectFormValues['subSystem'],
       branch: record.branch as SubjectFormValues['branch'],
-      specialtyId: record.specialtyId,
       levelIds: record.levelIds,
       coefficient: record.coefficient,
       groupingId: record.groupingId ?? '',
@@ -144,14 +137,6 @@ export function SubjectForm({
       form.setValue('academicYearId', activeYearId);
     }
   }, [activeYearId, form]);
-
-  useEffect(() => {
-    const current = form.getValues('specialtyId');
-    if (current && !specialties.some((s) => s.id === current)) {
-      form.setValue('specialtyId', '');
-      form.setValue('levelIds', []);
-    }
-  }, [subSystem, branch, specialties, form]);
 
   useEffect(() => {
     const current = form.getValues('levelIds') ?? [];
@@ -423,7 +408,6 @@ export function SubjectForm({
                   value={field.value}
                   onValueChange={(v) => {
                     field.onChange(v);
-                    form.setValue('specialtyId', '');
                     form.setValue('levelIds', []);
                   }}
                 >
@@ -454,7 +438,6 @@ export function SubjectForm({
                   value={field.value}
                   onValueChange={(v) => {
                     field.onChange(v);
-                    form.setValue('specialtyId', '');
                     form.setValue('levelIds', []);
                   }}
                 >
@@ -486,34 +469,6 @@ export function SubjectForm({
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="specialtyId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Specialty</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={specialtiesLoading || specialties.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select specialty" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {specialties.map((spec) => (
-                      <SelectItem key={spec.id} value={spec.id}>
-                        {spec.nameEn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
           <FormField
             control={form.control}
             name="levelIds"

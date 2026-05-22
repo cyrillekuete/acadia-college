@@ -14,7 +14,7 @@ export const PROMOTION_ACTIONS = [
 
 export type PromotionAction = (typeof PROMOTION_ACTIONS)[number];
 
-export const PROMOTION_BULK_MODES = ['class', 'specialty', 'year'] as const;
+export const PROMOTION_BULK_MODES = ['class', 'stream', 'year'] as const;
 export type PromotionBulkMode = (typeof PROMOTION_BULK_MODES)[number];
 
 export const promotionFiltersSchema = z
@@ -22,7 +22,6 @@ export const promotionFiltersSchema = z
     academicYearId: z.string().min(1, 'Academic year is required.'),
     bulkMode: z.enum(PROMOTION_BULK_MODES),
     classId: z.string().optional(),
-    specialtyId: z.string().optional(),
     subSystem: z.enum(ACADEMIC_SUB_SYSTEMS).optional(),
     branch: z.enum(ACADEMIC_BRANCHES).optional(),
   })
@@ -34,11 +33,11 @@ export const promotionFiltersSchema = z
         path: ['classId'],
       });
     }
-    if (data.bulkMode === 'specialty' && !data.specialtyId?.trim()) {
+    if (data.bulkMode === 'stream' && (!data.subSystem || !data.branch)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Specialty is required for specialty-wide compute.',
-        path: ['specialtyId'],
+        message: 'Sub-system and branch are required for stream-wide compute.',
+        path: ['subSystem'],
       });
     }
   });

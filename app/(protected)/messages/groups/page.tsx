@@ -49,7 +49,7 @@ export default function MessageGroupsPage() {
   return (
     <AcadiaPageShell
       title="Group messaging"
-      description="Create department, specialty, or level group conversations."
+      description="Create department, stream, or level group conversations."
     >
       <div className="mb-6">
         <Button size="sm" variant="outline" asChild>

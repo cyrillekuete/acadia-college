@@ -45,6 +45,7 @@ function mapLegacyRow(row: StudentsListRow): DummyStudent {
   return {
     id: row.id,
     student_id: row.student_id,
+    registration_number: null,
     first_name: row.first_name,
     last_name: row.last_name,
     email: row.email ?? '',
@@ -93,9 +94,11 @@ async function fetchStudentsFromEnrollments(
       StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
         id,
         registrationNumber,
+        matriculeNumber,
         isActive,
         User!StudentProfile_userId_tenantId_fkey ( name, email ),
-        Specialty!StudentProfile_specialtyId_tenantId_fkey ( subSystem, branch )
+        subSystem,
+        branch
       ),
       Class!StudentEnrollment_classId_tenantId_fkey ( name )
     `,
@@ -148,14 +151,13 @@ async function fetchStudentsFromEnrollments(
     const profile = unwrapRelation<{
       id: string;
       registrationNumber: string;
+      matriculeNumber: string | null;
       isActive: boolean;
       User?: unknown;
-      Specialty?: unknown;
+      subSystem?: string;
+      branch?: string;
     }>(row.StudentProfile);
     const user = unwrapRelation<{ name?: string; email?: string }>(profile?.User);
-    const specialty = unwrapRelation<{ subSystem?: string; branch?: string }>(
-      profile?.Specialty,
-    );
     const classRow = unwrapRelation<{ name?: string }>(row.Class);
     const { first, last } = splitName(user?.name);
     const enrollmentStatus =
@@ -164,15 +166,16 @@ async function fetchStudentsFromEnrollments(
 
     return {
       id: profile?.id ?? (row.id as string),
-      student_id: profile?.id ?? (row.id as string),
+      student_id: profile?.registrationNumber ?? (row.id as string),
+      registration_number: profile?.registrationNumber ?? null,
       first_name: first,
       last_name: last,
       email: user?.email ?? '',
       avatar: null,
       class_name: classRow?.name ?? '—',
-      subsystem: specialty?.subSystem ?? null,
-      branch: specialty?.branch ?? null,
-      matricule_number: profile?.registrationNumber ?? null,
+      subsystem: profile?.subSystem ?? null,
+      branch: profile?.branch ?? null,
+      matricule_number: profile?.matriculeNumber ?? null,
       enrollment_status: enrollmentStatus,
       status: profile?.isActive === false ? 'inactive' : 'active',
       enrollment_date: new Date(row.createdAt as string).toISOString(),

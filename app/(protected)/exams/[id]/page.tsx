@@ -13,7 +13,7 @@ import {
   formatRecordValue,
   sequenceLabel,
   termLabel,
-  specialtyLabel,
+  streamLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -27,7 +27,7 @@ const EXAM_SELECT = `
   finalizedAt,
   createdAt,
   updatedAt,
-  Subject!ExamSession_subjectId_tenantId_fkey ( code, nameEn, nameFr ),
+  Subject!ExamSession_subjectId_tenantId_fkey ( code, nameEn, nameFr, subSystem, branch ),
   AcademicYear!ExamSession_academicYearId_tenantId_fkey ( label ),
   Term!ExamSession_semesterId_tenantId_fkey ( number ),
   AcademicSequence:sequenceId ( number, numberInTerm )
@@ -61,7 +61,12 @@ export default function ExamSessionDetailPage({
     EXAM_SELECT,
   );
 
-  const subject = unwrapRelation<{ code?: string; nameEn?: string }>(data?.Subject);
+  const subject = unwrapRelation<{
+    code?: string;
+    nameEn?: string;
+    subSystem?: string;
+    branch?: string;
+  }>(data?.Subject);
   const year = unwrapRelation<{ label?: string }>(data?.AcademicYear);
   const term = unwrapRelation<{ number?: number }>(data?.Term);
   const sequence = unwrapRelation<{ number?: number; numberInTerm?: number }>(
@@ -123,7 +128,11 @@ export default function ExamSessionDetailPage({
           <RecordDetailCard
             title="Academic context"
             fields={[
-              { label: 'Subject', value: specialtyLabel(subject) },
+              { label: 'Subject', value: formatRecordValue(subject?.nameEn ?? subject?.code) },
+              {
+                label: 'Stream',
+                value: streamLabel(subject?.subSystem, subject?.branch),
+              },
               { label: 'Academic year', value: formatRecordValue(year?.label) },
               { label: 'Term', value: termLabel(term) },
               { label: 'Sequence', value: sequenceLabel(sequence) },

@@ -110,7 +110,7 @@ export default function CourseworkSubmissionDetailPage({
               { label: 'Task due', value: formatDateTime(task?.dueAt) },
               { label: 'Task max score', value: formatRecordValue(task?.maxScore) },
               {
-                label: 'Student matricule',
+                label: 'Student ID',
                 value: formatRecordValue(student?.registrationNumber),
               },
             ]}

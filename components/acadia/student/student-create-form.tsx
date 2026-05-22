@@ -27,20 +27,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { generateRegistrationNumber } from '@/lib/acadia/enrollment';
 import { studentCreateSchema, type StudentCreateInput, type StudentCreateFormValues } from '@/lib/acadia/student-create-schemas';
 import { useStudentCreateMutation } from '@/hooks/use-student-create-mutation';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   useClassesForFilters,
-  useLevelsForSpecialty,
-  useSpecialtyOptions,
+  useLevelsForStream,
 } from '@/hooks/use-enrollment-catalog-options';
 import { levelDisplayLabel } from '@/lib/acadia/education-system';
 import { toAcademicBranch, toAcademicSubSystem } from '@/lib/acadia/catalog-maps';
 import { CityAutocomplete } from '@/components/acadia/location/city-autocomplete';
 import { CountryCombobox } from '@/components/acadia/location/country-combobox';
 import { RegionSelect } from '@/components/acadia/location/region-select';
+import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import { isCityValidForLocation } from '@/lib/acadia/locations';
 
@@ -88,10 +87,12 @@ export function StudentCreateForm() {
       is_new_student: true,
       nationality: 'Cameroonian',
       country: DEFAULT_COUNTRY_NAME,
+      phone_country: DEFAULT_COUNTRY_NAME,
+      parent_phone_country: DEFAULT_COUNTRY_NAME,
+      emergency_contact_phone_country: DEFAULT_COUNTRY_NAME,
       parent_relationship: 'father',
       academic_year: '',
       academic_year_id: '',
-      specialty_id: '',
       level_id: '',
       class_id: '',
     },
@@ -99,23 +100,16 @@ export function StudentCreateForm() {
 
   const watchedSubsystem = form.watch('subsystem');
   const watchedBranch = form.watch('branch');
-  const watchedSpecialtyId = form.watch('specialty_id');
   const catalogSubSystem = toAcademicSubSystem(watchedSubsystem);
   const catalogBranch = toAcademicBranch(watchedBranch);
 
-  const { data: specialties = [] } = useSpecialtyOptions(
-    catalogSubSystem,
-    catalogBranch,
-  );
-  const { data: levels = [] } = useLevelsForSpecialty(
-    watchedSpecialtyId,
+  const { data: levels = [] } = useLevelsForStream(
     catalogSubSystem,
     catalogBranch,
   );
   const { data: classOptions = [] } = useClassesForFilters({
     subSystem: catalogSubSystem,
     branch: catalogBranch,
-    specialtyId: watchedSpecialtyId || null,
     levelId: form.watch('level_id') || null,
   });
 
@@ -129,37 +123,12 @@ export function StudentCreateForm() {
   }, [activeYear?.label, activeYearId, form]);
 
   useEffect(() => {
-    const current = form.getValues('specialty_id');
-    if (current && !specialties.some((s) => s.id === current)) {
-      form.setValue('specialty_id', '');
-      form.setValue('level_id', '');
-      form.setValue('class_id', '');
-    }
-  }, [catalogSubSystem, catalogBranch, specialties, form]);
-
-  useEffect(() => {
     const current = form.getValues('level_id');
     if (current && !levels.some((l) => l.id === current)) {
       form.setValue('level_id', '');
       form.setValue('class_id', '');
     }
-  }, [watchedSpecialtyId, levels, form]);
-
-  const watchedAcademicYear = form.watch('academic_year');
-
-  useEffect(() => {
-    const yearLabel = watchedAcademicYear?.trim() || activeYear?.label;
-    if (!yearLabel?.trim()) {
-      return;
-    }
-    const currentMatricule = form.getValues('matricule_number')?.trim();
-    if (!currentMatricule) {
-      form.setValue('matricule_number', generateRegistrationNumber(yearLabel), {
-        shouldDirty: false,
-        shouldValidate: true,
-      });
-    }
-  }, [watchedAcademicYear, activeYear?.label, form]);
+  }, [catalogSubSystem, catalogBranch, levels, form]);
 
   async function onSubmit(values: StudentCreateInput) {
     const result = await mutation.mutateAsync(values).catch((err: Error) => {
@@ -293,15 +262,13 @@ export function StudentCreateForm() {
               </StudentFieldItem>
             )} />
 
-            <FormField control={form.control} name="phone" render={({ field }) => (
-              <StudentFieldItem>
-                <StudentFieldLabel>Phone</StudentFieldLabel>
-                <StudentFieldControl>
-                  <FormControl><Input className="w-full" type="tel" {...field} /></FormControl>
-                  <FormMessage />
-                </StudentFieldControl>
-              </StudentFieldItem>
-            )} />
+            <div className="sm:col-span-2 lg:col-span-3">
+              <PhoneFormFields
+                control={form.control}
+                countryName="phone_country"
+                phoneName="phone"
+              />
+            </div>
 
             <FormField control={form.control} name="address" render={({ field }) => (
               <StudentFieldItem>
@@ -438,33 +405,6 @@ export function StudentCreateForm() {
               </StudentFieldItem>
             )} />
 
-            <FormField control={form.control} name="specialty_id" render={({ field }) => (
-              <StudentFieldItem>
-                <StudentFieldLabel>Specialty <span className="text-destructive">*</span></StudentFieldLabel>
-                <StudentFieldControl>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={!catalogSubSystem || !catalogBranch}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select specialty" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {specialties.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.nameEn}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </StudentFieldControl>
-              </StudentFieldItem>
-            )} />
-
             <FormField control={form.control} name="level_id" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>Level <span className="text-destructive">*</span></StudentFieldLabel>
@@ -472,7 +412,7 @@ export function StudentCreateForm() {
                   <Select
                     onValueChange={field.onChange}
                     value={field.value}
-                    disabled={!watchedSpecialtyId}
+                    disabled={!catalogSubSystem || !catalogBranch}
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
@@ -557,18 +497,18 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="matricule_number" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Matricule</StudentFieldLabel>
+                <StudentFieldLabel>Matricule (optional)</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl>
                     <Input
                       className="w-full"
-                      placeholder="Auto-generated from academic year"
+                      placeholder="Ministry-issued matricule"
                       {...field}
                       value={field.value ?? ''}
                     />
                   </FormControl>
                   <FormDescription>
-                    Generated automatically; edit to override.
+                    Enter the official matricule if issued by the ministry. Leave blank if not yet assigned.
                   </FormDescription>
                   <FormMessage />
                 </StudentFieldControl>
@@ -624,15 +564,14 @@ export function StudentCreateForm() {
               </StudentFieldItem>
             )} />
 
-            <FormField control={form.control} name="parent_phone" render={({ field }) => (
-              <StudentFieldItem>
-                <StudentFieldLabel>Phone <span className="text-destructive">*</span></StudentFieldLabel>
-                <StudentFieldControl>
-                  <FormControl><Input className="w-full" type="tel" {...field} /></FormControl>
-                  <FormMessage />
-                </StudentFieldControl>
-              </StudentFieldItem>
-            )} />
+            <div className="sm:col-span-2 lg:col-span-3">
+              <PhoneFormFields
+                control={form.control}
+                countryName="parent_phone_country"
+                phoneName="parent_phone"
+                required
+              />
+            </div>
 
             <FormField control={form.control} name="parent_relationship" render={({ field }) => (
               <StudentFieldItem>
@@ -695,15 +634,14 @@ export function StudentCreateForm() {
                 </StudentFieldItem>
               )} />
 
-              <FormField control={form.control} name="emergency_contact_phone" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>Emergency contact phone</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" type="tel" {...field} /></FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+              <div className="sm:col-span-2 lg:col-span-3">
+                <PhoneFormFields
+                  control={form.control}
+                  countryName="emergency_contact_phone_country"
+                  phoneName="emergency_contact_phone"
+                  phoneLabel="Emergency contact phone"
+                />
+              </div>
 
               <FormField control={form.control} name="emergency_contact_relationship" render={({ field }) => (
                 <StudentFieldItem>

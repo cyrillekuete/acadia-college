@@ -7,6 +7,7 @@ import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import {
   formatDateTime,
+  formatPhoneRecordValue,
   formatRecordValue,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
@@ -100,7 +101,7 @@ export default function StaffDetailPage({
               { label: 'Department', value: departmentLabel },
               { label: 'Hire date', value: formatDateTime(data.hireDate) },
               { label: 'Office room', value: formatRecordValue(data.officeRoom) },
-              { label: 'Office phone', value: formatRecordValue(data.officePhone) },
+              { label: 'Office phone', value: formatPhoneRecordValue(data.officePhone) },
               {
                 label: 'Status',
                 value: (
