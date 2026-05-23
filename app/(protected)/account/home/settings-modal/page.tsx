@@ -15,7 +15,7 @@ import { toAbsoluteUrl } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { AccountSettingsModal } from '@/app/(protected)/account/home/settings-modal/content';
-import { PageMenu } from '@/app/(protected)/public-profile/page-menu';
+import { PageMenu } from '@/app/(protected)/account/home/page-menu';
 
 export default function AccountSettingsModalPage() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(true);

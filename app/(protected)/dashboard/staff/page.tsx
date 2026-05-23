@@ -1,26 +1,78 @@
 'use client';
 
+import { useMemo } from 'react';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { DashboardStatCard } from '@/components/acadia/dashboard-stat-card';
-import { Card, CardContent } from '@/components/ui/card';
+import { AdminOverviewStatCard } from '@/components/acadia/admin-dashboard/admin-overview-stat-card';
+import { formatDashboardStatValue } from '@/components/acadia/dashboard-stat-card';
+import { StaffDashboardTimetableSection } from '@/components/acadia/staff-dashboard/staff-dashboard-timetable-section';
+import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
+import { useActiveYearTimetablePublish } from '@/hooks/use-timetable-publish';
+import { useTimetableSlotsForTeacher } from '@/hooks/use-timetable-slots';
+import {
+  countTimetableSlotsForDay,
+  getTimetableDayOfWeek,
+} from '@/lib/acadia/timetable';
 
 export default function StaffDashboardPage() {
+  const {
+    data: linkedProfile,
+    isLoading: profileLoading,
+  } = useLinkedAcadiaProfile();
+  const staffProfileId = linkedProfile?.staffProfileId ?? null;
+  const { canView, isLoading: publishLoading } = useActiveYearTimetablePublish();
+
+  const { data: slotRows = [], isLoading: slotsLoading } =
+    useTimetableSlotsForTeacher(staffProfileId, { enabled: canView });
+
+  const todaysSessions = useMemo(() => {
+    if (
+      profileLoading ||
+      publishLoading ||
+      slotsLoading ||
+      !staffProfileId ||
+      !canView
+    ) {
+      return undefined;
+    }
+
+    return countTimetableSlotsForDay(slotRows, getTimetableDayOfWeek());
+  }, [
+    canView,
+    profileLoading,
+    publishLoading,
+    slotRows,
+    slotsLoading,
+    staffProfileId,
+  ]);
+
   return (
     <AcadiaPageShell
       title="Acadia College — Staff dashboard"
       description="Welcome to Acadia College. Your teaching and operations overview."
     >
-      <div className="grid gap-5 md:grid-cols-3">
-        <DashboardStatCard title="My subjects" value="—" icon="book" />
-        <DashboardStatCard title="Today's sessions" value="—" icon="calendar-tick" />
-        <DashboardStatCard title="Pending marks" value="—" icon="document" />
+      <div className="space-y-5">
+        <div className="grid gap-5 md:grid-cols-3">
+          <AdminOverviewStatCard
+            title="My subjects"
+            value="—"
+            footer="Assigned this term"
+            icon="book"
+          />
+          <AdminOverviewStatCard
+            title="Today's sessions"
+            value={formatDashboardStatValue(todaysSessions)}
+            footer="Scheduled for today"
+            icon="calendar-tick"
+          />
+          <AdminOverviewStatCard
+            title="Pending marks"
+            value="—"
+            footer="Awaiting submission"
+            icon="document"
+          />
+        </div>
+        <StaffDashboardTimetableSection />
       </div>
-      <Card className="mt-5">
-        <CardContent className="p-5 text-sm text-muted-foreground">
-          Subject assignments and timetable data appear here once linked to your staff
-          profile in Supabase.
-        </CardContent>
-      </Card>
     </AcadiaPageShell>
   );
 }

@@ -30,22 +30,22 @@ const RecentUploads = ({ title }: IRecentUploadsProps) => {
     {
       image: 'pdf.svg',
       desc: 'Project-pitch.pdf',
-      date: '4.7 MB 26 Sep 2024 3:20 PM',
+      date: '4.7 MB 26 Sep 2026 3:20 PM',
     },
     {
       image: 'doc.svg',
       desc: 'Report-v1.docx',
-      date: '2.3 MB 1 Oct 2024 12:00 PM',
+      date: '2.3 MB 1 Oct 2026 12:00 PM',
     },
     {
       image: 'ai.svg',
       desc: 'Framework-App.js',
-      date: '0.8 MB 17 Oct 2024 6:46 PM',
+      date: '0.8 MB 17 Oct 2026 6:46 PM',
     },
     {
       image: 'js.svg',
       desc: 'Mobile-logo.ai',
-      date: '0.2 MB 4 Nov 2024 11:30 AM',
+      date: '0.2 MB 4 Nov 2026 11:30 AM',
     },
   ];
 
@@ -55,7 +55,7 @@ const RecentUploads = ({ title }: IRecentUploadsProps) => {
         <div className="flex items-center grow gap-2.5">
           <img
             src={toAbsoluteUrl(`/media/file-types/${item.image}`)}
-            alt="image"
+            alt={`${item.desc} file icon`}
           />
           <div className="flex flex-col">
             <span className="text-sm font-medium text-mono cursor-pointer hover:text-primary mb-px">

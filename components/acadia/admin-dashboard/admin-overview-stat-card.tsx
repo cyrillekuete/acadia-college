@@ -20,7 +20,7 @@ export function AdminOverviewStatCard({
 }) {
   return (
     <Card className="h-full text-center">
-      <CardHeader className="flex flex-row items-center justify-center gap-2 space-y-0 pb-2">
+      <CardHeader className="space-y-0">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <StatIconBadge icon={icon} />
       </CardHeader>

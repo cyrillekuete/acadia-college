@@ -12,6 +12,8 @@ export type DummyStudent = {
   last_name: string;
   email: string;
   avatar: string | null;
+  /** Populated from enrollment rows when available (used for teacher scope filters). */
+  class_id?: string | null;
   class_name: string;
   subsystem: string | null;
   branch: string | null;

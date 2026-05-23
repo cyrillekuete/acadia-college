@@ -2,16 +2,26 @@
 
 import { useMemo } from 'react';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { TeacherTimetablePrintHeader } from '@/components/acadia/timetable/teacher-timetable-print-header';
+import { TimetablePrintButton } from '@/components/acadia/timetable/timetable-print-button';
 import { WeeklyTimetableGrid } from '@/components/acadia/timetable/weekly-timetable-grid';
+import { TimetableUnpublishedNotice } from '@/components/acadia/timetable/timetable-unpublished-notice';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
 import { useActiveYearTimetablePublish } from '@/hooks/use-timetable-publish';
 import { useTimetableSlotsForTeacher } from '@/hooks/use-timetable-slots';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { mapTimetableRowToGridSlot } from '@/lib/acadia/timetable-grid';
-import { TimetableUnpublishedNotice } from '@/components/acadia/timetable/timetable-unpublished-notice';
 
-export function TeacherTimetableView() {
+export function TeacherTimetableView({
+  showPrintAction = false,
+}: {
+  /** Show an inline print button (e.g. staff dashboard). Timetable page uses toolbar actions instead. */
+  showPrintAction?: boolean;
+}) {
+  const { data: session } = useAcadiaCollegeSession();
+  const teacherName = session?.profile?.name?.trim() || null;
   const {
     data: linkedProfile,
     isLoading: profileLoading,
@@ -53,18 +63,27 @@ export function TeacherTimetableView() {
     );
   }
 
+  const toolbar = (
+    <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <CurrentAcademicYearBadge />
+      {showPrintAction ? <TimetablePrintButton /> : null}
+    </div>
+  );
+
   if (!canView) {
     return (
-      <div className="space-y-4">
-        <CurrentAcademicYearBadge />
+      <div className="space-y-4 print:space-y-3">
+        {toolbar}
+        <TeacherTimetablePrintHeader teacherName={teacherName} />
         <TimetableUnpublishedNotice />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <CurrentAcademicYearBadge />
+    <div className="space-y-4 print:space-y-3">
+      {toolbar}
+      <TeacherTimetablePrintHeader teacherName={teacherName} />
       <WeeklyTimetableGrid
         slots={gridSlots}
         isLoading={slotsLoading}

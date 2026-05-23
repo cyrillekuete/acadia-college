@@ -139,10 +139,6 @@ write(
   stub('TrustedDevices'),
 );
 write(
-  'app/(protected)/public-profile/profiles/default/components/recent-uploads.tsx',
-  stub('RecentUploads'),
-);
-write(
   'app/(protected)/store-admin/components/create-shipping-label-sheet/sheet.tsx',
   `'use client';
 export function CreateShippingLabelSheet() { return null; }

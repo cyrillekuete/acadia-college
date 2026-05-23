@@ -79,40 +79,31 @@ function splitName(fullName: string | null | undefined): {
   return { first: parts[0]!, last: parts.slice(1).join(' ') };
 }
 
-async function fetchStudentsFromEnrollments(
+const ENROLLMENT_LIST_SELECT = `
+  id,
+  classId,
+  status,
+  createdAt,
+  StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
+    id,
+    registrationNumber,
+    matriculeNumber,
+    isActive,
+    User!StudentProfile_userId_tenantId_fkey ( name, email ),
+    subSystem,
+    branch
+  ),
+  Class!StudentEnrollment_classId_tenantId_fkey ( name )
+`;
+
+async function mapEnrollmentRowsToStudents(
   supabase: SupabaseClient,
   tenantId: string,
   academicYearId: string,
+  rows: Array<Record<string, unknown>>,
 ): Promise<DummyStudent[]> {
-  const { data, error } = await supabase
-    .from('StudentEnrollment')
-    .select(
-      `
-      id,
-      status,
-      createdAt,
-      StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
-        id,
-        registrationNumber,
-        matriculeNumber,
-        isActive,
-        User!StudentProfile_userId_tenantId_fkey ( name, email ),
-        subSystem,
-        branch
-      ),
-      Class!StudentEnrollment_classId_tenantId_fkey ( name )
-    `,
-    )
-    .eq('tenantId', tenantId)
-    .eq('academicYearId', academicYearId)
-    .order('createdAt', { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
   const feeByProfile = new Map<string, { total: number; paid: number; status: string | null }>();
-  const profileIds = (data ?? [])
+  const profileIds = rows
     .map((row) => {
       const profile = unwrapRelation<{ id?: string }>(row.StudentProfile);
       return profile?.id ?? null;
@@ -147,7 +138,7 @@ async function fetchStudentsFromEnrollments(
     }
   }
 
-  return (data ?? []).map((row) => {
+  return rows.map((row) => {
     const profile = unwrapRelation<{
       id: string;
       registrationNumber: string;
@@ -172,6 +163,7 @@ async function fetchStudentsFromEnrollments(
       last_name: last,
       email: user?.email ?? '',
       avatar: null,
+      class_id: (row.classId as string | null) ?? null,
       class_name: classRow?.name ?? '—',
       subsystem: profile?.subSystem ?? null,
       branch: profile?.branch ?? null,
@@ -185,6 +177,61 @@ async function fetchStudentsFromEnrollments(
       fees_status: fees?.status ?? null,
     } satisfies DummyStudent;
   });
+}
+
+async function fetchStudentsFromEnrollments(
+  supabase: SupabaseClient,
+  tenantId: string,
+  academicYearId: string,
+): Promise<DummyStudent[]> {
+  const { data, error } = await supabase
+    .from('StudentEnrollment')
+    .select(ENROLLMENT_LIST_SELECT)
+    .eq('tenantId', tenantId)
+    .eq('academicYearId', academicYearId)
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return mapEnrollmentRowsToStudents(
+    supabase,
+    tenantId,
+    academicYearId,
+    (data ?? []) as Array<Record<string, unknown>>,
+  );
+}
+
+export async function fetchStudentsFromEnrollmentsForClassIds(
+  supabase: SupabaseClient,
+  tenantId: string,
+  academicYearId: string,
+  classIds: string[],
+): Promise<DummyStudent[]> {
+  if (classIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('StudentEnrollment')
+    .select(ENROLLMENT_LIST_SELECT)
+    .eq('tenantId', tenantId)
+    .eq('academicYearId', academicYearId)
+    .eq('status', 'ENROLLED')
+    .in('classId', classIds)
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return mapEnrollmentRowsToStudents(
+    supabase,
+    tenantId,
+    academicYearId,
+    (data ?? []) as Array<Record<string, unknown>>,
+  );
 }
 
 export async function fetchStudentsList(

@@ -11,7 +11,6 @@ import {
   Settings,
   Shield,
   User,
-  UserCircle,
   Users,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -90,15 +89,6 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
         <DropdownMenuSeparator />
 
         {/* Menu Items */}
-        <DropdownMenuItem asChild>
-          <Link
-            href="/public-profile/profiles/default"
-            className="flex items-center gap-2"
-          >
-            <UserCircle />
-            Public Profile
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link
             href="/account/home/user-profile"

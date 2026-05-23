@@ -35,9 +35,13 @@ import { getStudentEnrollmentStatusProps } from '@/components/acadia/student/stu
 export function StudentList({
   students,
   isLoading = false,
+  emptyMessage,
+  defaultSorting,
 }: {
   students: DummyStudent[];
   isLoading?: boolean;
+  emptyMessage?: string;
+  defaultSorting?: SortingState;
 }) {
   const router = useRouter();
 
@@ -45,7 +49,7 @@ export function StudentList({
     pageIndex: 0,
     pageSize: 10,
   });
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>(defaultSorting ?? []);
 
   const columns = useMemo<ColumnDef<DummyStudent>[]>(
     () => [
@@ -284,6 +288,7 @@ export function StudentList({
       table={table}
       recordCount={students.length}
       isLoading={isLoading}
+      emptyMessage={emptyMessage}
       onRowClick={handleRowClick}
       tableLayout={{
         columnsResizable: true,

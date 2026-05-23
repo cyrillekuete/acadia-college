@@ -29,3 +29,16 @@ export function timeStringToMinutes(value: string): number {
 export function formatTimeRange(startMinutes: number, endMinutes: number): string {
   return `${minutesToTimeString(startMinutes)} – ${minutesToTimeString(endMinutes)}`;
 }
+
+/** Timetable convention: 1 = Monday … 7 = Sunday (JS Date.getDay() is 0 = Sunday … 6 = Saturday). */
+export function getTimetableDayOfWeek(date: Date = new Date()): number {
+  const jsDay = date.getDay();
+  return jsDay === 0 ? 7 : jsDay;
+}
+
+export function countTimetableSlotsForDay(
+  slots: readonly { dayOfWeek: number }[],
+  dayOfWeek: number,
+): number {
+  return slots.filter((slot) => slot.dayOfWeek === dayOfWeek).length;
+}

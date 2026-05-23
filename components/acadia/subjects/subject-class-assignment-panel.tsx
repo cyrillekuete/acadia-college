@@ -42,7 +42,7 @@ export function SubjectClassAssignmentPanel({
   const [dirty, setDirty] = useState(false);
 
   const {
-    data: classOptions = [],
+    data: classOptions,
     isLoading,
     isError,
     error,
@@ -55,6 +55,9 @@ export function SubjectClassAssignmentPanel({
   });
 
   useEffect(() => {
+    if (classOptions === undefined) {
+      return;
+    }
     setAssignments(assignmentsFromClassOptions(classOptions));
     setDirty(false);
   }, [classOptions]);
@@ -65,7 +68,7 @@ export function SubjectClassAssignmentPanel({
   );
 
   const assignedSummary = useMemo(() => {
-    if (assignments.length === 0) {
+    if (assignments.length === 0 || !classOptions) {
       return '—';
     }
     return assignments
@@ -129,7 +132,7 @@ export function SubjectClassAssignmentPanel({
             subjectDefaultGroupingId={subjectDefaultGroupingId}
             subjectDefaultGroupingName={subjectDefaultGroupingName}
             subBranches={subBranches}
-            classOptions={classOptions}
+            classOptions={classOptions ?? []}
             value={assignments}
             onChange={(next) => {
               setAssignments(next);

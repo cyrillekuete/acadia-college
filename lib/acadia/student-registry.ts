@@ -1,5 +1,11 @@
 import { getDummyStudentFullName, type DummyStudent } from '@/lib/acadia/dummy-students';
 import { formatMoney } from '@/i18n/format';
+import type { TeacherTeachingScopePair } from '@/lib/supabase/queries/teacher-students';
+
+export type StudentRegistrySubjectOption = {
+  id: string;
+  label: string;
+};
 
 export type StudentQuickFilterId =
   | 'fully_enrolled_paid'
@@ -20,6 +26,7 @@ export type StudentRegistryFilters = {
   subSystem: string | null;
   branch: string | null;
   className: string | null;
+  subjectId: string | null;
   enrollmentStatus: string | null;
   feesStatus: string | null;
   quickFilter: StudentQuickFilterId | null;
@@ -30,9 +37,18 @@ export const EMPTY_STUDENT_REGISTRY_FILTERS: StudentRegistryFilters = {
   subSystem: null,
   branch: null,
   className: null,
+  subjectId: null,
   enrollmentStatus: null,
   feesStatus: null,
   quickFilter: null,
+};
+
+export type TeacherStudentRegistryStats = {
+  total: number;
+  active: number;
+  classCount: number;
+  subjectCount: number;
+  academicYearLabel: string;
 };
 
 export type StudentRegistryStats = {
@@ -92,19 +108,55 @@ export function studentRegistryHasActiveFilters(
     filters.subSystem != null ||
     filters.branch != null ||
     filters.className != null ||
+    filters.subjectId != null ||
     filters.enrollmentStatus != null ||
     filters.feesStatus != null ||
     filters.quickFilter != null
   );
 }
 
+export function filterStudentsRegistryByTeachingScope(
+  students: DummyStudent[],
+  filters: StudentRegistryFilters,
+  scopePairs: TeacherTeachingScopePair[],
+): DummyStudent[] {
+  if (!filters.subjectId) {
+    return students;
+  }
+
+  const classIdsForSubject = new Set(
+    scopePairs
+      .filter((pair) => pair.subjectId === filters.subjectId)
+      .map((pair) => pair.classId),
+  );
+
+  return students.filter((student) => {
+    if (student.class_id) {
+      return classIdsForSubject.has(student.class_id);
+    }
+    const classNamesForSubject = new Set(
+      scopePairs
+        .filter((pair) => pair.subjectId === filters.subjectId)
+        .map((pair) => pair.className),
+    );
+    return classNamesForSubject.has(student.class_name);
+  });
+}
+
 export function filterStudentsRegistry(
   students: DummyStudent[],
   filters: StudentRegistryFilters,
+  options?: {
+    scopePairs?: TeacherTeachingScopePair[];
+  },
 ): DummyStudent[] {
+  const scopedStudents = options?.scopePairs
+    ? filterStudentsRegistryByTeachingScope(students, filters, options.scopePairs)
+    : students;
+
   const q = filters.query.trim().toLowerCase();
 
-  return students.filter((student) => {
+  return scopedStudents.filter((student) => {
     if (filters.subSystem) {
       const rowSub = normalizeSubSystem(student.subsystem);
       const want = filters.subSystem.toLowerCase();
@@ -156,6 +208,39 @@ export function filterStudentsRegistry(
       (student.matricule_number?.toLowerCase().includes(q) ?? false)
     );
   });
+}
+
+export function computeTeacherStudentRegistryStats(
+  students: DummyStudent[],
+  scopePairs: TeacherTeachingScopePair[],
+  academicYearLabel?: string | null,
+): TeacherStudentRegistryStats {
+  const total = students.length;
+  const active = students.filter((s) => s.enrollment_status === 'active').length;
+  const classCount = new Set(scopePairs.map((pair) => pair.classId)).size;
+  const subjectCount = new Set(scopePairs.map((pair) => pair.subjectId)).size;
+
+  return {
+    total,
+    active,
+    classCount,
+    subjectCount,
+    academicYearLabel: academicYearLabel ?? '—',
+  };
+}
+
+export function getTeacherSubjectOptions(
+  scopePairs: TeacherTeachingScopePair[],
+): StudentRegistrySubjectOption[] {
+  const byId = new Map<string, string>();
+  for (const pair of scopePairs) {
+    if (!byId.has(pair.subjectId)) {
+      byId.set(pair.subjectId, pair.subjectName);
+    }
+  }
+  return Array.from(byId.entries())
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function computeStudentRegistryStats(

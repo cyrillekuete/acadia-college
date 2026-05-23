@@ -55,7 +55,7 @@ function TimetableSlotCard({
     <button
       type="button"
       className={cn(
-        'group relative w-full rounded-md border bg-card p-3 text-left text-sm shadow-xs transition-colors',
+        'group relative w-full rounded-md border bg-card p-3 text-left text-sm shadow-xs transition-colors print:break-inside-avoid print:shadow-none',
         canManage && onEdit && 'cursor-pointer hover:border-primary/40 hover:bg-muted/40',
         !canManage && 'cursor-default',
       )}
@@ -181,10 +181,10 @@ export function WeeklyTimetableGrid({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="hidden overflow-x-auto md:block">
+    <div className="space-y-4 print:space-y-2">
+      <div className="hidden overflow-x-auto md:block print:block print:overflow-visible">
         <div
-          className="grid min-w-[720px] gap-3"
+          className="grid min-w-[720px] gap-3 print:min-w-0 print:w-full"
           style={{
             gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
           }}
@@ -209,7 +209,7 @@ export function WeeklyTimetableGrid({
         </div>
       </div>
 
-      <div className="space-y-4 md:hidden">
+      <div className="space-y-4 md:hidden print:hidden">
         {days.map((day) => (
           <Card key={day}>
             <CardContent className="pt-4">

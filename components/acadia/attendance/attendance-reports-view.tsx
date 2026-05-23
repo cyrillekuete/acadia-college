@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AdminOverviewStatCard } from '@/components/acadia/admin-dashboard/admin-overview-stat-card';
+import { formatDashboardStatValue } from '@/components/acadia/dashboard-stat-card';
 import {
   Table,
   TableBody,
@@ -143,6 +144,8 @@ export function AttendanceReportsView() {
 
   const data = query.data;
   const summaries = useMemo(() => data?.summaries ?? [], [data?.summaries]);
+  const isLoading = query.isLoading || query.isFetching;
+  const totals = data?.totals;
 
   return (
     <div className="space-y-6 print:space-y-4">
@@ -174,49 +177,52 @@ export function AttendanceReportsView() {
         </div>
       </div>
 
-      {query.isLoading || query.isFetching ? (
-        <p className="text-sm text-muted-foreground">Loading report…</p>
-      ) : query.isError ? (
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
+        <AdminOverviewStatCard
+          title="Sessions"
+          value={
+            isLoading || !data
+              ? '—'
+              : formatDashboardStatValue(data.sessions.length)
+          }
+          footer={isLoading ? 'Loading…' : 'In selected range'}
+          icon="calendar-tick"
+        />
+        <AdminOverviewStatCard
+          title="Present"
+          value={
+            isLoading || !totals ? '—' : formatDashboardStatValue(totals.present)
+          }
+          footer={isLoading ? 'Loading…' : 'Marked present'}
+          footerTone="positive"
+          icon="check"
+        />
+        <AdminOverviewStatCard
+          title="Absent"
+          value={
+            isLoading || !totals ? '—' : formatDashboardStatValue(totals.absent)
+          }
+          footer={isLoading ? 'Loading…' : 'Marked absent'}
+          icon="cross"
+        />
+        <AdminOverviewStatCard
+          title="Late"
+          value={
+            isLoading || !totals ? '—' : formatDashboardStatValue(totals.late)
+          }
+          footer={isLoading ? 'Loading…' : 'Arrived late'}
+          icon="notification"
+        />
+      </div>
+
+      {query.isError ? (
         <p className="text-sm text-destructive">
           {getQueryErrorMessage(query.error)}
         </p>
+      ) : isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading report…</p>
       ) : data ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Sessions</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {data.sessions.length}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Present</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {data.totals.present}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Absent</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {data.totals.absent}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Late</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {data.totals.late}
-              </CardContent>
-            </Card>
-          </div>
-
           <div>
             <h3 className="text-lg font-semibold mb-3">Student summaries</h3>
             {summaries.length === 0 ? (

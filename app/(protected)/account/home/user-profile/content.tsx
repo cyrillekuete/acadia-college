@@ -1,6 +1,6 @@
 'use client';
 
-import { RecentUploads } from '@/app/(protected)/public-profile/profiles/default/components/recent-uploads';
+import { RecentUploads } from './components/recent-uploads';
 import { AccountDataState } from '@/components/acadia/account/account-data-state';
 import {
   BasicSettings,

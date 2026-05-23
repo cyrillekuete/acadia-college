@@ -46,6 +46,11 @@ const nextConfig = {
         destination: '/subjects/:path*',
         permanent: true,
       },
+      {
+        source: '/public-profile/:path*',
+        destination: '/account/home/user-profile',
+        permanent: true,
+      },
     ];
   },
   env: {

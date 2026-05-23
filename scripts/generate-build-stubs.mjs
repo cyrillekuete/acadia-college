@@ -77,47 +77,6 @@ const files = [
     'hook',
     'useRoleSelectQuery',
   ],
-  // public-profile
-  [
-    'app/(protected)/public-profile/profiles/default/components/profile-default-content.tsx',
-    'ProfileDefaultContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/creator/components/profile-creator-content.tsx',
-    'ProfileCreatorContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/company/components/profile-company-content.tsx',
-    'ProfileCompanyContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/nft/components/profile-nft-content.tsx',
-    'ProfileNftContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/blogger/components/profile-blogger-content.tsx',
-    'ProfileBloggerContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/crm/components/profile-crm-content.tsx',
-    'ProfileCrmContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/gamer/components/profile-gamer-content.tsx',
-    'ProfileGamerContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/feeds/components/profile-feeds-content.tsx',
-    'ProfileFeedsContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/plain/components/profile-plain-content.tsx',
-    'ProfilePlainContent',
-  ],
-  [
-    'app/(protected)/public-profile/profiles/modal/components/profile-modal-content.tsx',
-    'ProfileModalContent',
-  ],
   // store-client
   [
     'app/(protected)/store-client/home/components/store-client-content.tsx',

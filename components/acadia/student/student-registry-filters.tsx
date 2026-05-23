@@ -27,24 +27,34 @@ import {
   studentRegistryHasActiveFilters,
   type StudentQuickFilterId,
   type StudentRegistryFilters,
+  type StudentRegistrySubjectOption,
 } from '@/lib/acadia/student-registry';
 import { StudentEnrollmentStatusProps } from '@/components/acadia/student/student-list-status';
 import { cn } from '@/lib/utils';
 
 const ALL = '__all__';
 
+const TEACHER_QUICK_FILTERS: RegistryQuickFilter[] = [
+  { id: 'pending_enrollment', label: 'Pending Enrollment' },
+];
+
 export function StudentRegistryFiltersPanel({
+  mode = 'admin',
   filters,
   onChange,
   classOptions,
   feesStatusOptions,
+  subjectOptions = [],
 }: {
+  mode?: 'admin' | 'teacher';
   filters: StudentRegistryFilters;
   onChange: (filters: StudentRegistryFilters) => void;
   classOptions: string[];
   feesStatusOptions: string[];
+  subjectOptions?: StudentRegistrySubjectOption[];
 }) {
-  const quickFilters: RegistryQuickFilter[] = STUDENT_QUICK_FILTERS;
+  const quickFilters: RegistryQuickFilter[] =
+    mode === 'teacher' ? TEACHER_QUICK_FILTERS : STUDENT_QUICK_FILTERS;
 
   const handleClearAll = () => {
     onChange({ ...EMPTY_STUDENT_REGISTRY_FILTERS });
@@ -78,53 +88,81 @@ export function StudentRegistryFiltersPanel({
           </div>
         </FilterField>
 
-        <FilterField label="Sub-system" className="min-w-[10rem] flex-1">
-          <Select
-            value={filters.subSystem ?? ALL}
-            onValueChange={(value) =>
-              onChange({
-                ...filters,
-                subSystem: value === ALL ? null : value,
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All sub-systems" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All sub-systems</SelectItem>
-              {ACADEMIC_SUB_SYSTEMS.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {subSystemLabel(value)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterField>
+        {mode === 'teacher' ? (
+          <FilterField label="Subject" className="min-w-[10rem] flex-1">
+            <Select
+              value={filters.subjectId ?? ALL}
+              onValueChange={(value) =>
+                onChange({
+                  ...filters,
+                  subjectId: value === ALL ? null : value,
+                })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All subjects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All subjects</SelectItem>
+                {subjectOptions.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id}>
+                    {subject.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
+        ) : (
+          <>
+            <FilterField label="Sub-system" className="min-w-[10rem] flex-1">
+              <Select
+                value={filters.subSystem ?? ALL}
+                onValueChange={(value) =>
+                  onChange({
+                    ...filters,
+                    subSystem: value === ALL ? null : value,
+                  })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All sub-systems" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All sub-systems</SelectItem>
+                  {ACADEMIC_SUB_SYSTEMS.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {subSystemLabel(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
 
-        <FilterField label="Branch" className="min-w-[10rem] flex-1">
-          <Select
-            value={filters.branch ?? ALL}
-            onValueChange={(value) =>
-              onChange({
-                ...filters,
-                branch: value === ALL ? null : value,
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All branches" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All branches</SelectItem>
-              {ACADEMIC_BRANCHES.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {branchLabel(value)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterField>
+            <FilterField label="Branch" className="min-w-[10rem] flex-1">
+              <Select
+                value={filters.branch ?? ALL}
+                onValueChange={(value) =>
+                  onChange({
+                    ...filters,
+                    branch: value === ALL ? null : value,
+                  })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All branches" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All branches</SelectItem>
+                  {ACADEMIC_BRANCHES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {branchLabel(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+          </>
+        )}
 
         <FilterField label="Class" className="min-w-[10rem] flex-1">
           <Select
@@ -176,29 +214,31 @@ export function StudentRegistryFiltersPanel({
           </Select>
         </FilterField>
 
-        <FilterField label="Fees Status" className="min-w-[10rem] flex-1">
-          <Select
-            value={filters.feesStatus ?? ALL}
-            onValueChange={(value) =>
-              onChange({
-                ...filters,
-                feesStatus: value === ALL ? null : value,
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All fees status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All fees status</SelectItem>
-              {feesStatusOptions.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FilterField>
+        {mode === 'admin' ? (
+          <FilterField label="Fees Status" className="min-w-[10rem] flex-1">
+            <Select
+              value={filters.feesStatus ?? ALL}
+              onValueChange={(value) =>
+                onChange({
+                  ...filters,
+                  feesStatus: value === ALL ? null : value,
+                })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All fees status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All fees status</SelectItem>
+                {feesStatusOptions.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
+        ) : null}
       </div>
     </RegistryFilterCard>
   );
