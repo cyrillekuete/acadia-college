@@ -9,6 +9,7 @@ export type SystemLogEvent =
   | 'user.blocked'
   | 'user.role_changed'
   | 'user.password_reset'
+  | 'account.deleted'
   | 'tenant.session_settings_updated'
   | 'enrollment.application_created'
   | 'enrollment.application_updated'

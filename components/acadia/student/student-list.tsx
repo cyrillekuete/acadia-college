@@ -14,7 +14,7 @@ import {
 } from '@tanstack/react-table';
 import { ChevronRight } from '@/lib/icons';
 import { getInitials } from '@/lib/helpers';
-import { getDummyStudentFullName, type DummyStudent } from '@/lib/acadia/dummy-students';
+import { getStudentFullName, type StudentListItem } from '@/lib/acadia/student-list-item';
 import {
   formatStudentFeesAmounts,
   studentBranchLabel,
@@ -38,7 +38,7 @@ export function StudentList({
   emptyMessage,
   defaultSorting,
 }: {
-  students: DummyStudent[];
+  students: StudentListItem[];
   isLoading?: boolean;
   emptyMessage?: string;
   defaultSorting?: SortingState;
@@ -51,17 +51,17 @@ export function StudentList({
   });
   const [sorting, setSorting] = useState<SortingState>(defaultSorting ?? []);
 
-  const columns = useMemo<ColumnDef<DummyStudent>[]>(
+  const columns = useMemo<ColumnDef<StudentListItem>[]>(
     () => [
       {
         id: 'student',
-        accessorFn: (row) => getDummyStudentFullName(row),
+        accessorFn: (row) => getStudentFullName(row),
         header: ({ column }) => (
           <DataGridColumnHeader title="Student" visibility column={column} />
         ),
         cell: ({ row }) => {
           const student = row.original;
-          const fullName = getDummyStudentFullName(student);
+          const fullName = getStudentFullName(student);
           const initials = getInitials(fullName || student.email);
 
           return (
@@ -279,7 +279,7 @@ export function StudentList({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const handleRowClick = (row: DummyStudent) => {
+  const handleRowClick = (row: StudentListItem) => {
     router.push(`/students/${row.id}`);
   };
 

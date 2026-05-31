@@ -6,6 +6,7 @@ import { AdminOverviewStatCard } from '@/components/acadia/admin-dashboard/admin
 import { formatDashboardStatValue } from '@/components/acadia/dashboard-stat-card';
 import { StaffDashboardTimetableSection } from '@/components/acadia/staff-dashboard/staff-dashboard-timetable-section';
 import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
+import { useStaffDashboardStats } from '@/hooks/use-role-dashboard-stats';
 import { useActiveYearTimetablePublish } from '@/hooks/use-timetable-publish';
 import { useTimetableSlotsForTeacher } from '@/hooks/use-timetable-slots';
 import {
@@ -21,6 +22,7 @@ export default function StaffDashboardPage() {
   const staffProfileId = linkedProfile?.staffProfileId ?? null;
   const { canView, isLoading: publishLoading } = useActiveYearTimetablePublish();
 
+  const { data: stats } = useStaffDashboardStats();
   const { data: slotRows = [], isLoading: slotsLoading } =
     useTimetableSlotsForTeacher(staffProfileId, { enabled: canView });
 
@@ -54,7 +56,7 @@ export default function StaffDashboardPage() {
         <div className="grid gap-5 md:grid-cols-3">
           <AdminOverviewStatCard
             title="My subjects"
-            value="—"
+            value={formatDashboardStatValue(stats?.assignedSubjectCount)}
             footer="Assigned this term"
             icon="book"
           />
@@ -66,7 +68,7 @@ export default function StaffDashboardPage() {
           />
           <AdminOverviewStatCard
             title="Pending marks"
-            value="—"
+            value={formatDashboardStatValue(stats?.pendingMarkCount)}
             footer="Awaiting submission"
             icon="document"
           />

@@ -2471,6 +2471,7 @@ export type Database = {
           nationality: string | null
           officePhone: string | null
           officeRoom: string | null
+          onboardingCompletedAt: string | null
           personalEmail: string | null
           phone: string | null
           qualifications: string | null
@@ -2505,6 +2506,7 @@ export type Database = {
           nationality?: string | null
           officePhone?: string | null
           officeRoom?: string | null
+          onboardingCompletedAt?: string | null
           personalEmail?: string | null
           phone?: string | null
           qualifications?: string | null
@@ -2539,6 +2541,7 @@ export type Database = {
           nationality?: string | null
           officePhone?: string | null
           officeRoom?: string | null
+          onboardingCompletedAt?: string | null
           personalEmail?: string | null
           phone?: string | null
           qualifications?: string | null

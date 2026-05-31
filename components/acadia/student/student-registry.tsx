@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { StudentList } from '@/components/acadia/student/student-list';
 import { StudentRegistryFiltersPanel } from '@/components/acadia/student/student-registry-filters';
 import { StudentRegistryStats } from '@/components/acadia/student/student-registry-stats';
-import type { DummyStudent } from '@/lib/acadia/dummy-students';
+import type { StudentListItem } from '@/lib/acadia/student-list-item';
 import {
   EMPTY_STUDENT_REGISTRY_FILTERS,
   computeStudentRegistryStats,
@@ -56,7 +56,7 @@ export function StudentRegistry() {
 
   const studentsLoading = isTeacherView ? teacherStudentsLoading : adminStudentsLoading;
 
-  const listSource = useMemo((): DummyStudent[] => {
+  const listSource = useMemo((): StudentListItem[] => {
     if (studentsLoading || !activeYearId) {
       return [];
     }

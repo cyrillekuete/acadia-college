@@ -15,6 +15,7 @@ import {
 import { useAcadiaSignOut } from '@/hooks/use-acadia-sign-out';
 import { AcademicYearGate } from '@/components/acadia/academics/academic-year-gate';
 import { AcademicYearProvider } from '@/components/acadia/academics/academic-year-provider';
+import { StaffOnboardingGate } from '@/components/acadia/staff/staff-onboarding-gate';
 import { SessionTimeoutGuard } from '@/components/acadia/session-timeout-guard';
 import { Demo1Layout } from '../components/layouts/demo1/layout';
 
@@ -87,7 +88,9 @@ export default function ProtectedLayout({
     <AcademicYearProvider>
       <Demo1Layout>
         <SessionTimeoutGuard />
-        <AcademicYearGate>{children}</AcademicYearGate>
+        <StaffOnboardingGate>
+          <AcademicYearGate>{children}</AcademicYearGate>
+        </StaffOnboardingGate>
       </Demo1Layout>
     </AcademicYearProvider>
   );

@@ -2,8 +2,8 @@
 
 **Purpose:** Single source of truth for what has been built vs not built. Update this file whenever a feature is started, completed, or blocked.
 
-**Last updated:** 2026-05-19  
-**Overall progress:** 131 / 131 features complete — Phase 8 (new-schema migration + Add Student) done
+**Last updated:** 2026-05-31  
+**Overall progress:** 150 / 150 features complete — **Phase 9 complete** (account cleanup, engineering polish)
 
 ### Status legend
 
@@ -40,9 +40,9 @@
 | F-003 | Classic sign-in + Acadia branding | `done` | `/signin` | `layouts/classic`, signin | Profile gate, `?next=`, remember-me storage, Supabase reset password |
 | F-004 | Role-based post-login redirect | `done` | `/`, `/dashboard/*` | — | `lib/auth/dashboard-routes.ts` |
 | F-005 | Admin dashboard | `done` | `/dashboard/admin` | Card stat pattern | Live Supabase counts |
-| F-005b | Staff dashboard | `done` | `/dashboard/staff` | Card stat pattern | |
-| F-005c | Student dashboard | `done` | `/dashboard/student` | Card stat pattern | |
-| F-005d | Guardian dashboard | `done` | `/dashboard/guardian` | Card stat pattern | |
+| F-005b | Staff dashboard | `done` | `/dashboard/staff` | Card stat pattern | Live KPIs: subjects, today's sessions, pending marks |
+| F-005c | Student dashboard | `done` | `/dashboard/student` | Card stat pattern | Live KPIs: subjects, timetable, attendance, fees |
+| F-005d | Guardian dashboard | `done` | `/dashboard/guardian` | Card stat pattern | Live KPIs: linked students, alerts, marks, fees |
 | F-006 | Role-filtered sidebar | `done` | `config/menu.acadia.tsx` | demo1 sidebar-menu | `getMenuForRole` |
 | F-007 | Acadia branding pass (metadata, header, footer) | `done` | layout, demo1 header/footer | demo1 | |
 | F-008 | Protected layout + Supabase session guard | `done` | `app/(protected)/layout.tsx`, `middleware.ts` | — | Server redirect to `/signin?next=`; session error UI |
@@ -64,7 +64,7 @@
 | F-013c | Departments | `done` | `/academics/departments` | DataGrid list | |
 | F-013d | Levels | `done` | `/academics/levels` | DataGrid + dialog CRUD | Catalog import; delete confirm dialog |
 | F-013h | Class structure CRUD | `done` | `/academics/classes` | DataGrid + dialog CRUD | Split from combined page; subjects + teacher on form |
-| F-013e | Specialties | `done` | `/academics/specialties` | DataGrid list | |
+| F-013e | Specialties | `na` | — | — | Removed in migration `20260522120000_remove_specialty.sql`; replaced by class groupings / sub-branches |
 | F-013f | Rooms | `done` | `/academics/rooms` | DataGrid list | |
 | F-014 | Subjects catalog list | `done` | `/subjects` | account/members/teams | Catalog filters, placement columns, bilingual names |
 | F-014b | Subject detail | `done` | `/subjects/[id]` | `account/home/user-profile` | Read-only subject + academic placement cards |
@@ -351,6 +351,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | W-08 | Operations modules | `done` | operations-modules | Includes coursework and exams |
 | W-09 | Vercel + GitHub delivery | `done` | vercel-github-delivery | |
 | W-10 | Phase 7 product depth (FR catalogue) | `done` | F-050–F-125 | 7A–7K complete |
+| W-11 | Phase 9 polish & consolidation | `done` | P9-01–P9-42 | Role dashboards, schema cleanup, demo route redirects, Supabase account APIs |
 
 ---
 
@@ -379,6 +380,75 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7I: automatic promotion, manual overrides, year rollover, data retention (F-108–F-111) |
 | 2026-05-19 | — | Phase 7J: messaging, group threads, notifications, preferences, announcements (F-112–F-118) |
 | 2026-05-19 | — | Phase 7K: learning materials, resource inventory/requests, room usage & maintenance (F-119–F-125) |
+| 2026-05-23 | — | Phase 9 backlog added; F-013e marked `na` (specialty removed); role dashboard KPI gaps documented; post-Phase-8 shipped work retro-tracked (P9-01–P9-08) |
+| 2026-05-31 | — | P9-30 account security (Supabase email/password/sessions/delete); P9-31 profile recent uploads from `LearningMaterial` |
+| 2026-05-31 | — | P9-40 demo route redirects; P9-41 Supabase account APIs + deprecated Metronic user-management APIs; P9-42 PRD §10 sync — Phase 9 complete |
+
+---
+
+## Phase 9 — Polish, role dashboards & consolidation
+
+Phase 8 delivered the new student schema and Add Student flow. Phase 9 closes **UI placeholder gaps**, **finishes schema consolidation**, and **trims Metronic template debt**. Implement in wave order **9A (retro) → 9B → 9C → 9D**.
+
+### 9A — Shipped since Phase 8 (retro-tracked)
+
+| ID | Feature | Status | Route / artifact | Notes |
+|----|---------|--------|------------------|-------|
+| P9-01 | Teacher-scoped student list | `done` | `/students`, `lib/supabase/queries/teacher-students.ts`, `hooks/use-teacher-students.ts` | Staff see only students in assigned classes |
+| P9-02 | Class-based weekly timetables + publish gate | `done` | `/timetable`, `lib/acadia/timetable.ts` | Role views; admin publish before staff/student visibility |
+| P9-03 | Timetable print views | `done` | `components/acadia/timetable/timetable-print-button.tsx`, `teacher-timetable-print-header.tsx` | Print-friendly teacher timetable |
+| P9-04 | Staff dashboard timetable section | `done` | `components/acadia/staff-dashboard/staff-dashboard-timetable-section.tsx`, `/dashboard/staff` | Today's session count wired |
+| P9-05 | Teacher create + credential download | `done` | `/staff/new`, `app/api/acadia/staff/route.ts` | Admin registers teacher; downloads login credentials |
+| P9-06 | Subject catalog extensions (levels, groupings, sub-branches) | `done` | `/subjects`, migrations `20260520150000_*`–`20260522150000_*` | Class subject assignment panel |
+| P9-07 | Public profile routes consolidated | `done` | `/account/home/user-profile`, `next.config.mjs` redirect | Removed `/public-profile/*` demo variants |
+| P9-08 | Matricule split + staff profile teacher fields | `done` | migrations `20260522130000_*`, `20260522160000_*` | Ministry matricule vs internal student ID |
+
+### 9B — Role dashboards (live KPIs)
+
+Priority **P0** — complete.
+
+| ID | Feature | Status | Route / artifact | Notes |
+|----|---------|--------|------------------|-------|
+| P9-10 | Staff dashboard: assigned subjects + pending marks | `done` | `/dashboard/staff`, `lib/supabase/queries/role-dashboard.ts` | Subject count from `SubjectAssignment`; pending marks vs exam sessions + roster |
+| P9-11 | Student dashboard: subjects, timetable, attendance, fees | `done` | `/dashboard/student`, `hooks/use-role-dashboard-stats.ts` | Scoped to logged-in student + active academic year |
+| P9-12 | Guardian dashboard: linked students, alerts, marks, fees | `done` | `/dashboard/guardian` | `GuardianStudentLink`; unread attendance notifications + fee totals |
+
+### 9C — Data model consolidation
+
+Priority **P1** — reduce dual-path reads and demo fallbacks.
+
+| ID | Feature | Status | Route / artifact | Notes |
+|----|---------|--------|------------------|-------|
+| P9-20 | Single student list/detail read path | `done` | `students-list.ts`, `student-detail.ts`, `student-query-helpers.ts` | Enrollment + `StudentProfile` only; legacy `students` table used only for ID resolution |
+| P9-21 | Remove dummy student fallback | `done` | `lib/acadia/student-list-item.ts` | Deleted `dummy-students.ts`; `DummyStudent` → `StudentListItem` |
+| P9-22 | Teacher onboarding completion flow | `done` | `/staff/onboarding`, `StaffOnboardingGate` | `onboardingCompletedAt` on `StaffProfile`; gate redirects new teachers after first login |
+
+### 9D — Account, security & template cleanup
+
+Priority **P2**.
+
+| ID | Feature | Status | Route / artifact | Notes |
+|----|---------|--------|------------------|-------|
+| P9-30 | Account security flows (devices, sessions, delete) | `done` | `/user-management/account/security`, `components/acadia/account/account-security-panel.tsx` | Email/password dialogs, sign-out other devices, self-delete via `/api/acadia/account/delete` |
+| P9-31 | User profile recent uploads from storage | `done` | `/account/home/user-profile`, `hooks/use-user-recent-uploads.ts` | Tenant-scoped `LearningMaterial` rows by `uploadedByUserId` |
+| P9-40 | Hide or remove Metronic demo routes | `done` | `lib/acadia/demo-routes.ts`, `next.config.mjs` | Redirects store-client, billing demos, network, legacy user-management UI |
+| P9-41 | Migrate `/api/user-management` off NextAuth/Prisma | `done` | `app/api/user-management/account/*`, `lib/api/user-management-supabase.ts` | Account routes on Supabase; demo APIs return 410 |
+| P9-42 | Sync `docs/prd.md` §10 status table with tracker | `done` | `docs/prd.md` | F-001–F-045 marked `done` per tracker |
+
+### 9E — Deferred (unchanged)
+
+| ID | Feature | Status | Notes |
+|----|---------|--------|-------|
+| F-069 | Multi-factor authentication (FR-1.2.4) | `na` | Supabase MFA when prioritized |
+
+### Phase 9 — Recommended implementation order
+
+1. ~~**P9-10 → P9-12** — Role dashboards~~ **done**
+2. ~~**P9-20 → P9-21** — Student read-path consolidation~~ **done**
+3. ~~**P9-22** — Teacher onboarding completion flow~~ **done**
+4. ~~**P9-30 → P9-31** — Account polish~~ **done**
+5. ~~**P9-40 → P9-42** — Engineering cleanup~~ **done**
+6. **F-069** — MFA when security is prioritized
 
 ---
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { DummyStudent } from '@/lib/acadia/dummy-students';
+import type { StudentListItem } from '@/lib/acadia/student-list-item';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -21,7 +21,7 @@ export function StudentDangerZone({
   student,
   isLoading,
 }: {
-  student: DummyStudent | undefined;
+  student: StudentListItem | undefined;
   isLoading: boolean;
 }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

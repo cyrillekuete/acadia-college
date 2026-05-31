@@ -151,11 +151,9 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     icon: 'security-user',
     children: [
       { title: 'Users', path: '/admin/users' },
-      { title: 'Roles', path: '/user-management/roles' },
-      { title: 'Permissions', path: '/user-management/permissions' },
+      { title: 'Roles', path: '/admin/roles' },
       { title: 'Account', path: '/user-management/account' },
       { title: 'Logs', path: '/admin/logs' },
-      { title: 'Settings', path: '/user-management/settings' },
     ],
   },
   {

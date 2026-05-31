@@ -1,40 +1,24 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { prisma } from '@/lib/prisma';
-import authOptions from '@/app/api/auth/[...nextauth]/auth-options';
+import { requireSessionApi } from '@/lib/acadia/require-session-api';
+import { mapAcadiaProfileToAccountUser } from '@/lib/api/user-management-supabase';
+import { createClient } from '@/lib/supabase/server';
+import { fetchAcadiaUserProfile } from '@/lib/supabase/queries/user';
 
 export async function GET() {
-  try {
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
-      return NextResponse.json(
-        { message: 'Unauthorized request' },
-        { status: 401 }, // Unauthorized
-      );
-    }
-
-    // Fetch the user based on the email in the session
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        role: true,
-      },
-    });
-
-    // Check if record exists
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Record not found. Someone might have deleted it already.' },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json(user);
-  } catch {
-    return NextResponse.json(
-      { message: 'Oops! Something went wrong. Please try again in a moment.' },
-      { status: 500 },
-    );
+  const auth = await requireSessionApi();
+  if (!auth.ok) {
+    return NextResponse.json({ message: auth.message }, { status: auth.status });
   }
+
+  const supabase = await createClient();
+  const profileResult = await fetchAcadiaUserProfile(
+    supabase,
+    auth.ctx.actorUserId,
+  );
+
+  if (profileResult.status !== 'ok') {
+    return NextResponse.json({ message: 'Profile not found.' }, { status: 404 });
+  }
+
+  return NextResponse.json(mapAcadiaProfileToAccountUser(profileResult.profile));
 }

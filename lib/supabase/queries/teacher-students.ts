@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { DummyStudent } from '@/lib/acadia/dummy-students';
+import type { StudentListItem } from '@/lib/acadia/student-list-item';
 import type { Database } from '@/lib/supabase/database.types';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { fetchStudentsFromEnrollmentsForClassIds } from '@/lib/supabase/queries/students-list';
@@ -20,7 +20,7 @@ export type TeacherTeachingScope = {
 };
 
 export type TeacherStudentsResult = {
-  students: DummyStudent[];
+  students: StudentListItem[];
   scope: TeacherTeachingScope;
 };
 

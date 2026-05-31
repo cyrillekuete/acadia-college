@@ -8,8 +8,8 @@
 | **Document version** | 1.3 |
 | **Build tracker** | [implementation-tracker.md](implementation-tracker.md) |
 | **Stakeholder PRD** | [product-requirements-document.md](product-requirements-document.md) |
-| **Status** | Draft |
-| **Last updated** | May 19, 2026 |
+| **Status** | Live |
+| **Last updated** | May 31, 2026 |
 | **UI shell** | Metronic 9 — Demo 1 layout |
 | **Backend** | Supabase (Postgres, Auth, RLS) |
 | **Hosting** | Vercel |
@@ -427,62 +427,62 @@ Sidebar (`config/menu.config.tsx`) uses **Lucide icons only** (template conventi
 
 ## 10. Functional requirements by module
 
-**Status column:** Live values maintained in [implementation-tracker.md](implementation-tracker.md). Summary below defaults to `not_started` until implementation begins.
+**Status column:** Live values maintained in [implementation-tracker.md](implementation-tracker.md). Summary below reflects tracker state as of Phase 9 completion.
 
 ### 10.1 Foundation
 
 | ID | Requirement | Priority | Tracker status |
 |----|-------------|----------|----------------|
-| F-001 | Apply `database.sql` to Supabase via migrations | P0 | `not_started` |
-| F-002 | Seed Acadia College tenant, roles, and test users | P0 | `not_started` |
-| F-003 | Classic sign-in with Acadia College branding | P0 | `not_started` |
-| F-004 | Role-based post-login redirect (no role picker) | P0 | `not_started` |
-| F-005 | Four role dashboards with live Supabase KPIs | P0 | `not_started` |
-| F-006 | Role-filtered sidebar navigation | P0 | `not_started` |
-| F-007 | Acadia College branding pass (metadata, header, footer, toolbars) | P0 | `not_started` |
+| F-001 | Apply `database.sql` to Supabase via migrations | P0 | `done` |
+| F-002 | Seed Acadia College tenant, roles, and test users | P0 | `done` |
+| F-003 | Classic sign-in with Acadia College branding | P0 | `done` |
+| F-004 | Role-based post-login redirect (no role picker) | P0 | `done` |
+| F-005 | Four role dashboards with live Supabase KPIs | P0 | `done` |
+| F-006 | Role-filtered sidebar navigation | P0 | `done` |
+| F-007 | Acadia College branding pass (metadata, header, footer, toolbars) | P0 | `done` |
 
 ### 10.2 Core registry
 
 | ID | Requirement | Priority | Tracker status |
 |----|-------------|----------|----------------|
-| F-010 | Students list (search, filter, pagination) | P1 | `not_started` |
-| F-011 | Student detail profile | P1 | `not_started` |
-| F-012 | Staff list and detail | P1 | `not_started` |
-| F-013 | Academic structure CRUD (years, terms, sequences, departments, levels, specialties, rooms) | P1 | `not_started` |
-| F-014 | Courses list and detail | P1 | `not_started` |
+| F-010 | Students list (search, filter, pagination) | P1 | `done` |
+| F-011 | Student detail profile | P1 | `done` |
+| F-012 | Staff list and detail | P1 | `done` |
+| F-013 | Academic structure CRUD (years, terms, sequences, departments, levels, rooms) | P1 | `done` |
+| F-014 | Courses list and detail | P1 | `done` |
 | F-015 | Academic calendar milestones view | P2 | `done` |
 
 ### 10.3 Operations
 
 | ID | Requirement | Priority | Tracker status |
 |----|-------------|----------|----------------|
-| F-020 | Enrollment applications list | P2 | `not_started` |
-| F-021 | Student enrollments list | P2 | `not_started` |
-| F-022 | Attendance sessions and records | P2 | `not_started` |
-| F-023 | Course marks entry/view | P2 | `not_started` |
-| F-024 | Timetable view | P2 | `not_started` |
-| F-025 | Coursework tasks and submissions | P3 | `not_started` |
-| F-026 | Exam sessions | P3 | `not_started` |
+| F-020 | Enrollment applications list | P2 | `done` |
+| F-021 | Student enrollments list | P2 | `done` |
+| F-022 | Attendance sessions and records | P2 | `done` |
+| F-023 | Course marks entry/view | P2 | `done` |
+| F-024 | Timetable view | P2 | `done` |
+| F-025 | Coursework tasks and submissions | P3 | `done` |
+| F-026 | Exam sessions | P3 | `done` |
 
 ### 10.4 Finance and records
 
 | ID | Requirement | Priority | Tracker status |
 |----|-------------|----------|----------------|
-| F-030 | Student fee accounts and installments | P2 | `not_started` |
-| F-031 | Scholarships | P3 | `not_started` |
-| F-032 | Transcripts and copy requests | P3 | `not_started` |
-| F-033 | Messaging (threads) | P2 | `not_started` |
+| F-030 | Student fee accounts and installments | P2 | `done` |
+| F-031 | Scholarships | P3 | `done` |
+| F-032 | Transcripts and copy requests | P3 | `done` |
+| F-033 | Messaging (threads) | P2 | `done` |
 
 ### 10.5 Administration and account
 
 | ID | Requirement | Priority | Tracker status |
 |----|-------------|----------|----------------|
-| F-040 | Users and roles management | P1 | `not_started` |
-| F-041 | Institution profile (`Tenant`) | P1 | `not_started` |
-| F-042 | System settings and preferences | P1 | `not_started` |
-| F-043 | User profile and notifications | P1 | `not_started` |
-| F-044 | API keys (`TenantApiKey`) | P3 | `not_started` |
-| F-045 | System log view | P2 | `not_started` |
+| F-040 | Users and roles management | P1 | `done` |
+| F-041 | Institution profile (`Tenant`) | P1 | `done` |
+| F-042 | System settings and preferences | P1 | `done` |
+| F-043 | User profile and notifications | P1 | `done` |
+| F-044 | API keys (`TenantApiKey`) | P3 | `done` |
+| F-045 | System log view | P2 | `done` |
 
 ### 10.6 Stakeholder functional requirements catalogue
 

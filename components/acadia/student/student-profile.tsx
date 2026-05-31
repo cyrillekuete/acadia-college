@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { formatDate } from '@/lib/helpers';
 import {
-  getDummyStudentFullName,
-  type DummyStudent,
-} from '@/lib/acadia/dummy-students';
+  getStudentFullName,
+  type StudentListItem,
+} from '@/lib/acadia/student-list-item';
 import { Badge, BadgeDot, BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +18,7 @@ export function StudentProfile({
   student,
   isLoading,
 }: {
-  student: DummyStudent | undefined;
+  student: StudentListItem | undefined;
   isLoading: boolean;
 }) {
   const { data: session } = useAcadiaCollegeSession();
@@ -46,7 +46,7 @@ export function StudentProfile({
     );
   }
 
-  const fullName = getDummyStudentFullName(student);
+  const fullName = getStudentFullName(student);
   const statusProps = getStudentEnrollmentStatusProps(student.enrollment_status);
   const statusVariant = statusProps.variant as keyof BadgeProps['variant'];
 

@@ -16,6 +16,7 @@ const EXEMPT_PATH_PREFIXES = [
   '/account/',
   '/admin/users',
   '/user-management/',
+  '/staff/onboarding',
 ];
 
 function isExemptPath(pathname: string): boolean {

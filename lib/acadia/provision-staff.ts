@@ -257,6 +257,7 @@ export async function provisionStaff(
     emergencyContactRelationship: input.emergencyContactRelationship ?? null,
     emergencyContactPhone: emptyToNull(input.emergencyContactPhone),
     officePhone: emptyToNull(input.phone),
+    onboardingCompletedAt: null,
     officeRoom: null,
     bio: emptyToNull(input.bio),
     isActive: input.isActive ?? true,

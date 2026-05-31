@@ -3,6 +3,7 @@ import {
   resolveSupabaseKey,
   resolveSupabaseUrl,
 } from './lib/supabase/project.ts';
+import { ACADIA_DEMO_REDIRECTS } from './lib/acadia/demo-routes.ts';
 
 const { loadEnvConfig } = nextEnv;
 
@@ -51,6 +52,7 @@ const nextConfig = {
         destination: '/account/home/user-profile',
         permanent: true,
       },
+      ...ACADIA_DEMO_REDIRECTS,
     ];
   },
   env: {

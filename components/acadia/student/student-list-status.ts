@@ -1,4 +1,4 @@
-import type { StudentEnrollmentStatus } from '@/lib/acadia/dummy-students';
+import type { StudentEnrollmentStatus } from '@/lib/acadia/student-list-item';
 
 type StatusBadgeVariant = 'success' | 'warning' | 'secondary';
 

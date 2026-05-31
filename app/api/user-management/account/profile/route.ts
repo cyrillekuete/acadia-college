@@ -1,99 +1,159 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { getClientIP } from '@/lib/api';
-import { prisma } from '@/lib/prisma';
-import { deleteFromS3, uploadToS3 } from '@/lib/s3-upload';
-import { systemLog } from '@/services/system-log';
+import { requireSessionApi } from '@/lib/acadia/require-session-api';
+import { appendSystemLog } from '@/lib/acadia/system-log';
+import { mapAcadiaProfileToAccountUser } from '@/lib/api/user-management-supabase';
+import { TENANT_ASSETS_BUCKET } from '@/lib/supabase/storage';
+import { createClient } from '@/lib/supabase/server';
+import { fetchAcadiaUserProfile } from '@/lib/supabase/queries/user';
 import { AccountProfileSchema } from '@/app/(protected)/user-management/account/forms/account-profile-schema';
-import authOptions from '@/app/api/auth/[...nextauth]/auth-options';
+
+function extensionForAvatar(file: File): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+  };
+  return map[file.type] ?? 'png';
+}
 
 export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+  const auth = await requireSessionApi();
+  if (!auth.ok) {
+    return NextResponse.json({ message: auth.message }, { status: auth.status });
+  }
 
-    if (!session) {
+  const formData = await request.formData();
+  const parsedData = {
+    name: formData.get('name'),
+    avatarFile: formData.get('avatarFile'),
+    avatarAction: formData.get('avatarAction'),
+  };
+
+  const validationResult = AccountProfileSchema.safeParse(parsedData);
+  if (!validationResult.success) {
+    return NextResponse.json({ error: 'Invalid input.' }, { status: 400 });
+  }
+
+  const { name, avatarFile, avatarAction } = validationResult.data;
+  const supabase = await createClient();
+  const nowIso = new Date().toISOString();
+  let avatarUrl: string | null | undefined;
+
+  if (
+    avatarAction === 'save' &&
+    avatarFile instanceof File &&
+    avatarFile.size > 0
+  ) {
+    const ext = extensionForAvatar(avatarFile);
+    const storageKey = `${auth.ctx.tenantId}/users/${auth.ctx.actorUserId}/avatar.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(TENANT_ASSETS_BUCKET)
+      .upload(storageKey, avatarFile, {
+        upsert: true,
+        contentType: avatarFile.type,
+      });
+
+    if (uploadError) {
       return NextResponse.json(
-        { message: 'Unauthorized request' },
-        { status: 401 }, // Unauthorized
+        { message: 'Failed to upload avatar.' },
+        { status: 500 },
       );
     }
 
-    const clientIp = getClientIP(request);
+    avatarUrl = storageKey;
+  } else if (avatarAction === 'remove') {
+    const { data: existingUser } = await supabase
+      .from('User')
+      .select('avatar')
+      .eq('id', auth.ctx.actorUserId)
+      .eq('tenantId', auth.ctx.tenantId)
+      .maybeSingle();
 
-    // Parse the form data
-    const formData = await request.formData();
+    const existingAvatar =
+      (existingUser?.avatar as string | null | undefined) ??
+      null;
 
-    // Extract form data
-    const parsedData = {
-      name: formData.get('name'),
-      avatarFile: formData.get('avatarFile'),
-      avatarAction: formData.get('avatarAction'),
-    };
-
-    // Validate the input using Zod schema
-    const validationResult = AccountProfileSchema.safeParse(parsedData);
-    if (!validationResult.success) {
-      return NextResponse.json({ error: 'Invalid input.' }, { status: 400 });
+    if (existingAvatar) {
+      await supabase.storage.from(TENANT_ASSETS_BUCKET).remove([existingAvatar]);
     }
 
-    const { name, avatarFile, avatarAction } = validationResult.data;
+    avatarUrl = null;
+  }
 
-    // Handle avatar removal
-    if (avatarAction === 'remove' && session.user?.avatar) {
-      try {
-        await deleteFromS3(session.user.avatar);
-      } catch (error) {
-        console.error('Failed to remove avatar from S3:', error);
-      }
-    }
+  const userUpdate: Record<string, unknown> = {
+    name,
+    updatedAt: nowIso,
+  };
+  if (avatarUrl !== undefined) {
+    userUpdate.avatar = avatarUrl;
+  }
 
-    // Handle new avatar upload
-    let avatarUrl = session.user?.avatar || null;
-    if (
-      avatarAction === 'save' &&
-      avatarFile instanceof File &&
-      avatarFile.size > 0
-    ) {
-      try {
-        avatarUrl = await uploadToS3(avatarFile, 'avatars');
-      } catch (error) {
-        console.error('Failed to upload avatar to S3:', error);
-        return NextResponse.json(
-          { message: 'Failed to upload avatar.' },
-          { status: 500 },
-        );
-      }
-    }
+  const { error: legacyUpdateError } = await supabase
+    .from('User')
+    .update(userUpdate)
+    .eq('id', auth.ctx.actorUserId)
+    .eq('tenantId', auth.ctx.tenantId);
 
-    // Save or update the user in the database
-    const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        name,
-        avatar:
-          avatarAction === 'remove'
-            ? null
-            : avatarAction === 'save'
-              ? avatarUrl
-              : undefined,
-      },
-    });
-
-    // Log the event
-    await systemLog({
-      event: 'update',
-      userId: session.user.id,
-      entityId: session.user.id,
-      entityType: 'user.account',
-      description: 'User account updated.',
-      ipAddress: clientIp,
-    });
-
-    return NextResponse.json(updatedUser);
-  } catch {
+  if (legacyUpdateError) {
     return NextResponse.json(
-      { message: 'Oops! Something went wrong. Please try again in a moment.' },
+      { message: 'Unable to update profile.' },
       { status: 500 },
     );
   }
+
+  if (avatarUrl !== undefined) {
+    const { error: usersUpdateError } = await supabase
+      .from('users')
+      .update({
+        name,
+        avatar_url: avatarUrl,
+        updated_at: nowIso,
+      })
+      .eq('id', auth.ctx.actorUserId)
+      .eq('tenant_id', auth.ctx.tenantId);
+
+    if (usersUpdateError) {
+      return NextResponse.json(
+        { message: 'Unable to update profile.' },
+        { status: 500 },
+      );
+    }
+  } else {
+    const { error: usersUpdateError } = await supabase
+      .from('users')
+      .update({ name, updated_at: nowIso })
+      .eq('id', auth.ctx.actorUserId)
+      .eq('tenant_id', auth.ctx.tenantId);
+
+    if (usersUpdateError) {
+      return NextResponse.json(
+        { message: 'Unable to update profile.' },
+        { status: 500 },
+      );
+    }
+  }
+
+  await appendSystemLog(supabase, {
+    userId: auth.ctx.actorUserId,
+    event: 'user.updated',
+    entityType: 'User',
+    entityId: auth.ctx.actorUserId,
+    description: 'User account profile updated.',
+  });
+
+  const profileResult = await fetchAcadiaUserProfile(
+    supabase,
+    auth.ctx.actorUserId,
+  );
+
+  if (profileResult.status !== 'ok') {
+    return NextResponse.json({ message: 'Profile not found.' }, { status: 404 });
+  }
+
+  const accountUser = mapAcadiaProfileToAccountUser(profileResult.profile);
+  if (avatarUrl !== undefined) {
+    accountUser.avatar = avatarUrl;
+  }
+
+  return NextResponse.json(accountUser);
 }

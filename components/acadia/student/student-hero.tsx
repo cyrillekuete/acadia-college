@@ -5,9 +5,9 @@ import { Check } from '@/lib/icons';
 import { getInitials } from '@/lib/helpers';
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import {
-  getDummyStudentFullName,
-  type DummyStudent,
-} from '@/lib/acadia/dummy-students';
+  getStudentFullName,
+  type StudentListItem,
+} from '@/lib/acadia/student-list-item';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,7 +22,7 @@ export function StudentHero({
   student,
   isLoading,
 }: {
-  student: DummyStudent | undefined;
+  student: StudentListItem | undefined;
   isLoading: boolean;
 }) {
   if (isLoading || !student) {
@@ -38,7 +38,7 @@ export function StudentHero({
     );
   }
 
-  const fullName = getDummyStudentFullName(student);
+  const fullName = getStudentFullName(student);
   const initials = getInitials(fullName || student.email);
 
   return <StudentHeroContent student={student} fullName={fullName} initials={initials} />;
@@ -49,7 +49,7 @@ function StudentHeroContent({
   fullName,
   initials,
 }: {
-  student: DummyStudent;
+  student: StudentListItem;
   fullName: string;
   initials: string;
 }) {

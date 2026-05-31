@@ -1,4 +1,4 @@
-import { getDummyStudentFullName, type DummyStudent } from '@/lib/acadia/dummy-students';
+import { getStudentFullName, type StudentListItem } from '@/lib/acadia/student-list-item';
 import { formatMoney } from '@/i18n/format';
 import type { TeacherTeachingScopePair } from '@/lib/supabase/queries/teacher-students';
 
@@ -74,7 +74,7 @@ function normalizeBranch(value: string | null | undefined): string | null {
 }
 
 function matchesQuickFilter(
-  student: DummyStudent,
+  student: StudentListItem,
   quickFilter: StudentQuickFilterId,
 ): boolean {
   const feesStatus = (student.fees_status ?? '').toLowerCase();
@@ -116,10 +116,10 @@ export function studentRegistryHasActiveFilters(
 }
 
 export function filterStudentsRegistryByTeachingScope(
-  students: DummyStudent[],
+  students: StudentListItem[],
   filters: StudentRegistryFilters,
   scopePairs: TeacherTeachingScopePair[],
-): DummyStudent[] {
+): StudentListItem[] {
   if (!filters.subjectId) {
     return students;
   }
@@ -144,12 +144,12 @@ export function filterStudentsRegistryByTeachingScope(
 }
 
 export function filterStudentsRegistry(
-  students: DummyStudent[],
+  students: StudentListItem[],
   filters: StudentRegistryFilters,
   options?: {
     scopePairs?: TeacherTeachingScopePair[];
   },
-): DummyStudent[] {
+): StudentListItem[] {
   const scopedStudents = options?.scopePairs
     ? filterStudentsRegistryByTeachingScope(students, filters, options.scopePairs)
     : students;
@@ -199,7 +199,7 @@ export function filterStudentsRegistry(
       return true;
     }
 
-    const fullName = getDummyStudentFullName(student).toLowerCase();
+    const fullName = getStudentFullName(student).toLowerCase();
     return (
       fullName.includes(q) ||
       student.email.toLowerCase().includes(q) ||
@@ -211,7 +211,7 @@ export function filterStudentsRegistry(
 }
 
 export function computeTeacherStudentRegistryStats(
-  students: DummyStudent[],
+  students: StudentListItem[],
   scopePairs: TeacherTeachingScopePair[],
   academicYearLabel?: string | null,
 ): TeacherStudentRegistryStats {
@@ -244,7 +244,7 @@ export function getTeacherSubjectOptions(
 }
 
 export function computeStudentRegistryStats(
-  students: DummyStudent[],
+  students: StudentListItem[],
   academicYearLabel?: string | null,
 ): StudentRegistryStats {
   const total = students.length;
@@ -277,13 +277,13 @@ export function computeStudentRegistryStats(
   };
 }
 
-export function getStudentClassOptions(students: DummyStudent[]): string[] {
+export function getStudentClassOptions(students: StudentListItem[]): string[] {
   return Array.from(
     new Set(students.map((s) => s.class_name).filter((c) => c && c !== '—')),
   ).sort();
 }
 
-export function getStudentFeesStatusOptions(students: DummyStudent[]): string[] {
+export function getStudentFeesStatusOptions(students: StudentListItem[]): string[] {
   return Array.from(
     new Set(
       students
