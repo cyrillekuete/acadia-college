@@ -4,10 +4,12 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
+  ATTENDANCE_ROSTER_ENROLLMENT_STATUS,
   ATTENDANCE_STATUSES,
   computeAttendancePercentage,
   countAttendanceStatuses,
   detectAttendancePatterns,
+  enrollmentBelongsOnAttendanceRoster,
   formatAttendancePercentage,
   patternFlagLabel,
   shouldNotifyGuardian,
@@ -144,5 +146,15 @@ describe('formatAttendancePercentage', () => {
 describe('patternFlagLabel', () => {
   it('returns human-readable labels', () => {
     expect(patternFlagLabel('low_attendance')).toBe('Low attendance rate');
+  });
+});
+
+describe('attendance roster enrollment status', () => {
+  it('includes ENROLLED students and excludes ACTIVE/WITHDRAWN', () => {
+    const statuses = ['ENROLLED', 'ACTIVE', 'WITHDRAWN', null];
+    expect(statuses.filter(enrollmentBelongsOnAttendanceRoster)).toEqual([
+      'ENROLLED',
+    ]);
+    expect(ATTENDANCE_ROSTER_ENROLLMENT_STATUS).toBe('ENROLLED');
   });
 });

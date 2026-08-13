@@ -10,6 +10,15 @@ export const ATTENDANCE_STATUSES = [
   'EXCUSED',
 ] as const;
 
+/** StudentEnrollment.status values that belong on an attendance roster. */
+export const ATTENDANCE_ROSTER_ENROLLMENT_STATUS = 'ENROLLED' as const;
+
+export function enrollmentBelongsOnAttendanceRoster(
+  status: string | null | undefined,
+): boolean {
+  return status === ATTENDANCE_ROSTER_ENROLLMENT_STATUS;
+}
+
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
