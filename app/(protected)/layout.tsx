@@ -18,6 +18,7 @@ import { AcademicYearProvider } from '@/components/acadia/academics/academic-yea
 import { StaffOnboardingGate } from '@/components/acadia/staff/staff-onboarding-gate';
 import { SessionTimeoutGuard } from '@/components/acadia/session-timeout-guard';
 import { Demo1Layout } from '../components/layouts/demo1/layout';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function ProtectedLayout({
   children,
@@ -105,6 +106,8 @@ function SessionErrorView({
   onSignOut: () => void;
   retrying: boolean;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4">
@@ -112,15 +115,14 @@ function SessionErrorView({
           <AlertIcon>
             <AlertCircle />
           </AlertIcon>
-          <AlertTitle>Could not load your session</AlertTitle>
+          <AlertTitle>{t('common.messages.sessionLoadFailed')}</AlertTitle>
         </Alert>
         <p className="text-sm text-muted-foreground">
-          We could not load your Acadia College profile. Check your connection
-          and try again.
+          {t('common.messages.sessionLoadHint')}
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button className="flex-1" onClick={onRetry} disabled={retrying}>
-            {retrying ? 'Retrying…' : 'Try again'}
+            {retrying ? t('common.buttons.retrying') : t('common.buttons.retry')}
           </Button>
           <Button
             variant="outline"
@@ -128,7 +130,7 @@ function SessionErrorView({
             onClick={onSignOut}
             disabled={retrying}
           >
-            Sign out
+            {t('common.buttons.signOut')}
           </Button>
         </div>
       </div>

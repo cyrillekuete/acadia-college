@@ -12,7 +12,6 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { BookOpen, Search } from '@/lib/icons';
-import { branchLabel } from '@/lib/acadia/education-system';
 import type { CatalogFilters } from '@/lib/acadia/education-system';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { type ClassListRow, useClassList } from '@/hooks/use-class-list';
@@ -29,11 +28,7 @@ import { InputWrapper } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
 import { Button } from '@/components/ui/button';
-
-function subSystemTableLabel(value: string | null | undefined): string {
-  if (!value) return '—';
-  return value === 'FRENCH' ? 'French' : 'English';
-}
+import { useTranslation } from '@/hooks/useTranslation';
 
 function truncateCell(text: string, className?: string) {
   return (
@@ -68,6 +63,7 @@ export function ClassesTable({
   onDelete?: (row: ClassListRow) => void;
   onAssignSubjects?: (row: ClassListRow) => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -105,7 +101,7 @@ export function ClassesTable({
       {
         accessorKey: 'name',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Class Name" column={column} />
+          <DataGridColumnHeader title={t('academics.className')} column={column} />
         ),
         cell: ({ row }) => truncateCell(row.original.name),
         size: 150,
@@ -115,7 +111,7 @@ export function ClassesTable({
         id: 'level',
         accessorFn: (row) => classLevelName(row),
         header: ({ column }) => (
-          <DataGridColumnHeader title="Level" column={column} />
+          <DataGridColumnHeader title={t('students.level')} column={column} />
         ),
         cell: ({ row }) => truncateCell(classLevelName(row.original)),
         size: 96,
@@ -124,20 +120,28 @@ export function ClassesTable({
       {
         accessorKey: 'subSystem',
         header: ({ column }) => (
-          <DataGridColumnHeader title="System" column={column} />
+          <DataGridColumnHeader title={t('catalog.subSystemLabel')} column={column} />
         ),
         cell: ({ row }) =>
-          truncateCell(subSystemTableLabel(row.original.subSystem)),
+          truncateCell(
+            row.original.subSystem
+              ? t(`catalog.subSystem.${row.original.subSystem}`)
+              : '—',
+          ),
         size: 68,
         enableSorting: true,
       },
       {
         accessorKey: 'branch',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Branch" column={column} />
+          <DataGridColumnHeader title={t('catalog.branchLabel')} column={column} />
         ),
         cell: ({ row }) =>
-          truncateCell(branchLabel(row.original.branch)),
+          truncateCell(
+            row.original.branch
+              ? t(`catalog.branch.${row.original.branch}`)
+              : '—',
+          ),
         size: 84,
         enableSorting: true,
       },
@@ -145,7 +149,7 @@ export function ClassesTable({
         id: 'teacher',
         accessorFn: (row) => classTeacherName(row),
         header: ({ column }) => (
-          <DataGridColumnHeader title="Class Teacher" column={column} />
+          <DataGridColumnHeader title={t('academics.classTeacher')} column={column} />
         ),
         cell: ({ row }) => truncateCell(classTeacherName(row.original)),
         size: 108,
@@ -155,7 +159,7 @@ export function ClassesTable({
         accessorKey: 'enrollmentCount',
         header: ({ column }) => (
           <DataGridColumnHeader
-            title="Enrollment"
+            title={t('academics.enrollmentCount')}
             column={column}
             className="justify-center"
           />
@@ -172,7 +176,7 @@ export function ClassesTable({
         accessorKey: 'subjectCount',
         header: ({ column }) => (
           <DataGridColumnHeader
-            title="Subj."
+            title={t('academics.subjectsShort')}
             column={column}
             className="justify-center"
           />
@@ -188,7 +192,7 @@ export function ClassesTable({
       {
         accessorKey: 'status',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Status" column={column} />
+          <DataGridColumnHeader title={t('common.labels.status')} column={column} />
         ),
         cell: ({ row }) => {
           const active = row.original.status === 'ACTIVE';
@@ -198,7 +202,7 @@ export function ClassesTable({
               appearance="light"
               size="sm"
             >
-              {active ? 'Active' : 'Inactive'}
+              {active ? t('common.labels.active') : t('common.labels.inactive')}
             </Badge>
           );
         },
@@ -209,7 +213,7 @@ export function ClassesTable({
         ? [
             {
               id: 'actions',
-              header: () => <span className="sr-only">Actions</span>,
+              header: () => <span className="sr-only">{t('common.labels.actions')}</span>,
               cell: ({ row }: { row: { original: ClassListRow } }) => (
                 <div className="flex justify-end gap-1">
                   {onAssignSubjects ? (
@@ -218,7 +222,7 @@ export function ClassesTable({
                       variant="ghost"
                       size="icon"
                       onClick={() => onAssignSubjects(row.original)}
-                      aria-label="Assign subjects"
+                      aria-label={t('academics.assignSubjects')}
                     >
                       <BookOpen className="size-4" />
                     </Button>
@@ -235,7 +239,7 @@ export function ClassesTable({
           ]
         : []),
     ],
-    [canManage, onDelete, onEdit, onAssignSubjects],
+    [canManage, onDelete, onEdit, onAssignSubjects, t],
   );
 
   const table = useReactTable({
@@ -259,11 +263,11 @@ export function ClassesTable({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
-        <h3 className="text-sm font-medium">Classes</h3>
+        <h3 className="text-sm font-medium">{t('academics.classesTitle')}</h3>
         <InputWrapper className="w-full max-w-xs">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <Input
-            placeholder="Search classes..."
+            placeholder={t('academics.searchClasses')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -280,12 +284,12 @@ export function ClassesTable({
           columnsMovable: false,
           columnsVisibility: false,
         }}
-        emptyMessage="No classes match your filters."
+        emptyMessage={t('academics.noClassesMatch')}
       >
         <CardTable className="overflow-hidden">
           {isError ? (
             <p className="p-5 text-sm text-destructive">
-              {error instanceof Error ? error.message : 'Failed to load classes.'}
+              {error instanceof Error ? error.message : t('academics.loadClassesFailed')}
             </p>
           ) : isLoading ? (
             <Skeleton className="m-5 h-40 w-full" />
@@ -293,12 +297,12 @@ export function ClassesTable({
             <div className="flex flex-col items-start gap-3 p-5">
               <p className="text-sm text-muted-foreground">
                 {data.length === 0
-                  ? 'No classes defined yet. Create levels first, then add classes.'
-                  : 'No classes match your filters.'}
+                  ? t('academics.noClassesYet')
+                  : t('academics.noClassesMatch')}
               </p>
               {data.length === 0 && onCreate ? (
                 <Button type="button" size="sm" onClick={onCreate}>
-                  Create first class
+                  {t('academics.createFirstClass')}
                 </Button>
               ) : null}
             </div>

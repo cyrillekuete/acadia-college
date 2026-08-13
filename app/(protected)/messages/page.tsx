@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { threadSubjectDisplay } from '@/lib/acadia/communication';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canComposeMessages } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type MessageThreadRow = {
   id: string;
@@ -45,28 +46,29 @@ const columns: ColumnDef<MessageThreadRow>[] = [
 ];
 
 export default function MessagesPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canMessage = canComposeMessages(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Messages"
-      description="Direct and group conversations between school users."
+      title={t('communication.messagesTitle')}
+      description={t('communication.messagesDescription')}
     >
       {canMessage ? (
         <div className="mb-4 flex flex-wrap gap-2 print:hidden">
           <Button size="sm" asChild>
-            <Link href="/messages/new">New message</Link>
+            <Link href="/messages/new">{t('communication.newMessage')}</Link>
           </Button>
           <Button size="sm" variant="outline" asChild>
-            <Link href="/messages/groups">Group conversations</Link>
+            <Link href="/messages/groups">{t('communication.groupsTitle')}</Link>
           </Button>
         </div>
       ) : null}
 
       <SupabaseTableList
         table="MessageThread"
-        title="Conversations"
+        title={t('communication.conversations')}
         select="id, kind, subjectEn, subjectFr, createdAt, updatedAt"
         columns={columns}
         searchKeys={['subjectEn', 'subjectFr']}

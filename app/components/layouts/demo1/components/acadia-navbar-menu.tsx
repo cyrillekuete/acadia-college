@@ -7,6 +7,8 @@ import type { AcadiaMenuItem, MenuItem } from '@/config/types';
 import { cn } from '@/lib/utils';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useMenu } from '@/hooks/use-menu';
+import { useTranslation } from '@/hooks/useTranslation';
+import { menuItemLabel } from '@/lib/acadia/menu-label';
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -27,6 +29,7 @@ const linkClass = `
 function QuickLinkDropdown({ item }: { item: AcadiaMenuItem }) {
   const pathname = usePathname();
   const { hasActiveChild } = useMenu(pathname);
+  const { t } = useTranslation();
 
   return (
     <NavigationMenuItem>
@@ -36,18 +39,18 @@ function QuickLinkDropdown({ item }: { item: AcadiaMenuItem }) {
           hasActiveChild(item.children as MenuItem[] | undefined) || undefined
         }
       >
-        {item.title}
+        {menuItemLabel(item, t)}
       </NavigationMenuTrigger>
       <NavigationMenuContent className="min-w-[12rem] p-1">
         <ul className="flex flex-col gap-0.5">
           {item.children?.map((child) => (
-            <li key={child.path ?? child.title}>
+            <li key={child.path ?? child.titleKey ?? child.title}>
               <NavigationMenuLink asChild>
                 <Link
                   href={child.path ?? '#'}
                   className="block rounded-md px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
                 >
-                  {child.title}
+                  {menuItemLabel(child, t)}
                 </Link>
               </NavigationMenuLink>
             </li>
@@ -61,6 +64,7 @@ function QuickLinkDropdown({ item }: { item: AcadiaMenuItem }) {
 function QuickLinkDirect({ item }: { item: AcadiaMenuItem }) {
   const pathname = usePathname();
   const { isActive } = useMenu(pathname);
+  const { t } = useTranslation();
 
   return (
     <NavigationMenuItem>
@@ -70,7 +74,7 @@ function QuickLinkDirect({ item }: { item: AcadiaMenuItem }) {
           className={cn(linkClass)}
           data-active={isActive(item.path) || undefined}
         >
-          {item.title}
+          {menuItemLabel(item, t)}
         </Link>
       </NavigationMenuLink>
     </NavigationMenuItem>
@@ -81,6 +85,7 @@ export function AcadiaNavbarMenu() {
   const pathname = usePathname();
   const { isActive } = useMenu(pathname);
   const { data: session } = useAcadiaCollegeSession();
+  const { t } = useTranslation();
   const quickLinks = getNavbarQuickLinksForRole(session?.roleSlug);
 
   return (
@@ -93,16 +98,16 @@ export function AcadiaNavbarMenu() {
               className={cn(linkClass)}
               data-active={isActive('/') || undefined}
             >
-              Home
+              {t('nav.home')}
             </Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
 
         {quickLinks.map((item) =>
           item.children && item.children.length > 0 ? (
-            <QuickLinkDropdown key={item.title} item={item} />
+            <QuickLinkDropdown key={item.titleKey ?? item.title} item={item} />
           ) : (
-            <QuickLinkDirect key={item.title} item={item} />
+            <QuickLinkDirect key={item.titleKey ?? item.title} item={item} />
           ),
         )}
       </NavigationMenuList>

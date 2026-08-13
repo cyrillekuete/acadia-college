@@ -25,9 +25,7 @@ import {
 import {
   ACADEMIC_BRANCHES,
   ACADEMIC_SUB_SYSTEMS,
-  branchLabel,
   levelDisplayLabel,
-  subSystemLabel,
 } from '@/lib/acadia/education-system';
 import {
   enrollmentApplicationSchema,
@@ -50,6 +48,7 @@ import {
 } from '@/hooks/use-enrollment-catalog-options';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { useEnrollmentMutations } from '@/hooks/use-enrollment-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export type EnrollmentApplicationRecord = {
   id: string;
@@ -77,6 +76,7 @@ export function EnrollmentApplicationForm({
   record?: EnrollmentApplicationRecord | null;
   onCancelHref: string;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!record;
   const { createApplication, updateApplication } = useEnrollmentMutations();
   const { activeYearId } = useActiveAcademicYear();
@@ -183,7 +183,7 @@ export function EnrollmentApplicationForm({
 
   return (
     <CalendarWindowGate
-      featureLabel="New enrollment applications"
+      featureLabel={t('enrollment.newApplications')}
       window={enrollmentWindow}
       loading={!isEdit && (calendarLoading || sessionLoading)}
       bypass={isEdit || canManageInstitution(session?.roleSlug)}
@@ -196,7 +196,7 @@ export function EnrollmentApplicationForm({
             name="kind"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Application type</FormLabel>
+                <FormLabel>{t('enrollment.applicationType')}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
@@ -208,8 +208,8 @@ export function EnrollmentApplicationForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="NEW">New student</SelectItem>
-                    <SelectItem value="RE_ENROLL">Re-enrollment</SelectItem>
+                    <SelectItem value="NEW">{t('enrollment.newStudent')}</SelectItem>
+                    <SelectItem value="RE_ENROLL">{t('enrollment.reEnrollment')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -221,7 +221,7 @@ export function EnrollmentApplicationForm({
             name="preferredLocale"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Preferred locale</FormLabel>
+                <FormLabel>{t('enrollment.preferredLocale')}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
@@ -229,8 +229,8 @@ export function EnrollmentApplicationForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="fr">French</SelectItem>
+                    <SelectItem value="en">{t('common.labels.english')}</SelectItem>
+                    <SelectItem value="fr">{t('common.labels.french')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -245,11 +245,11 @@ export function EnrollmentApplicationForm({
             name="studentProfileId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Existing student</FormLabel>
+                <FormLabel>{t('enrollment.existingStudent')}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select student profile" />
+                      <SelectValue placeholder={t('enrollment.selectStudentProfile')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -284,7 +284,7 @@ export function EnrollmentApplicationForm({
             name="firstNameEn"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First name (English)</FormLabel>
+                <FormLabel>{t('enrollment.firstNameEn')}</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -297,7 +297,7 @@ export function EnrollmentApplicationForm({
             name="lastNameEn"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last name (English)</FormLabel>
+                <FormLabel>{t('enrollment.lastNameEn')}</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -310,7 +310,7 @@ export function EnrollmentApplicationForm({
             name="firstNameFr"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First name (French)</FormLabel>
+                <FormLabel>{t('enrollment.firstNameFr')}</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -323,7 +323,7 @@ export function EnrollmentApplicationForm({
             name="lastNameFr"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last name (French)</FormLabel>
+                <FormLabel>{t('enrollment.lastNameFr')}</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -336,7 +336,7 @@ export function EnrollmentApplicationForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>{t('common.labels.email')}</FormLabel>
                 <FormControl>
                   <Input {...field} type="email" />
                 </FormControl>
@@ -354,7 +354,7 @@ export function EnrollmentApplicationForm({
             name="dateOfBirth"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Date of birth</FormLabel>
+                <FormLabel>{t('common.labels.dateOfBirth')}</FormLabel>
                 <FormControl>
                   <Input {...field} type="date" />
                 </FormControl>
@@ -370,7 +370,7 @@ export function EnrollmentApplicationForm({
             name="subSystem"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Sub-system</FormLabel>
+                <FormLabel>{t('catalog.subSystemLabel')}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={(v) => {
@@ -386,7 +386,7 @@ export function EnrollmentApplicationForm({
                   <SelectContent>
                     {ACADEMIC_SUB_SYSTEMS.map((value) => (
                       <SelectItem key={value} value={value}>
-                        {subSystemLabel(value)}
+                        {t(`catalog.subSystem.${value}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -400,7 +400,7 @@ export function EnrollmentApplicationForm({
             name="branch"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Branch</FormLabel>
+                <FormLabel>{t('catalog.branchLabel')}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={(v) => {
@@ -416,7 +416,7 @@ export function EnrollmentApplicationForm({
                   <SelectContent>
                     {ACADEMIC_BRANCHES.map((value) => (
                       <SelectItem key={value} value={value}>
-                        {branchLabel(value)}
+                        {t(`catalog.branch.${value}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -430,7 +430,7 @@ export function EnrollmentApplicationForm({
             name="academicYearId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Academic year</FormLabel>
+                <FormLabel>{t('students.academicYear')}</FormLabel>
                 <CurrentAcademicYearBadge className="mb-2" />
                 <FormControl>
                   <Input type="hidden" {...field} />
@@ -447,7 +447,7 @@ export function EnrollmentApplicationForm({
             name="levelId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Level</FormLabel>
+                <FormLabel>{t('students.level')}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
@@ -455,7 +455,7 @@ export function EnrollmentApplicationForm({
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select level" />
+                      <SelectValue placeholder={t('students.selectLevel')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -477,10 +477,10 @@ export function EnrollmentApplicationForm({
             {pending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : null}
-            {isEdit ? 'Save changes' : 'Submit application'}
+            {isEdit ? t('common.messages.saveChanges') : t('enrollment.submitApplication')}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link href={onCancelHref}>Cancel</Link>
+            <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
           </Button>
         </div>
       </form>

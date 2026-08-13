@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slot } from '@radix-ui/react-slot';
 import { Label as LabelPrimitive } from 'radix-ui';
 import { Controller, ControllerProps, FieldPath, FieldValues, FormProvider, useFormContext } from 'react-hook-form';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const Form = FormProvider;
 
@@ -117,7 +118,11 @@ function FormDescription({ className, ...props }: React.HTMLAttributes<HTMLParag
 
 function FormMessage({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   const { error, formMessageId } = useFormField();
-  const body = error ? String(error?.message) : children;
+  const { t } = useTranslation();
+  const raw = error ? String(error?.message) : undefined;
+  const body = raw
+    ? t(raw, { defaultValue: raw })
+    : children;
 
   if (!body) {
     return null;

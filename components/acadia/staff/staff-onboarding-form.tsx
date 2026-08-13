@@ -41,6 +41,7 @@ import {
 } from '@/lib/acadia/staff-onboarding-schemas';
 import { staffOnboardingFormDefaults } from '@/lib/supabase/queries/staff-onboarding';
 import { formatRecordValue } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const RELATIONSHIP_OPTIONS = [
   { value: 'spouse', label: 'Spouse' },
@@ -54,6 +55,7 @@ const RELATIONSHIP_OPTIONS = [
 const GRID = 'grid w-full grid-cols-1 gap-4 sm:grid-cols-2';
 
 export function StaffOnboardingForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data: session } = useAcadiaCollegeSession();
   const { data: status, isLoading } = useStaffOnboardingStatus();
@@ -81,11 +83,11 @@ export function StaffOnboardingForm() {
   async function onSubmit(values: StaffOnboardingInput) {
     try {
       await mutation.mutateAsync(values);
-      toast.success('Profile completed. Welcome to Acadia College.');
+      toast.success(t('staff.profileCompleted'));
       router.replace(getDashboardPathForRole(session?.roleSlug) ?? '/dashboard/staff');
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Could not save your profile.',
+        error instanceof Error ? error.message : t('staff.profileSaveFailed'),
       );
     }
   }
@@ -97,30 +99,29 @@ export function StaffOnboardingForm() {
 
   return (
     <AcadiaPageShell
-      title="Complete your teacher profile"
-      description="Confirm your contact details and emergency contact before using the staff dashboard."
+      title={t('staff.onboardingTitle')}
+      description={t('staff.onboardingDescription')}
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="mx-auto max-w-3xl space-y-5">
           <Card>
             <CardHeader>
-              <CardTitle>Your account</CardTitle>
+              <CardTitle>{t('staff.yourAccount')}</CardTitle>
               <CardDescription>
-                These details were set by your administrator. Contact the registry
-                office if anything is incorrect.
+                {t('staff.accountHint')}
               </CardDescription>
             </CardHeader>
             <CardContent className={GRID}>
               <div>
-                <p className="text-sm text-muted-foreground">Name</p>
+                <p className="text-sm text-muted-foreground">{t('common.labels.name')}</p>
                 <p className="font-medium">{formatRecordValue(displayName || null)}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Staff code</p>
+                <p className="text-sm text-muted-foreground">{t('staff.staffCode')}</p>
                 <p className="font-medium">{formatRecordValue(profile?.staffCode)}</p>
               </div>
               <div className="sm:col-span-2">
-                <p className="text-sm text-muted-foreground">Contact email</p>
+                <p className="text-sm text-muted-foreground">{t('staff.contactEmail')}</p>
                 <p className="font-medium">
                   {formatRecordValue(profile?.personalEmail)}
                 </p>
@@ -130,14 +131,14 @@ export function StaffOnboardingForm() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Contact &amp; office</CardTitle>
+              <CardTitle>{t('staff.contactOffice')}</CardTitle>
             </CardHeader>
             <CardContent className={GRID}>
               <PhoneFormFields
                 control={form.control}
                 countryName="phoneCountry"
                 phoneName="phone"
-                phoneLabel="Mobile phone"
+                phoneLabel={t('staff.mobilePhone')}
                 required
                 hideCountry
                 className="sm:col-span-2"
@@ -147,9 +148,9 @@ export function StaffOnboardingForm() {
                 name="officeRoom"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Office / room</FormLabel>
+                    <FormLabel>{t('staff.officeRoom')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="e.g. Block B, Room 12" />
+                      <Input {...field} placeholder={t('staff.officeRoomPlaceholder')} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -159,7 +160,7 @@ export function StaffOnboardingForm() {
                 control={form.control}
                 countryName="officePhoneCountry"
                 phoneName="officePhone"
-                phoneLabel="Office phone"
+                phoneLabel={t('staff.officePhone')}
                 hideCountry
               />
               <FormField
@@ -167,12 +168,12 @@ export function StaffOnboardingForm() {
                 name="bio"
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2">
-                    <FormLabel>Short bio</FormLabel>
+                    <FormLabel>{t('staff.shortBio')}</FormLabel>
                     <FormControl>
                       <Textarea rows={4} {...field} />
                     </FormControl>
                     <FormDescription>
-                      Optional — shown on your staff profile.
+                      {t('staff.bioHint')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -183,7 +184,7 @@ export function StaffOnboardingForm() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Emergency contact</CardTitle>
+              <CardTitle>{t('staff.emergencyContact')}</CardTitle>
             </CardHeader>
             <CardContent className={GRID}>
               <FormField
@@ -192,7 +193,7 @@ export function StaffOnboardingForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Name <span className="text-destructive">*</span>
+                      {t('common.labels.name')} <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input {...field} />
@@ -206,17 +207,17 @@ export function StaffOnboardingForm() {
                 name="emergencyContactRelationship"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Relationship</FormLabel>
+                    <FormLabel>{t('common.labels.relationship')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select relationship" />
+                          <SelectValue placeholder={t('students.selectRelationship')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {RELATIONSHIP_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                            {t(`staff.relationship.${option.value}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -229,7 +230,7 @@ export function StaffOnboardingForm() {
                 control={form.control}
                 countryName="emergencyContactPhoneCountry"
                 phoneName="emergencyContactPhone"
-                phoneLabel="Contact phone"
+                phoneLabel={t('staff.contactPhone')}
                 required
                 hideCountry
                 className="sm:col-span-2"
@@ -239,7 +240,7 @@ export function StaffOnboardingForm() {
 
           <div className="flex justify-end">
             <Button type="submit" disabled={mutation.isPending || isLoading}>
-              {mutation.isPending ? 'Saving…' : 'Complete profile'}
+              {mutation.isPending ? t('common.messages.saving') : t('staff.completeProfile')}
             </Button>
           </div>
         </form>

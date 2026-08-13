@@ -18,6 +18,7 @@ import {
 } from '@/lib/acadia/record-display';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const EXAM_SELECT = `
   id,
@@ -52,6 +53,7 @@ export default function ExamSessionDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
@@ -76,7 +78,7 @@ export default function ExamSessionDetailPage({
   const isFinalized = !!data?.finalizedAt;
   const title = data?.type
     ? `Exam — ${examSessionTypeLabel(data.type)}`
-    : 'Exam session';
+    : t('exams.session');
 
   return (
     <RecordDetailShell

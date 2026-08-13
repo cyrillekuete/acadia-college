@@ -31,9 +31,11 @@ import {
   getSupabaseEnvOrNull,
   SUPABASE_CONFIG_ERROR,
 } from '@/lib/supabase/env';
+import { useTranslation } from '@/hooks/useTranslation';
 import { getSigninSchema, SigninSchemaType } from '../forms/signin-schema';
 
 export default function Page() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -138,7 +140,7 @@ export default function Page() {
           message?: string;
         };
         if (!resolveRes.ok || !resolveJson.email) {
-          setError(resolveJson.message ?? 'Invalid email or Teacher ID.');
+          setError(resolveJson.message ?? t('auth.invalidIdentifier'));
           return;
         }
         loginEmail = resolveJson.email;
@@ -159,7 +161,7 @@ export default function Page() {
       }
 
       if (!data.user) {
-        setError('Sign-in failed. Please try again.');
+        setError(t('auth.signInFailed'));
         return;
       }
 
@@ -179,7 +181,7 @@ export default function Page() {
       setError(
         err instanceof Error
           ? normalizeSignInError(err)
-          : 'An unexpected error occurred. Please try again.',
+          : t('auth.unexpectedError'),
       );
     } finally {
       setIsProcessing(false);
@@ -194,7 +196,7 @@ export default function Page() {
       >
         <div className="space-y-1.5 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight text-center">
-            Sign in to Acadia College
+            {t('auth.signInTitle')}
           </h1>
         </div>
 
@@ -232,10 +234,10 @@ export default function Page() {
           name="identifier"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email or Teacher ID</FormLabel>
+              <FormLabel>{t('auth.identifier')}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="you@acadia-college.edu or TCH-2026-12345"
+                  placeholder={t('auth.identifierPlaceholder')}
                   autoComplete="username"
                   {...field}
                 />
@@ -251,18 +253,18 @@ export default function Page() {
           render={({ field }) => (
             <FormItem>
               <div className="flex justify-between items-center gap-2.5">
-                <FormLabel>Password</FormLabel>
+                <FormLabel>{t('auth.password')}</FormLabel>
                 <Link
                   href="/reset-password"
                   className="text-sm font-semibold text-foreground hover:text-primary"
                 >
-                  Forgot Password?
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
               <div className="relative">
                 <FormControl>
                   <Input
-                    placeholder="Your password"
+                    placeholder={t('auth.passwordPlaceholder')}
                     type={passwordVisible ? 'text' : 'password'}
                     {...field}
                   />
@@ -275,7 +277,7 @@ export default function Page() {
                   onClick={() => setPasswordVisible(!passwordVisible)}
                   className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
                   aria-label={
-                    passwordVisible ? 'Hide password' : 'Show password'
+                    passwordVisible ? t('auth.hidePassword') : t('auth.showPassword')
                   }
                 >
                   {passwordVisible ? (
@@ -305,7 +307,7 @@ export default function Page() {
                   htmlFor="remember-me"
                   className="text-sm leading-none text-muted-foreground"
                 >
-                  Remember me
+                  {t('auth.rememberMe')}
                 </label>
               </>
             )}
@@ -316,7 +318,7 @@ export default function Page() {
           {isProcessing ? (
             <LoaderCircleIcon className="size-4 animate-spin" />
           ) : null}
-          Sign in
+          {t('auth.signIn')}
         </Button>
       </form>
     </Form>

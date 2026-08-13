@@ -8,23 +8,23 @@ export const studentProfileEditSchema = z.object({
   registrationNumber: z
     .string()
     .trim()
-    .min(1, 'Student ID is required.')
+    .min(1, 'validation.required.studentId')
     .max(40),
   matriculeNumber: z
     .string()
-    .max(40, 'Matricule must be at most 40 characters.')
+    .max(40, 'validation.matriculeMax')
     .optional()
     .or(z.literal(''))
     .transform((value) => (value?.trim() ? value.trim() : undefined)),
   isActive: z.boolean(),
   alumniDirectoryOptIn: z.boolean(),
   alumniSince: z.string().optional().or(z.literal('')),
-  name: z.string().trim().min(1, 'Name is required.').max(120),
+  name: z.string().trim().min(1, 'validation.required.name').max(120),
   email: z
     .string()
     .trim()
-    .min(1, 'Email is required.')
-    .email('Please enter a valid email.'),
+    .min(1, 'validation.required.email')
+    .email('validation.email'),
   country: z.string().max(80).optional().or(z.literal('')),
   timezone: z.string().max(80).optional().or(z.literal('')),
 });
@@ -34,14 +34,14 @@ export type StudentProfileEditFormValues = z.input<typeof studentProfileEditSche
 
 export const studentClassMigrationSchema = z.object({
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
-    required_error: 'Sub-system is required.',
+    required_error: 'validation.required.subSystem',
   }),
   branch: z.enum(ACADEMIC_BRANCHES, {
-    required_error: 'Branch is required.',
+    required_error: 'validation.required.branch',
   }),
-  levelId: z.string().min(1, 'Level is required.'),
+  levelId: z.string().min(1, 'validation.required.level'),
   classId: z.string().optional(),
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   note: z.string().max(500).optional().or(z.literal('')),
 });
 

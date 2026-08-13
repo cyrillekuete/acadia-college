@@ -1,3 +1,5 @@
+import { translate } from '@/lib/acadia/locale';
+
 function readErrorMessage(error: unknown): string | null {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -32,18 +34,18 @@ function readErrorCode(error: unknown): string | null {
 function friendlyPostgresMessage(code: string, rawMessage: string): string | null {
   if (code === '23505') {
     if (rawMessage.includes('Level_tenantId_subSystem_branch_name_key')) {
-      return 'A level with this name already exists for this sub-system and branch.';
+      return translate('errors.levelNameExists');
     }
-    return 'This record already exists.';
+    return translate('errors.duplicateRecord');
   }
   if (code === '42501') {
-    return 'You do not have permission to perform this action.';
+    return translate('errors.permissionDenied');
   }
   if (code === '23503') {
     if (rawMessage.includes('Level') || rawMessage.includes('levelId')) {
-      return 'This level cannot be deleted because classes or other records still reference it.';
+      return translate('errors.levelInUse');
     }
-    return 'This record cannot be deleted because other records still reference it.';
+    return translate('errors.recordInUse');
   }
   return null;
 }
@@ -60,7 +62,7 @@ export function getQueryErrorMessage(error: unknown): string {
   if (message) {
     return message;
   }
-  return 'Failed to load data.';
+  return translate('errors.failedToLoad', { defaultValue: 'Failed to load data.' });
 }
 
 export function getMutationErrorMessage(
@@ -78,7 +80,7 @@ export function getMutationErrorMessage(
   if (message) {
     return message;
   }
-  return fallback;
+  return translate('errors.operationFailed', { defaultValue: fallback });
 }
 
 export function throwMutationError(error: unknown, fallback?: string): never {

@@ -11,6 +11,7 @@ import { SequencesStructureCard } from '@/components/acadia/academics/sequences-
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { sequenceLabel, termLabel } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = {
   id: string;
@@ -22,6 +23,7 @@ type Row = {
 };
 
 export default function SequencesPage() {
+  const { t } = useTranslation();
   const { activeYearId } = useActiveAcademicYear();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -77,8 +79,8 @@ export default function SequencesPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Sequences"
-      description="Define how many sequences each academic year has (per term and total), then manage sequence records. Use the academic year selector in the header to choose which year you are configuring."
+      title={t('academics.sequencesTitle')}
+      description={t('academics.sequencesDescription')}
     >
       <div className="mb-6 space-y-6">
         {activeYearId ? (
@@ -91,7 +93,7 @@ export default function SequencesPage() {
       </div>
 
       <AdminToolbar
-        addLabel="New sequence"
+        addLabel={t('academics.addSequence')}
         onAdd={() => {
           setEditing(null);
           setDialogOpen(true);
@@ -99,7 +101,7 @@ export default function SequencesPage() {
       />
       <SupabaseTableList
         table="AcademicSequence"
-        title="Sequences"
+        title={t('academics.sequencesTitle')}
         select="id, number, numberInTerm, termId, academicYearId, Term:termId ( number )"
         columns={columns}
         searchKeys={['number']}

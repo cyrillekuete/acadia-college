@@ -18,10 +18,31 @@ import {
   recordFeePaymentSchema,
   streamFeePlanSchema,
 } from '@/lib/acadia/finance-schemas';
+import { formatMoney } from '@/i18n/format';
+import { formatStudentFeesAmounts } from '@/lib/acadia/student-list';
 
 describe('formatMoneyMinor', () => {
   it('formats minor units as currency', () => {
     expect(formatMoneyMinor(150000, 'XAF')).toContain('500');
+  });
+});
+
+describe('formatMoney', () => {
+  it('defaults to XAF without a dollar sign', () => {
+    const formatted = formatMoney(1500);
+    expect(formatted).not.toContain('$');
+    expect(formatted).toMatch(/FCFA|F\s?CFA|XAF/i);
+  });
+});
+
+describe('formatStudentFeesAmounts', () => {
+  it('formats minor units as XAF major units', () => {
+    const formatted = formatStudentFeesAmounts(150000, 150000);
+    expect(formatted).toBeTruthy();
+    const digits = formatted!.replace(/\D/g, '');
+    expect(digits).toContain('1500');
+    expect(digits).not.toContain('150000');
+    expect(formatted).toMatch(/FCFA|F\s?CFA|XAF/i);
   });
 });
 

@@ -38,8 +38,8 @@ export const staffEmergencyRelationshipEnum = z.enum([
 export const staffCreateSchema = z
   .object({
     title: staffTitleEnum,
-    firstName: z.string().min(1, 'First name is required').max(80),
-    lastName: z.string().min(1, 'Last name is required').max(80),
+    firstName: z.string().min(1, 'validation.required.firstName').max(80),
+    lastName: z.string().min(1, 'validation.required.lastName').max(80),
     dateOfBirth: z.string().optional().or(z.literal('')),
     gender: staffGenderEnum.optional(),
     nationality: z.string().max(80).optional().or(z.literal('')),
@@ -47,10 +47,10 @@ export const staffCreateSchema = z
 
     personalEmail: z
       .string()
-      .email('Valid contact email is required')
+      .email('validation.email')
       .max(200),
     phoneCountry: phoneCountryField(),
-    phone: phoneNationalField(true, 'Phone number is required'),
+    phone: phoneNationalField(true, 'validation.required.phone'),
 
     address: z.string().max(500).optional().or(z.literal('')),
     city: z.string().max(120).optional().or(z.literal('')),
@@ -61,13 +61,13 @@ export const staffCreateSchema = z
     subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
     subjectIds: z.array(z.string()).default([]),
     classIds: z.array(z.string()).default([]),
-    academicYearId: z.string().min(1, 'Active academic year is required'),
+    academicYearId: z.string().min(1, 'validation.required.activeAcademicYear'),
 
     employmentType: staffEmploymentTypeEnum,
     hireDate: z.string().optional().or(z.literal('')),
     monthlySalary: z.coerce
       .number()
-      .min(0, 'Salary must be zero or positive')
+      .min(0, 'validation.salaryMin')
       .optional(),
     emergencyContactName: z.string().max(120).optional().or(z.literal('')),
     emergencyContactRelationship: staffEmergencyRelationshipEnum.optional(),

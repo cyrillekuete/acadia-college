@@ -22,8 +22,10 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { formatRecordValue, streamLabel, unwrapRelation } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function FeeInvoiceView({ accountId }: { accountId: string }) {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -106,7 +108,7 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
   }
 
   if (!query.data) {
-    return <p className="text-sm text-muted-foreground">Loading invoice…</p>;
+    return <p className="text-sm text-muted-foreground">{t('finance.loadingInvoice')}</p>;
   }
 
   const { account, installments, totals } = query.data;
@@ -123,37 +125,41 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
     <div className="space-y-6">
       <div className="flex justify-end print:hidden">
         <Button size="sm" onClick={() => window.print()}>
-          Print receipt
+          {t('finance.printReceipt')}
         </Button>
       </div>
 
       <div className="rounded-lg border p-6 space-y-4 bg-card">
         <div className="flex flex-wrap justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Fee invoice</h2>
+            <h2 className="text-xl font-semibold">{t('finance.invoiceTitle')}</h2>
             <p className="text-sm text-muted-foreground">{invoiceNumber}</p>
           </div>
           <div className="text-sm text-right">
-            <p>Date: {formatRecordValue(account.createdAt)?.slice(0, 10)}</p>
-            <p>Year: {year?.label ?? '—'}</p>
+            <p>
+              {t('common.labels.date')}: {formatRecordValue(account.createdAt)?.slice(0, 10)}
+            </p>
+            <p>
+              {t('finance.year')}: {year?.label ?? '—'}
+            </p>
           </div>
         </div>
 
         <div className="text-sm space-y-1">
           <p>
-            <span className="font-medium">Student:</span> {user?.name ?? '—'}
+            <span className="font-medium">{t('students.student')}:</span> {user?.name ?? '—'}
           </p>
           <p>
-            <span className="font-medium">Registration:</span>{' '}
+            <span className="font-medium">{t('finance.registration')}:</span>{' '}
             {profile?.registrationNumber ?? '—'}
           </p>
           <p>
-            <span className="font-medium">Program:</span>{' '}
+            <span className="font-medium">{t('finance.program')}:</span>{' '}
             {streamLabel(account.subSystem as string, account.branch as string)}
           </p>
           {user?.email ? (
             <p>
-              <span className="font-medium">Email:</span> {user.email}
+              <span className="font-medium">{t('common.labels.email')}:</span> {user.email}
             </p>
           ) : null}
         </div>
@@ -162,10 +168,10 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
           <TableHeader>
             <TableRow>
               <TableHead>#</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Due</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('common.labels.description')}</TableHead>
+              <TableHead>{t('finance.due')}</TableHead>
+              <TableHead>{t('finance.amount')}</TableHead>
+              <TableHead>{t('common.labels.status')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -185,25 +191,25 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
 
         <div className="border-t pt-4 space-y-1 text-sm max-w-xs ml-auto">
           <div className="flex justify-between">
-            <span>Total fees</span>
+            <span>{t('finance.totalFees')}</span>
             <span>{formatMoneyMinor(Number(account.totalAmountMinor), currency)}</span>
           </div>
           {totals.scholarshipMinor > 0 ? (
             <div className="flex justify-between text-muted-foreground">
-              <span>Scholarships</span>
+              <span>{t('finance.scholarshipsTitle')}</span>
               <span>-{formatMoneyMinor(totals.scholarshipMinor, currency)}</span>
             </div>
           ) : null}
           <div className="flex justify-between font-semibold">
-            <span>Amount due</span>
+            <span>{t('finance.amountDue')}</span>
             <span>{formatMoneyMinor(totals.totalDueMinor, currency)}</span>
           </div>
           <div className="flex justify-between">
-            <span>Paid</span>
+            <span>{t('finance.paid')}</span>
             <span>{formatMoneyMinor(totals.totalPaidMinor, currency)}</span>
           </div>
           <div className="flex justify-between font-semibold">
-            <span>Balance</span>
+            <span>{t('finance.balance')}</span>
             <span>{formatMoneyMinor(totals.balanceMinor, currency)}</span>
           </div>
         </div>

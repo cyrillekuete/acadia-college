@@ -34,6 +34,7 @@ import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type StudentRow = {
   id: string;
@@ -54,6 +55,7 @@ export type MarksEntryPreset = {
 };
 
 export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -234,10 +236,10 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
       <div className="flex flex-wrap gap-4 items-end">
         <CurrentAcademicYearBadge />
         <div className="min-w-[200px]">
-          <p className="text-sm font-medium mb-1.5">Sequence</p>
+          <p className="text-sm font-medium mb-1.5">{t('marks.sequence')}</p>
           <Select value={sequenceId} onValueChange={setSequenceId}>
             <SelectTrigger>
-              <SelectValue placeholder="Sequence" />
+              <SelectValue placeholder={t('marks.sequence')} />
             </SelectTrigger>
             <SelectContent>
               {sequences.map((s) => (
@@ -249,10 +251,10 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
           </Select>
         </div>
         <div className="min-w-[200px]">
-          <p className="text-sm font-medium mb-1.5">Subject</p>
+          <p className="text-sm font-medium mb-1.5">{t('marks.subject')}</p>
           <Select value={subjectId} onValueChange={setSubjectId}>
             <SelectTrigger>
-              <SelectValue placeholder="Subject" />
+              <SelectValue placeholder={t('marks.subject')} />
             </SelectTrigger>
             <SelectContent>
               {subjects.map((c) => (
@@ -276,7 +278,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
           {ensureSequenceExamSession.isPending ? (
             <LoaderCircleIcon className="size-4 animate-spin" />
           ) : (
-            'Load class roster'
+            {t('marks.loadRoster')}
           )}
         </Button>
       </div>
@@ -285,16 +287,16 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
       {examSessionId ? (
         <>
           {rosterQuery.isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading roster…</p>
+            <p className="text-muted-foreground text-sm">{t('marks.loadingRoster')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>CA (/20)</TableHead>
-                  <TableHead>Exam (/20)</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Resit</TableHead>
+                  <TableHead>{t('students.student')}</TableHead>
+                  <TableHead>{t('marks.caScore')}</TableHead>
+                  <TableHead>{t('marks.examScore')}</TableHead>
+                  <TableHead>{t('marks.total')}</TableHead>
+                  <TableHead>{t('marks.resit')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -308,7 +310,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
                           {user?.name ?? student.registrationNumber}
                         </span>
                         <span className="text-muted-foreground text-xs block">
-                          Student ID: {student.registrationNumber}
+                          {t('students.studentId')}: {student.registrationNumber}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -377,7 +379,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
             {saveMarksEntry.isPending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : (
-              'Save marks'
+              {t('marks.saveMarks')}
             )}
           </Button>
           ) : null}

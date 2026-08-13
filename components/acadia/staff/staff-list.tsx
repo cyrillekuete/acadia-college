@@ -14,11 +14,9 @@ import {
 } from '@tanstack/react-table';
 import { ChevronRight } from '@/lib/icons';
 import { getInitials } from '@/lib/helpers';
-import {
-  staffSubsystemDisplayLabel,
-  type StaffListRow,
-} from '@/lib/acadia/staff-registry';
+import type { StaffListRow } from '@/lib/acadia/staff-registry';
 import { getStaffActiveStatusProps } from '@/components/acadia/staff/staff-list-status';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge, BadgeDot, BadgeProps } from '@/components/ui/badge';
 import { Card, CardFooter, CardTable } from '@/components/ui/card';
@@ -39,6 +37,7 @@ export function StaffList({
   isLoading?: boolean;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -52,7 +51,7 @@ export function StaffList({
         id: 'teacher',
         accessorFn: (row) => row.name,
         header: ({ column }) => (
-          <DataGridColumnHeader title="Teacher" visibility column={column} />
+          <DataGridColumnHeader title={t('staff.teacher')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const teacher = row.original;
@@ -79,7 +78,7 @@ export function StaffList({
         },
         size: 300,
         meta: {
-          headerTitle: 'Teacher',
+          headerTitle: t('staff.teacher'),
           skeleton: (
             <div className="flex items-center gap-3">
               <Skeleton className="size-8 rounded-full" />
@@ -97,12 +96,12 @@ export function StaffList({
         accessorKey: 'staffCode',
         id: 'teacher_id',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Teacher ID" visibility column={column} />
+          <DataGridColumnHeader title={t('staff.teacherId')} visibility column={column} />
         ),
         cell: (info) => (info.getValue() as string | null) ?? '—',
         size: 140,
         meta: {
-          headerTitle: 'Teacher ID',
+          headerTitle: t('staff.teacherId'),
           skeleton: <Skeleton className="h-7 w-20" />,
         },
         enableSorting: true,
@@ -110,24 +109,39 @@ export function StaffList({
       },
       {
         id: 'subsystem',
-        accessorFn: (row) =>
-          staffSubsystemDisplayLabel(row.subsystem, row.subsystems),
+        accessorFn: (row) => {
+          const codes = Array.from(
+            new Set(
+              [...row.subsystems, row.subsystem]
+                .filter((s): s is string => Boolean(s))
+                .map((s) => s.toUpperCase()),
+            ),
+          );
+          return codes.map((code) => t(`catalog.subSystem.${code}`)).join(', ');
+        },
         header: ({ column }) => (
-          <DataGridColumnHeader title="Subsystem" visibility column={column} />
+          <DataGridColumnHeader title={t('catalog.subSystemLabel')} visibility column={column} />
         ),
         cell: ({ row }) => {
-          const label = staffSubsystemDisplayLabel(
-            row.original.subsystem,
-            row.original.subsystems,
+          const codes = Array.from(
+            new Set(
+              [...row.original.subsystems, row.original.subsystem]
+                .filter((s): s is string => Boolean(s))
+                .map((s) => s.toUpperCase()),
+            ),
           );
-          if (label === '—') {
+          if (codes.length === 0) {
             return <span className="text-muted-foreground">—</span>;
           }
-          return <Badge variant="outline">{label}</Badge>;
+          return (
+            <Badge variant="outline">
+              {codes.map((code) => t(`catalog.subSystem.${code}`)).join(', ')}
+            </Badge>
+          );
         },
         size: 150,
         meta: {
-          headerTitle: 'Subsystem',
+          headerTitle: t('catalog.subSystemLabel'),
           skeleton: <Skeleton className="h-7 w-24" />,
         },
         enableSorting: true,
@@ -137,7 +151,7 @@ export function StaffList({
         id: 'subjects',
         accessorFn: (row) => row.subjects.join(', '),
         header: ({ column }) => (
-          <DataGridColumnHeader title="Subjects" visibility column={column} />
+          <DataGridColumnHeader title={t('nav.subjects')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const subjects = row.original.subjects;
@@ -163,7 +177,7 @@ export function StaffList({
         },
         size: 220,
         meta: {
-          headerTitle: 'Subjects',
+          headerTitle: t('nav.subjects'),
           skeleton: <Skeleton className="h-7 w-32" />,
         },
         enableSorting: true,
@@ -173,7 +187,7 @@ export function StaffList({
         accessorKey: 'isActive',
         id: 'status',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Status" visibility column={column} />
+          <DataGridColumnHeader title={t('common.labels.status')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const statusProps = getStaffActiveStatusProps(row.original.isActive);
@@ -182,13 +196,15 @@ export function StaffList({
           return (
             <Badge variant={variant} appearance="ghost">
               <BadgeDot />
-              {statusProps.label}
+              {row.original.isActive
+                ? t('common.labels.active')
+                : t('common.labels.inactive')}
             </Badge>
           );
         },
         size: 125,
         meta: {
-          headerTitle: 'Status',
+          headerTitle: t('common.labels.status'),
           skeleton: <Skeleton className="h-7 w-14" />,
         },
         enableSorting: true,
@@ -209,7 +225,7 @@ export function StaffList({
         enableResizing: false,
       },
     ],
-    [],
+    [t],
   );
 
   const [columnOrder, setColumnOrder] = useState<string[]>([

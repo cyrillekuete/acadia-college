@@ -13,6 +13,7 @@ import { EMPTY_CATALOG_FILTERS, type CatalogFilters } from '@/lib/acadia/educati
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useClassDeleteBlockers } from '@/hooks/use-class-delete-blockers';
+import { useTranslation } from '@/hooks/useTranslation';
 import { canWriteRegistry } from '@/lib/acadia/roles';
 import { type ClassListRow } from '@/hooks/use-class-list';
 import {
@@ -46,6 +47,7 @@ function buildClassDeleteDescription(
 }
 
 export default function ClassesPage() {
+  const { t } = useTranslation();
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
   const [classDialogOpen, setClassDialogOpen] = useState(false);
@@ -77,12 +79,12 @@ export default function ClassesPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Classes"
-      description="Create and manage class instances within each level (e.g. Form 5 Arts, Form 5 Science), assign teachers and subjects."
+      title={t('academics.classesTitle')}
+      description={t('academics.classesDescription')}
     >
       <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
 
-      <AdminToolbar addLabel="New class" onAdd={openCreateDialog}>
+      <AdminToolbar addLabel={t('academics.addClass')} onAdd={openCreateDialog}>
         {canManage ? (
           <Button
             type="button"
@@ -93,7 +95,7 @@ export default function ClassesPage() {
               setAssignDialogOpen(true);
             }}
           >
-            Assign subjects
+            {t('academics.assignToClasses')}
           </Button>
         ) : null}
       </AdminToolbar>

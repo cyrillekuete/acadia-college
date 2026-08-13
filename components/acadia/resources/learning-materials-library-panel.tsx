@@ -53,8 +53,10 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { canManageResources } from '@/lib/acadia/roles';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function LearningMaterialsLibraryPanel() {
+  const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
@@ -138,7 +140,7 @@ export function LearningMaterialsLibraryPanel() {
                 name="titleEn"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title (EN)</FormLabel>
+                    <FormLabel>{t('common.labels.titleEn')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -151,7 +153,7 @@ export function LearningMaterialsLibraryPanel() {
                 name="titleFr"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title (FR)</FormLabel>
+                    <FormLabel>{t('common.labels.titleFr')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -166,7 +168,7 @@ export function LearningMaterialsLibraryPanel() {
                 name="kind"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type</FormLabel>
+                    <FormLabel>{t('common.labels.type')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -177,7 +179,9 @@ export function LearningMaterialsLibraryPanel() {
                         {(['DOCUMENT', 'VIDEO', 'LINK', 'OTHER'] as const).map(
                           (value) => (
                             <SelectItem key={value} value={value}>
-                              {learningMaterialKindLabel(value)}
+                              {t(`resources.kind.${value}`, {
+                                defaultValue: learningMaterialKindLabel(value),
+                              })}
                             </SelectItem>
                           ),
                         )}
@@ -192,7 +196,7 @@ export function LearningMaterialsLibraryPanel() {
                 name="subjectId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subject (optional)</FormLabel>
+                    <FormLabel>{t('resources.subjectOptional')}</FormLabel>
                     <Select
                       value={field.value || '__none__'}
                       onValueChange={(v) =>
@@ -201,11 +205,11 @@ export function LearningMaterialsLibraryPanel() {
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="School-wide" />
+                          <SelectValue placeholder={t('resources.schoolWide')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="__none__">School-wide</SelectItem>
+                        <SelectItem value="__none__">{t('resources.schoolWide')}</SelectItem>
                         {subjects.map((subject) => (
                           <SelectItem key={subject.id} value={subject.id}>
                             {subject.code} — {subject.nameEn}
@@ -224,7 +228,7 @@ export function LearningMaterialsLibraryPanel() {
                 name="externalUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>URL</FormLabel>
+                    <FormLabel>{t('resources.url')}</FormLabel>
                     <FormControl>
                       <Input type="url" placeholder="https://…" {...field} />
                     </FormControl>
@@ -234,7 +238,7 @@ export function LearningMaterialsLibraryPanel() {
               />
             ) : (
               <FormItem>
-                <FormLabel>File upload</FormLabel>
+                <FormLabel>{t('resources.fileUpload')}</FormLabel>
                 <Input ref={fileRef} type="file" />
               </FormItem>
             )}
@@ -246,7 +250,7 @@ export function LearningMaterialsLibraryPanel() {
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
-                  <FormLabel className="!mt-0">Published for students</FormLabel>
+                  <FormLabel className="!mt-0">{t('resources.publishedForStudents')}</FormLabel>
                 </FormItem>
               )}
             />
@@ -254,7 +258,7 @@ export function LearningMaterialsLibraryPanel() {
               {uploadLearningMaterial.isPending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />
               ) : null}
-              Add material
+              {t('resources.addMaterial')}
             </Button>
           </form>
         </Form>
@@ -266,11 +270,11 @@ export function LearningMaterialsLibraryPanel() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Access</TableHead>
+              <TableHead>{t('common.labels.title')}</TableHead>
+              <TableHead>{t('common.labels.type')}</TableHead>
+              <TableHead>{t('resources.size')}</TableHead>
+              <TableHead>{t('common.labels.status')}</TableHead>
+              <TableHead className="text-right">{t('resources.access')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -283,13 +287,17 @@ export function LearningMaterialsLibraryPanel() {
                   <TableCell className="font-medium">
                     {learningMaterialTitleDisplay(row)}
                   </TableCell>
-                  <TableCell>{learningMaterialKindLabel(String(row.kind))}</TableCell>
+                  <TableCell>
+                    {t(`resources.kind.${String(row.kind)}`, {
+                      defaultValue: learningMaterialKindLabel(String(row.kind)),
+                    })}
+                  </TableCell>
                   <TableCell>
                     {formatFileSize(row.fileSizeBytes as number | null)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={row.isPublished ? 'success' : 'secondary'}>
-                      {row.isPublished ? 'Published' : 'Draft'}
+                      {row.isPublished ? t('resources.published') : t('resources.draft')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -297,7 +305,7 @@ export function LearningMaterialsLibraryPanel() {
                       <Button size="sm" variant="outline" asChild>
                         <a href={url} target="_blank" rel="noreferrer">
                           <ExternalLink className="size-3.5" />
-                          Open
+                          {t('resources.open')}
                         </a>
                       </Button>
                     ) : (

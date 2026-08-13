@@ -35,10 +35,12 @@ export function financeLedgerTypeLabel(type: string): string {
   return LEDGER_LABELS[type as FinanceLedgerEntryType] ?? type;
 }
 
+export const DEFAULT_FEE_CURRENCY = 'XAF';
+
 /** Amounts stored in minor units (e.g. centimes for XAF). */
 export function formatMoneyMinor(
   amountMinor: number,
-  currency = 'XAF',
+  currency = DEFAULT_FEE_CURRENCY,
 ): string {
   const major = amountMinor / 100;
   try {
@@ -236,8 +238,6 @@ export function aggregateFinanceSummary(
     netMinor: incomeMinor - expenseMinor,
   };
 }
-
-export const DEFAULT_FEE_CURRENCY = 'XAF';
 
 export const FEE_BUDGET_CATEGORIES = [
   'Tuition',

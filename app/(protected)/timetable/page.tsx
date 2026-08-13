@@ -6,17 +6,18 @@ import { TimetablePrintButton } from '@/components/acadia/timetable/timetable-pr
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import {
   resolveTimetableViewMode,
-  timetableViewDescription,
 } from '@/lib/acadia/timetable-views';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function TimetablePage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const mode = resolveTimetableViewMode(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Timetable"
-      description={timetableViewDescription(mode)}
+      title={t('timetable.title')}
+      description={t('timetable.description')}
       actions={mode === 'teacher' ? <TimetablePrintButton /> : undefined}
     >
       <TimetablePageContent />

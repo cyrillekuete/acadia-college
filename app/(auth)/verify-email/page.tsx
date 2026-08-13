@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { createClientOrNull } from '@/lib/supabase/client';
 import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase/env';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const SUPPORTED_OTP_TYPES = new Set<string>([
   'signup',
@@ -21,9 +22,10 @@ const SUPPORTED_OTP_TYPES = new Set<string>([
 ]);
 
 function VerifyEmailContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [message, setMessage] = useState<string | null>('Verifying…');
+  const [message, setMessage] = useState<string | null>(t('auth.verifying'));
   const [error, setError] = useState<string | null>(null);
 
   const verifyWithOtp = useCallback(
@@ -45,19 +47,19 @@ function VerifyEmailContent() {
         setError(
           verifyError.message.includes('expired') ||
             verifyError.message.includes('invalid')
-            ? 'This verification link is invalid or has expired. Request a new confirmation email from an administrator.'
-            : 'Email verification failed. Please try again or contact an administrator.',
+            ? t('auth.verifyExpired')
+            : t('auth.verifyFailed'),
         );
         return;
       }
 
       setError(null);
-      setMessage('Your email has been verified. Redirecting to sign in…');
+      setMessage(t('auth.verifySuccess'));
       setTimeout(() => {
         router.push('/signin');
       }, 2000);
     },
-    [router],
+    [router, t],
   );
 
   useEffect(() => {
@@ -81,19 +83,17 @@ function VerifyEmailContent() {
 
     if (searchParams.get('token')) {
       setMessage(null);
-      setError(
-        'This verification link format is no longer supported. Ask an administrator to resend your confirmation email.',
-      );
+      setError(t('auth.legacyVerifyLink'));
       return;
     }
 
     setMessage(null);
-    setError('Invalid or missing verification link.');
-  }, [searchParams, router, verifyWithOtp]);
+    setError(t('auth.invalidVerifyLink'));
+  }, [searchParams, router, verifyWithOtp, t]);
 
   return (
     <div className="w-full space-y-6">
-      <h1 className="text-2xl font-semibold">Email Verification</h1>
+      <h1 className="text-2xl font-semibold">{t('auth.emailVerification')}</h1>
       {error && (
         <>
           <Alert variant="destructive">
@@ -104,7 +104,7 @@ function VerifyEmailContent() {
           </Alert>
 
           <Button asChild>
-            <Link href="/signin">Go back to sign in</Link>
+            <Link href="/signin">{t('auth.goToSignIn')}</Link>
           </Button>
         </>
       )}
@@ -122,16 +122,18 @@ function VerifyEmailContent() {
 }
 
 export default function Page() {
+  const { t } = useTranslation();
+
   return (
     <Suspense
       fallback={
         <div className="w-full space-y-6">
-          <h1 className="text-2xl font-semibold">Email Verification</h1>
+          <h1 className="text-2xl font-semibold">{t('auth.emailVerification')}</h1>
           <Alert>
             <AlertIcon>
               <LoaderCircleIcon className="size-4 animate-spin stroke-muted-foreground" />
             </AlertIcon>
-            <AlertTitle>Verifying…</AlertTitle>
+            <AlertTitle>{t('auth.verifying')}</AlertTitle>
           </Alert>
         </div>
       }

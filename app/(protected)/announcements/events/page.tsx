@@ -6,23 +6,25 @@ import { AnnouncementsPanel } from '@/components/acadia/communication/announceme
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canManageAnnouncements } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AnnouncementEventsPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canManageAnnouncements(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Event notifications"
+      title={t('communication.eventsTitle')}
       description="Upcoming school events and calendar announcements."
     >
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
         <Button size="sm" variant="outline" asChild>
-          <Link href="/announcements">All announcements</Link>
+          <Link href="/announcements">{t('communication.announcementsTitle')}</Link>
         </Button>
         {canManage ? (
           <Button size="sm" asChild>
-            <Link href="/announcements/new">New event</Link>
+            <Link href="/announcements/new">{t('communication.newAnnouncement')}</Link>
           </Button>
         ) : null}
       </div>

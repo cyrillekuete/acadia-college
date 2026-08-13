@@ -4,6 +4,7 @@ import { BookOpen, Pencil, Trash2 } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function RegistryRowActions({
   onEdit,
@@ -15,6 +16,7 @@ export function RegistryRowActions({
   onAssign?: () => void;
 }) {
   const { data: session } = useAcadiaCollegeSession();
+  const { t } = useTranslation();
   if (!canWriteRegistry(session?.roleSlug)) {
     return null;
   }
@@ -27,12 +29,12 @@ export function RegistryRowActions({
           variant="ghost"
           size="icon"
           onClick={onAssign}
-          aria-label="Assign to classes"
+          aria-label={t('academics.assignToClasses')}
         >
           <BookOpen className="size-4" />
         </Button>
       ) : null}
-      <Button type="button" variant="ghost" size="icon" onClick={onEdit} aria-label="Edit">
+      <Button type="button" variant="ghost" size="icon" onClick={onEdit} aria-label={t('common.buttons.edit')}>
         <Pencil className="size-4" />
       </Button>
       {onDelete ? (
@@ -41,7 +43,7 @@ export function RegistryRowActions({
           variant="ghost"
           size="icon"
           onClick={onDelete}
-          aria-label="Delete"
+          aria-label={t('common.buttons.delete')}
         >
           <Trash2 className="size-4 text-destructive" />
         </Button>

@@ -13,6 +13,7 @@ import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { formatRecordValue, termLabel } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
 import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = {
   id: string;
@@ -35,6 +36,7 @@ function kindLabel(kind: string): string {
 }
 
 export default function AcademicCalendarPage() {
+  const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const { deleteMilestone } = useAcademicCalendarMutations();
@@ -86,8 +88,8 @@ export default function AcademicCalendarPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Academic calendar"
-      description="Key dates for enrollment, instruction, exams, and mark entry. Milestones can gate those operations when configured."
+      title={t('academics.calendarTitle')}
+      description={t('academics.calendarDescription')}
     >
       <AdminToolbar
         addLabel="New milestone"

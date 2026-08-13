@@ -16,6 +16,7 @@ import { canWriteRegistry } from '@/lib/acadia/roles';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const SUBJECT_EDIT_SELECT = `
   id,
@@ -72,6 +73,7 @@ export default function EditSubjectPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
   const { data, isLoading, isError, error } = useSupabaseRecord<SubjectEditDetail>(
@@ -120,7 +122,7 @@ export default function EditSubjectPage({
 
   return (
     <AcadiaPageShell
-      title="Edit subject"
+      title={t('subjects.editTitle')}
       description="Update subject catalog entry and academic placement."
     >
       <div className="mb-5">
@@ -142,7 +144,7 @@ export default function EditSubjectPage({
       ) : data && canEditSubject(data.deactivatedAt) && record ? (
         <Card>
           <CardHeader>
-            <CardTitle>Subject details</CardTitle>
+            <CardTitle>{t('subjects.details')}</CardTitle>
           </CardHeader>
           <CardContent>
             <SubjectForm record={record} onCancelHref={`/subjects/${id}`} />

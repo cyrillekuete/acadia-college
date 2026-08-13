@@ -25,7 +25,7 @@ export function phoneNationalField(required = false, requiredMessage?: string) {
       .pipe(
         z
           .string()
-          .min(1, requiredMessage ?? 'Phone number is required.'),
+          .min(1, requiredMessage ?? 'validation.required.phone'),
       );
   }
 
@@ -53,7 +53,7 @@ export function refinePhoneWithCountry(
     if (required) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: requiredMessage ?? 'Phone number is required.',
+        message: requiredMessage ?? 'validation.required.phone',
         path: [phoneKey],
       });
     }
@@ -78,7 +78,7 @@ export function refinePhoneWithCountry(
       message:
         error instanceof Error
           ? error.message
-          : 'Enter a valid phone number for the selected country.',
+          : 'validation.phoneInvalid',
       path: [phoneKey],
     });
   }

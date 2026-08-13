@@ -6,14 +6,16 @@ import { CreateFeeAccountForm } from '@/components/acadia/finance/create-fee-acc
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteFinance } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function NewFeeAccountPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteFinance(session?.roleSlug);
 
   if (!canManage) {
     return (
-      <AcadiaPageShell title="New fee account" description="Access denied.">
+      <AcadiaPageShell title={t('finance.newAccount')} description={t('common.messages.accessDenied')}>
         <Button variant="outline" size="sm" asChild>
           <Link href="/finance/fees">Back to fees</Link>
         </Button>
@@ -23,7 +25,7 @@ export default function NewFeeAccountPage() {
 
   return (
     <AcadiaPageShell
-      title="New fee account"
+      title={t('finance.newAccount')}
       description="Create a student fee account from the stream installment plan."
     >
       <div className="mb-4">

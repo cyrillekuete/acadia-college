@@ -7,11 +7,13 @@ import { EnrollmentApplicationForm } from '@/components/acadia/enrollment/enroll
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function NewEnrollmentApplicationPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="New enrollment application"
+      title={t('enrollment.newApplication')}
       description="Capture applicant demographics and Cameroon sub-system placement."
     >
       <AdminToolbar />
@@ -25,7 +27,7 @@ export default function NewEnrollmentApplicationPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Application details</CardTitle>
+          <CardTitle>{t('enrollment.applicationDetails')}</CardTitle>
         </CardHeader>
         <CardContent>
           <EnrollmentApplicationForm onCancelHref="/enrollment/applications" />

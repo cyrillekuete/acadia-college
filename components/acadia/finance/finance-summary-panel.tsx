@@ -17,8 +17,10 @@ import {
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function FinanceSummaryPanel() {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -104,16 +106,16 @@ export function FinanceSummaryPanel() {
       return [];
     }
     return [
-      { label: 'Fee accounts', value: String(s.accounts) },
-      { label: 'Total due', value: formatMoneyMinor(s.totalDueMinor) },
-      { label: 'Collected', value: formatMoneyMinor(s.totalPaidMinor) },
-      { label: 'Outstanding', value: formatMoneyMinor(s.outstandingMinor) },
-      { label: 'Overdue installments', value: String(s.overdueInstallments) },
-      { label: 'Ledger income', value: formatMoneyMinor(s.incomeMinor) },
-      { label: 'Ledger expenses', value: formatMoneyMinor(s.expenseMinor) },
-      { label: 'Net (ledger)', value: formatMoneyMinor(s.netMinor) },
+      { label: t('finance.feeAccounts'), value: String(s.accounts) },
+      { label: t('finance.totalDue'), value: formatMoneyMinor(s.totalDueMinor) },
+      { label: t('finance.collected'), value: formatMoneyMinor(s.totalPaidMinor) },
+      { label: t('finance.outstanding'), value: formatMoneyMinor(s.outstandingMinor) },
+      { label: t('finance.overdueInstallments'), value: String(s.overdueInstallments) },
+      { label: t('finance.ledgerIncome'), value: formatMoneyMinor(s.incomeMinor) },
+      { label: t('finance.ledgerExpenses'), value: formatMoneyMinor(s.expenseMinor) },
+      { label: t('finance.netLedger'), value: formatMoneyMinor(s.netMinor) },
     ];
-  }, [query.data]);
+  }, [query.data, t]);
 
   return (
     <div className="space-y-4">

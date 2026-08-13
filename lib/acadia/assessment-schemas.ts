@@ -12,16 +12,16 @@ const scoreField = z
 
 export const examSessionSchema = z
   .object({
-    academicYearId: z.string().min(1, 'Academic year is required.'),
-    subjectId: z.string().min(1, 'Subject is required.'),
-    termId: z.string().min(1, 'Term is required.'),
+    academicYearId: z.string().min(1, 'validation.required.academicYear'),
+    subjectId: z.string().min(1, 'validation.required.subject'),
+    termId: z.string().min(1, 'validation.required.term'),
     sequenceId: z.string().optional().or(z.literal('')),
     type: z.enum(EXAM_SESSION_TYPES),
-    startsOn: z.string().min(1, 'Start date is required.'),
-    endsOn: z.string().min(1, 'End date is required.'),
+    startsOn: z.string().min(1, 'validation.required.startDate'),
+    endsOn: z.string().min(1, 'validation.required.endDate'),
   })
   .refine((data) => data.endsOn >= data.startsOn, {
-    message: 'End date must be on or after the start date.',
+    message: 'validation.endAfterStart',
     path: ['endsOn'],
   });
 
@@ -47,14 +47,14 @@ export const marksEntryContextSchema = z.object({
 export type MarksEntryContextValues = z.infer<typeof marksEntryContextSchema>;
 
 export const academicReportFiltersSchema = z.object({
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
-    required_error: 'Sub-system is required.',
+    required_error: 'validation.required.subSystem',
   }),
   branch: z.enum(ACADEMIC_BRANCHES, {
-    required_error: 'Branch is required.',
+    required_error: 'validation.required.branch',
   }),
-  levelId: z.string().min(1, 'Level is required.'),
+  levelId: z.string().min(1, 'validation.required.level'),
   termId: z.string().optional().or(z.literal('')),
   sequenceId: z.string().optional().or(z.literal('')),
 });

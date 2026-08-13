@@ -22,6 +22,7 @@ import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteFinance } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   isAcadiaTenantQueryEnabled,
 } from '@/hooks/use-acadia-college-session';
@@ -258,33 +259,34 @@ function FeeAccountsTable() {
 }
 
 export default function StudentFeesPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteFinance(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Student fees"
-      description="Fee accounts, payment tracking, and outstanding balances."
+      title={t('finance.feesTitle')}
+      description={t('finance.feesDescription')}
     >
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
         {canManage ? (
           <>
             <Button size="sm" asChild>
-              <Link href="/finance/fees/setup">Fee plan setup</Link>
+              <Link href="/finance/fees/setup">{t('finance.setupDescription')}</Link>
             </Button>
             <Button size="sm" variant="outline" asChild>
-              <Link href="/finance/fees/new">New fee account</Link>
+              <Link href="/finance/fees/new">{t('finance.newAccount')}</Link>
             </Button>
           </>
         ) : null}
         <Button size="sm" variant="outline" asChild>
-          <Link href="/finance/reports">Financial reports</Link>
+          <Link href="/finance/reports">{t('finance.reportsTitle')}</Link>
         </Button>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/finance/ledger">Ledger</Link>
+          <Link href="/finance/ledger">{t('finance.ledgerTitle')}</Link>
         </Button>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/finance/budget">Budget</Link>
+          <Link href="/finance/budget">{t('finance.budgetTitle')}</Link>
         </Button>
       </div>
 

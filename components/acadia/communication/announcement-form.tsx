@@ -30,9 +30,9 @@ import {
 import {
   ANNOUNCEMENT_AUDIENCES,
   ANNOUNCEMENT_KINDS,
-  announcementAudienceLabel,
 } from '@/lib/acadia/communication';
 import { useCommunicationMutations } from '@/hooks/use-communication-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function AnnouncementForm({
   onCancelHref,
@@ -43,6 +43,7 @@ export function AnnouncementForm({
   announcementId?: string;
   defaultValues?: Partial<AnnouncementFormValues>;
 }) {
+  const { t } = useTranslation();
   const { saveAnnouncement } = useCommunicationMutations();
 
   const form = useForm<AnnouncementFormValues>({
@@ -78,7 +79,7 @@ export function AnnouncementForm({
           name="kind"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Type</FormLabel>
+              <FormLabel>{t('common.labels.type')}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger>
@@ -88,7 +89,9 @@ export function AnnouncementForm({
                 <SelectContent>
                   {ANNOUNCEMENT_KINDS.map((value) => (
                     <SelectItem key={value} value={value}>
-                      {value === 'EVENT' ? 'Event notification' : 'School broadcast'}
+                      {value === 'EVENT'
+                        ? t('communication.eventNotification')
+                        : t('communication.schoolBroadcast')}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -103,7 +106,7 @@ export function AnnouncementForm({
           name="audience"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Audience</FormLabel>
+              <FormLabel>{t('common.labels.audience')}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger>
@@ -113,7 +116,7 @@ export function AnnouncementForm({
                 <SelectContent>
                   {ANNOUNCEMENT_AUDIENCES.map((value) => (
                     <SelectItem key={value} value={value}>
-                      {announcementAudienceLabel(value)}
+                      {t(`communication.audience.${value}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -128,7 +131,7 @@ export function AnnouncementForm({
           name="titleEn"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Title (English)</FormLabel>
+              <FormLabel>{t('common.labels.titleEn')}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -142,7 +145,7 @@ export function AnnouncementForm({
           name="titleFr"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Title (French)</FormLabel>
+              <FormLabel>{t('common.labels.titleFr')}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -156,7 +159,7 @@ export function AnnouncementForm({
           name="bodyEn"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Body (English)</FormLabel>
+              <FormLabel>{t('common.labels.bodyEn')}</FormLabel>
               <FormControl>
                 <Textarea rows={4} {...field} />
               </FormControl>
@@ -170,7 +173,7 @@ export function AnnouncementForm({
           name="bodyFr"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Body (French)</FormLabel>
+              <FormLabel>{t('common.labels.bodyFr')}</FormLabel>
               <FormControl>
                 <Textarea rows={4} {...field} />
               </FormControl>
@@ -186,7 +189,7 @@ export function AnnouncementForm({
               name="eventStartsAt"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Event start</FormLabel>
+                  <FormLabel>{t('communication.eventStart')}</FormLabel>
                   <FormControl>
                     <Input type="datetime-local" {...field} />
                   </FormControl>
@@ -199,7 +202,7 @@ export function AnnouncementForm({
               name="eventEndsAt"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Event end (optional)</FormLabel>
+                  <FormLabel>{t('communication.eventEndOptional')}</FormLabel>
                   <FormControl>
                     <Input type="datetime-local" {...field} />
                   </FormControl>
@@ -212,7 +215,7 @@ export function AnnouncementForm({
               name="eventLocation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>{t('common.labels.location')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -228,7 +231,7 @@ export function AnnouncementForm({
           name="publishNow"
           render={({ field }) => (
             <FormItem className="flex items-center justify-between rounded-lg border p-3">
-              <FormLabel className="mb-0">Publish immediately</FormLabel>
+              <FormLabel className="mb-0">{t('communication.publishImmediately')}</FormLabel>
               <FormControl>
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
@@ -242,7 +245,7 @@ export function AnnouncementForm({
             name="publishAt"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Schedule publish</FormLabel>
+                <FormLabel>{t('communication.schedulePublish')}</FormLabel>
                 <FormControl>
                   <Input type="datetime-local" {...field} />
                 </FormControl>
@@ -257,10 +260,12 @@ export function AnnouncementForm({
             {saveAnnouncement.isPending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : null}
-            {announcementId ? 'Update announcement' : 'Save announcement'}
+            {announcementId
+              ? t('communication.updateAnnouncement')
+              : t('communication.saveAnnouncement')}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link href={onCancelHref}>Cancel</Link>
+            <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
           </Button>
         </div>
       </form>

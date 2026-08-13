@@ -9,6 +9,7 @@ import {
   detailLinkColumn,
   nestedFieldColumn,
 } from '@/lib/acadia/list-columns';
+import { useTranslation } from '@/hooks/useTranslation';
 type ExamRow = {
   id: string;
   type?: string;
@@ -41,14 +42,15 @@ const EXAM_SELECT = `
 `;
 
 export default function ExamSchedulePage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Examination schedule"
+      title={t('exams.scheduleTitle')}
       description="Upcoming and past exam sessions (FR-4.2.3)."
     >
       <div className="mb-4 flex flex-wrap gap-2">
         <Button size="sm" asChild>
-          <Link href="/exams/new">New exam session</Link>
+          <Link href="/exams/new">{t('exams.newTitle')}</Link>
         </Button>
         <Button size="sm" variant="outline" asChild>
           <Link href="/exams">All exams</Link>
@@ -56,7 +58,7 @@ export default function ExamSchedulePage() {
       </div>
       <SupabaseTableList scopeByAcademicYear
         table="ExamSession"
-        title="Exam schedule"
+        title={t('exams.scheduleTitle')}
         select={EXAM_SELECT}
         columns={columns}
         searchKeys={['type']}

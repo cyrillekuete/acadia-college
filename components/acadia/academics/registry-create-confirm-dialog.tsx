@@ -11,13 +11,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function RegistryCreateConfirmDialog({
   open,
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Create',
+  confirmLabel,
   onConfirm,
   pending = false,
 }: {
@@ -29,6 +30,7 @@ export function RegistryCreateConfirmDialog({
   onConfirm: () => void;
   pending?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -39,7 +41,7 @@ export function RegistryCreateConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>{t('common.buttons.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             disabled={pending}
             onClick={(event) => {
@@ -48,7 +50,7 @@ export function RegistryCreateConfirmDialog({
             }}
           >
             {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-            {confirmLabel}
+            {confirmLabel ?? t('common.buttons.create')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -13,8 +13,8 @@ export const relationshipEnum = z.enum(['father', 'mother', 'guardian', 'other']
 export const studentCreateSchema = z
   .object({
     // Identity
-    first_name: z.string().min(1, 'First name is required'),
-    last_name: z.string().min(1, 'Last name is required'),
+    first_name: z.string().min(1, 'validation.required.firstName'),
+    last_name: z.string().min(1, 'validation.required.lastName'),
     middle_name: z.string().optional(),
     date_of_birth: z.string().optional(),
     gender: genderEnum.optional(),
@@ -23,7 +23,7 @@ export const studentCreateSchema = z
     religion: z.string().optional(),
 
     // Contact
-    email: z.string().email('Valid student email required'),
+    email: z.string().email('validation.email'),
     phone_country: phoneCountryField(),
     phone: phoneNationalField(),
     address: z.string().optional(),
@@ -35,8 +35,8 @@ export const studentCreateSchema = z
     subsystem: subsystemEnum,
     branch: branchEnum,
     academic_year: z.string().optional(),
-    academic_year_id: z.string().min(1, 'Academic year is required'),
-    level_id: z.string().min(1, 'Level is required'),
+    academic_year_id: z.string().min(1, 'validation.required.academicYear'),
+    level_id: z.string().min(1, 'validation.required.level'),
     class_id: z.string().optional(),
     class_name: z.string().optional(),
     previous_school: z.string().optional(),
@@ -45,24 +45,24 @@ export const studentCreateSchema = z
     enrollment_date: z.string().optional(),
     matricule_number: z
       .string()
-      .max(40, 'Matricule must be at most 40 characters.')
+      .max(40, 'validation.matriculeMax')
       .optional()
       .transform((value) => (value?.trim() ? value.trim() : undefined)),
 
     // Parent section
-    parent_name: z.string().min(1, 'Parent / guardian name is required'),
+    parent_name: z.string().min(1, 'validation.required.parentName'),
     parent_email: z
       .string()
       .optional()
       .transform((value) => (value?.trim() ? value.trim() : ''))
       .refine(
         (value) => !value || z.string().email().safeParse(value).success,
-        'Valid parent email required',
+        'validation.email',
       ),
     parent_phone_country: phoneCountryField(),
     parent_phone: phoneNationalField(
       true,
-      'Parent / guardian phone is required',
+      'validation.required.parentPhone',
     ),
     parent_address: z.string().optional(),
     parent_occupation: z.string().optional(),
@@ -89,7 +89,7 @@ export const studentCreateSchema = z
         phoneKey: 'parent_phone',
         countryKey: 'parent_phone_country',
         required: true,
-        requiredMessage: 'Parent / guardian phone is required',
+        requiredMessage: 'validation.required.parentPhone',
       },
       ctx,
     );
@@ -127,7 +127,7 @@ export const studentCreateSchema = z
       return d.email.trim().toLowerCase() !== parentEmail;
     },
     {
-      message: 'Student and parent email addresses must be different.',
+      message: 'validation.emailsMustDiffer',
       path: ['parent_email'],
     },
   );

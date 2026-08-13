@@ -6,14 +6,16 @@ import { AttendanceSessionForm } from '@/components/acadia/attendance/attendance
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function NewAttendanceSessionPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="New attendance session"
+      title={t('attendance.newSession')}
       description="Create a session and record daily marks (FR-5.1.1)."
     >
       <div className="mb-4">

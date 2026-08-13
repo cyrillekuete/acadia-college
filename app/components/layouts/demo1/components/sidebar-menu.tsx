@@ -20,6 +20,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { KeenIcon } from '@/components/keenicons';
 import type { KeenIconName } from '@/lib/icons/keen-icon-names';
+import { useTranslation } from '@/hooks/useTranslation';
+import { menuItemLabel } from '@/lib/acadia/menu-label';
 
 function MenuItemIcon({ icon }: { icon: KeenIconName }) {
   return (
@@ -34,7 +36,9 @@ function MenuItemIcon({ icon }: { icon: KeenIconName }) {
 export function SidebarMenu() {
   const pathname = usePathname();
   const { data: session } = useAcadiaCollegeSession();
+  const { t } = useTranslation();
   const menuItems = getMenuForRole(session?.roleSlug);
+  const label = (item: AcadiaMenuItem) => menuItemLabel(item, t);
 
   // Memoize matchPath to prevent unnecessary re-renders
   const matchPath = useCallback(
@@ -60,7 +64,7 @@ export function SidebarMenu() {
 
   const buildMenu = (items: AcadiaMenuConfig): JSX.Element[] => {
     return items.map((item: AcadiaMenuItem, index: number) => {
-      if (item.heading) {
+      if (item.heading || item.headingKey) {
         return buildMenuHeading(item, index);
       } else if (item.disabled) {
         return buildMenuItemRootDisabled(item, index);
@@ -76,7 +80,7 @@ export function SidebarMenu() {
         <AccordionMenuSub key={index} value={item.path || `root-${index}`}>
           <AccordionMenuSubTrigger className="text-sm font-medium">
             {item.icon ? <MenuItemIcon icon={item.icon} /> : null}
-            <span data-slot="accordion-menu-title">{item.title}</span>
+            <span data-slot="accordion-menu-title">{label(item)}</span>
           </AccordionMenuSubTrigger>
           <AccordionMenuSubContent
             type="single"
@@ -102,7 +106,7 @@ export function SidebarMenu() {
             className="flex items-center justify-start grow gap-2"
           >
             {item.icon ? <MenuItemIcon icon={item.icon} /> : null}
-            <span data-slot="accordion-menu-title">{item.title}</span>
+            <span data-slot="accordion-menu-title">{label(item)}</span>
           </Link>
         </AccordionMenuItem>
       );
@@ -120,10 +124,10 @@ export function SidebarMenu() {
         className="text-sm font-medium"
       >
         {item.icon ? <MenuItemIcon icon={item.icon} /> : null}
-        <span data-slot="accordion-menu-title">{item.title}</span>
+        <span data-slot="accordion-menu-title">{label(item)}</span>
         {item.disabled && (
           <Badge variant="secondary" size="sm" className="ms-auto me-[-10px]">
-            Soon
+            {t('common.messages.soon')}
           </Badge>
         )}
       </AccordionMenuItem>
@@ -165,7 +169,7 @@ export function SidebarMenu() {
                 </span>
               </span>
             ) : (
-              item.title
+              label(item)
             )}
           </AccordionMenuSubTrigger>
           <AccordionMenuSubContent
@@ -194,7 +198,7 @@ export function SidebarMenu() {
           value={item.path || ''}
           className="text-[13px]"
         >
-          <Link href={item.path || '#'}>{item.title}</Link>
+          <Link href={item.path || '#'}>{label(item)}</Link>
         </AccordionMenuItem>
       );
     }
@@ -211,10 +215,10 @@ export function SidebarMenu() {
         value={`disabled-child-${level}-${index}`}
         className="text-[13px]"
       >
-        <span data-slot="accordion-menu-title">{item.title}</span>
+        <span data-slot="accordion-menu-title">{label(item)}</span>
         {item.disabled && (
           <Badge variant="secondary" size="sm" className="ms-auto me-[-10px]">
-            Soon
+            {t('common.messages.soon')}
           </Badge>
         )}
       </AccordionMenuItem>
@@ -222,7 +226,7 @@ export function SidebarMenu() {
   };
 
   const buildMenuHeading = (item: AcadiaMenuItem, index: number): JSX.Element => {
-    return <AccordionMenuLabel key={index}>{item.heading}</AccordionMenuLabel>;
+    return <AccordionMenuLabel key={index}>{label(item)}</AccordionMenuLabel>;
   };
 
   return (

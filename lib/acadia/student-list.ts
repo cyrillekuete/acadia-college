@@ -1,5 +1,8 @@
 import { branchLabel } from '@/lib/acadia/education-system';
-import { formatMoney } from '@/i18n/format';
+import {
+  DEFAULT_FEE_CURRENCY,
+  formatMoneyMinor,
+} from '@/lib/acadia/finance';
 
 export function studentBranchLabel(branch: string | null | undefined): string {
   if (!branch) {
@@ -50,5 +53,5 @@ export function formatStudentFeesAmounts(
   if (totalFees <= 0 && paidFees <= 0) {
     return null;
   }
-  return `${formatMoney(paidFees)} / ${formatMoney(totalFees)}`;
+  return `${formatMoneyMinor(paidFees, DEFAULT_FEE_CURRENCY)} / ${formatMoneyMinor(totalFees, DEFAULT_FEE_CURRENCY)}`;
 }

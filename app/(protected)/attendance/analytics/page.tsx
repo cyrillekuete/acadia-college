@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AttendanceAnalyticsPanel } from '@/components/acadia/attendance/attendance-analytics-panel';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AttendanceAnalyticsPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Attendance analytics"
+      title={t('attendance.analyticsTitle')}
       description="Identify attendance patterns and at-risk students (FR-5.2.2)."
     >
       <div className="mb-4">

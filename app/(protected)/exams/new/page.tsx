@@ -11,8 +11,10 @@ import { checkExamPeriodWindow } from '@/lib/acadia/calendar-milestones';
 import { canManageInstitution, canWriteOperations } from '@/lib/acadia/roles';
 import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function NewExamSessionPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const { activeYearId } = useActiveAcademicYear();
   const canManage = canWriteOperations(session?.roleSlug);
@@ -28,7 +30,7 @@ export default function NewExamSessionPage() {
 
   return (
     <AcadiaPageShell
-      title="New exam session"
+      title={t('exams.newTitle')}
       description="Create an examination for a subject (FR-4.2.1)."
     >
       <div className="mb-4">

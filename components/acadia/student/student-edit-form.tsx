@@ -21,6 +21,7 @@ import {
   type StudentProfileEditValues,
 } from '@/lib/acadia/student-schemas';
 import { useStudentMutations } from '@/hooks/use-student-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export type StudentEditRecord = {
   profileId: string;
@@ -37,6 +38,7 @@ export type StudentEditRecord = {
 };
 
 export function StudentEditForm({ student }: { student: StudentEditRecord }) {
+  const { t } = useTranslation();
   const { updateStudentProfile } = useStudentMutations();
 
   const form = useForm<StudentProfileEditFormValues, unknown, StudentProfileEditValues>({
@@ -84,7 +86,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="registrationNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Student ID</FormLabel>
+              <FormLabel>{t('students.studentId')}</FormLabel>
               <FormControl>
                 <Input {...field} readOnly className="bg-muted" />
               </FormControl>
@@ -97,12 +99,12 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="matriculeNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Matricule (optional)</FormLabel>
+              <FormLabel>{t('students.matriculeOptional')}</FormLabel>
               <FormControl>
                 <Input
                   {...field}
                   value={field.value ?? ''}
-                  placeholder="Ministry-issued matricule"
+                  placeholder={t('students.matriculePlaceholder')}
                 />
               </FormControl>
               <FormMessage />
@@ -114,7 +116,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full name</FormLabel>
+              <FormLabel>{t('common.labels.fullName')}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -127,7 +129,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('common.labels.email')}</FormLabel>
               <FormControl>
                 <Input {...field} type="email" />
               </FormControl>
@@ -141,7 +143,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
             name="country"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Country</FormLabel>
+                <FormLabel>{t('common.labels.country')}</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -154,7 +156,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
             name="timezone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Timezone</FormLabel>
+                <FormLabel>{t('common.labels.timezone')}</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -168,7 +170,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="alumniSince"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Alumni since</FormLabel>
+              <FormLabel>{t('students.alumniSince')}</FormLabel>
               <FormControl>
                 <Input {...field} value={field.value ?? ''} type="date" />
               </FormControl>
@@ -181,7 +183,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="isActive"
           render={({ field }) => (
             <FormItem className="flex items-center justify-between rounded-lg border p-3">
-              <FormLabel>Active student</FormLabel>
+              <FormLabel>{t('students.activeStudent')}</FormLabel>
               <FormControl>
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
@@ -193,7 +195,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           name="alumniDirectoryOptIn"
           render={({ field }) => (
             <FormItem className="flex items-center justify-between rounded-lg border p-3">
-              <FormLabel>Alumni directory opt-in</FormLabel>
+              <FormLabel>{t('students.alumniOptIn')}</FormLabel>
               <FormControl>
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
@@ -204,7 +206,7 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
           {updateStudentProfile.isPending ? (
             <LoaderCircleIcon className="size-4 animate-spin" />
           ) : null}
-          Save profile
+          {t('students.saveProfile')}
         </Button>
       </form>
     </Form>

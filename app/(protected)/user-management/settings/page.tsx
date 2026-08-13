@@ -42,46 +42,11 @@ import {
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import { splitPhoneE164 } from '@/lib/acadia/phone';
-
-const languages = [
-  {
-    code: 'en',
-    name: 'English',
-    shortName: 'EN',
-    direction: 'ltr',
-    flag: '/media/flags/united-states.svg',
-  },
-  {
-    code: 'ar',
-    name: 'Arabic',
-    shortName: 'AR',
-    direction: 'rtl',
-    flag: '/media/flags/saudi-arabia.svg',
-  },
-  {
-    code: 'es',
-    name: 'Spanish',
-    shortName: 'ES',
-    direction: 'ltr',
-    flag: '/media/flags/spain.svg',
-  },
-  {
-    code: 'de',
-    name: 'German',
-    shortName: 'DE',
-    direction: 'ltr',
-    flag: '/media/flags/germany.svg',
-  },
-  {
-    code: 'ch',
-    name: 'Chinese',
-    shortName: 'CH',
-    direction: 'ltr',
-    flag: '/media/flags/china.svg',
-  },
-];
+import { I18N_LANGUAGES } from '@/i18n/config';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function Page() {
+  const { t } = useTranslation();
   const { settings } = useSettings();
   const queryClient = useQueryClient();
   const [logoExistingPreview, setLogoExistingPreview] = useState<string | null>(
@@ -108,8 +73,8 @@ export default function Page() {
     supportPhoneCountry:
       supportPhoneSplit.countryName || DEFAULT_COUNTRY_NAME,
     supportPhone: supportPhoneSplit.nationalNumber,
-    currency: settings?.currency || 'USD',
-    currencyFormat: settings?.currencyFormat || '$ {value}',
+    currency: settings?.currency || 'XAF',
+    currencyFormat: settings?.currencyFormat || '{value} FCFA',
     timezone: settings?.timezone || 'Europe/London',
   };
 
@@ -427,18 +392,18 @@ export default function Page() {
               name="language"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Language</FormLabel>
+                  <FormLabel>{t('account.language')}</FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select language" />
+                        <SelectValue placeholder={t('account.selectLanguage')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          {languages.map((language) => (
+                          {I18N_LANGUAGES.map((language) => (
                             <SelectItem
                               key={language.code}
                               value={language.code}
@@ -528,6 +493,9 @@ export default function Page() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
+                          <SelectItem value="XAF">
+                            XAF - Central African CFA franc
+                          </SelectItem>
                           <SelectItem value="USD">USD - US Dollar</SelectItem>
                           <SelectItem value="EUR">EUR - Euro</SelectItem>
                           <SelectItem value="GBP">
@@ -569,6 +537,9 @@ export default function Page() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
+                          <SelectItem value="{value} FCFA">
+                            {`{value}`} FCFA
+                          </SelectItem>
                           <SelectItem value="$ {value}">
                             $ {`{value}`}
                           </SelectItem>

@@ -50,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserFormDialog } from '@/components/acadia/admin/user-form-dialog';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const SELECT = `
   id,
@@ -76,6 +77,7 @@ type UserRow = {
 } & Record<string, unknown>;
 
 export function UsersDataGrid() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -126,7 +128,7 @@ export function UsersDataGrid() {
         accessorKey: 'name',
         id: 'name',
         header: ({ column }) => (
-          <DataGridColumnHeader title="User" visibility={true} column={column} />
+          <DataGridColumnHeader title={t('admin.user')} visibility={true} column={column} />
         ),
         cell: ({ row }) => {
           const user = row.original;
@@ -162,7 +164,7 @@ export function UsersDataGrid() {
       {
         id: 'role',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Role" visibility={true} column={column} />
+          <DataGridColumnHeader title={t('admin.role')} visibility={true} column={column} />
         ),
         cell: ({ row }) => {
           const role = unwrapRelation<{ name?: string }>(row.original.UserRole);
@@ -180,7 +182,7 @@ export function UsersDataGrid() {
         accessorKey: 'status',
         id: 'status',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Status" visibility={true} column={column} />
+          <DataGridColumnHeader title={t('common.labels.status')} visibility={true} column={column} />
         ),
         cell: ({ row }) => {
           const status = row.original.status as UserStatus;
@@ -190,7 +192,7 @@ export function UsersDataGrid() {
           return (
             <Badge variant={variant} appearance="ghost">
               <BadgeDot />
-              {statusProps.label}
+              {t(`admin.status.${status}`, { defaultValue: statusProps.label })}
             </Badge>
           );
         },
@@ -202,7 +204,7 @@ export function UsersDataGrid() {
         accessorKey: 'createdAt',
         id: 'createdAt',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Joined" visibility={true} column={column} />
+          <DataGridColumnHeader title={t('admin.joined')} visibility={true} column={column} />
         ),
         cell: (info) => {
           const value = info.getValue() as string | undefined;
@@ -225,7 +227,7 @@ export function UsersDataGrid() {
 
                 return (
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" asChild aria-label="Edit user">
+                    <Button variant="ghost" size="icon" asChild aria-label={t('admin.editUser')}>
                       <Link href={`/admin/users/${user.id}`}>
                         <Pencil className="size-4" />
                       </Link>
@@ -233,7 +235,7 @@ export function UsersDataGrid() {
                     {!isProtected ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label="More actions">
+                          <Button variant="ghost" size="icon" aria-label={t('admin.moreActions')}>
                             <KeyRound className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -241,7 +243,7 @@ export function UsersDataGrid() {
                           <DropdownMenuItem
                             onClick={() => sendPasswordReset.mutate(String(user.id))}
                           >
-                            Send password reset
+                            {t('admin.sendPasswordReset')}
                           </DropdownMenuItem>
                           {status !== UserStatus.ACTIVE ? (
                             <DropdownMenuItem
@@ -254,7 +256,7 @@ export function UsersDataGrid() {
                                 })
                               }
                             >
-                              Activate account
+                              {t('admin.activateAccount')}
                             </DropdownMenuItem>
                           ) : null}
                           {status === UserStatus.ACTIVE ? (
@@ -268,7 +270,7 @@ export function UsersDataGrid() {
                                 })
                               }
                             >
-                              Deactivate account
+                              {t('admin.deactivateAccount')}
                             </DropdownMenuItem>
                           ) : null}
                           {status !== UserStatus.BLOCKED ? (
@@ -282,7 +284,7 @@ export function UsersDataGrid() {
                                 })
                               }
                             >
-                              Block account
+                              {t('admin.blockAccount')}
                             </DropdownMenuItem>
                           ) : null}
                         </DropdownMenuContent>
@@ -308,7 +310,7 @@ export function UsersDataGrid() {
         enableHiding: false,
       },
     ],
-    [canManage, sendPasswordReset, setUserStatus],
+    [canManage, sendPasswordReset, setUserStatus, t],
   );
 
   const table = useReactTable({
@@ -339,7 +341,7 @@ export function UsersDataGrid() {
           <div className="relative">
             <Search className="size-4 text-muted-foreground absolute start-3 top-1/2 -translate-y-1/2" />
             <Input
-              placeholder="Search users"
+              placeholder={t('admin.searchUsers')}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -369,10 +371,10 @@ export function UsersDataGrid() {
             disabled={isLoading || rolesLoading}
           >
             <SelectTrigger className="w-full sm:w-36">
-              <SelectValue placeholder="Filter by role" />
+              <SelectValue placeholder={t('admin.filterByRole')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
+              <SelectItem value="all">{t('admin.allRoles')}</SelectItem>
               {roleList.map((role) => (
                 <SelectItem key={role.id} value={role.id}>
                   {role.name}
@@ -389,13 +391,13 @@ export function UsersDataGrid() {
             disabled={isLoading}
           >
             <SelectTrigger className="w-full sm:w-36">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue placeholder={t('admin.filterByStatus')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All users</SelectItem>
-              {Object.entries(UserStatusProps).map(([status, { label }]) => (
+              <SelectItem value="all">{t('admin.allUsers')}</SelectItem>
+              {Object.entries(UserStatusProps).map(([status]) => (
                 <SelectItem key={status} value={status}>
-                  {label}
+                  {t(`admin.status.${status}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -405,7 +407,7 @@ export function UsersDataGrid() {
           <div className="flex items-center justify-end">
             <Button disabled={isLoading} onClick={() => setDialogOpen(true)}>
               <Plus />
-              Add user
+              {t('admin.addUser')}
             </Button>
           </div>
         ) : null}
@@ -416,7 +418,7 @@ export function UsersDataGrid() {
   if (isError) {
     return (
       <p className="text-sm text-destructive">
-        {error instanceof Error ? error.message : 'Failed to load users.'}
+        {error instanceof Error ? error.message : t('admin.loadUsersFailed')}
       </p>
     );
   }

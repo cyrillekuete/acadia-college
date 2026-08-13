@@ -6,9 +6,11 @@ import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { StudentRegistry } from '@/components/acadia/student/student-registry';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { useTranslation } from '@/hooks/useTranslation';
 import { canWriteRegistry, isAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 
 export default function StudentsPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canAdd = canWriteRegistry(session?.roleSlug);
   const isTeacherView =
@@ -16,18 +18,18 @@ export default function StudentsPage() {
 
   return (
     <AcadiaPageShell
-      title="Students"
+      title={t('students.title')}
       description={
         isTeacherView
-          ? 'Students in your assigned classes and subjects.'
-          : 'Manage student accounts and records.'
+          ? t('students.teacherDescription')
+          : t('students.description')
       }
       actions={
         canAdd ? (
           <Button asChild size="sm">
             <Link href="/students/new">
               <Plus className="size-4" />
-              Add student
+              {t('students.add')}
             </Link>
           </Button>
         ) : undefined

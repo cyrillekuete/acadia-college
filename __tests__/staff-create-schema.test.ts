@@ -30,6 +30,13 @@ describe('staffCreateSchema', () => {
       firstName: '',
     });
     expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some(
+          (i) => i.message === 'validation.required.firstName',
+        ),
+      ).toBe(true);
+    }
   });
 
   it('requires a valid personal email', () => {

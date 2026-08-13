@@ -12,6 +12,7 @@ import {
 import { examSessionTypeLabel } from '@/lib/acadia/assessment';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type ExamRow = {
   id: string;
@@ -48,27 +49,28 @@ const EXAM_SELECT = `
 `;
 
 export default function ExamsPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Exams"
-      description="Exam sessions including sequence exams and major national examinations."
+      title={t('exams.title')}
+      description={t('exams.description')}
     >
       <div className="mb-4 flex flex-wrap gap-2">
         {canManage ? (
           <Button size="sm" asChild>
-            <Link href="/exams/new">New exam session</Link>
+            <Link href="/exams/new">{t('exams.newTitle')}</Link>
           </Button>
         ) : null}
         <Button size="sm" variant="outline" asChild>
-          <Link href="/exams/schedule">Exam schedule</Link>
+          <Link href="/exams/schedule">{t('exams.scheduleTitle')}</Link>
         </Button>
       </div>
       <SupabaseTableList scopeByAcademicYear
         table="ExamSession"
-        title="Exam sessions"
+        title={t('exams.sessions')}
         select={EXAM_SELECT}
         columns={columns}
         searchKeys={['type']}

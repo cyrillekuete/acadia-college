@@ -58,9 +58,7 @@ import { formatMarkScore } from '@/lib/acadia/assessment';
 import {
   ACADEMIC_BRANCHES,
   ACADEMIC_SUB_SYSTEMS,
-  branchLabel,
   levelDisplayLabel,
-  subSystemLabel,
 } from '@/lib/acadia/education-system';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
 import {
@@ -83,8 +81,10 @@ import {
   isPromotionYearLocked,
 } from '@/lib/supabase/queries/promotion';
 import { requireBrowserClient } from '@/lib/supabase/client';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function PromotionAdminPanel() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
@@ -293,7 +293,7 @@ export function PromotionAdminPanel() {
   if (!canManage) {
     return (
       <p className="text-sm text-muted-foreground">
-        Administrator access is required to manage promotion.
+        {t('academics.promotionAccessDenied')}
       </p>
     );
   }
@@ -301,8 +301,8 @@ export function PromotionAdminPanel() {
   return (
     <Tabs defaultValue="policies" className="space-y-6">
       <TabsList>
-        <TabsTrigger value="policies">Class policies</TabsTrigger>
-        <TabsTrigger value="compute">Compute &amp; decisions</TabsTrigger>
+        <TabsTrigger value="policies">{t('academics.classPolicies')}</TabsTrigger>
+        <TabsTrigger value="compute">{t('academics.computeDecisions')}</TabsTrigger>
       </TabsList>
 
       <TabsContent value="policies" className="space-y-4">
@@ -312,11 +312,11 @@ export function PromotionAdminPanel() {
             name="academicYearId"
             render={({ field }) => (
               <FormItem className="max-w-xs">
-                <FormLabel>Academic year</FormLabel>
+                <FormLabel>{t('students.academicYear')}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Year" />
+                      <SelectValue placeholder={t('academics.year')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -341,8 +341,7 @@ export function PromotionAdminPanel() {
 
       <TabsContent value="compute" className="space-y-6">
         <p className="text-sm text-muted-foreground">
-          Promotion uses each class&apos;s configured minimum average for the selected
-          year. Students must be assigned to a class before automatic compute.
+          {t('academics.promotionComputeHint')}
         </p>
 
         <Form {...filterForm}>
@@ -355,11 +354,11 @@ export function PromotionAdminPanel() {
               name="academicYearId"
               render={({ field }) => (
                 <FormItem className="min-w-[160px]">
-                  <FormLabel>Academic year</FormLabel>
+                  <FormLabel>{t('students.academicYear')}</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Year" />
+                        <SelectValue placeholder={t('academics.year')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -379,7 +378,7 @@ export function PromotionAdminPanel() {
               name="bulkMode"
               render={({ field }) => (
                 <FormItem className="min-w-[160px]">
-                  <FormLabel>Compute scope</FormLabel>
+                  <FormLabel>{t('academics.computeScope')}</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
@@ -390,10 +389,10 @@ export function PromotionAdminPanel() {
                       {PROMOTION_BULK_MODES.map((mode) => (
                         <SelectItem key={mode} value={mode}>
                           {mode === 'class'
-                            ? 'This class'
+                            ? t('academics.scopeClass')
                             : mode === 'stream'
-                              ? 'All classes in stream'
-                              : 'Entire year'}
+                              ? t('academics.scopeStream')
+                              : t('academics.scopeYear')}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -410,7 +409,9 @@ export function PromotionAdminPanel() {
                   render={({ field }) => (
                     <FormItem className="min-w-[180px]">
                       <FormLabel>
-                        {bulkMode === 'stream' ? 'Sub-system' : 'Sub-system (optional)'}
+                        {bulkMode === 'stream'
+                          ? t('academics.subSystem')
+                          : t('academics.subSystemOptional')}
                       </FormLabel>
                       <Select
                         value={field.value ?? ''}
@@ -418,13 +419,13 @@ export function PromotionAdminPanel() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sub-system" />
+                            <SelectValue placeholder={t('academics.subSystem')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {ACADEMIC_SUB_SYSTEMS.map((value) => (
                             <SelectItem key={value} value={value}>
-                              {subSystemLabel(value)}
+                              {t(`catalog.subSystem.${value}`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -439,7 +440,9 @@ export function PromotionAdminPanel() {
                   render={({ field }) => (
                     <FormItem className="min-w-[160px]">
                       <FormLabel>
-                        {bulkMode === 'stream' ? 'Branch' : 'Branch (optional)'}
+                        {bulkMode === 'stream'
+                          ? t('academics.branch')
+                          : t('academics.branchOptional')}
                       </FormLabel>
                       <Select
                         value={field.value ?? ''}
@@ -447,13 +450,13 @@ export function PromotionAdminPanel() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Branch" />
+                            <SelectValue placeholder={t('academics.branch')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {ACADEMIC_BRANCHES.map((value) => (
                             <SelectItem key={value} value={value}>
-                              {branchLabel(value)}
+                              {t(`catalog.branch.${value}`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -470,11 +473,11 @@ export function PromotionAdminPanel() {
                 name="classId"
                 render={({ field }) => (
                   <FormItem className="min-w-[200px]">
-                    <FormLabel>Class</FormLabel>
+                    <FormLabel>{t('students.class')}</FormLabel>
                     <Select value={field.value ?? ''} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Class" />
+                          <SelectValue placeholder={t('students.class')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -491,7 +494,7 @@ export function PromotionAdminPanel() {
               />
             ) : null}
             <Button type="submit" variant="secondary">
-              Load decisions
+              {t('academics.loadDecisions')}
             </Button>
             <Button
               type="button"
@@ -503,9 +506,9 @@ export function PromotionAdminPanel() {
               }
               title={
                 yearLocked
-                  ? 'Promotion is locked after rollover was applied.'
+                  ? t('academics.promotionLocked')
                   : submitted?.bulkMode === 'class' && enrollmentCount === 0
-                    ? 'No enrolled students in this class.'
+                    ? t('academics.noEnrolledStudents')
                     : undefined
               }
               onClick={() => {
@@ -517,7 +520,7 @@ export function PromotionAdminPanel() {
               {computeAutomaticPromotion.isPending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />
               ) : null}
-              Compute automatic promotion
+              {t('academics.computeAutomatic')}
             </Button>
           </form>
         </Form>
@@ -525,14 +528,15 @@ export function PromotionAdminPanel() {
         {(unassignedQuery.data?.length ?? 0) > 0 ? (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
             <p className="font-medium text-amber-800 dark:text-amber-200">
-              {unassignedQuery.data!.length} student(s) enrolled without a class
+              {t('academics.unassignedStudents', {
+                count: unassignedQuery.data!.length,
+              })}
             </p>
             <p className="mt-1 text-muted-foreground">
-              Assign them via{' '}
+              {t('academics.unassignedHint')}{' '}
               <Link href="/classes" className="text-primary hover:underline">
-                class rosters
-              </Link>{' '}
-              or student migration before computing promotion.
+                {t('nav.classRosters')}
+              </Link>
             </p>
           </div>
         ) : null}
@@ -542,35 +546,45 @@ export function PromotionAdminPanel() {
             {policy ? (
               policy.autoPromotionEnabled ? (
                 <span>
-                  <strong>{selectedClass.name}</strong> — promote at year average ≥
-                  {formatMarkScore(policy.minPromotionAverage)}
+                  <strong>{selectedClass.name}</strong>{' '}
+                  {t('academics.promoteAtAverage', {
+                    average: formatMarkScore(policy.minPromotionAverage),
+                  })}
                 </span>
               ) : (
                 <span>
-                  <strong>{selectedClass.name}</strong> — auto-promotion off (manual
-                  decisions only)
+                  <strong>{selectedClass.name}</strong>{' '}
+                  {t('academics.autoPromotionOff')}
                 </span>
               )
             ) : (
-              <span className="text-destructive">
-                No promotion policy for this class. Configure it under Class policies.
-              </span>
+              <span className="text-destructive">{t('academics.noPolicy')}</span>
             )}
           </div>
         ) : null}
 
         {submitted ? (
           <div className="flex flex-wrap gap-2 text-sm">
-            <Badge variant="outline">{stats.total} students</Badge>
-            <Badge variant="secondary">{stats.promote} promote</Badge>
-            <Badge variant="secondary">{stats.repeat} repeat</Badge>
-            <Badge variant="outline">{stats.manual} manual overrides</Badge>
+            <Badge variant="outline">
+              {t('academics.studentCount', { count: stats.total })}
+            </Badge>
+            <Badge variant="secondary">
+              {t('academics.promoteCount', { count: stats.promote })}
+            </Badge>
+            <Badge variant="secondary">
+              {t('academics.repeatCount', { count: stats.repeat })}
+            </Badge>
+            <Badge variant="outline">
+              {t('academics.manualCount', { count: stats.manual })}
+            </Badge>
             {stats.pending > 0 ? (
-              <Badge variant="outline">{stats.pending} pending</Badge>
+              <Badge variant="outline">
+                {t('academics.pendingCount', { count: stats.pending })}
+              </Badge>
             ) : null}
             <Button size="sm" variant="outline" asChild>
               <Link href={`/academics/years/${submitted.academicYearId}/rollover`}>
-                Year rollover wizard
+                {t('academics.rolloverTitle')}
               </Link>
             </Button>
           </div>
@@ -578,7 +592,7 @@ export function PromotionAdminPanel() {
 
         {yearLocked ? (
           <p className="text-sm text-muted-foreground">
-            Promotion for this year is locked after rollover was applied.
+            {t('academics.yearLockedMessage')}
           </p>
         ) : null}
 
@@ -593,7 +607,7 @@ export function PromotionAdminPanel() {
         rows.length === 0 &&
         enrollmentCount === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No enrolled students in this class for the selected year.
+            {t('academics.noEnrolledInClass')}
           </p>
         ) : null}
 
@@ -602,8 +616,7 @@ export function PromotionAdminPanel() {
         rows.length === 0 &&
         enrollmentCount > 0 ? (
           <p className="text-sm text-muted-foreground">
-            No promotion decisions yet. Run &quot;Compute automatic promotion&quot; for
-            this class.
+            {t('academics.noDecisionsYet')}
           </p>
         ) : null}
 
@@ -611,13 +624,13 @@ export function PromotionAdminPanel() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Year avg</TableHead>
-                <TableHead>Threshold</TableHead>
-                <TableHead>Recommended</TableHead>
-                <TableHead>Final</TableHead>
-                <TableHead>Target level</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('students.student')}</TableHead>
+                <TableHead>{t('academics.yearAvg')}</TableHead>
+                <TableHead>{t('academics.threshold')}</TableHead>
+                <TableHead>{t('academics.recommended')}</TableHead>
+                <TableHead>{t('academics.final')}</TableHead>
+                <TableHead>{t('academics.targetLevel')}</TableHead>
+                <TableHead className="text-right">{t('common.labels.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -630,6 +643,7 @@ export function PromotionAdminPanel() {
                 const targetLevel = unwrapRelation<{
                   number?: number;
                   labelEn?: string;
+                  labelFr?: string;
                 }>(row.Level);
                 const rowKey =
                   (row.id as string | null) ??
@@ -660,35 +674,39 @@ export function PromotionAdminPanel() {
                     </TableCell>
                     <TableCell>
                       {row.isPending
-                        ? 'Pending'
-                        : promotionActionLabel(
-                            row.recommendedAction as Parameters<
-                              typeof promotionActionLabel
-                            >[0],
-                          )}
+                        ? t('academics.pending')
+                        : t(`academics.action.${row.recommendedAction}`, {
+                            defaultValue: promotionActionLabel(
+                              row.recommendedAction as Parameters<
+                                typeof promotionActionLabel
+                              >[0],
+                            ),
+                          })}
                     </TableCell>
                     <TableCell>
                       {row.isPending ? (
-                        <Badge variant="outline">Pending</Badge>
+                        <Badge variant="outline">{t('academics.pending')}</Badge>
                       ) : (
                         <Badge
                           variant={row.source === 'MANUAL' ? 'primary' : 'secondary'}
                         >
-                          {promotionActionLabel(
-                            row.finalAction as Parameters<
-                              typeof promotionActionLabel
-                            >[0],
-                          )}
+                          {t(`academics.action.${row.finalAction}`, {
+                            defaultValue: promotionActionLabel(
+                              row.finalAction as Parameters<
+                                typeof promotionActionLabel
+                              >[0],
+                            ),
+                          })}
                         </Badge>
                       )}
                       {row.classChangedSinceCompute ? (
                         <Badge variant="outline" className="ml-1">
-                          Class changed
+                          {t('academics.classChanged')}
                         </Badge>
                       ) : null}
                       {row.policyStaleAt ? (
                         <Badge variant="outline" className="ml-1">
-                          Recompute
+                          {t('academics.recompute')}
                         </Badge>
                       ) : null}
                     </TableCell>
@@ -696,7 +714,7 @@ export function PromotionAdminPanel() {
                       {targetLevel
                         ? levelDisplayLabel(targetLevel)
                         : row.finalAction === 'GRADUATE'
-                          ? 'Alumni'
+                          ? t('academics.alumni')
                           : '—'}
                     </TableCell>
                     <TableCell className="text-right">
@@ -709,14 +727,14 @@ export function PromotionAdminPanel() {
                           setOverrideTarget({
                             studentProfileId: row.studentProfileId as string,
                             registrationNumber:
-                              profile?.registrationNumber ?? 'Student',
+                              profile?.registrationNumber ?? t('students.student'),
                             finalAction: (row.finalAction as string) ?? 'REPEAT',
                             targetLevelId: row.targetLevelId as string | null,
                             classId: submitted!.classId!,
                           })
                         }
                       >
-                        Override
+                        {t('academics.override')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -729,12 +747,11 @@ export function PromotionAdminPanel() {
         {orphanRows.length > 0 && submitted ? (
           <details className="rounded-lg border p-3 text-sm">
             <summary className="cursor-pointer font-medium">
-              Orphan decisions ({orphanRows.length}) — not in current class roster
+              {t('academics.orphanDecisions', { count: orphanRows.length })}
             </summary>
             <div className="mt-3 space-y-2">
               <p className="text-muted-foreground">
-                These AUTO decisions reference students no longer enrolled in this
-                class.
+                {t('academics.orphanHint')}
               </p>
               <Button
                 type="button"
@@ -751,7 +768,7 @@ export function PromotionAdminPanel() {
                   })
                 }
               >
-                Remove AUTO orphans
+                {t('academics.removeOrphans')}
               </Button>
             </div>
           </details>
@@ -764,7 +781,9 @@ export function PromotionAdminPanel() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                Manual override — {overrideTarget?.registrationNumber}
+                {t('academics.manualOverride', {
+                  id: overrideTarget?.registrationNumber,
+                })}
               </DialogTitle>
             </DialogHeader>
             <DialogBody>
@@ -783,7 +802,7 @@ export function PromotionAdminPanel() {
                     name="finalAction"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Final decision</FormLabel>
+                        <FormLabel>{t('academics.finalDecision')}</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger>
@@ -793,7 +812,9 @@ export function PromotionAdminPanel() {
                           <SelectContent>
                             {PROMOTION_ACTIONS.map((action) => (
                               <SelectItem key={action} value={action}>
-                                {promotionActionLabel(action)}
+                                {t(`academics.action.${action}`, {
+                                  defaultValue: promotionActionLabel(action),
+                                })}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -808,14 +829,14 @@ export function PromotionAdminPanel() {
                       name="targetLevelId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Target level</FormLabel>
+                          <FormLabel>{t('academics.targetLevel')}</FormLabel>
                           <Select
                             value={field.value ?? ''}
                             onValueChange={field.onChange}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select level" />
+                                <SelectValue placeholder={t('academics.selectLevel')} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -836,7 +857,7 @@ export function PromotionAdminPanel() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Notes</FormLabel>
+                        <FormLabel>{t('common.labels.notes')}</FormLabel>
                         <FormControl>
                           <Textarea {...field} rows={3} />
                         </FormControl>
@@ -853,7 +874,7 @@ export function PromotionAdminPanel() {
                 form="promotion-override-form"
                 disabled={savePromotionOverride.isPending}
               >
-                Save override
+                {t('academics.saveOverride')}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -11,10 +11,10 @@ import {
 
 export const feeInstallmentTemplateSchema = z.object({
   installmentNumber: z.coerce.number().int().min(1),
-  labelEn: z.string().min(1, 'English label is required.'),
-  labelFr: z.string().min(1, 'French label is required.'),
-  amountMinor: z.coerce.number().int().min(1, 'Amount must be greater than zero.'),
-  dueOn: z.string().min(1, 'Due date is required.'),
+  labelEn: z.string().min(1, 'validation.required.labelEn'),
+  labelFr: z.string().min(1, 'validation.required.labelFr'),
+  amountMinor: z.coerce.number().int().min(1, 'validation.amountPositive'),
+  dueOn: z.string().min(1, 'validation.required.dueDate'),
 });
 
 export type FeeInstallmentTemplateValues = z.infer<
@@ -23,26 +23,26 @@ export type FeeInstallmentTemplateValues = z.infer<
 
 export const streamFeePlanSchema = z.object({
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
-    required_error: 'Sub-system is required.',
+    required_error: 'validation.required.subSystem',
   }),
   branch: z.enum(ACADEMIC_BRANCHES, {
-    required_error: 'Branch is required.',
+    required_error: 'validation.required.branch',
   }),
   installments: z
     .array(feeInstallmentTemplateSchema)
-    .min(1, 'Add at least one installment.'),
+    .min(1, 'validation.required.installment'),
 });
 
 export type StreamFeePlanFormValues = z.infer<typeof streamFeePlanSchema>;
 
 export const createStudentFeeAccountSchema = z.object({
-  studentProfileId: z.string().min(1, 'Student is required.'),
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  studentProfileId: z.string().min(1, 'validation.required.student'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
-    required_error: 'Sub-system is required.',
+    required_error: 'validation.required.subSystem',
   }),
   branch: z.enum(ACADEMIC_BRANCHES, {
-    required_error: 'Branch is required.',
+    required_error: 'validation.required.branch',
   }),
   studentEnrollmentId: z.string().optional().or(z.literal('')),
   feeCurrency: z.string().min(1),
@@ -63,13 +63,13 @@ export const recordFeePaymentSchema = z.object({
 export type RecordFeePaymentValues = z.infer<typeof recordFeePaymentSchema>;
 
 export const financeLedgerEntrySchema = z.object({
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   entryType: z.enum(FINANCE_LEDGER_TYPES),
-  category: z.string().min(1, 'Category is required.'),
+  category: z.string().min(1, 'validation.required.category'),
   description: z.string().optional().or(z.literal('')),
-  amountMinor: z.coerce.number().int().min(1, 'Amount must be greater than zero.'),
+  amountMinor: z.coerce.number().int().min(1, 'validation.amountPositive'),
   currency: z.string().min(1),
-  occurredOn: z.string().min(1, 'Date is required.'),
+  occurredOn: z.string().min(1, 'validation.required.date'),
 });
 
 export type FinanceLedgerEntryFormValues = z.infer<
@@ -77,12 +77,12 @@ export type FinanceLedgerEntryFormValues = z.infer<
 >;
 
 export const financeBudgetLineSchema = z.object({
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   category: z.enum(FEE_BUDGET_CATEGORIES),
   budgetedMinor: z.coerce
     .number()
     .int()
-    .min(0, 'Budget must be zero or greater.'),
+    .min(0, 'validation.budgetMin'),
   currency: z.string().min(1),
   notes: z.string().optional().or(z.literal('')),
 });
@@ -90,7 +90,7 @@ export const financeBudgetLineSchema = z.object({
 export type FinanceBudgetLineFormValues = z.infer<typeof financeBudgetLineSchema>;
 
 export const financeReportFiltersSchema = z.object({
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
 });
 
 export type FinanceReportFiltersValues = z.infer<

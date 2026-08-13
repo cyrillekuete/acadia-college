@@ -12,6 +12,7 @@ import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { termLabel } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = {
   id: string;
@@ -23,6 +24,7 @@ type Row = {
 };
 
 export default function TermsPage() {
+  const { t } = useTranslation();
   const { activeYearId } = useActiveAcademicYear();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
@@ -63,8 +65,8 @@ export default function TermsPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Terms"
-      description="Define how many terms each academic year has, then manage individual term records. Use the academic year selector in the header to choose which year you are configuring."
+      title={t('academics.termsTitle')}
+      description={t('academics.termsDescription')}
     >
       <div className="mb-6 space-y-6">
         {activeYearId ? (
@@ -77,7 +79,7 @@ export default function TermsPage() {
       </div>
 
       <AdminToolbar
-        addLabel="New term"
+        addLabel={t('academics.addTerm')}
         onAdd={() => {
           setEditing(null);
           setDialogOpen(true);
@@ -85,7 +87,7 @@ export default function TermsPage() {
       />
       <SupabaseTableList
         table="Term"
-        title="Terms"
+        title={t('academics.termsTitle')}
         select="id, number, academicYearId, levelId, Level!Semester_levelId_tenantId_fkey ( number )"
         columns={columns}
         searchKeys={['number']}

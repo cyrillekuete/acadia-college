@@ -29,12 +29,13 @@ import {
 } from '@/lib/acadia/user-schemas';
 import { useUserManagementMutations } from '@/hooks/use-user-management-mutations';
 import { useUserRoleOptions } from '@/hooks/use-user-role-options';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const STATUS_OPTIONS = [
-  { value: UserStatus.ACTIVE, label: 'Active' },
-  { value: UserStatus.INACTIVE, label: 'Inactive' },
-  { value: UserStatus.BLOCKED, label: 'Blocked' },
-];
+  UserStatus.ACTIVE,
+  UserStatus.INACTIVE,
+  UserStatus.BLOCKED,
+] as const;
 
 export type AdminUserRecord = {
   id: string;
@@ -48,6 +49,7 @@ export type AdminUserRecord = {
 };
 
 export function UserEditForm({ user }: { user: AdminUserRecord }) {
+  const { t } = useTranslation();
   const { updateUser, sendPasswordReset } = useUserManagementMutations();
   const { data: roles = [], isLoading: rolesLoading } = useUserRoleOptions();
 
@@ -92,7 +94,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Full name</FormLabel>
+                <FormLabel>{t('admin.fullName')}</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
@@ -105,7 +107,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>{t('common.labels.email')}</FormLabel>
                 <FormControl>
                   <Input {...field} type="email" />
                 </FormControl>
@@ -118,7 +120,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
             name="roleId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Role</FormLabel>
+                <FormLabel>{t('admin.role')}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
@@ -126,7 +128,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
+                      <SelectValue placeholder={t('admin.selectRole')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -146,7 +148,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Status</FormLabel>
+                <FormLabel>{t('common.labels.status')}</FormLabel>
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
@@ -158,9 +160,9 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {STATUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                    {STATUS_OPTIONS.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {t(`admin.status.${status}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -175,7 +177,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
               name="country"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Country</FormLabel>
+                  <FormLabel>{t('admin.country')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -188,7 +190,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
               name="timezone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Timezone</FormLabel>
+                  <FormLabel>{t('admin.timezone')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -202,19 +204,19 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
               {updateUser.isPending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />
               ) : (
-                'Save changes'
+                {t('admin.saveChanges')}
               )}
             </Button>
             <Button type="button" variant="outline" asChild>
-              <Link href="/admin/users">Back to users</Link>
+              <Link href="/admin/users">{t('admin.backToUsers')}</Link>
             </Button>
           </div>
         </form>
       </Form>
       <div className="border-t pt-4">
-        <p className="mb-2 text-sm font-medium">Password</p>
+        <p className="mb-2 text-sm font-medium">{t('common.labels.password')}</p>
         <p className="mb-3 text-sm text-muted-foreground">
-          Send a password reset email to this user (Supabase Auth).
+          {t('admin.passwordResetHint')}
         </p>
         <Button
           type="button"
@@ -222,7 +224,9 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
           disabled={sendPasswordReset.isPending}
           onClick={() => sendPasswordReset.mutate(user.id)}
         >
-          {sendPasswordReset.isPending ? 'Sending…' : 'Send password reset email'}
+          {sendPasswordReset.isPending
+            ? t('admin.sending')
+            : t('admin.sendPasswordResetEmail')}
         </Button>
       </div>
     </div>

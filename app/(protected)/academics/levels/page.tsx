@@ -17,6 +17,7 @@ import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
 import { type LevelListRow } from '@/hooks/use-level-list';
 import { useLevelDeleteBlockers } from '@/hooks/use-level-delete-blockers';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   canCascadeDeleteClasses,
   formatLevelDeleteBlockers,
@@ -45,6 +46,7 @@ function buildLevelDeleteDescription(
 }
 
 export default function LevelsPage() {
+  const { t } = useTranslation();
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
   const [levelDialogOpen, setLevelDialogOpen] = useState(false);
@@ -77,12 +79,12 @@ export default function LevelsPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Levels"
-      description="Define structural levels (Form 1, Form 2, …) for each sub-system and branch before creating classes."
+      title={t('academics.levelsTitle')}
+      description={t('academics.levelsDescription')}
     >
       <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
 
-      <AdminToolbar addLabel="New level" onAdd={openCreateDialog}>
+      <AdminToolbar addLabel={t('academics.addLevel')} onAdd={openCreateDialog}>
         {canManage ? (
           <Button
             type="button"

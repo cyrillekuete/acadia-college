@@ -3,6 +3,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = Record<string, unknown>;
 
@@ -12,8 +13,9 @@ const columns: ColumnDef<Row>[] = [
 ];
 
 export default function Page() {
+  const { t } = useTranslation();
   return (
-    <AcadiaPageShell title="Acadia College — Transcript requests" description="Copy requests.">
+    <AcadiaPageShell title={t('transcripts.requestsTitle')} description={t('transcripts.requestsDescription')}>
       <SupabaseTableList
         table="TranscriptCopyRequest"
         title="TranscriptCopyRequest"

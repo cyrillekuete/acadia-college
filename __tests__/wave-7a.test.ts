@@ -443,16 +443,16 @@ describe('calendarMilestoneSchema', () => {
 // record-display.ts — term/sequence label functions
 // ---------------------------------------------------------------------------
 describe('termLabel', () => {
-  it('returns "1st Term" for number 1', () => {
-    expect(termLabel({ number: 1 })).toBe('1st Term');
+  it('returns "Term 1" for number 1', () => {
+    expect(termLabel({ number: 1 })).toBe('Term 1');
   });
 
-  it('returns "2nd Term" for number 2', () => {
-    expect(termLabel({ number: 2 })).toBe('2nd Term');
+  it('returns "Term 2" for number 2', () => {
+    expect(termLabel({ number: 2 })).toBe('Term 2');
   });
 
-  it('returns "3rd Term" for number 3', () => {
-    expect(termLabel({ number: 3 })).toBe('3rd Term');
+  it('returns "Term 3" for number 3', () => {
+    expect(termLabel({ number: 3 })).toBe('Term 3');
   });
 
   it('returns "—" for null', () => {
@@ -463,18 +463,18 @@ describe('termLabel', () => {
     expect(termLabel({})).toBe('—');
   });
 
-  it('returns ordinal label for extended range', () => {
-    expect(termLabel({ number: 10 })).toBe('10th Term');
+  it('returns "Term 10" for number 10', () => {
+    expect(termLabel({ number: 10 })).toBe('Term 10');
   });
 
-  it('falls back to "Term N" beyond ordinal table', () => {
+  it('returns "Term 20" for number 20', () => {
     expect(termLabel({ number: 20 })).toBe('Term 20');
   });
 });
 
 describe('semesterLabel (deprecated alias)', () => {
   it('is the same function as termLabel', () => {
-    expect(semesterLabel({ number: 2 })).toBe('2nd Term');
+    expect(semesterLabel({ number: 2 })).toBe('Term 2');
   });
 });
 

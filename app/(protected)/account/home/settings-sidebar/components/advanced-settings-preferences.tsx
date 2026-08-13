@@ -65,9 +65,11 @@ const AdvancedSettingsPreferences = () => {
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7">United States Dollar (USD)</SelectItem>
-                <SelectItem value="8">Option 2</SelectItem>
-                <SelectItem value="9">Option 3</SelectItem>
+                <SelectItem value="7">
+                  Central African CFA franc (XAF)
+                </SelectItem>
+                <SelectItem value="8">United States Dollar (USD)</SelectItem>
+                <SelectItem value="9">Euro (EUR)</SelectItem>
               </SelectContent>
             </Select>
           </div>

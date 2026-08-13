@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { canEditEnrollmentApplication } from '@/lib/acadia/enrollment';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const APPLICATION_SELECT = `
   id,
@@ -38,6 +39,7 @@ export default function EditEnrollmentApplicationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useTranslation();
   const { data, isLoading, isError, error } =
     useSupabaseRecord<EnrollmentApplicationRecord>(
       'EnrollmentApplication',
@@ -49,7 +51,7 @@ export default function EditEnrollmentApplicationPage({
 
   return (
     <AcadiaPageShell
-      title="Edit enrollment application"
+      title={t('enrollment.editApplication')}
       description="Update a pending application before review."
     >
       <div className="mb-5">
@@ -67,7 +69,7 @@ export default function EditEnrollmentApplicationPage({
       ) : data && editable ? (
         <Card>
           <CardHeader>
-            <CardTitle>Application details</CardTitle>
+            <CardTitle>{t('enrollment.applicationDetails')}</CardTitle>
           </CardHeader>
           <CardContent>
             <EnrollmentApplicationForm

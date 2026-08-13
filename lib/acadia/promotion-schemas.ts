@@ -19,7 +19,7 @@ export type PromotionBulkMode = (typeof PROMOTION_BULK_MODES)[number];
 
 export const promotionFiltersSchema = z
   .object({
-    academicYearId: z.string().min(1, 'Academic year is required.'),
+    academicYearId: z.string().min(1, 'validation.required.academicYear'),
     bulkMode: z.enum(PROMOTION_BULK_MODES),
     classId: z.string().optional(),
     subSystem: z.enum(ACADEMIC_SUB_SYSTEMS).optional(),
@@ -29,14 +29,14 @@ export const promotionFiltersSchema = z
     if (data.bulkMode === 'class' && !data.classId?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Class is required.',
+        message: 'validation.required.class',
         path: ['classId'],
       });
     }
     if (data.bulkMode === 'stream' && (!data.subSystem || !data.branch)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Sub-system and branch are required for stream-wide compute.',
+        message: 'validation.required.streamCatalog',
         path: ['subSystem'],
       });
     }
@@ -57,7 +57,7 @@ export const promotionOverrideSchema = z
     if (data.finalAction === 'PROMOTE' && !data.targetLevelId?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Target level is required when promoting.',
+        message: 'validation.required.targetLevel',
         path: ['targetLevelId'],
       });
     }
@@ -67,7 +67,7 @@ export type PromotionOverrideValues = z.infer<typeof promotionOverrideSchema>;
 
 export const yearRolloverSchema = z
   .object({
-    sourceAcademicYearId: z.string().min(1, 'Source year is required.'),
+    sourceAcademicYearId: z.string().min(1, 'validation.required.sourceYear'),
     targetAcademicYearId: z.string().optional(),
     createTargetYear: z.boolean().optional(),
     targetYearLabel: z.string().optional(),
@@ -81,28 +81,28 @@ export const yearRolloverSchema = z
       if (!data.targetYearLabel?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'New year label is required.',
+          message: 'validation.required.newYearLabel',
           path: ['targetYearLabel'],
         });
       }
       if (!data.targetYearStartsOn) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Start date is required.',
+          message: 'validation.required.startDate',
           path: ['targetYearStartsOn'],
         });
       }
       if (!data.targetYearEndsOn) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'End date is required.',
+          message: 'validation.required.endDate',
           path: ['targetYearEndsOn'],
         });
       }
     } else if (!data.targetAcademicYearId?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Target year is required.',
+        message: 'validation.required.targetYear',
         path: ['targetAcademicYearId'],
       });
     }

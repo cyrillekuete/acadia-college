@@ -34,17 +34,16 @@ import {
   ACADEMIC_BRANCHES,
   ACADEMIC_SUB_SYSTEMS,
   levelDisplayLabel,
-  streamLabel,
 } from '@/lib/acadia/education-system';
 import { useCommunicationMutations } from '@/hooks/use-communication-mutations';
 import { useTenantUserOptions } from '@/hooks/use-tenant-user-options';
-import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
-import {
-  isAcadiaTenantQueryEnabled,
-} from '@/hooks/use-acadia-college-session';
+import { localizedText } from '@/lib/acadia/locale';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
+  const { t } = useTranslation();
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { data: users = [] } = useTenantUserOptions(session?.profile?.id);
@@ -65,13 +64,13 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
   const groupScope = form.watch('groupScope');
 
   const scopeOptionsQuery = useQuery({
-    queryKey: ['message-group-scope-options', tenantId, groupScope],
+    queryKey: ['message-group-scope-options', tenantId, groupScope, t],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       if (groupScope === 'DEPARTMENT') {
         const { data, error } = await supabase
           .from('Department')
-          .select('id, code, nameEn')
+          .select('id, code, nameEn, nameFr')
           .eq('tenantId', tenantId!)
           .order('nameEn');
         if (error) {
@@ -79,20 +78,20 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
         }
         return (data ?? []).map((row) => ({
           id: row.id as string,
-          label: `${row.code} — ${row.nameEn}`,
+          label: `${row.code} — ${localizedText(row.nameEn as string, row.nameFr as string)}`,
         }));
       }
       if (groupScope === 'STREAM') {
         return ACADEMIC_SUB_SYSTEMS.flatMap((subSystem) =>
           ACADEMIC_BRANCHES.map((branch) => ({
             id: `${subSystem}:${branch}`,
-            label: streamLabel(subSystem, branch),
+            label: `${t(`catalog.subSystem.${subSystem}`)} · ${t(`catalog.branch.${branch}`)}`,
           })),
         );
       }
       const { data, error } = await supabase
         .from('Level')
-        .select('id, number, labelEn, subSystem, branch')
+        .select('id, number, labelEn, labelFr, subSystem, branch')
         .eq('tenantId', tenantId!)
         .order('number');
       if (error) {
@@ -100,7 +99,7 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
       }
       return (data ?? []).map((row) => ({
         id: row.id as string,
-        label: `${streamLabel(row.subSystem as string, row.branch as string)} — ${levelDisplayLabel(row)}`,
+        label: `${t(`catalog.subSystem.${row.subSystem}`)} · ${t(`catalog.branch.${row.branch}`)} — ${levelDisplayLabel(row)}`,
       }));
     },
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
@@ -132,10 +131,10 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
 
   const memberHint = useMemo(() => {
     if (selectedMembers.length === 0) {
-      return 'Select at least one participant besides yourself.';
+      return t('communication.selectMembers');
     }
-    return `${selectedMembers.length} member(s) selected`;
-  }, [selectedMembers.length]);
+    return t('communication.membersSelected', { count: selectedMembers.length });
+  }, [selectedMembers.length, t]);
 
   return (
     <Form {...form}>
@@ -145,7 +144,7 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
           name="subjectEn"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Group subject (English)</FormLabel>
+              <FormLabel>{t('communication.groupSubjectEn')}</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -159,7 +158,7 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
           name="groupScope"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Group scope</FormLabel>
+              <FormLabel>{t('communication.groupScope')}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger>
@@ -169,7 +168,9 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
                 <SelectContent>
                   {MESSAGE_GROUP_SCOPES.map((scope) => (
                     <SelectItem key={scope} value={scope}>
-                      {messageGroupScopeLabel(scope)}
+                      {t(`communication.scope.${scope}`, {
+                        defaultValue: messageGroupScopeLabel(scope),
+                      })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -184,11 +185,11 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
           name="groupScopeId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Scope target</FormLabel>
+              <FormLabel>{t('communication.scopeTarget')}</FormLabel>
               <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select target" />
+                    <SelectValue placeholder={t('communication.selectTarget')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -205,7 +206,7 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
         />
 
         <FormItem>
-          <FormLabel>Members</FormLabel>
+          <FormLabel>{t('communication.members')}</FormLabel>
           <p className="text-xs text-muted-foreground mb-2">{memberHint}</p>
           <div className="max-h-48 overflow-y-auto rounded-md border p-3 space-y-2">
             {users.map((user) => (
@@ -231,7 +232,7 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
           name="body"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Opening message</FormLabel>
+              <FormLabel>{t('communication.openingMessage')}</FormLabel>
               <FormControl>
                 <Textarea rows={5} {...field} />
               </FormControl>
@@ -245,10 +246,10 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
             {createGroupThread.isPending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : null}
-            Create group
+            {t('communication.createGroup')}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link href={onCancelHref}>Cancel</Link>
+            <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
           </Button>
         </div>
       </form>

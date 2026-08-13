@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = {
   id: string;
@@ -39,22 +40,23 @@ const SELECT = `
 `;
 
 export default function MarksPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canEnter = canWriteOperations(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Marks"
-      description="Subject marks, averages, reports, and audit trail."
+      title={t('marks.title')}
+      description={t('marks.description')}
     >
       <div className="mb-4 flex flex-wrap gap-2">
         {canEnter ? (
           <Button size="sm" asChild>
-            <Link href="/marks/entry">Enter marks</Link>
+            <Link href="/marks/entry">{t('marks.entryTitle')}</Link>
           </Button>
         ) : null}
         <Button size="sm" variant="outline" asChild>
-          <Link href="/marks/reports">Grade reports</Link>
+          <Link href="/marks/reports">{t('marks.reportsTitle')}</Link>
         </Button>
       </div>
 

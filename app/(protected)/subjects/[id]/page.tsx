@@ -17,7 +17,8 @@ import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canEditSubject } from '@/lib/acadia/subject';
-import { canWriteRegistry } from '@/lib/acadia/roles';
+import { canWriteRegistry, isStudent } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   parseAcademicBranch,
   parseAcademicSubSystem,
@@ -95,10 +96,12 @@ export default function SubjectDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
   const [slotDialogOpen, setSlotDialogOpen] = useState(false);
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
+  const studentView = isStudent(session?.roleSlug);
   const { reactivateSubject } = useSubjectMutations();
 
   const { data, isLoading, isError, error } = useSupabaseRecord<SubjectDetail>(
@@ -120,7 +123,7 @@ export default function SubjectDetailPage({
   const subjectSubSystem = data ? parseAcademicSubSystem(data.subSystem) : null;
   const subjectBranch = data ? parseAcademicBranch(data.branch) : null;
   const hasValidStream = subjectSubSystem !== null && subjectBranch !== null;
-  const title = data?.code ? `Subject — ${data.code}` : 'Subject detail';
+  const title = data?.code ? `Subject — ${data.code}` : t('subjects.details');
 
   return (
     <RecordDetailShell
@@ -137,8 +140,12 @@ export default function SubjectDetailPage({
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="classes">Classes</TabsTrigger>
-              <TabsTrigger value="teachers">Teachers</TabsTrigger>
+              {!studentView ? (
+                <TabsTrigger value="classes">Classes</TabsTrigger>
+              ) : null}
+              {!studentView ? (
+                <TabsTrigger value="teachers">Teachers</TabsTrigger>
+              ) : null}
               <TabsTrigger value="materials">Materials</TabsTrigger>
               <TabsTrigger value="timetable">Timetable</TabsTrigger>
             </TabsList>
@@ -228,31 +235,35 @@ export default function SubjectDetailPage({
             </div>
           </TabsContent>
 
-          <TabsContent value="classes">
-            {hasValidStream ? (
-              <SubjectClassAssignmentPanel
-                subjectId={id}
-                subSystem={subjectSubSystem}
-                branch={subjectBranch}
-                subjectDefaultGroupingId={data.groupingId}
-                subjectDefaultGroupingName={grouping?.nameEn ?? null}
-                subBranches={subBranches.map((branch) => ({
-                  id: branch.id,
-                  name: branch.name,
-                }))}
-                canManage={canManage && isActive}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Class assignments require a valid sub-system and branch on this subject.
-                Edit the subject to set its academic stream before assigning classes.
-              </p>
-            )}
-          </TabsContent>
+          {!studentView ? (
+            <TabsContent value="classes">
+              {hasValidStream ? (
+                <SubjectClassAssignmentPanel
+                  subjectId={id}
+                  subSystem={subjectSubSystem}
+                  branch={subjectBranch}
+                  subjectDefaultGroupingId={data.groupingId}
+                  subjectDefaultGroupingName={grouping?.nameEn ?? null}
+                  subBranches={subBranches.map((branch) => ({
+                    id: branch.id,
+                    name: branch.name,
+                  }))}
+                  canManage={canManage && isActive}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Class assignments require a valid sub-system and branch on this subject.
+                  Edit the subject to set its academic stream before assigning classes.
+                </p>
+              )}
+            </TabsContent>
+          ) : null}
 
-          <TabsContent value="teachers">
-            <SubjectAssignmentPanel subjectId={id} canManage={canManage} />
-          </TabsContent>
+          {!studentView ? (
+            <TabsContent value="teachers">
+              <SubjectAssignmentPanel subjectId={id} canManage={canManage} />
+            </TabsContent>
+          ) : null}
 
           <TabsContent value="materials">
             <SubjectMaterialsPanel subjectId={id} canManage={canManage} />

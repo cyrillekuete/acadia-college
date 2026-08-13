@@ -3,9 +3,9 @@
 import { Badge } from '@/components/ui/badge';
 import {
   effectiveInstallmentStatus,
-  feeInstallmentStatusLabel,
   type FeeInstallmentStatus,
 } from '@/lib/acadia/finance';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const VARIANT: Record<
   FeeInstallmentStatus,
@@ -24,12 +24,13 @@ export function FeeStatusBadge({
   status: string;
   dueOn?: string;
 }) {
+  const { t } = useTranslation();
   const effective = dueOn
     ? effectiveInstallmentStatus(status, dueOn)
     : (status as FeeInstallmentStatus);
   return (
     <Badge variant={VARIANT[effective] ?? 'secondary'} appearance="light">
-      {feeInstallmentStatusLabel(effective)}
+      {t(`finance.status.${effective}`, { defaultValue: effective })}
     </Badge>
   );
 }

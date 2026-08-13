@@ -30,11 +30,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Search } from '@/lib/icons';
-import {
-  branchLabel,
-  subSystemLabel,
-  type CatalogFilters,
-} from '@/lib/acadia/education-system';
+import type { CatalogFilters } from '@/lib/acadia/education-system';
 import { formatSubBranchNames } from '@/lib/acadia/subject-catalog';
 import {
   canEditSubject,
@@ -49,6 +45,7 @@ import { useSubjectList, type SubjectListRowView } from '@/hooks/use-subject-lis
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function truncateCell(text: string) {
   return (
@@ -98,6 +95,7 @@ export function SubjectsTable({
   onAssignToClasses?: (row: SubjectListRowView) => void;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -145,7 +143,7 @@ export function SubjectsTable({
         accessorKey: 'nameEn',
         id: 'nameEn',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Name" visibility column={column} />
+          <DataGridColumnHeader title={t('common.labels.name')} visibility column={column} />
         ),
         cell: ({ row }) => (
           <Link
@@ -158,7 +156,7 @@ export function SubjectsTable({
         ),
         size: 180,
         meta: {
-          headerTitle: 'Name',
+          headerTitle: t('common.labels.name'),
           skeleton: <Skeleton className="h-4 w-36" />,
         },
         enableSorting: true,
@@ -168,12 +166,12 @@ export function SubjectsTable({
         accessorKey: 'code',
         id: 'code',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Code" visibility column={column} />
+          <DataGridColumnHeader title={t('common.labels.code')} visibility column={column} />
         ),
         cell: ({ row }) => truncateCell(row.original.code),
         size: 72,
         meta: {
-          headerTitle: 'Code',
+          headerTitle: t('common.labels.code'),
           skeleton: <Skeleton className="h-4 w-12" />,
         },
         enableSorting: true,
@@ -182,17 +180,17 @@ export function SubjectsTable({
       {
         id: 'subSystem',
         accessorFn: (row) =>
-          row.subSystem ? subSystemLabel(row.subSystem) : '—',
+          row.subSystem ? t(`catalog.subSystem.${row.subSystem}`) : '—',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Subsystem" visibility column={column} />
+          <DataGridColumnHeader title={t('catalog.subSystemLabel')} visibility column={column} />
         ),
         cell: ({ row }) =>
           row.original.subSystem
-            ? truncateCell(subSystemLabel(row.original.subSystem))
+            ? truncateCell(t(`catalog.subSystem.${row.original.subSystem}`))
             : '—',
         size: 88,
         meta: {
-          headerTitle: 'Subsystem',
+          headerTitle: t('catalog.subSystemLabel'),
           skeleton: <Skeleton className="h-4 w-16" />,
         },
         enableSorting: true,
@@ -200,17 +198,18 @@ export function SubjectsTable({
       },
       {
         id: 'branch',
-        accessorFn: (row) => (row.branch ? branchLabel(row.branch) : '—'),
+        accessorFn: (row) =>
+          row.branch ? t(`catalog.branch.${row.branch}`) : '—',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Branch" visibility column={column} />
+          <DataGridColumnHeader title={t('catalog.branchLabel')} visibility column={column} />
         ),
         cell: ({ row }) =>
           row.original.branch
-            ? truncateCell(branchLabel(row.original.branch))
+            ? truncateCell(t(`catalog.branch.${row.original.branch}`))
             : '—',
         size: 88,
         meta: {
-          headerTitle: 'Branch',
+          headerTitle: t('catalog.branchLabel'),
           skeleton: <Skeleton className="h-4 w-16" />,
         },
         enableSorting: true,
@@ -220,12 +219,12 @@ export function SubjectsTable({
         id: 'level',
         accessorFn: (row) => subjectLevelLabel(row),
         header: ({ column }) => (
-          <DataGridColumnHeader title="Level" visibility column={column} />
+          <DataGridColumnHeader title={t('students.level')} visibility column={column} />
         ),
         cell: ({ row }) => truncateCell(subjectLevelLabel(row.original)),
         size: 100,
         meta: {
-          headerTitle: 'Level',
+          headerTitle: t('students.level'),
           skeleton: <Skeleton className="h-4 w-20" />,
         },
         enableSorting: true,
@@ -235,7 +234,7 @@ export function SubjectsTable({
         id: 'grouping',
         accessorFn: (row) => row.SubjectGrouping?.nameEn?.trim() ?? '—',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Grouping" visibility column={column} />
+          <DataGridColumnHeader title={t('subjects.grouping')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const grouping = row.original.SubjectGrouping;
@@ -257,7 +256,7 @@ export function SubjectsTable({
         },
         size: 120,
         meta: {
-          headerTitle: 'Grouping',
+          headerTitle: t('subjects.grouping'),
           skeleton: <Skeleton className="h-7 w-24" />,
         },
         enableSorting: true,
@@ -267,7 +266,7 @@ export function SubjectsTable({
         accessorKey: 'coefficient',
         id: 'coefficient',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Coefficient" visibility column={column} />
+          <DataGridColumnHeader title={t('subjects.coefficient')} visibility column={column} />
         ),
         cell: ({ row }) => (
           <span className="block text-center tabular-nums">
@@ -276,7 +275,7 @@ export function SubjectsTable({
         ),
         size: 72,
         meta: {
-          headerTitle: 'Coefficient',
+          headerTitle: t('subjects.coefficient'),
           skeleton: <Skeleton className="mx-auto h-4 w-8" />,
         },
         enableSorting: true,
@@ -286,7 +285,7 @@ export function SubjectsTable({
         id: 'subBranches',
         accessorFn: (row) => formatSubBranchNames(row.SubjectSubBranch ?? [], 2),
         header: ({ column }) => (
-          <DataGridColumnHeader title="Sub-Branches" visibility column={column} />
+          <DataGridColumnHeader title={t('subjects.subBranches')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const branches = row.original.SubjectSubBranch ?? [];
@@ -308,7 +307,7 @@ export function SubjectsTable({
         },
         size: 140,
         meta: {
-          headerTitle: 'Sub-Branches',
+          headerTitle: t('subjects.subBranches'),
           skeleton: <Skeleton className="h-4 w-28" />,
         },
         enableSorting: true,
@@ -317,18 +316,22 @@ export function SubjectsTable({
       {
         id: 'status',
         accessorFn: (row) =>
-          canEditSubject(row.deactivatedAt) ? 'Active' : 'Inactive',
+          canEditSubject(row.deactivatedAt)
+            ? t('common.labels.active')
+            : t('common.labels.inactive'),
         header: ({ column }) => (
-          <DataGridColumnHeader title="Status" visibility column={column} />
+          <DataGridColumnHeader title={t('common.labels.status')} visibility column={column} />
         ),
         cell: ({ row }) => (
           <Badge variant={canEditSubject(row.original.deactivatedAt) ? 'success' : 'secondary'}>
-            {canEditSubject(row.original.deactivatedAt) ? 'Active' : 'Inactive'}
+            {canEditSubject(row.original.deactivatedAt)
+              ? t('common.labels.active')
+              : t('common.labels.inactive')}
           </Badge>
         ),
         size: 88,
         meta: {
-          headerTitle: 'Status',
+          headerTitle: t('common.labels.status'),
           skeleton: <Skeleton className="h-7 w-16" />,
         },
         enableSorting: true,
@@ -339,7 +342,7 @@ export function SubjectsTable({
     if (canManage) {
       base.push({
         id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">{t('common.labels.actions')}</span>,
         cell: ({ row }) => {
           const isActive = canEditSubject(row.original.deactivatedAt);
           if (!isActive) {
@@ -351,14 +354,16 @@ export function SubjectsTable({
                 onClick={() => {
                   if (
                     window.confirm(
-                      `Reactivate subject "${row.original.nameEn}"?`,
+                      t('subjects.reactivateConfirm', {
+                        name: row.original.nameEn,
+                      }),
                     )
                   ) {
                     reactivateSubject.mutate(row.original.id);
                   }
                 }}
               >
-                Reactivate
+                {t('subjects.reactivate')}
               </Button>
             );
           }
@@ -370,7 +375,11 @@ export function SubjectsTable({
               onEdit={() => router.push(`/subjects/${row.original.id}/edit`)}
               onDelete={() => {
                 if (
-                  window.confirm(`Deactivate subject "${row.original.nameEn}"?`)
+                  window.confirm(
+                    t('subjects.deactivateConfirm', {
+                      name: row.original.nameEn,
+                    }),
+                  )
                 ) {
                   deactivateSubject.mutate(row.original.id);
                 }
@@ -389,7 +398,7 @@ export function SubjectsTable({
     }
 
     return base;
-  }, [router, deactivateSubject, reactivateSubject, canManage, onAssignToClasses]);
+  }, [router, deactivateSubject, reactivateSubject, canManage, onAssignToClasses, t]);
 
   const table = useReactTable({
     data: filtered,
@@ -417,7 +426,7 @@ export function SubjectsTable({
       table={table}
       recordCount={recordCount}
       isLoading={isLoading}
-      emptyMessage={emptyMessage ?? 'No subjects match the current filters.'}
+      emptyMessage={emptyMessage ?? t('subjects.noSubjectsMatch')}
       tableLayout={{
         columnsResizable: true,
         columnsPinnable: true,
@@ -431,11 +440,11 @@ export function SubjectsTable({
     >
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
-          <h3 className="text-sm font-medium">Subjects</h3>
+          <h3 className="text-sm font-medium">{t('subjects.title')}</h3>
           <InputWrapper className="w-full max-w-xs">
             <Search className="size-4 shrink-0 text-muted-foreground" />
             <Input
-              placeholder="Search..."
+              placeholder={t('subjects.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -443,7 +452,7 @@ export function SubjectsTable({
         </CardHeader>
         {isError ? (
           <p className="px-5 pb-4 text-sm text-destructive">
-            {error instanceof Error ? error.message : 'Failed to load subjects.'}
+            {error instanceof Error ? error.message : t('subjects.loadFailed')}
           </p>
         ) : null}
         <CardTable className="overflow-x-hidden">

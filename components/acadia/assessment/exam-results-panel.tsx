@@ -15,6 +15,8 @@ import {
   termLabel,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
+import { localizedText } from '@/lib/acadia/locale';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const EXAM_SELECT = `
   id,
@@ -26,7 +28,7 @@ const EXAM_SELECT = `
   academicYearId,
   termId,
   sequenceId,
-  Subject!ExamSession_subjectId_tenantId_fkey ( code, nameEn ),
+  Subject!ExamSession_subjectId_tenantId_fkey ( code, nameEn, nameFr ),
   Term!ExamSession_semesterId_tenantId_fkey ( number ),
   AcademicSequence:sequenceId ( number, numberInTerm )
 `;
@@ -47,6 +49,7 @@ type ExamForResults = {
 };
 
 export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
   const { finalizeExamSession } = useAssessmentMutations();
@@ -58,18 +61,20 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
   );
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading exam…</p>;
+    return <p className="text-sm text-muted-foreground">{t('exams.loading')}</p>;
   }
 
   if (isError || !data) {
     return (
       <p className="text-sm text-destructive">
-        {error instanceof Error ? error.message : 'Exam session not found.'}
+        {error instanceof Error ? error.message : t('exams.notFound')}
       </p>
     );
   }
 
-  const subject = unwrapRelation<{ code?: string; nameEn?: string }>(data.Subject);
+  const subject = unwrapRelation<{ code?: string; nameEn?: string; nameFr?: string }>(
+    data.Subject,
+  );
   const term = unwrapRelation<{ number?: number }>(data.Term);
   const sequence = unwrapRelation<{ number?: number; numberInTerm?: number }>(
     data.AcademicSequence,
@@ -80,30 +85,32 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
     <div className="space-y-6">
       <div className="rounded-lg border p-4 space-y-2 text-sm">
         <p>
-          <span className="font-medium">Type:</span>{' '}
-          {examSessionTypeLabel(data.type)}
+          <span className="font-medium">{t('common.labels.type')}:</span>{' '}
+          {t(`exams.type.${data.type}`, { defaultValue: examSessionTypeLabel(data.type) })}
         </p>
         <p>
-          <span className="font-medium">Subject:</span>{' '}
-          {subject?.code} — {subject?.nameEn}
+          <span className="font-medium">{t('marks.subject')}:</span>{' '}
+          {subject?.code} — {localizedText(subject?.nameEn, subject?.nameFr)}
         </p>
         <p>
-          <span className="font-medium">Term:</span> {termLabel(term)}
+          <span className="font-medium">{t('academics.term')}:</span> {termLabel(term)}
         </p>
         <p>
-          <span className="font-medium">Sequence:</span> {sequenceLabel(sequence)}
+          <span className="font-medium">{t('marks.sequence')}:</span> {sequenceLabel(sequence)}
         </p>
         <p>
-          <span className="font-medium">Period:</span>{' '}
+          <span className="font-medium">{t('exams.period')}:</span>{' '}
           {formatDateTime(data.startsOn)} — {formatDateTime(data.endsOn)}
         </p>
         <p>
-          <span className="font-medium">Status:</span>{' '}
-          {data.finalizedAt ? `Finalized ${formatDateTime(data.finalizedAt)}` : 'Open'}
+          <span className="font-medium">{t('common.labels.status')}:</span>{' '}
+          {data.finalizedAt
+            ? t('exams.finalizedAt', { date: formatDateTime(data.finalizedAt) })
+            : t('exams.open')}
         </p>
         <div className="flex gap-2 pt-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/exams/${examSessionId}/edit`}>Edit session</Link>
+            <Link href={`/exams/${examSessionId}/edit`}>{t('exams.editSession')}</Link>
           </Button>
           {editable ? (
             <Button
@@ -114,7 +121,7 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
               {finalizeExamSession.isPending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />
               ) : (
-                'Finalize results'
+                t('exams.finalize')
               )}
             </Button>
           ) : null}
@@ -122,13 +129,9 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
       </div>
 
       {editable ? (
-        <p className="text-sm text-muted-foreground">
-          Enter or update marks below, then finalize when complete (FR-4.2.4).
-        </p>
+        <p className="text-sm text-muted-foreground">{t('exams.enterMarksHint')}</p>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          This session is finalized. Marks are read-only.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('exams.finalizedReadonly')}</p>
       )}
 
       {data.sequenceId ? (
@@ -143,9 +146,9 @@ export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
         />
       ) : (
         <p className="text-sm text-muted-foreground">
-          Link this exam session to an academic sequence to enter marks, or use{' '}
+          {t('exams.linkSequenceHint')}{' '}
           <Link href="/marks/entry" className="text-primary underline">
-            marks entry
+            {t('marks.entryTitle')}
           </Link>
           .
         </p>

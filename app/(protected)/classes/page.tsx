@@ -25,6 +25,7 @@ import {
 } from '@/lib/acadia/education-system';
 import { streamLabel, unwrapRelation } from '@/lib/acadia/record-display';
 import { useLevelsForStream } from '@/hooks/use-enrollment-catalog-options';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = Record<string, unknown> & {
   id: string;
@@ -39,6 +40,7 @@ type Row = Record<string, unknown> & {
 };
 
 export default function ClassRostersPage() {
+  const { t } = useTranslation();
   const { activeYearId } = useActiveAcademicYear();
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
@@ -106,7 +108,7 @@ export default function ClassRostersPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Class rosters"
+      title={t('enrollment.classRosters')}
       description="Students enrolled by academic year, sub-system, branch, and level."
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

@@ -21,12 +21,14 @@ import { Input } from '@/components/ui/input';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { createClientOrNull } from '@/lib/supabase/client';
 import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase/env';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   ChangePasswordSchemaType,
   getChangePasswordSchema,
 } from '../forms/change-password-schema';
 
 export default function Page() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [checkingSession, setCheckingSession] = useState(true);
@@ -84,9 +86,7 @@ export default function Page() {
       if (cancelled) return;
 
       if (sessionError || !user) {
-        setError(
-          'Your reset link is invalid or has expired. Request a new password reset email.',
-        );
+        setError(t('auth.resetLinkExpired'));
         setHasRecoverySession(false);
       } else {
         setHasRecoverySession(true);
@@ -121,19 +121,17 @@ export default function Page() {
       if (updateError) {
         setError(
           updateError.message.includes('same')
-            ? 'Choose a password that is different from your current one.'
-            : 'Unable to update your password. Request a new reset link and try again.',
+            ? t('auth.passwordSame')
+            : t('auth.passwordUpdateFailed'),
         );
         return;
       }
 
       await supabase.auth.signOut();
-      setSuccessMessage(
-        'Password updated. Redirecting to sign in… If your account is not active yet, contact an administrator before signing in.',
-      );
+      setSuccessMessage(t('auth.passwordUpdated'));
       setTimeout(() => router.push('/signin'), 2000);
     } catch {
-      setError('An error occurred while resetting the password.');
+      setError(t('auth.resetError'));
     } finally {
       setIsProcessing(false);
     }
@@ -147,10 +145,10 @@ export default function Page() {
       >
         <div className="text-center space-y-1 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Set a new password
+            {t('auth.changePasswordTitle')}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter your new password below.
+            {t('auth.enterNewPassword')}
           </p>
         </div>
 
@@ -159,7 +157,7 @@ export default function Page() {
             <AlertIcon>
               <LoaderCircleIcon className="size-4 animate-spin" />
             </AlertIcon>
-            <AlertTitle>Verifying your reset link…</AlertTitle>
+            <AlertTitle>{t('auth.verifyingReset')}</AlertTitle>
           </Alert>
         )}
 
@@ -172,10 +170,10 @@ export default function Page() {
               <AlertTitle>{error}</AlertTitle>
             </Alert>
             <Button asChild>
-              <Link href="/reset-password">Request a new reset link</Link>
+              <Link href="/reset-password">{t('auth.requestNewLink')}</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/signin">Back to sign in</Link>
+              <Link href="/signin">{t('auth.backToSignIn')}</Link>
             </Button>
           </div>
         )}
@@ -199,7 +197,7 @@ export default function Page() {
                 name="newPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New Password</FormLabel>
+                    <FormLabel>{t('auth.newPassword')}</FormLabel>
                     <div className="relative">
                       <FormControl>
                         <Input
@@ -215,7 +213,7 @@ export default function Page() {
                         onClick={() => setPasswordVisible(!passwordVisible)}
                         className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
                         aria-label={
-                          passwordVisible ? 'Hide password' : 'Show password'
+                          passwordVisible ? t('auth.hidePassword') : t('auth.showPassword')
                         }
                       >
                         {passwordVisible ? (
@@ -235,7 +233,7 @@ export default function Page() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm New Password</FormLabel>
+                    <FormLabel>{t('auth.confirmPassword')}</FormLabel>
                     <div className="relative">
                       <FormControl>
                         <Input
@@ -258,8 +256,8 @@ export default function Page() {
                         className="absolute end-0 top-1/2 -translate-y-1/2 h-7 w-7 me-1.5 bg-transparent!"
                         aria-label={
                           passwordConfirmationVisible
-                            ? 'Hide password confirmation'
-                            : 'Show password confirmation'
+                            ? t('auth.hidePassword')
+                            : t('auth.showPassword')
                         }
                       >
                         {passwordConfirmationVisible ? (
@@ -278,7 +276,7 @@ export default function Page() {
                 {isProcessing && (
                   <LoaderCircleIcon className="size-4 animate-spin" />
                 )}
-                Update password
+                {t('auth.updatePassword')}
               </Button>
             </>
           )}

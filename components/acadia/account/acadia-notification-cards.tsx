@@ -11,15 +11,18 @@ import {
   formatDateTime,
   formatRecordValue,
 } from '@/lib/acadia/record-display';
+import { localizedText } from '@/lib/acadia/locale';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function AcadiaNotificationPreferencesCard() {
+  const { t } = useTranslation();
   const { data = [], isLoading, isError, error } =
     useAcadiaNotificationPreferences();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Notification preferences</CardTitle>
+        <CardTitle>{t('account.notificationPreferences')}</CardTitle>
       </CardHeader>
       <CardContent>
         <AccountDataState
@@ -27,15 +30,15 @@ export function AcadiaNotificationPreferencesCard() {
           isError={isError}
           error={error}
           isEmpty={data.length === 0}
-          emptyMessage="No notification preferences configured yet for your account."
+          emptyMessage={t('account.noPreferences')}
         >
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Event</TableHead>
-                <TableHead>In-app</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Updated</TableHead>
+                <TableHead>{t('communication.event')}</TableHead>
+                <TableHead>{t('communication.inApp')}</TableHead>
+                <TableHead>{t('common.labels.email')}</TableHead>
+                <TableHead>{t('communication.updated')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -56,6 +59,7 @@ export function AcadiaNotificationPreferencesCard() {
 }
 
 export function AcadiaRecentNotificationsCard() {
+  const { t } = useTranslation();
   const { data = [], isLoading, isError, error } = useAcadiaNotifications();
 
   return (
@@ -64,30 +68,32 @@ export function AcadiaRecentNotificationsCard() {
       isError={isError}
       error={error}
       isEmpty={data.length === 0}
-      emptyMessage="No in-app notifications yet."
+      emptyMessage={t('communication.noNotifications')}
     >
       <div className="flex flex-col gap-5">
         {data.map((item) => (
           <RecordDetailCard
             key={item.id}
-            title={item.titleEn}
+            title={localizedText(item.titleEn, item.titleFr)}
             fields={[
-              { label: 'Event', value: formatRecordValue(item.event) },
-              { label: 'Title (FR)', value: formatRecordValue(item.titleFr) },
-              { label: 'Body (EN)', value: formatRecordValue(item.bodyEn) },
+              { label: t('communication.event'), value: formatRecordValue(item.event) },
               {
-                label: 'Read',
+                label: t('common.labels.description'),
+                value: formatRecordValue(localizedText(item.bodyEn, item.bodyFr)),
+              },
+              {
+                label: t('communication.read'),
                 value: item.readAt ? (
                   <Badge variant="secondary" appearance="light">
-                    Read
+                    {t('communication.read')}
                   </Badge>
                 ) : (
                   <Badge variant="warning" appearance="light">
-                    Unread
+                    {t('communication.unread')}
                   </Badge>
                 ),
               },
-              { label: 'Received', value: formatDateTime(item.createdAt) },
+              { label: t('communication.received'), value: formatDateTime(item.createdAt) },
             ]}
           />
         ))}

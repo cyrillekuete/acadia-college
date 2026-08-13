@@ -37,10 +37,8 @@ import {
   type StaffCreateInput,
   type StaffCreateFormValues,
 } from '@/lib/acadia/staff-create-schemas';
-import { staffEmploymentLabel } from '@/lib/acadia/staff-registry';
 import {
   ACADEMIC_SUB_SYSTEMS,
-  subSystemLabel,
   type AcademicSubSystem,
 } from '@/lib/acadia/education-system';
 import { downloadStaffCredentials } from '@/lib/acadia/download-credentials';
@@ -49,6 +47,7 @@ import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useUserRoleOptions } from '@/hooks/use-user-role-options';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'ADJUNCT', 'VISITING'] as const;
 const STAFF_ROLE_SLUGS = new Set(['teacher', 'lecturer', 'staff']);
@@ -118,6 +117,7 @@ function CheckboxMultiSelect({
 }
 
 export function StaffCreateForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const mutation = useStaffCreateMutation();
   const { activeYear, activeYearId } = useActiveAcademicYear();
@@ -211,7 +211,7 @@ export function StaffCreateForm() {
 
   async function onSubmit(values: StaffCreateInput) {
     if (!activeYearId) {
-      toast.error('Set an active academic year before adding a teacher.');
+      toast.error(t('staff.noActiveYear'));
       return;
     }
 
@@ -221,7 +221,7 @@ export function StaffCreateForm() {
     };
 
     const result = await mutation.mutateAsync(payload).catch((err: Error) => {
-      toast.error(err.message ?? 'Failed to create teacher.');
+      toast.error(err.message ?? t('staff.createFailed'));
       return null;
     });
 
@@ -240,7 +240,7 @@ export function StaffCreateForm() {
     });
 
     toast.success(
-      `Teacher ${result.staffCode} created. Login credentials downloaded.`,
+      t('staff.createdToast', { staffCode: result.staffCode }),
     );
     router.push(`/staff/${result.staffId}`);
   }
@@ -252,22 +252,19 @@ export function StaffCreateForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {noActiveYear ? (
           <p className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            No active academic year is configured. Assignments cannot be saved until
-            one is set.
+            {t('staff.noActiveYearBanner')}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Assignments apply to academic year{' '}
-            <span className="font-medium text-foreground">
-              {activeYear?.label ?? activeYearId}
-            </span>
-            . A system login email will be generated when you save.
+            {t('staff.assignmentsApplyTo', {
+              year: activeYear?.label ?? activeYearId,
+            })}
           </p>
         )}
 
         <Card>
           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
+            <CardTitle>{t('staff.personalInfo')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className={ROW_4}>
@@ -277,18 +274,18 @@ export function StaffCreateForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Title <span className="text-destructive">*</span>
+                    {t('common.labels.title')} <span className="text-destructive">*</span>
                   </FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select title" />
+                        <SelectValue placeholder={t('staff.selectTitle')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {TITLE_OPTIONS.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
+                      {TITLE_OPTIONS.map((titleOption) => (
+                        <SelectItem key={titleOption} value={titleOption}>
+                          {titleOption}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -304,7 +301,7 @@ export function StaffCreateForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    First name <span className="text-destructive">*</span>
+                    {t('students.firstName')} <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -320,7 +317,7 @@ export function StaffCreateForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Last name <span className="text-destructive">*</span>
+                    {t('students.lastName')} <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -335,12 +332,12 @@ export function StaffCreateForm() {
               name="dateOfBirth"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Date of birth</FormLabel>
+                  <FormLabel>{t('common.labels.dateOfBirth')}</FormLabel>
                   <FormControl>
                     <DatePickerInput
                       value={field.value ?? ''}
                       onChange={field.onChange}
-                      placeholder="Pick date of birth"
+                      placeholder={t('staff.pickDateOfBirth')}
                     />
                   </FormControl>
                   <FormMessage />
@@ -355,19 +352,19 @@ export function StaffCreateForm() {
               name="gender"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Gender</FormLabel>
+                  <FormLabel>{t('common.labels.gender')}</FormLabel>
                   <Select
                     value={field.value ?? ''}
                     onValueChange={field.onChange}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
+                        <SelectValue placeholder={t('students.selectGender')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="male">{t('common.labels.male')}</SelectItem>
+                      <SelectItem value="female">{t('common.labels.female')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -380,7 +377,7 @@ export function StaffCreateForm() {
               name="nationality"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nationality</FormLabel>
+                  <FormLabel>{t('students.nationality')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -394,7 +391,7 @@ export function StaffCreateForm() {
               name="idNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ID Card Number</FormLabel>
+                  <FormLabel>{t('staff.idCardNumber')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -408,7 +405,7 @@ export function StaffCreateForm() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Contact Details</CardTitle>
+            <CardTitle>{t('staff.contactDetails')}</CardTitle>
           </CardHeader>
           <CardContent className={GRID}>
             <FormField
@@ -417,14 +414,13 @@ export function StaffCreateForm() {
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
                   <FormLabel>
-                    Email address <span className="text-destructive">*</span>
+                    {t('staff.emailAddress')} <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input type="email" {...field} />
                   </FormControl>
                   <FormDescription>
-                    Personal or contact email. Login email is generated automatically
-                    (firstname.lastname@acadia-college.edu).
+                    {t('staff.emailLoginHint')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -435,7 +431,7 @@ export function StaffCreateForm() {
               control={form.control}
               countryName="phoneCountry"
               phoneName="phone"
-              phoneLabel="Phone number"
+              phoneLabel={t('staff.phoneNumber')}
               required
               hideCountry
               className="sm:col-span-2 lg:col-span-1"
@@ -445,7 +441,7 @@ export function StaffCreateForm() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Address &amp; Qualifications</CardTitle>
+            <CardTitle>{t('staff.addressQualifications')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className={ROW_3}>
@@ -454,7 +450,7 @@ export function StaffCreateForm() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>{t('common.labels.address')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -468,7 +464,7 @@ export function StaffCreateForm() {
                 name="city"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>City</FormLabel>
+                    <FormLabel>{t('common.labels.city')}</FormLabel>
                     <FormControl>
                       <CityAutocomplete
                         value={field.value ?? ''}
@@ -487,7 +483,7 @@ export function StaffCreateForm() {
                 name="region"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Region</FormLabel>
+                    <FormLabel>{t('common.labels.region')}</FormLabel>
                     <FormControl>
                       <RegionSelect
                         value={field.value ?? ''}
@@ -509,7 +505,7 @@ export function StaffCreateForm() {
                 name="qualifications"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Qualifications</FormLabel>
+                    <FormLabel>{t('staff.qualifications')}</FormLabel>
                     <FormControl>
                       <Textarea rows={4} {...field} />
                     </FormControl>
@@ -523,7 +519,7 @@ export function StaffCreateForm() {
                 name="teachingExperience"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Teaching experience</FormLabel>
+                    <FormLabel>{t('staff.teachingExperience')}</FormLabel>
                     <FormControl>
                       <Textarea rows={4} {...field} />
                     </FormControl>
@@ -537,7 +533,7 @@ export function StaffCreateForm() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Teaching Assignment &amp; Employment</CardTitle>
+            <CardTitle>{t('staff.teachingAssignment')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className={ROW_4}>
@@ -547,18 +543,18 @@ export function StaffCreateForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Sub-system <span className="text-destructive">*</span>
+                      {t('catalog.subSystemLabel')} <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select sub-system" />
+                          <SelectValue placeholder={t('catalog.selectSubSystem')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {ACADEMIC_SUB_SYSTEMS.map((sys) => (
                           <SelectItem key={sys} value={sys}>
-                            {subSystemLabel(sys)}
+                            {t(`catalog.subSystem.${sys}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -574,18 +570,18 @@ export function StaffCreateForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Employment type <span className="text-destructive">*</span>
+                      {t('staff.employmentType')} <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder={t('staff.selectType')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {EMPLOYMENT_TYPES.map((type) => (
                           <SelectItem key={type} value={type}>
-                            {staffEmploymentLabel(type)}
+                            {t(`staff.employment.${type}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -600,12 +596,12 @@ export function StaffCreateForm() {
                 name="hireDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start date</FormLabel>
+                    <FormLabel>{t('staff.startDate')}</FormLabel>
                     <FormControl>
                       <DatePickerInput
                         value={field.value ?? ''}
                         onChange={field.onChange}
-                        placeholder="Pick start date"
+                        placeholder={t('staff.pickStartDate')}
                       />
                     </FormControl>
                     <FormMessage />
@@ -618,7 +614,7 @@ export function StaffCreateForm() {
                 name="monthlySalary"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Monthly salary</FormLabel>
+                    <FormLabel>{t('staff.monthlySalary')}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -646,13 +642,13 @@ export function StaffCreateForm() {
                 name="subjectIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subjects to teach</FormLabel>
+                    <FormLabel>{t('staff.subjectsToTeach')}</FormLabel>
                     <CheckboxMultiSelect
                       options={subjectOptions}
                       value={field.value ?? []}
                       onChange={field.onChange}
                       disabled={noActiveYear}
-                      emptyMessage="No subjects available for this sub-system."
+                      emptyMessage={t('staff.noSubjectsForSubSystem')}
                     />
                     <FormMessage />
                   </FormItem>
@@ -664,13 +660,13 @@ export function StaffCreateForm() {
                 name="classIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Classes to teach</FormLabel>
+                    <FormLabel>{t('staff.classesToTeach')}</FormLabel>
                     <CheckboxMultiSelect
                       options={classSelectOptions}
                       value={field.value ?? []}
                       onChange={field.onChange}
                       disabled={noActiveYear}
-                      emptyMessage="No classes available for this sub-system."
+                      emptyMessage={t('staff.noClassesForSubSystem')}
                     />
                     <FormMessage />
                   </FormItem>
@@ -681,14 +677,14 @@ export function StaffCreateForm() {
             <Separator />
 
             <div>
-              <p className="mb-3 text-sm font-medium">Emergency contact</p>
+              <p className="mb-3 text-sm font-medium">{t('staff.emergencyContact')}</p>
               <div className={GRID}>
                 <FormField
                   control={form.control}
                   name="emergencyContactName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>{t('common.labels.name')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -702,20 +698,20 @@ export function StaffCreateForm() {
                   name="emergencyContactRelationship"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Relationship</FormLabel>
+                      <FormLabel>{t('common.labels.relationship')}</FormLabel>
                       <Select
                         value={field.value ?? ''}
                         onValueChange={field.onChange}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select relationship" />
+                            <SelectValue placeholder={t('students.selectRelationship')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {RELATIONSHIP_OPTIONS.map((rel) => (
                             <SelectItem key={rel.value} value={rel.value}>
-                              {rel.label}
+                              {t(`staff.relationship.${rel.value}`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -729,7 +725,7 @@ export function StaffCreateForm() {
                   control={form.control}
                   countryName="emergencyContactPhoneCountry"
                   phoneName="emergencyContactPhone"
-                  phoneLabel="Contact phone"
+                  phoneLabel={t('staff.contactPhone')}
                   hideCountry
                 />
               </div>
@@ -744,10 +740,10 @@ export function StaffCreateForm() {
             onClick={() => router.push('/staff')}
             disabled={mutation.isPending}
           >
-            Cancel
+            {t('common.buttons.cancel')}
           </Button>
           <Button type="submit" disabled={mutation.isPending || noActiveYear}>
-            {mutation.isPending ? 'Creating…' : 'Create teacher'}
+            {mutation.isPending ? t('common.messages.creating') : t('staff.createTeacher')}
           </Button>
         </div>
       </form>

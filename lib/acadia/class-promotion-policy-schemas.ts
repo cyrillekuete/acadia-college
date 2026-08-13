@@ -3,13 +3,13 @@ import { z } from 'zod';
 export const DEFAULT_MIN_PROMOTION_AVERAGE = 10;
 
 export const classPromotionPolicyFormSchema = z.object({
-  classId: z.string().min(1, 'Class is required.'),
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  classId: z.string().min(1, 'validation.required.class'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   autoPromotionEnabled: z.boolean(),
   minPromotionAverage: z.coerce
     .number()
-    .min(0, 'Minimum average must be at least 0.')
-    .max(20, 'Minimum average cannot exceed 20.'),
+    .min(0, 'validation.minAverageMin')
+    .max(20, 'validation.minAverageMax'),
   notes: z.string().max(2000).optional(),
 });
 

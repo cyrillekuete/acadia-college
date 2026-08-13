@@ -1,3 +1,10 @@
+import {
+  getUiLocale,
+  localizedText,
+  translate,
+  type UiLocale,
+} from '@/lib/acadia/locale';
+
 export const ACADEMIC_SUB_SYSTEMS = ['ENGLISH', 'FRENCH'] as const;
 export type AcademicSubSystem = (typeof ACADEMIC_SUB_SYSTEMS)[number];
 
@@ -145,6 +152,7 @@ export function levelDisplayLabel(
     labelEn?: string | null;
     labelFr?: string | null;
   } | null,
+  locale?: UiLocale,
 ): string {
   if (!level) {
     return '—';
@@ -153,12 +161,15 @@ export function levelDisplayLabel(
   if (name) {
     return name;
   }
-  const label = level.labelEn?.trim() || level.labelFr?.trim();
+  const label = localizedText(level.labelEn, level.labelFr, locale ?? getUiLocale());
   if (label) {
     return label;
   }
   if (level.number !== undefined) {
-    return `Level ${level.number}`;
+    return translate('catalog.levelN', {
+      number: level.number,
+      defaultValue: `Level ${level.number}`,
+    });
   }
   return '—';
 }

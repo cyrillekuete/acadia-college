@@ -15,6 +15,7 @@ import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function formatGrowthFooter(percent: number | null | undefined, fallback: string) {
   if (percent === null || percent === undefined) {
@@ -25,6 +26,7 @@ function formatGrowthFooter(percent: number | null | undefined, fallback: string
 }
 
 export default function AdminDashboardPage() {
+  const { t } = useTranslation();
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
@@ -43,14 +45,14 @@ export default function AdminDashboardPage() {
 
   return (
     <AcadiaPageShell
-      title="Admin dashboard"
+      title={t('admin.dashboardTitle')}
       description="Welcome to Acadia College. Overview of students, staff, classes, and finance."
     >
       <div className="space-y-7.5">
         <AdminAcademicYearCard />
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
           <AdminOverviewStatCard
-            title="Total Students"
+            title={t('admin.totalStudents')}
             value={formatDashboardStatValue(stats?.students)}
             footer={formatGrowthFooter(
               stats?.studentsGrowthPercent,
@@ -64,7 +66,7 @@ export default function AdminDashboardPage() {
             icon="teacher"
           />
           <AdminOverviewStatCard
-            title="Total Teachers"
+            title={t('admin.totalTeachers')}
             value={formatDashboardStatValue(stats?.teachers)}
             footer={
               stats?.teachersNewThisMonth != null && stats.teachersNewThisMonth > 0
@@ -79,19 +81,19 @@ export default function AdminDashboardPage() {
             icon="users"
           />
           <AdminOverviewStatCard
-            title="Active Classes"
+            title={t('admin.activeClasses')}
             value={formatDashboardStatValue(stats?.activeClasses)}
             footer="Across all levels"
             icon="book-open"
           />
           <AdminOverviewStatCard
-            title="Active Subjects"
+            title={t('admin.activeSubjects')}
             value={formatDashboardStatValue(stats?.activeSubjects)}
             footer="In subject catalog"
             icon="book"
           />
           <AdminOverviewStatCard
-            title="Revenue"
+            title={t('admin.revenue')}
             value={
               stats?.revenueMinor != null
                 ? formatMoneyMinor(stats.revenueMinor)

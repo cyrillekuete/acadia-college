@@ -17,6 +17,7 @@ import { useTheme } from 'next-themes';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useAcadiaSignOut } from '@/hooks/use-acadia-sign-out';
 import { useLanguage } from '@/providers/i18n-provider';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +38,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { data: acadiaSession } = useAcadiaCollegeSession();
   const signOut = useAcadiaSignOut();
   const { changeLanguage, language } = useLanguage();
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
 
   const displayName =
@@ -178,7 +180,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           <DropdownMenuSubTrigger className="flex items-center gap-2 [&_[data-slot=dropdown-menu-sub-trigger-indicator]]:hidden hover:[&_[data-slot=badge]]:border-input data-[state=open]:[&_[data-slot=badge]]:border-input">
             <Globe />
             <span className="flex items-center justify-between gap-2 grow relative">
-              Language
+              {t('account.language')}
               <Badge
                 variant="outline"
                 className="absolute end-0 top-1/2 -translate-y-1/2"

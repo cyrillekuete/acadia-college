@@ -20,9 +20,12 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { localizedText } from '@/lib/acadia/locale';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function RoomUsagePanel() {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -41,7 +44,7 @@ export function RoomUsagePanel() {
           dayOfWeek,
           startMinutes,
           endMinutes,
-          Room!TimetableSlot_roomId_tenantId_fkey ( code, nameEn, capacity )
+          Room!TimetableSlot_roomId_tenantId_fkey ( code, nameEn, nameFr, capacity )
         `,
         )
         .eq('tenantId', tenantId!)
@@ -65,17 +68,22 @@ export function RoomUsagePanel() {
       endMinutes: Number(row.endMinutes),
     }));
     const usageMap = aggregateRoomUsage(slots);
-    const roomMeta = new Map<string, { code: string; nameEn: string; capacity: number | null }>();
+    const roomMeta = new Map<
+      string,
+      { code: string; nameEn: string; nameFr: string; capacity: number | null }
+    >();
     for (const row of query.data ?? []) {
       const room = unwrapRelation<{
         code?: string;
         nameEn?: string;
+        nameFr?: string;
         capacity?: number | null;
       }>(row.Room);
       if (room) {
         roomMeta.set(row.roomId as string, {
           code: room.code ?? '',
           nameEn: room.nameEn ?? '',
+          nameFr: room.nameFr ?? '',
           capacity: room.capacity ?? null,
         });
       }
@@ -85,7 +93,9 @@ export function RoomUsagePanel() {
         const meta = roomMeta.get(roomId);
         return {
           roomId,
-          label: meta ? `${meta.code} — ${meta.nameEn}` : roomId,
+          label: meta
+            ? `${meta.code} — ${localizedText(meta.nameEn, meta.nameFr)}`
+            : roomId,
           capacity: meta?.capacity ?? null,
           ...stats,
         };
@@ -109,10 +119,10 @@ export function RoomUsagePanel() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Room</TableHead>
-              <TableHead>Capacity</TableHead>
-              <TableHead>Weekly slots</TableHead>
-              <TableHead>Scheduled hours / week</TableHead>
+              <TableHead>{t('resources.room')}</TableHead>
+              <TableHead>{t('resources.capacity')}</TableHead>
+              <TableHead>{t('resources.weeklySlots')}</TableHead>
+              <TableHead>{t('resources.scheduledHours')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

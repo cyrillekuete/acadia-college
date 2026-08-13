@@ -31,6 +31,7 @@ import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useAttendanceMutations } from '@/hooks/use-attendance-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export type AttendanceSessionFormRecord = AttendanceSessionFormValues & {
   id: string;
@@ -43,6 +44,7 @@ export function AttendanceSessionForm({
   record?: AttendanceSessionFormRecord | null;
   onCancelHref: string;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!record;
   const { createAttendanceSession, updateAttendanceSession } =
     useAttendanceMutations();
@@ -100,7 +102,7 @@ export function AttendanceSessionForm({
           name="academicYearId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Academic year</FormLabel>
+              <FormLabel>{t('students.academicYear')}</FormLabel>
               <CurrentAcademicYearBadge className="mb-2" />
               <FormControl>
                 <Input type="hidden" {...field} />
@@ -115,7 +117,7 @@ export function AttendanceSessionForm({
           name="subjectId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Subject</FormLabel>
+              <FormLabel>{t('students.subject')}</FormLabel>
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
@@ -123,7 +125,7 @@ export function AttendanceSessionForm({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
+                    <SelectValue placeholder={t('attendance.selectSubject')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -144,7 +146,7 @@ export function AttendanceSessionForm({
           name="sessionDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Session date</FormLabel>
+              <FormLabel>{t('attendance.sessionDate')}</FormLabel>
               <FormControl>
                 <Input type="date" {...field} />
               </FormControl>
@@ -158,9 +160,9 @@ export function AttendanceSessionForm({
           name="label"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Label (optional)</FormLabel>
+              <FormLabel>{t('attendance.labelOptional')}</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Morning session" {...field} />
+                <Input placeholder={t('attendance.labelPlaceholder')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -172,13 +174,13 @@ export function AttendanceSessionForm({
             {pending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : isEdit ? (
-              'Save session'
+              t('attendance.saveSession')
             ) : (
-              'Create session'
+              t('attendance.createSession')
             )}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link href={onCancelHref}>Cancel</Link>
+            <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
           </Button>
         </div>
       </form>

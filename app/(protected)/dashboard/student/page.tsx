@@ -6,36 +6,38 @@ import { formatDashboardStatValue } from '@/components/acadia/dashboard-stat-car
 import { useStudentDashboardStats } from '@/hooks/use-role-dashboard-stats';
 import { formatAttendancePercentage } from '@/lib/acadia/attendance';
 import { formatMoneyMinor } from '@/lib/acadia/finance';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function StudentDashboardPage() {
+  const { t } = useTranslation();
   const { data: stats } = useStudentDashboardStats();
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Student dashboard"
+      title={t('admin.studentDashboard')}
       description="Welcome to Acadia College. Your enrollment, schedule, and academic progress."
     >
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <AdminOverviewStatCard
-          title="Enrolled subjects"
+          title={t('admin.enrolledSubjects')}
           value={formatDashboardStatValue(stats?.enrolledSubjectCount)}
           footer="Current term"
           icon="book"
         />
         <AdminOverviewStatCard
-          title="Timetable today"
+          title={t('admin.timetableToday')}
           value={formatDashboardStatValue(stats?.todaysSessionCount)}
           footer="Today's schedule"
           icon="calendar-tick"
         />
         <AdminOverviewStatCard
-          title="Attendance"
+          title={t('attendance.title')}
           value={formatAttendancePercentage(stats?.attendancePercent)}
           footer="This term"
           icon="document"
         />
         <AdminOverviewStatCard
-          title="Fee balance"
+          title={t('admin.feeBalance')}
           value={
             stats?.feeBalanceMinor != null
               ? formatMoneyMinor(stats.feeBalanceMinor)

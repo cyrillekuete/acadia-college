@@ -51,8 +51,10 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { canWriteFinance } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function FinanceLedgerPanel() {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -130,7 +132,7 @@ export function FinanceLedgerPanel() {
               name="entryType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type</FormLabel>
+                  <FormLabel>{t('common.labels.type')}</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
@@ -138,8 +140,8 @@ export function FinanceLedgerPanel() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="INCOME">Income</SelectItem>
-                      <SelectItem value="EXPENSE">Expense</SelectItem>
+                      <SelectItem value="INCOME">{t('finance.income')}</SelectItem>
+                      <SelectItem value="EXPENSE">{t('finance.expense')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -151,9 +153,9 @@ export function FinanceLedgerPanel() {
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>{t('finance.category')}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="e.g. Supplies" />
+                    <Input {...field} placeholder={t('finance.categoryPlaceholder')} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,7 +166,7 @@ export function FinanceLedgerPanel() {
               name="amountMinor"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>{t('finance.amount')}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -184,7 +186,7 @@ export function FinanceLedgerPanel() {
               name="occurredOn"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Date</FormLabel>
+                  <FormLabel>{t('common.labels.date')}</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>
@@ -197,7 +199,7 @@ export function FinanceLedgerPanel() {
               name="description"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('common.labels.description')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -210,7 +212,7 @@ export function FinanceLedgerPanel() {
                 {createLedgerEntry.isPending ? (
                   <LoaderCircleIcon className="size-4 animate-spin" />
                 ) : null}
-                Add entry
+                {t('finance.addEntry')}
               </Button>
             </div>
           </form>
@@ -227,11 +229,11 @@ export function FinanceLedgerPanel() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>{t('common.labels.date')}</TableHead>
+              <TableHead>{t('common.labels.type')}</TableHead>
+              <TableHead>{t('finance.category')}</TableHead>
+              <TableHead>{t('common.labels.description')}</TableHead>
+              <TableHead className="text-right">{t('finance.amount')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -243,7 +245,9 @@ export function FinanceLedgerPanel() {
                     variant={row.entryType === 'INCOME' ? 'success' : 'destructive'}
                     appearance="light"
                   >
-                    {financeLedgerTypeLabel(String(row.entryType))}
+                    {t(`finance.entryType.${String(row.entryType)}`, {
+                      defaultValue: financeLedgerTypeLabel(String(row.entryType)),
+                    })}
                   </Badge>
                 </TableCell>
                 <TableCell>{String(row.category)}</TableCell>

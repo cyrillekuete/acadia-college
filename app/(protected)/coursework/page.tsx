@@ -7,6 +7,7 @@ import {
   detailLinkColumn,
   nestedFieldColumn,
 } from '@/lib/acadia/list-columns';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type TaskRow = {
   id: string;
@@ -73,23 +74,24 @@ const SUBMISSION_SELECT = `
 `;
 
 export default function CourseworkPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Acadia College — Coursework"
-      description="Assignments and student submissions from Supabase."
+      title={t('coursework.title')}
+      description={t('coursework.description')}
     >
       <div className="flex flex-col gap-5 lg:gap-7.5">
         <SupabaseTableList
           scopeByAcademicYear
           table="CourseworkTask"
-          title="Coursework tasks"
+          title={t('coursework.tasks')}
           select={TASK_SELECT}
           columns={taskColumns}
           searchKeys={['titleEn', 'titleFr']}
         />
         <SupabaseTableList
           table="CourseworkSubmission"
-          title="Submissions"
+          title={t('coursework.submissions')}
           select={SUBMISSION_SELECT}
           columns={submissionColumns}
           searchKeys={['status']}

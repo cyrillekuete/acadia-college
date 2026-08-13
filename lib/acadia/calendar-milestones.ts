@@ -1,4 +1,5 @@
 import type { CalendarMilestoneKind } from '@/lib/acadia/calendar-schemas';
+import { localizedText } from '@/lib/acadia/locale';
 
 export type MilestoneRecord = {
   kind: CalendarMilestoneKind;
@@ -177,6 +178,6 @@ export function milestoneKindLabel(kind: CalendarMilestoneKind): string {
 }
 
 export function milestoneDisplayLabel(row: MilestoneRecord): string {
-  const custom = row.labelEn?.trim() || row.labelFr?.trim();
+  const custom = localizedText(row.labelEn, row.labelFr);
   return custom || milestoneKindLabel(row.kind);
 }

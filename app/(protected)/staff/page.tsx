@@ -6,22 +6,24 @@ import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { StaffRegistry } from '@/components/acadia/staff/staff-registry';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { useTranslation } from '@/hooks/useTranslation';
 import { canWriteRegistry } from '@/lib/acadia/roles';
 
 export default function StaffPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canAdd = canWriteRegistry(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Staff"
-      description="Manage teacher profiles, assignments, and records."
+      title={t('staff.title')}
+      description={t('staff.description')}
       actions={
         canAdd ? (
           <Button asChild size="sm">
             <Link href="/staff/new">
               <Plus className="size-4" />
-              Add staff
+              {t('staff.add')}
             </Link>
           </Button>
         ) : undefined

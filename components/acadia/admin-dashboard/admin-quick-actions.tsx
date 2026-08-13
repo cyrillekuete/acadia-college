@@ -4,54 +4,57 @@ import Link from 'next/link';
 import { BarChart3, BookOpen, CalendarCheck, LayoutGrid, Plus, UserPlus } from '@/lib/icons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const ACTIONS = [
   {
-    label: 'Configure academic year',
+    labelKey: 'admin.configureAcademicYear',
     href: '/academics/years',
     icon: CalendarCheck,
   },
   {
-    label: 'Enrol New Student',
+    labelKey: 'admin.enrolNewStudent',
     href: '/students/new',
     icon: Plus,
   },
   {
-    label: 'Add New Teacher',
+    labelKey: 'admin.addNewTeacher',
     href: '/staff/new',
     icon: UserPlus,
   },
   {
-    label: 'Create New Class',
+    labelKey: 'admin.createNewClass',
     href: '/classes',
     icon: BookOpen,
   },
   {
-    label: 'Manage subject catalog',
+    labelKey: 'admin.manageSubjectCatalog',
     href: '/subjects',
     icon: BookOpen,
   },
   {
-    label: 'Manage subject groupings',
+    labelKey: 'admin.manageSubjectGroupings',
     href: '/subjects/groupings',
     icon: LayoutGrid,
   },
   {
-    label: 'Generate Reports',
+    labelKey: 'admin.generateReports',
     href: '/finance/reports',
     icon: BarChart3,
   },
 ] as const;
 
 export function AdminQuickActions() {
+  const { t } = useTranslation();
+
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
-        <CardDescription>Common administrative tasks</CardDescription>
+        <CardTitle>{t('admin.quickActions')}</CardTitle>
+        <CardDescription>{t('admin.quickActionsDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2.5">
-        {ACTIONS.map(({ label, href, icon: Icon }) => (
+        {ACTIONS.map(({ labelKey, href, icon: Icon }) => (
           <Button
             key={href}
             variant="outline"
@@ -60,7 +63,7 @@ export function AdminQuickActions() {
           >
             <Link href={href}>
               <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              {label}
+              {t(labelKey)}
             </Link>
           </Button>
         ))}

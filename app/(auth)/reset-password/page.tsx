@@ -20,11 +20,10 @@ import { Input } from '@/components/ui/input';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { createClientOrNull } from '@/lib/supabase/client';
 import { SUPABASE_CONFIG_ERROR } from '@/lib/supabase/env';
-
-const RESET_SUCCESS_MESSAGE =
-  'If an account exists for that email, a password reset link has been sent.';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function Page() {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,19 +61,19 @@ export default function Page() {
       if (resetError) {
         setError(
           resetError.message.includes('rate')
-            ? 'Too many requests. Please wait and try again.'
-            : 'Unable to send a reset link. Please try again.',
+            ? t('auth.resetRateLimit')
+            : t('auth.resetFailed'),
         );
         return;
       }
 
-      setSuccess(RESET_SUCCESS_MESSAGE);
+      setSuccess(t('auth.resetSuccess'));
       form.reset();
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'An unexpected error occurred. Please try again.',
+          : t('auth.unexpectedError'),
       );
     } finally {
       setIsProcessing(false);
@@ -89,10 +88,10 @@ export default function Page() {
       >
         <div className="text-center space-y-1 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Reset Password
+            {t('auth.resetTitle')}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter your email to receive a password reset link.
+            {t('auth.resetSubtitle')}
           </p>
         </div>
 
@@ -119,11 +118,11 @@ export default function Page() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('common.labels.email')}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="Enter your email address"
+                  placeholder={t('auth.resetEmailPlaceholder')}
                   disabled={!!success || isProcessing}
                   {...field}
                 />
@@ -139,12 +138,12 @@ export default function Page() {
           className="w-full"
         >
           {isProcessing ? <LoaderCircleIcon className="animate-spin" /> : null}
-          Submit
+          {t('common.buttons.submit')}
         </Button>
 
         <Button type="button" variant="outline" className="w-full" asChild>
           <Link href="/signin">
-            <ArrowLeft className="size-3.5" /> Back
+            <ArrowLeft className="size-3.5" /> {t('common.buttons.back')}
           </Link>
         </Button>
       </form>

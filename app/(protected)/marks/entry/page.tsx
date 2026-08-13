@@ -12,8 +12,10 @@ import { canManageInstitution } from '@/lib/acadia/roles';
 import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function MarksEntryPage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const { activeYearId } = useActiveAcademicYear();
   const canEnter = canWriteOperations(session?.roleSlug);
@@ -29,7 +31,7 @@ export default function MarksEntryPage() {
 
   return (
     <AcadiaPageShell
-      title="Marks entry"
+      title={t('marks.entryTitle')}
       description="Enter sequence-scoped CA and exam scores (FR-4.1.1)."
     >
       <div className="mb-4 flex gap-2 print:hidden">
@@ -39,7 +41,7 @@ export default function MarksEntryPage() {
       </div>
       {canEnter ? (
         <CalendarWindowGate
-          featureLabel="Marks entry"
+          featureLabel={t('marks.entryTitle')}
           window={markEntryWindow}
           loading={calendarLoading}
           bypass={canManageInstitution(session?.roleSlug)}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = Record<string, unknown>;
 
@@ -24,21 +25,22 @@ const columns: ColumnDef<Row>[] = [
 ];
 
 export default function AdminRolesPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Acadia College — Roles"
-      description="Role catalog used when assigning users. Change a user's role from the Users screen."
+      title={t('admin.roles')}
+      description={t('admin.rolesDescription')}
     >
       <p className="mb-4 text-sm text-muted-foreground">
         To assign or change roles, open a user from{' '}
         <Link href="/admin/users" className="text-primary hover:underline">
-          Users
+          {t('admin.users')}
         </Link>
         .
       </p>
       <SupabaseTableList
         table="UserRole"
-        title="Roles"
+        title={t('admin.roles')}
         select="id, slug, name, description, isDefault, isProtected, createdAt"
         columns={columns}
         searchKeys={['slug', 'name']}

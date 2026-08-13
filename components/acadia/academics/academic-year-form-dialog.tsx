@@ -37,6 +37,7 @@ import {
   type AcademicYearFormValues,
 } from '@/lib/acadia/calendar-schemas';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type AcademicYearRow = {
   id: string;
@@ -65,6 +66,7 @@ export function AcademicYearFormDialog({
   onOpenChange: (open: boolean) => void;
   record?: AcademicYearRow | null;
 }) {
+  const { t } = useTranslation();
   const { createAcademicYear, updateAcademicYear } = useAcademicCalendarMutations();
   const isEdit = !!record;
 
@@ -134,9 +136,9 @@ export function AcademicYearFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(90dvh,720px)] max-w-md overflow-hidden">
         <DialogHeader className="shrink-0">
-          <DialogTitle>{isEdit ? 'Edit academic year' : 'New academic year'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('academics.editYear') : t('academics.newYear')}</DialogTitle>
           <DialogDescription className="sr-only">
-            Configure academic year dates, structure, and enrollment windows.
+            {t('academics.yearFormDescription')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -144,13 +146,11 @@ export function AcademicYearFormDialog({
             <DialogBody className="min-h-0 flex-1 space-y-4 overflow-y-auto">
               {!isEdit ? (
                 <p className="text-sm text-muted-foreground">
-                  Set the term and sequence structure for this year. Records are created
-                  automatically (default: 3 terms, 6 sequences).
+                  {t('academics.yearCreateHint')}
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Structure counts apply to this year. Use Terms and Sequences pages to
-                  regenerate rows after changing counts.
+                  {t('academics.yearEditHint')}
                 </p>
               )}
               <FormField
@@ -158,7 +158,7 @@ export function AcademicYearFormDialog({
                 name="label"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Label</FormLabel>
+                    <FormLabel>{t('common.labels.label')}</FormLabel>
                     <FormControl>
                       <Input placeholder="2025-2026" {...field} />
                     </FormControl>
@@ -172,7 +172,7 @@ export function AcademicYearFormDialog({
                   name="startsOn"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Starts</FormLabel>
+                      <FormLabel>{t('common.labels.starts')}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -185,7 +185,7 @@ export function AcademicYearFormDialog({
                   name="endsOn"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ends</FormLabel>
+                      <FormLabel>{t('common.labels.ends')}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -200,7 +200,7 @@ export function AcademicYearFormDialog({
                   name="termsPerYear"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Terms / year</FormLabel>
+                      <FormLabel>{t('academics.termsPerYear')}</FormLabel>
                       <Select
                         value={String(field.value)}
                         onValueChange={(v) => field.onChange(Number(v))}
@@ -228,7 +228,7 @@ export function AcademicYearFormDialog({
                   name="sequencesPerTerm"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Seq. / term</FormLabel>
+                      <FormLabel>{t('academics.seqPerTerm')}</FormLabel>
                       <Select
                         value={String(field.value)}
                         onValueChange={(v) => field.onChange(Number(v))}
@@ -256,7 +256,7 @@ export function AcademicYearFormDialog({
                   name="sequencesPerYear"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Seq. / year</FormLabel>
+                      <FormLabel>{t('academics.seqPerYear')}</FormLabel>
                       <Select
                         value={String(field.value)}
                         onValueChange={(v) => field.onChange(Number(v))}
@@ -286,7 +286,7 @@ export function AcademicYearFormDialog({
                   name="enrollmentOpensAt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Enrollment opens</FormLabel>
+                      <FormLabel>{t('academics.enrollmentOpens')}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -299,7 +299,7 @@ export function AcademicYearFormDialog({
                   name="enrollmentClosesAt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Enrollment closes</FormLabel>
+                      <FormLabel>{t('academics.enrollmentCloses')}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -309,7 +309,7 @@ export function AcademicYearFormDialog({
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Enrollment milestones on the calendar page override these dates when set.
+                {t('academics.enrollmentMilestonesHint')}
               </p>
               <FormField
                 control={form.control}
@@ -317,9 +317,9 @@ export function AcademicYearFormDialog({
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between gap-3 rounded-lg border p-3">
                     <div>
-                      <FormLabel>Current year</FormLabel>
+                      <FormLabel>{t('academics.currentYear')}</FormLabel>
                       <p className="text-xs text-muted-foreground">
-                        Only one year should be current per school.
+                        {t('academics.currentYearHint')}
                       </p>
                     </div>
                     <FormControl>
@@ -333,7 +333,7 @@ export function AcademicYearFormDialog({
                 name="isActive"
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                    <FormLabel>Active</FormLabel>
+                    <FormLabel>{t('common.labels.active')}</FormLabel>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
@@ -343,11 +343,11 @@ export function AcademicYearFormDialog({
             </DialogBody>
             <DialogFooter className="shrink-0">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.buttons.cancel')}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-                {isEdit ? 'Save changes' : 'Create year'}
+                {isEdit ? t('common.messages.saveChanges') : t('academics.createYear')}
               </Button>
             </DialogFooter>
           </form>

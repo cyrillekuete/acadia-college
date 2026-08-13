@@ -141,8 +141,8 @@ model SystemSetting {
   supportPhone   String?
   language       String  @default("en")
   timezone       String  @default("UTC")
-  currency       String  @default("USD")
-  currencyFormat String  @default("$ {value}")
+  currency       String  @default("XAF")
+  currencyFormat String  @default("{value} FCFA")
 
   socialFacebook  String?
   socialTwitter   String?

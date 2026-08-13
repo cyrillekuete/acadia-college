@@ -16,6 +16,7 @@ import {
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
 import { applicantDisplayName } from '@/lib/acadia/enrollment';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = Record<string, unknown> & {
   id: string;
@@ -30,6 +31,7 @@ type Row = Record<string, unknown> & {
 };
 
 export default function EnrollmentApplicationsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
@@ -78,11 +80,11 @@ export default function EnrollmentApplicationsPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Enrollment applications"
-      description="Incoming applications filtered by English/French sub-system and academic branch."
+      title={t('enrollment.applicationsTitle')}
+      description={t('enrollment.applicationsDescription')}
     >
       <AdminToolbar
-        addLabel="New application"
+        addLabel={t('enrollment.newApplication')}
         onAdd={() => router.push('/enrollment/applications/new')}
       />
       <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />

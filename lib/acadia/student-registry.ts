@@ -1,5 +1,8 @@
 import { getStudentFullName, type StudentListItem } from '@/lib/acadia/student-list-item';
-import { formatMoney } from '@/i18n/format';
+import {
+  DEFAULT_FEE_CURRENCY,
+  formatMoneyMinor,
+} from '@/lib/acadia/finance';
 import type { TeacherTeachingScopePair } from '@/lib/supabase/queries/teacher-students';
 
 export type StudentRegistrySubjectOption = {
@@ -272,7 +275,7 @@ export function computeStudentRegistryStats(
     feesCollectionPercent,
     paidFees,
     totalFees,
-    feesFooter: `${formatMoney(paidFees)} of ${formatMoney(totalFees)}`,
+    feesFooter: `${formatMoneyMinor(paidFees, DEFAULT_FEE_CURRENCY)} of ${formatMoneyMinor(totalFees, DEFAULT_FEE_CURRENCY)}`,
     academicYearLabel: academicYearLabel ?? '—',
   };
 }

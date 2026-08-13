@@ -42,6 +42,7 @@ import { RegionSelect } from '@/components/acadia/location/region-select';
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import { isCityValidForLocation } from '@/lib/acadia/locations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const SECTION_GRID =
   'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-center';
@@ -83,6 +84,7 @@ function StudentFieldControl({
 }
 
 export function StudentCreateForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const mutation = useStudentCreateMutation();
   const { activeYear, activeYearId } = useActiveAcademicYear();
@@ -138,14 +140,19 @@ export function StudentCreateForm() {
 
   async function onSubmit(values: StudentCreateInput) {
     const result = await mutation.mutateAsync(values).catch((err: Error) => {
-      toast.error(err.message ?? 'Failed to create student.');
+      toast.error(err.message ?? t('students.createFailed'));
       return null;
     });
 
     if (!result) return;
 
     toast.success(
-      `Student ${result.studentId} created. Password-setup emails sent${result.newParentAuthCreated ? ' to student and parent' : ' to student'}.`,
+      t('students.createdToast', {
+        studentId: result.studentId,
+        parentSuffix: result.newParentAuthCreated
+          ? t('students.createdToastWithParent')
+          : t('students.createdToastStudentOnly'),
+      }),
     );
     router.push(`/students/${result.studentProfileId}`);
   }
@@ -157,12 +164,12 @@ export function StudentCreateForm() {
         {/* ── Section 1: Identity ─────────────────────────────────── */}
         <Card>
           <CardHeader>
-            <CardTitle>Identity</CardTitle>
+            <CardTitle>{t('students.identity')}</CardTitle>
           </CardHeader>
           <CardContent className={SECTION_GRID}>
             <FormField control={form.control} name="first_name" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>First name <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldLabel>{t('students.firstName')} <span className="text-destructive">*</span></StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -172,7 +179,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="last_name" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Last name <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldLabel>{t('students.lastName')} <span className="text-destructive">*</span></StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -182,7 +189,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="middle_name" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Middle name</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.middleName')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -192,7 +199,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="date_of_birth" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Date of birth</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.dateOfBirth')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" type="date" {...field} /></FormControl>
                   <FormMessage />
@@ -202,17 +209,17 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="gender" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Gender</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.gender')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select gender" />
+                        <SelectValue placeholder={t('students.selectGender')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="male">{t('common.labels.male')}</SelectItem>
+                      <SelectItem value="female">{t('common.labels.female')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -222,7 +229,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="place_of_birth" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Place of birth</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.placeOfBirth')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -232,7 +239,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="nationality" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Nationality</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.nationality')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -242,7 +249,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="religion" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Religion</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.religion')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -255,12 +262,12 @@ export function StudentCreateForm() {
         {/* ── Section 2: Contact ──────────────────────────────────── */}
         <Card>
           <CardHeader>
-            <CardTitle>Contact information</CardTitle>
+            <CardTitle>{t('students.contactInfo')}</CardTitle>
           </CardHeader>
           <CardContent className={SECTION_GRID}>
             <FormField control={form.control} name="email" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Email <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.email')} <span className="text-destructive">*</span></StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
                   <FormMessage />
@@ -270,7 +277,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="country" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Country</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.country')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl>
                     <CountryCombobox
@@ -299,7 +306,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="address" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Address</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.address')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -309,7 +316,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="region" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Region</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.region')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl>
                     <RegionSelect
@@ -336,7 +343,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="city" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>City</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.city')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl>
                     <CityAutocomplete
@@ -356,22 +363,22 @@ export function StudentCreateForm() {
         {/* ── Section 3: Academic ─────────────────────────────────── */}
         <Card>
           <CardHeader>
-            <CardTitle>Academic information</CardTitle>
+            <CardTitle>{t('students.academicInfo')}</CardTitle>
           </CardHeader>
           <CardContent className={SECTION_GRID}>
             <FormField control={form.control} name="subsystem" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Subsystem</StudentFieldLabel>
+                <StudentFieldLabel>{t('catalog.subSystemLabel')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select subsystem" />
+                        <SelectValue placeholder={t('catalog.selectSubSystem')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="french">French</SelectItem>
+                      <SelectItem value="english">{t('catalog.subSystem.ENGLISH')}</SelectItem>
+                      <SelectItem value="french">{t('catalog.subSystem.FRENCH')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -381,18 +388,18 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="branch" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Branch</StudentFieldLabel>
+                <StudentFieldLabel>{t('catalog.branchLabel')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select branch" />
+                        <SelectValue placeholder={t('catalog.selectBranch')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="grammar">Grammar</SelectItem>
-                      <SelectItem value="technical">Technical</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
+                      <SelectItem value="grammar">{t('catalog.branch.GRAMMAR')}</SelectItem>
+                      <SelectItem value="technical">{t('catalog.branch.TECHNICAL')}</SelectItem>
+                      <SelectItem value="commercial">{t('catalog.branch.COMMERCIAL')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -402,7 +409,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="academic_year" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Academic year</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.academicYear')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl>
                     <Input className="w-full" {...field} disabled readOnly />
@@ -414,7 +421,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="level_id" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Level <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldLabel>{t('students.level')} <span className="text-destructive">*</span></StudentFieldLabel>
                 <StudentFieldControl>
                   <Select
                     onValueChange={field.onChange}
@@ -423,7 +430,7 @@ export function StudentCreateForm() {
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select level" />
+                        <SelectValue placeholder={t('students.selectLevel')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -441,7 +448,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="class_id" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Class</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.class')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <Select
                     onValueChange={(value) => {
@@ -455,11 +462,11 @@ export function StudentCreateForm() {
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select class (optional)" />
+                        <SelectValue placeholder={t('students.selectClassOptional')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="__none__">Auto-assign if unique</SelectItem>
+                      <SelectItem value="__none__">{t('students.autoAssignIfUnique')}</SelectItem>
                       {classOptions.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -474,7 +481,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="previous_school" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Previous school</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.previousSchool')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -484,7 +491,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="previous_class" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Previous class</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.previousClass')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -494,7 +501,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="enrollment_date" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Enrolment date</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.enrollmentDate')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" type="date" {...field} /></FormControl>
                   <FormMessage />
@@ -504,18 +511,18 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="matricule_number" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Matricule (optional)</StudentFieldLabel>
+                <StudentFieldLabel>{t('students.matriculeOptional')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl>
                     <Input
                       className="w-full"
-                      placeholder="Ministry-issued matricule"
+                      placeholder={t('students.matriculePlaceholder')}
                       {...field}
                       value={field.value ?? ''}
                     />
                   </FormControl>
                   <FormDescription>
-                    Enter the official matricule if issued by the ministry. Leave blank if not yet assigned.
+                    {t('students.matriculeHint')}
                   </FormDescription>
                   <FormMessage />
                 </StudentFieldControl>
@@ -534,7 +541,7 @@ export function StudentCreateForm() {
                     />
                   </FormControl>
                   <FormLabel className="font-normal leading-none">
-                    New student (first enrolment)
+                    {t('students.newStudentCheckbox')}
                   </FormLabel>
                 </FormItem>
               )}
@@ -545,13 +552,13 @@ export function StudentCreateForm() {
         {/* ── Section 4: Parent / Guardian ────────────────────────── */}
         <Card>
           <CardHeader>
-            <CardTitle>Parent / Guardian</CardTitle>
+            <CardTitle>{t('students.parentGuardian')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className={ROW_GRID_4}>
               <FormField control={form.control} name="parent_name" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Full name <span className="text-destructive">*</span></StudentFieldLabel>
+                  <StudentFieldLabel>{t('common.labels.fullName')} <span className="text-destructive">*</span></StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl><Input className="w-full" {...field} /></FormControl>
                     <FormMessage />
@@ -561,11 +568,11 @@ export function StudentCreateForm() {
 
               <FormField control={form.control} name="parent_email" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Email</StudentFieldLabel>
+                  <StudentFieldLabel>{t('common.labels.email')}</StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
                     <FormDescription>
-                      Optional — used for portal login if provided.
+                      {t('students.parentEmailHint')}
                     </FormDescription>
                     <FormMessage />
                   </StudentFieldControl>
@@ -574,7 +581,7 @@ export function StudentCreateForm() {
 
               <FormField control={form.control} name="parent_phone_country" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Country</StudentFieldLabel>
+                  <StudentFieldLabel>{t('common.labels.country')}</StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl>
                       <CountryCombobox
@@ -601,19 +608,19 @@ export function StudentCreateForm() {
             <div className={SECTION_GRID}>
             <FormField control={form.control} name="parent_relationship" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Relationship <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.relationship')} <span className="text-destructive">*</span></StudentFieldLabel>
                 <StudentFieldControl>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select relationship" />
+                        <SelectValue placeholder={t('students.selectRelationship')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="father">Father</SelectItem>
-                      <SelectItem value="mother">Mother</SelectItem>
-                      <SelectItem value="guardian">Guardian</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="father">{t('students.relationship.father')}</SelectItem>
+                      <SelectItem value="mother">{t('students.relationship.mother')}</SelectItem>
+                      <SelectItem value="guardian">{t('students.relationship.guardian')}</SelectItem>
+                      <SelectItem value="other">{t('students.relationship.other')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -623,7 +630,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="parent_occupation" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Occupation</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.occupation')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -633,7 +640,7 @@ export function StudentCreateForm() {
 
             <FormField control={form.control} name="parent_address" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>Address</StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.address')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />
@@ -647,13 +654,13 @@ export function StudentCreateForm() {
         {/* ── Section 5: Emergency / Medical (optional) ───────────── */}
         <Card>
           <CardHeader>
-            <CardTitle>Emergency contact &amp; medical (optional)</CardTitle>
+            <CardTitle>{t('students.emergencyMedical')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className={ROW_GRID_2}>
               <FormField control={form.control} name="emergency_contact_name" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Contact name</StudentFieldLabel>
+                  <StudentFieldLabel>{t('students.contactName')}</StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl><Input className="w-full" {...field} /></FormControl>
                     <FormMessage />
@@ -663,7 +670,7 @@ export function StudentCreateForm() {
 
               <FormField control={form.control} name="emergency_contact_phone_country" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Country</StudentFieldLabel>
+                  <StudentFieldLabel>{t('common.labels.country')}</StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl>
                       <CountryCombobox
@@ -681,14 +688,14 @@ export function StudentCreateForm() {
                 control={form.control}
                 countryName="emergency_contact_phone_country"
                 phoneName="emergency_contact_phone"
-                phoneLabel="Phone"
+                phoneLabel={t('common.labels.phone')}
                 hideCountry
                 className={cn(FIELD_ITEM, 'space-y-0')}
               />
 
               <FormField control={form.control} name="emergency_contact_relationship" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Relationship</StudentFieldLabel>
+                  <StudentFieldLabel>{t('common.labels.relationship')}</StudentFieldLabel>
                   <StudentFieldControl>
                     <FormControl><Input className="w-full" {...field} /></FormControl>
                     <FormMessage />
@@ -702,9 +709,9 @@ export function StudentCreateForm() {
             <div className={SECTION_GRID}>
               <FormField control={form.control} name="blood_group" render={({ field }) => (
                 <StudentFieldItem>
-                  <StudentFieldLabel>Blood group</StudentFieldLabel>
+                  <StudentFieldLabel>{t('students.bloodGroup')}</StudentFieldLabel>
                   <StudentFieldControl>
-                    <FormControl><Input className="w-full" placeholder="e.g. O+" {...field} /></FormControl>
+                    <FormControl><Input className="w-full" placeholder={t('students.bloodGroupPlaceholder')} {...field} /></FormControl>
                     <FormMessage />
                   </StudentFieldControl>
                 </StudentFieldItem>
@@ -712,9 +719,9 @@ export function StudentCreateForm() {
 
               <FormField control={form.control} name="allergies" render={({ field }) => (
                 <StudentFieldItem className="sm:col-span-2">
-                  <StudentFieldLabel>Allergies</StudentFieldLabel>
+                  <StudentFieldLabel>{t('students.allergies')}</StudentFieldLabel>
                   <StudentFieldControl>
-                    <FormControl><Input className="w-full" placeholder="List any known allergies" {...field} /></FormControl>
+                    <FormControl><Input className="w-full" placeholder={t('students.allergiesPlaceholder')} {...field} /></FormControl>
                     <FormMessage />
                   </StudentFieldControl>
                 </StudentFieldItem>
@@ -722,9 +729,9 @@ export function StudentCreateForm() {
 
               <FormField control={form.control} name="medical_conditions" render={({ field }) => (
                 <StudentFieldItem className="sm:col-span-2">
-                  <StudentFieldLabel>Medical conditions</StudentFieldLabel>
+                  <StudentFieldLabel>{t('students.medicalConditions')}</StudentFieldLabel>
                   <StudentFieldControl>
-                    <FormControl><Input className="w-full" placeholder="List any known conditions" {...field} /></FormControl>
+                    <FormControl><Input className="w-full" placeholder={t('students.conditionsPlaceholder')} {...field} /></FormControl>
                     <FormMessage />
                   </StudentFieldControl>
                 </StudentFieldItem>
@@ -741,10 +748,10 @@ export function StudentCreateForm() {
             onClick={() => router.push('/students')}
             disabled={mutation.isPending}
           >
-            Cancel
+            {t('common.buttons.cancel')}
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Creating…' : 'Create student'}
+            {mutation.isPending ? t('common.messages.creating') : t('students.createStudent')}
           </Button>
         </div>
       </form>

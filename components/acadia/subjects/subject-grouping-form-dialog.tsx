@@ -27,6 +27,7 @@ import {
   type SubjectGroupingFormValues,
 } from '@/lib/acadia/subject-catalog';
 import { useSubjectGroupingMutations } from '@/hooks/use-subject-grouping-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export type SubjectGroupingRow = {
   id: string;
@@ -45,6 +46,7 @@ export function SubjectGroupingFormDialog({
   onOpenChange: (open: boolean) => void;
   record: SubjectGroupingRow | null;
 }) {
+  const { t } = useTranslation();
   const isEdit = !!record;
   const { createGrouping, updateGrouping } = useSubjectGroupingMutations();
 
@@ -96,7 +98,7 @@ export function SubjectGroupingFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit grouping' : 'New grouping'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('subjects.editGrouping') : t('subjects.newGrouping')}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -106,7 +108,7 @@ export function SubjectGroupingFormDialog({
                 name="nameEn"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name (English)</FormLabel>
+                    <FormLabel>{t('common.labels.nameEn')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -119,7 +121,7 @@ export function SubjectGroupingFormDialog({
                 name="nameFr"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name (French)</FormLabel>
+                    <FormLabel>{t('common.labels.nameFr')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -133,7 +135,7 @@ export function SubjectGroupingFormDialog({
                   name="code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Code (optional)</FormLabel>
+                      <FormLabel>{t('common.labels.optionalCode')}</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="SCI-BLOCK" />
                       </FormControl>
@@ -146,7 +148,7 @@ export function SubjectGroupingFormDialog({
                   name="sortOrder"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Sort order</FormLabel>
+                      <FormLabel>{t('common.labels.sortOrder')}</FormLabel>
                       <FormControl>
                         <Input {...field} type="number" min={0} />
                       </FormControl>
@@ -158,11 +160,11 @@ export function SubjectGroupingFormDialog({
             </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.buttons.cancel')}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-                {isEdit ? 'Save' : 'Create'}
+                {isEdit ? t('common.buttons.save') : t('common.buttons.create')}
               </Button>
             </DialogFooter>
           </form>

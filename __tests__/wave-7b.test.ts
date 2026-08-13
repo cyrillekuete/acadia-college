@@ -194,6 +194,15 @@ describe('levelDisplayLabel', () => {
     expect(levelDisplayLabel({ number: 1, labelEn: '', labelFr: 'Sixième' })).toBe('Sixième');
   });
 
+  it('prefers labelFr when locale is French', () => {
+    expect(
+      levelDisplayLabel(
+        { number: 1, labelEn: 'Form 1', labelFr: 'Sixième' },
+        'fr',
+      ),
+    ).toBe('Sixième');
+  });
+
   it('falls back to "Level N" when no label text', () => {
     expect(levelDisplayLabel({ number: 3 })).toBe('Level 3');
   });

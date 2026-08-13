@@ -13,8 +13,10 @@ import {
   countTimetableSlotsForDay,
   getTimetableDayOfWeek,
 } from '@/lib/acadia/timetable';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function StaffDashboardPage() {
+  const { t } = useTranslation();
   const {
     data: linkedProfile,
     isLoading: profileLoading,
@@ -49,25 +51,25 @@ export default function StaffDashboardPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Staff dashboard"
+      title={t('admin.staffDashboard')}
       description="Welcome to Acadia College. Your teaching and operations overview."
     >
       <div className="space-y-5">
         <div className="grid gap-5 md:grid-cols-3">
           <AdminOverviewStatCard
-            title="My subjects"
+            title={t('admin.mySubjects')}
             value={formatDashboardStatValue(stats?.assignedSubjectCount)}
             footer="Assigned this term"
             icon="book"
           />
           <AdminOverviewStatCard
-            title="Today's sessions"
+            title={t('admin.todaysSessions')}
             value={formatDashboardStatValue(todaysSessions)}
             footer="Scheduled for today"
             icon="calendar-tick"
           />
           <AdminOverviewStatCard
-            title="Pending marks"
+            title={t('admin.pendingMarks')}
             value={formatDashboardStatValue(stats?.pendingMarkCount)}
             footer="Awaiting submission"
             icon="document"

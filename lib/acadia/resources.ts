@@ -1,4 +1,5 @@
 import type { ResourceRequestReviewValues } from '@/lib/acadia/resources-schemas';
+import { localizedText, translate } from '@/lib/acadia/locale';
 import { dayOfWeekLabel, formatTimeRange } from '@/lib/acadia/timetable';
 
 export const LEARNING_MATERIAL_KINDS = [
@@ -97,7 +98,10 @@ export function learningMaterialTitleDisplay(input: {
   titleEn?: string | null;
   titleFr?: string | null;
 }): string {
-  return input.titleEn?.trim() || input.titleFr?.trim() || 'Untitled material';
+  return (
+    localizedText(input.titleEn, input.titleFr) ||
+    translate('resources.untitledMaterial', { defaultValue: 'Untitled material' })
+  );
 }
 
 export type AllocationRow = {

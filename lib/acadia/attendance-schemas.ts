@@ -2,9 +2,9 @@ import { z } from 'zod';
 import { ATTENDANCE_STATUSES } from '@/lib/acadia/attendance';
 
 export const attendanceSessionSchema = z.object({
-  academicYearId: z.string().min(1, 'Academic year is required.'),
-  subjectId: z.string().min(1, 'Subject is required.'),
-  sessionDate: z.string().min(1, 'Session date is required.'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
+  subjectId: z.string().min(1, 'validation.required.subject'),
+  sessionDate: z.string().min(1, 'validation.required.sessionDate'),
   label: z.string().optional().or(z.literal('')),
   timetableSlotId: z.string().optional().or(z.literal('')),
 });
@@ -33,7 +33,7 @@ export type AttendanceEntryContextValues = z.infer<
 >;
 
 export const attendanceReportFiltersSchema = z.object({
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   subjectId: z.string().optional().or(z.literal('')),
   fromDate: z.string().optional().or(z.literal('')),
   toDate: z.string().optional().or(z.literal('')),

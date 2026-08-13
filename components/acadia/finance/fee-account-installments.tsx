@@ -28,6 +28,7 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { canWriteFinance } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function FeeAccountInstallments({
   accountId,
@@ -36,6 +37,7 @@ export function FeeAccountInstallments({
   accountId: string;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -139,7 +141,9 @@ export function FeeAccountInstallments({
   }
 
   if (!query.data) {
-    return <p className="text-sm text-muted-foreground">Loading installments…</p>;
+    return (
+      <p className="text-sm text-muted-foreground">{t('finance.loadingInstallments')}</p>
+    );
   }
 
   const { currency, installments, totals, progress } = query.data;
@@ -149,13 +153,13 @@ export function FeeAccountInstallments({
       <div className="rounded-lg border p-4 space-y-2">
         <div className="flex flex-wrap justify-between gap-2 text-sm">
           <span>
-            Due: {formatMoneyMinor(totals.totalDueMinor, currency)}
+            {t('finance.due')}: {formatMoneyMinor(totals.totalDueMinor, currency)}
           </span>
           <span>
-            Paid: {formatMoneyMinor(totals.totalPaidMinor, currency)}
+            {t('finance.paid')}: {formatMoneyMinor(totals.totalPaidMinor, currency)}
           </span>
           <span className="font-medium">
-            Balance: {formatMoneyMinor(totals.balanceMinor, currency)}
+            {t('finance.balance')}: {formatMoneyMinor(totals.balanceMinor, currency)}
           </span>
         </div>
         {progress !== null ? (
@@ -164,7 +168,7 @@ export function FeeAccountInstallments({
         <div className="flex gap-2 print:hidden">
           <Button size="sm" variant="outline" asChild>
             <Link href={`/finance/fees/${accountId}/invoice`}>
-              View invoice / receipt
+              {t('finance.viewInvoice')}
             </Link>
           </Button>
         </div>
@@ -174,11 +178,13 @@ export function FeeAccountInstallments({
         <TableHeader>
           <TableRow>
             <TableHead>#</TableHead>
-            <TableHead>Installment</TableHead>
-            <TableHead>Due</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-            {canManage ? <TableHead className="text-right">Action</TableHead> : null}
+            <TableHead>{t('finance.installment')}</TableHead>
+            <TableHead>{t('finance.due')}</TableHead>
+            <TableHead>{t('finance.amount')}</TableHead>
+            <TableHead>{t('common.labels.status')}</TableHead>
+            {canManage ? (
+              <TableHead className="text-right">{t('common.labels.actions')}</TableHead>
+            ) : null}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -202,7 +208,7 @@ export function FeeAccountInstallments({
                         void handleRecordPayment(row.id, row.amountMinor)
                       }
                     >
-                      Mark paid
+                      {t('finance.markPaid')}
                     </Button>
                   ) : (
                     '—'
@@ -216,11 +222,11 @@ export function FeeAccountInstallments({
 
       {canManage ? (
         <div className="max-w-md print:hidden">
-          <label className="text-sm font-medium">Payment notes (optional)</label>
+          <label className="text-sm font-medium">{t('finance.paymentNotes')}</label>
           <Input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Reference, receipt number…"
+            placeholder={t('finance.paymentNotesPlaceholder')}
             className="mt-1"
           />
         </div>

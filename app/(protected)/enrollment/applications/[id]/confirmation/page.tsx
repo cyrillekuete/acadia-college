@@ -9,6 +9,7 @@ import {
 } from '@/components/acadia/enrollment/enrollment-confirmation-view';
 import { Button } from '@/components/ui/button';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const CONFIRMATION_SELECT = `
   id,
@@ -35,6 +36,7 @@ export default function EnrollmentConfirmationPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
   const { data, isLoading, isError, error } =
     useSupabaseRecord<EnrollmentConfirmationData>(
@@ -45,7 +47,7 @@ export default function EnrollmentConfirmationPage({
 
   return (
     <RecordDetailShell
-      title="Enrollment confirmation"
+      title={t('enrollment.confirmation')}
       description="Printable confirmation for approved applications (FR-2.1.4)."
       backHref={`/enrollment/applications/${id}`}
       backLabel="Back to application"

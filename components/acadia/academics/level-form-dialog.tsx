@@ -32,13 +32,12 @@ import {
 import {
   ACADEMIC_BRANCHES,
   ACADEMIC_SUB_SYSTEMS,
-  branchLabel,
-  subSystemLabel,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
 import { levelFormSchema, type LevelFormValues } from '@/lib/acadia/structure-schemas';
 import { levelCreateConfirmCopy } from '@/lib/acadia/structure-messages';
 import { useAcademicStructureMutations } from '@/hooks/use-academic-structure-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 import { type LevelListRow } from '@/hooks/use-level-list';
 import { RegistryCreateConfirmDialog } from '@/components/acadia/academics/registry-create-confirm-dialog';
 
@@ -53,6 +52,7 @@ export function LevelFormDialog({
   record?: LevelListRow | null;
   defaultFilters?: CatalogFilters;
 }) {
+  const { t } = useTranslation();
   const { createLevel, updateLevel } = useAcademicStructureMutations();
   const isEdit = !!record;
   const pending = createLevel.isPending || updateLevel.isPending;
@@ -123,7 +123,7 @@ export function LevelFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit level' : 'New level'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('academics.editLevel') : t('academics.newLevel')}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit}>
@@ -133,9 +133,9 @@ export function LevelFormDialog({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Level name</FormLabel>
+                    <FormLabel>{t('academics.levelName')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Form 5" {...field} />
+                      <Input placeholder={t('academics.levelNamePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -146,7 +146,7 @@ export function LevelFormDialog({
                 name="subSystem"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sub-system</FormLabel>
+                    <FormLabel>{t('catalog.subSystemLabel')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -156,7 +156,7 @@ export function LevelFormDialog({
                       <SelectContent>
                         {ACADEMIC_SUB_SYSTEMS.map((value) => (
                           <SelectItem key={value} value={value}>
-                            {subSystemLabel(value)}
+                            {t(`catalog.subSystem.${value}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -170,7 +170,7 @@ export function LevelFormDialog({
                 name="branch"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Branch</FormLabel>
+                    <FormLabel>{t('catalog.branchLabel')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -180,7 +180,7 @@ export function LevelFormDialog({
                       <SelectContent>
                         {ACADEMIC_BRANCHES.map((value) => (
                           <SelectItem key={value} value={value}>
-                            {branchLabel(value)}
+                            {t(`catalog.branch.${value}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -192,11 +192,11 @@ export function LevelFormDialog({
             </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.buttons.cancel')}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-                {isEdit ? 'Save' : 'Create'}
+                {isEdit ? t('common.buttons.save') : t('common.buttons.create')}
               </Button>
             </DialogFooter>
           </form>

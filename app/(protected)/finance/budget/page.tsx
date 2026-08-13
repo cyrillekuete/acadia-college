@@ -4,16 +4,18 @@ import Link from 'next/link';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { FinanceBudgetPanel } from '@/components/acadia/finance/finance-budget-panel';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function FinanceBudgetPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Budget reports"
+      title={t('finance.budgetTitle')}
       description="Budget vs actual by category for each academic year (FR-6.2.3)."
     >
       <div className="mb-4 print:hidden">
         <Button size="sm" variant="outline" asChild>
-          <Link href="/finance/reports">Financial reports</Link>
+          <Link href="/finance/reports">{t('finance.reportsTitle')}</Link>
         </Button>
       </div>
       <FinanceBudgetPanel />

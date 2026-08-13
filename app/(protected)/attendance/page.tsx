@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type AttendanceRow = {
   id: string;
@@ -44,25 +45,26 @@ const ATTENDANCE_SELECT = `
 `;
 
 export default function AttendancePage() {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="Attendance"
-      description="Daily attendance sessions, rates, and guardian notifications."
+      title={t('attendance.title')}
+      description={t('attendance.description')}
     >
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
         {canManage ? (
           <Button size="sm" asChild>
-            <Link href="/attendance/sessions/new">New session</Link>
+            <Link href="/attendance/sessions/new">{t('attendance.newSession')}</Link>
           </Button>
         ) : null}
         <Button size="sm" variant="outline" asChild>
-          <Link href="/attendance/reports">Reports</Link>
+          <Link href="/attendance/reports">{t('attendance.reportsTitle')}</Link>
         </Button>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/attendance/analytics">Analytics</Link>
+          <Link href="/attendance/analytics">{t('attendance.analyticsTitle')}</Link>
         </Button>
       </div>
 
@@ -74,7 +76,7 @@ export default function AttendancePage() {
         <TabsContent value="sessions" className="mt-4">
           <SupabaseTableList scopeByAcademicYear
             table="AttendanceSession"
-            title="Attendance sessions"
+            title={t('attendance.sessions')}
             select={ATTENDANCE_SELECT}
             columns={columns}
             searchKeys={['label']}

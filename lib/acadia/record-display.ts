@@ -1,4 +1,5 @@
 import { formatPhoneForDisplay } from '@/lib/acadia/phone';
+import { getUiLocale, localizedText, translate } from '@/lib/acadia/locale';
 
 export { streamLabel } from '@/lib/acadia/education-system';
 
@@ -7,7 +8,9 @@ export function formatRecordValue(value: unknown): string {
     return '—';
   }
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
+    return value
+      ? translate('common.labels.yes', { defaultValue: 'Yes' })
+      : translate('common.labels.no', { defaultValue: 'No' });
   }
   if (typeof value === 'object') {
     return '—';
@@ -52,16 +55,26 @@ export function unwrapRelation<T extends Record<string, unknown>>(
   return null;
 }
 
-export function levelLabel(level: { number?: number; name?: string; labelEn?: string | null } | null): string {
+export function levelLabel(level: {
+  number?: number;
+  name?: string;
+  labelEn?: string | null;
+  labelFr?: string | null;
+} | null): string {
   if (!level) {
     return '—';
   }
-  const name = level.labelEn?.trim() || level.name?.trim();
+  const name =
+    localizedText(level.labelEn, level.labelFr, getUiLocale()) ||
+    level.name?.trim();
   if (name) {
     return name;
   }
   if (level.number !== undefined) {
-    return `Level ${level.number}`;
+    return translate('catalog.levelN', {
+      number: level.number,
+      defaultValue: `Level ${level.number}`,
+    });
   }
   return '—';
 }
@@ -84,27 +97,14 @@ export function formatSubjectLevelsLabel(
   return labels.length > 0 ? labels.join(', ') : '—';
 }
 
-const TERM_ORDINALS = [
-  '1st',
-  '2nd',
-  '3rd',
-  '4th',
-  '5th',
-  '6th',
-  '7th',
-  '8th',
-  '9th',
-  '10th',
-  '11th',
-  '12th',
-] as const;
-
 export function termLabel(term: { number?: number } | null): string {
   if (!term || term.number === undefined) {
     return '—';
   }
-  const ordinal = TERM_ORDINALS[term.number - 1];
-  return ordinal ? `${ordinal} Term` : `Term ${term.number}`;
+  return translate('catalog.termN', {
+    number: term.number,
+    defaultValue: `Term ${term.number}`,
+  });
 }
 
 export function subjectTermScopeLabel(
@@ -112,7 +112,7 @@ export function subjectTermScopeLabel(
   termId: string | null | undefined,
 ): string {
   if (!termId) {
-    return 'All terms';
+    return translate('catalog.allTerms', { defaultValue: 'All terms' });
   }
   return termLabel(term);
 }
@@ -127,9 +127,16 @@ export function sequenceLabel(
     return '—';
   }
   if (sequence.numberInTerm !== undefined) {
-    return `Sequence ${sequence.number} (term seq. ${sequence.numberInTerm})`;
+    return translate('catalog.sequenceInTerm', {
+      number: sequence.number,
+      numberInTerm: sequence.numberInTerm,
+      defaultValue: `Sequence ${sequence.number} (term seq. ${sequence.numberInTerm})`,
+    });
   }
-  return `Sequence ${sequence.number}`;
+  return translate('catalog.sequenceN', {
+    number: sequence.number,
+    defaultValue: `Sequence ${sequence.number}`,
+  });
 }
 
 export function formatStringArray(value: unknown): string {

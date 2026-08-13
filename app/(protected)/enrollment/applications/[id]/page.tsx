@@ -23,6 +23,7 @@ import {
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const APPLICATION_SELECT = `
   id,
@@ -73,6 +74,7 @@ export default function EnrollmentApplicationDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
@@ -96,7 +98,7 @@ export default function EnrollmentApplicationDetailPage({
         data.firstNameFr,
         data.lastNameFr,
       )
-    : 'Enrollment application';
+    : t('enrollment.applicationDetails');
 
   return (
     <RecordDetailShell

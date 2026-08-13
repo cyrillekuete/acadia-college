@@ -5,17 +5,19 @@ import Link from 'next/link';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { YearRolloverWizard } from '@/components/acadia/promotion/year-rollover-wizard';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AcademicYearRolloverPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
 
   return (
     <AcadiaPageShell
-      title="Academic year rollover"
+      title={t('academics.rolloverTitle')}
       description="Transition to a new school year: enrollments, calendar, and current year."
     >
       <div className="mb-4 print:hidden">

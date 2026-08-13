@@ -17,7 +17,6 @@ import { getInitials } from '@/lib/helpers';
 import { getStudentFullName, type StudentListItem } from '@/lib/acadia/student-list-item';
 import {
   formatStudentFeesAmounts,
-  studentBranchLabel,
   studentFeesStatusLabel,
   studentFeesStatusVariant,
 } from '@/lib/acadia/student-list';
@@ -31,6 +30,7 @@ import { DataGridTable } from '@/components/ui/data-grid-table';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getStudentEnrollmentStatusProps } from '@/components/acadia/student/student-list-status';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function StudentList({
   students,
@@ -44,6 +44,7 @@ export function StudentList({
   defaultSorting?: SortingState;
 }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -57,7 +58,7 @@ export function StudentList({
         id: 'student',
         accessorFn: (row) => getStudentFullName(row),
         header: ({ column }) => (
-          <DataGridColumnHeader title="Student" visibility column={column} />
+          <DataGridColumnHeader title={t('nav.students')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const student = row.original;
@@ -83,7 +84,7 @@ export function StudentList({
         },
         size: 300,
         meta: {
-          headerTitle: 'Student',
+          headerTitle: t('nav.students'),
           skeleton: (
             <div className="flex items-center gap-3">
               <Skeleton className="size-8 rounded-full" />
@@ -101,14 +102,14 @@ export function StudentList({
         accessorKey: 'class_name',
         id: 'class_name',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Class" visibility column={column} />
+          <DataGridColumnHeader title={t('students.class')} visibility column={column} />
         ),
         cell: ({ row }) => (
           <Badge variant="secondary">{row.original.class_name}</Badge>
         ),
         size: 150,
         meta: {
-          headerTitle: 'Class',
+          headerTitle: t('students.class'),
           skeleton: <Skeleton className="h-7 w-28" />,
         },
         enableSorting: true,
@@ -118,18 +119,18 @@ export function StudentList({
         accessorKey: 'branch',
         id: 'branch',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Branch" visibility column={column} />
+          <DataGridColumnHeader title={t('catalog.branchLabel')} visibility column={column} />
         ),
         cell: ({ row }) => {
-          const label = studentBranchLabel(row.original.branch);
-          if (label === '—') {
+          const branch = row.original.branch?.toUpperCase();
+          if (!branch) {
             return <span className="text-muted-foreground">—</span>;
           }
-          return <Badge variant="outline">{label}</Badge>;
+          return <Badge variant="outline">{t(`catalog.branch.${branch}`)}</Badge>;
         },
         size: 130,
         meta: {
-          headerTitle: 'Branch',
+          headerTitle: t('catalog.branchLabel'),
           skeleton: <Skeleton className="h-7 w-24" />,
         },
         enableSorting: true,
@@ -139,7 +140,7 @@ export function StudentList({
         accessorKey: 'enrollment_status',
         id: 'enrollment_status',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Status" visibility column={column} />
+          <DataGridColumnHeader title={t('common.labels.status')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const statusProps = getStudentEnrollmentStatusProps(
@@ -150,13 +151,13 @@ export function StudentList({
           return (
             <Badge variant={variant} appearance="ghost">
               <BadgeDot />
-              {statusProps.label}
+              {t(`students.enrollmentStatus.${row.original.enrollment_status}`)}
             </Badge>
           );
         },
         size: 125,
         meta: {
-          headerTitle: 'Status',
+          headerTitle: t('common.labels.status'),
           skeleton: <Skeleton className="h-7 w-14" />,
         },
         enableSorting: true,
@@ -166,12 +167,12 @@ export function StudentList({
         accessorKey: 'registration_number',
         id: 'registration_number',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Student ID" visibility column={column} />
+          <DataGridColumnHeader title={t('students.studentId')} visibility column={column} />
         ),
         cell: (info) => (info.getValue() as string | null) ?? '—',
         size: 175,
         meta: {
-          headerTitle: 'Student ID',
+          headerTitle: t('students.studentId'),
           skeleton: <Skeleton className="h-7 w-20" />,
         },
         enableSorting: true,
@@ -181,12 +182,12 @@ export function StudentList({
         accessorKey: 'matricule_number',
         id: 'matricule_number',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Matricule" visibility column={column} />
+          <DataGridColumnHeader title={t('students.matricule')} visibility column={column} />
         ),
         cell: (info) => (info.getValue() as string | null) ?? '—',
         size: 175,
         meta: {
-          headerTitle: 'Matricule',
+          headerTitle: t('students.matricule'),
           skeleton: <Skeleton className="h-7 w-20" />,
         },
         enableSorting: true,
@@ -196,7 +197,7 @@ export function StudentList({
         id: 'fees',
         accessorFn: (row) => row.total_fees,
         header: ({ column }) => (
-          <DataGridColumnHeader title="Fees" visibility column={column} />
+          <DataGridColumnHeader title={t('students.fees')} visibility column={column} />
         ),
         cell: ({ row }) => {
           const { paid_fees, total_fees, fees_status } = row.original;
@@ -206,11 +207,17 @@ export function StudentList({
             paid_fees,
             total_fees,
           );
+          const statusKey = (fees_status ?? 'pending').toLowerCase();
+          const statusLabel = ['paid', 'pending', 'overdue', 'partial'].includes(
+            statusKey,
+          )
+            ? t(`students.feesStatusValue.${statusKey}`)
+            : studentFeesStatusLabel(fees_status);
 
           return (
             <div className="space-y-1">
               <Badge variant={variant} appearance="light" size="sm">
-                {studentFeesStatusLabel(fees_status)}
+                {statusLabel}
               </Badge>
               {amounts ? (
                 <div className="text-xs text-muted-foreground">{amounts}</div>
@@ -220,7 +227,7 @@ export function StudentList({
         },
         size: 160,
         meta: {
-          headerTitle: 'Fees',
+          headerTitle: t('students.fees'),
           skeleton: (
             <div className="space-y-1">
               <Skeleton className="h-6 w-16" />
@@ -246,7 +253,7 @@ export function StudentList({
         enableResizing: false,
       },
     ],
-    [],
+    [t],
   );
 
   const [columnOrder, setColumnOrder] = useState<string[]>([

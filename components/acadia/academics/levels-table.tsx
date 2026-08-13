@@ -12,7 +12,6 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Search } from '@/lib/icons';
-import { branchLabel } from '@/lib/acadia/education-system';
 import type { CatalogFilters } from '@/lib/acadia/education-system';
 import { type LevelListRow, useLevelList } from '@/hooks/use-level-list';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -27,11 +26,7 @@ import { InputWrapper } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
 import { Button } from '@/components/ui/button';
-
-function subSystemTableLabel(value: string | null | undefined): string {
-  if (!value) return '—';
-  return value === 'FRENCH' ? 'French' : 'English';
-}
+import { useTranslation } from '@/hooks/useTranslation';
 
 function truncateCell(text: string) {
   return (
@@ -52,6 +47,7 @@ export function LevelsTable({
   onEdit?: (row: LevelListRow) => void;
   onDelete?: (row: LevelListRow) => void;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -83,7 +79,7 @@ export function LevelsTable({
       {
         accessorKey: 'name',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Level Name" column={column} />
+          <DataGridColumnHeader title={t('academics.levelName')} column={column} />
         ),
         cell: ({ row }) => truncateCell(row.original.name),
         size: 200,
@@ -92,20 +88,28 @@ export function LevelsTable({
       {
         accessorKey: 'subSystem',
         header: ({ column }) => (
-          <DataGridColumnHeader title="System" column={column} />
+          <DataGridColumnHeader title={t('catalog.subSystemLabel')} column={column} />
         ),
         cell: ({ row }) =>
-          truncateCell(subSystemTableLabel(row.original.subSystem)),
+          truncateCell(
+            row.original.subSystem
+              ? t(`catalog.subSystem.${row.original.subSystem}`)
+              : '—',
+          ),
         size: 88,
         enableSorting: true,
       },
       {
         accessorKey: 'branch',
         header: ({ column }) => (
-          <DataGridColumnHeader title="Branch" column={column} />
+          <DataGridColumnHeader title={t('catalog.branchLabel')} column={column} />
         ),
         cell: ({ row }) =>
-          truncateCell(branchLabel(row.original.branch)),
+          truncateCell(
+            row.original.branch
+              ? t(`catalog.branch.${row.original.branch}`)
+              : '—',
+          ),
         size: 100,
         enableSorting: true,
       },
@@ -113,7 +117,7 @@ export function LevelsTable({
         accessorKey: 'classCount',
         header: ({ column }) => (
           <DataGridColumnHeader
-            title="Classes"
+            title={t('academics.classesTitle')}
             column={column}
             className="justify-center"
           />
@@ -130,7 +134,7 @@ export function LevelsTable({
         ? [
             {
               id: 'actions',
-              header: () => <span className="sr-only">Actions</span>,
+              header: () => <span className="sr-only">{t('common.labels.actions')}</span>,
               cell: ({ row }: { row: { original: LevelListRow } }) => (
                 <RegistryRowActions
                   onEdit={() => onEdit(row.original)}
@@ -143,7 +147,7 @@ export function LevelsTable({
           ]
         : []),
     ],
-    [canManage, onDelete, onEdit],
+    [canManage, onDelete, onEdit, t],
   );
 
   const table = useReactTable({
@@ -167,11 +171,11 @@ export function LevelsTable({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
-        <h3 className="text-sm font-medium">Levels</h3>
+        <h3 className="text-sm font-medium">{t('academics.levelsTitle')}</h3>
         <InputWrapper className="w-full max-w-xs">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <Input
-            placeholder="Search levels..."
+            placeholder={t('academics.searchLevels')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -188,12 +192,12 @@ export function LevelsTable({
           columnsMovable: false,
           columnsVisibility: false,
         }}
-        emptyMessage="No levels match your filters."
+        emptyMessage={t('academics.noLevelsMatch')}
       >
         <CardTable className="overflow-hidden">
           {isError ? (
             <p className="p-5 text-sm text-destructive">
-              {error instanceof Error ? error.message : 'Failed to load levels.'}
+              {error instanceof Error ? error.message : t('academics.loadLevelsFailed')}
             </p>
           ) : isLoading ? (
             <Skeleton className="m-5 h-40 w-full" />
@@ -201,12 +205,12 @@ export function LevelsTable({
             <div className="flex flex-col items-start gap-3 p-5">
               <p className="text-sm text-muted-foreground">
                 {data.length === 0
-                  ? 'No levels defined yet for this tenant.'
-                  : 'No levels match your filters.'}
+                  ? t('academics.noLevelsYet')
+                  : t('academics.noLevelsMatch')}
               </p>
               {data.length === 0 && onCreate ? (
                 <Button type="button" size="sm" onClick={onCreate}>
-                  Create first level
+                  {t('academics.createFirstLevel')}
                 </Button>
               ) : null}
             </div>

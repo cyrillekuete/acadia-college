@@ -24,27 +24,27 @@ const dateString = z
 
 const catalogFields = {
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
-    required_error: 'Sub-system is required.',
+    required_error: 'validation.required.subSystem',
   }),
   branch: z.enum(ACADEMIC_BRANCHES, {
-    required_error: 'Branch is required.',
+    required_error: 'validation.required.branch',
   }),
-  levelId: z.string().min(1, 'Level is required.'),
-  academicYearId: z.string().min(1, 'Academic year is required.'),
+  levelId: z.string().min(1, 'validation.required.level'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
 };
 
 export const enrollmentApplicationSchema = z
   .object({
   kind: z.enum(ENROLLMENT_APPLICATION_KINDS),
-  firstNameEn: z.string().trim().min(1, 'First name (English) is required.'),
-  lastNameEn: z.string().trim().min(1, 'Last name (English) is required.'),
+  firstNameEn: z.string().trim().min(1, 'validation.required.firstNameEn'),
+  lastNameEn: z.string().trim().min(1, 'validation.required.lastNameEn'),
   firstNameFr: z.string().optional().or(z.literal('')),
   lastNameFr: z.string().optional().or(z.literal('')),
   email: z
     .string()
     .trim()
-    .min(1, 'Email is required.')
-    .email('Please enter a valid email.'),
+    .min(1, 'validation.required.email')
+    .email('validation.email'),
   phoneCountry: phoneCountryField(),
   phone: phoneNationalField(),
   dateOfBirth: dateString,
@@ -70,7 +70,7 @@ export const enrollmentApplicationSchema = z
     (d) =>
       d.kind !== 'RE_ENROLL' || Boolean(d.studentProfileId?.trim()),
     {
-      message: 'Select an existing student for re-enrollment.',
+      message: 'validation.required.existingStudent',
       path: ['studentProfileId'],
     },
   );
@@ -92,7 +92,7 @@ export const reviewApplicationSchema = z.discriminatedUnion('decision', [
     rejectionReason: z
       .string()
       .trim()
-      .min(1, 'Rejection reason is required.'),
+      .min(1, 'validation.required.rejectionReason'),
   }),
 ]);
 

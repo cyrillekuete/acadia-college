@@ -10,13 +10,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function RegistryDeleteDialog({
   open,
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Delete',
+  confirmLabel,
   confirmDisabled = false,
   onConfirm,
   pending = false,
@@ -30,6 +31,7 @@ export function RegistryDeleteDialog({
   onConfirm: () => void;
   pending?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -40,7 +42,7 @@ export function RegistryDeleteDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>{t('common.buttons.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             disabled={pending || confirmDisabled}
@@ -49,7 +51,7 @@ export function RegistryDeleteDialog({
               onConfirm();
             }}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('common.buttons.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

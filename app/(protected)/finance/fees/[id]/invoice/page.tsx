@@ -5,17 +5,19 @@ import Link from 'next/link';
 import { FeeInvoiceView } from '@/components/acadia/finance/fee-invoice-view';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function FeeInvoicePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
 
   return (
     <RecordDetailShell
-      title="Invoice / receipt"
+      title={t('finance.invoiceTitle')}
       description="Printable fee statement for this account."
       backHref={`/finance/fees/${id}`}
       backLabel="Back to account"

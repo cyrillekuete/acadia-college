@@ -1,21 +1,24 @@
 import i18n from 'i18next';
+import { DEFAULT_FEE_CURRENCY } from '@/lib/acadia/finance';
+import { getUiLocale, intlLocale, parseUiLocale, type UiLocale } from '@/lib/acadia/locale';
 
-// Default currency, but you can make this dynamic as well.
-const DEFAULT_CURRENCY = 'USD';
+const DEFAULT_CURRENCY = DEFAULT_FEE_CURRENCY;
 
-/**
- * Get the current locale from i18n.
- * @returns Current locale string (e.g., 'en-US').
- */
-const getCurrentLocale = (): string => {
-  return i18n.language || 'en-US'; // Fallback to 'en-US' if locale is not set
-};
+function resolveLocale(locale?: string): string {
+  const ui: UiLocale = locale
+    ? parseUiLocale(locale)
+    : i18n.isInitialized
+      ? getUiLocale()
+      : 'en';
+  return intlLocale(ui);
+}
 
-/**
- * Format a date to "Dec 7, 2024" format.
- */
+function usesHour12(locale: string): boolean {
+  return !locale.startsWith('fr');
+}
+
 export const formatDate = (date: Date | string): string => {
-  const locale = getCurrentLocale();
+  const locale = resolveLocale();
   const parsedDate = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
@@ -24,11 +27,8 @@ export const formatDate = (date: Date | string): string => {
   }).format(parsedDate);
 };
 
-/**
- * Format a date and time to "Dec 7, 2024, 11:41 PM" format.
- */
 export const formatDateTime = (date: Date | string): string => {
-  const locale = getCurrentLocale();
+  const locale = resolveLocale();
   const parsedDate = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
@@ -36,33 +36,28 @@ export const formatDateTime = (date: Date | string): string => {
     day: 'numeric',
     hour: 'numeric',
     minute: 'numeric',
-    hour12: true,
+    hour12: usesHour12(locale),
   }).format(parsedDate);
 };
 
-/**
- * Format time to "11:41 PM" format.
- */
 export const formatTime = (date: Date | string): string => {
-  const locale = getCurrentLocale();
+  const locale = resolveLocale();
   const parsedDate = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, {
     hour: 'numeric',
     minute: 'numeric',
-    hour12: true,
+    hour12: usesHour12(locale),
   }).format(parsedDate);
 };
 
-/**
- * Format money to a localized currency string.
- */
 export const formatMoney = (
   amount: number,
   currency: string = DEFAULT_CURRENCY,
 ): string => {
-  const locale = getCurrentLocale();
+  const locale = resolveLocale();
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
+    maximumFractionDigits: 0,
   }).format(amount);
 };

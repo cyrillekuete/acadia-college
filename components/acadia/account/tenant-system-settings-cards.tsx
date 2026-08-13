@@ -5,6 +5,7 @@ import { AccountDataState } from '@/components/acadia/account/account-data-state
 import { useAcadiaTenant } from '@/hooks/use-acadia-tenant';
 import { TenantSessionSettingsForm } from '@/components/acadia/admin/tenant-session-settings-form';
 import { formatRecordValue } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function formatModules(modules: string[]): string {
   if (modules.length === 0) {
@@ -14,6 +15,7 @@ function formatModules(modules: string[]): string {
 }
 
 export function TenantSystemSettingsCards() {
+  const { t } = useTranslation();
   const { data: tenant, isLoading, isError, error } = useAcadiaTenant();
 
   return (
@@ -22,58 +24,58 @@ export function TenantSystemSettingsCards() {
       isError={isError}
       error={error}
       isEmpty={!tenant}
-      emptyMessage="Institution settings not found for your tenant."
+      emptyMessage={t('account.institutionNotFound')}
     >
       {tenant ? (
         <div className="flex flex-col gap-5 lg:gap-7.5">
           <RecordDetailCard
-            title="Regional & locale"
+            title={t('account.regionalLocale')}
             fields={[
-              { label: 'Locale', value: formatRecordValue(tenant.locale) },
-              { label: 'Timezone', value: formatRecordValue(tenant.timezone) },
+              { label: t('account.locale'), value: formatRecordValue(tenant.locale) },
+              { label: t('admin.timezone'), value: formatRecordValue(tenant.timezone) },
               {
-                label: 'Academic year start month',
+                label: t('account.academicYearStartMonth'),
                 value: formatRecordValue(tenant.academicYearStartMonth),
               },
             ]}
           />
           <RecordDetailCard
-            title="Session & security"
+            title={t('account.sessionSecurity')}
             fields={[
               {
-                label: 'Session timeout (minutes)',
+                label: t('account.sessionTimeout'),
                 value: formatRecordValue(tenant.sessionTimeoutMinutes),
               },
               {
-                label: 'Session warning (minutes)',
+                label: t('account.sessionWarning'),
                 value: formatRecordValue(tenant.sessionWarningMinutes),
               },
             ]}
           />
           <TenantSessionSettingsForm />
           <RecordDetailCard
-            title="Academic policies"
+            title={t('account.academicPolicies')}
             fields={[
               {
-                label: 'Mark entry calendar policy',
+                label: t('account.markEntryPolicy'),
                 value: formatRecordValue(tenant.markEntryCalendarPolicy),
               },
               {
-                label: 'Minimum attendance %',
+                label: t('account.minimumAttendance'),
                 value: formatRecordValue(tenant.minimumAttendancePercent),
               },
               {
-                label: 'Show attendance on transcript',
+                label: t('account.showAttendanceOnTranscript'),
                 value: formatRecordValue(tenant.showAttendanceOnTranscript),
               },
             ]}
           />
           <RecordDetailCard
-            title="Modules & email"
+            title={t('account.modulesEmail')}
             fields={[
-              { label: 'Enabled modules', value: formatModules(tenant.enabledModules) },
+              { label: t('account.enabledModules'), value: formatModules(tenant.enabledModules) },
               {
-                label: 'Platform email relay',
+                label: t('account.platformEmailRelay'),
                 value: formatRecordValue(tenant.usePlatformEmailRelay),
               },
             ]}

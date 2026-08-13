@@ -10,20 +10,20 @@ import { staffEmergencyRelationshipEnum } from '@/lib/acadia/staff-create-schema
 export const staffOnboardingSchema = z
   .object({
     phoneCountry: phoneCountryField(),
-    phone: phoneNationalField(true, 'Phone number is required'),
+    phone: phoneNationalField(true, 'validation.required.phone'),
     bio: z.string().max(2000).optional().or(z.literal('')),
     officeRoom: z.string().max(80).optional().or(z.literal('')),
     officePhoneCountry: phoneCountryField(),
     officePhone: phoneNationalField(),
     emergencyContactName: z
       .string()
-      .min(1, 'Emergency contact name is required')
+      .min(1, 'validation.required.emergencyContactName')
       .max(120),
     emergencyContactRelationship: staffEmergencyRelationshipEnum,
     emergencyContactPhoneCountry: phoneCountryField(),
     emergencyContactPhone: phoneNationalField(
       true,
-      'Emergency contact phone is required',
+      'validation.required.emergencyContactPhone',
     ),
   })
   .superRefine((data, ctx) => {

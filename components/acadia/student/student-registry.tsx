@@ -25,8 +25,10 @@ import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function StudentRegistry() {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -121,16 +123,16 @@ export function StudentRegistry() {
       return undefined;
     }
     if (!teacherStudentsResult) {
-      return 'Link your staff profile to view students in your classes.';
+      return t('students.emptyLinkProfile');
     }
     if (scopePairs.length === 0) {
-      return 'No classes assigned yet. Contact an administrator to assign your classes and subjects.';
+      return t('students.emptyNoClasses');
     }
     if (listSource.length === 0) {
-      return 'No students enrolled in your assigned classes yet.';
+      return t('students.emptyNoStudents');
     }
     return undefined;
-  }, [isTeacherView, listSource.length, scopePairs.length, studentsLoading, teacherStudentsResult]);
+  }, [isTeacherView, listSource.length, scopePairs.length, studentsLoading, teacherStudentsResult, t]);
 
   return (
     <div className="space-y-7.5">

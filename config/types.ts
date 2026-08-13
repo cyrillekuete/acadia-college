@@ -22,11 +22,13 @@ export type MenuConfig = MenuItem[];
 /** Acadia role-based sidebar navigation (Keenicons duotone glyph names). */
 export interface AcadiaMenuItem {
   title?: string;
+  titleKey?: string;
   icon?: KeenIconName;
   path?: string;
   rootPath?: string;
   childrenIndex?: number;
   heading?: string;
+  headingKey?: string;
   children?: AcadiaMenuConfig;
   disabled?: boolean;
   collapse?: boolean;

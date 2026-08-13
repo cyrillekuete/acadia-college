@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { nestedFieldColumn } from '@/lib/acadia/list-columns';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = {
   id: string;
@@ -33,10 +34,11 @@ const columns: ColumnDef<Row>[] = [
 ];
 
 export default function StudentEnrollmentsPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Acadia College — Student enrollments"
-      description="Active enrollments linked to academic years and class placement."
+      title={t('enrollment.enrollmentsTitle')}
+      description={t('enrollment.enrollmentsDescription')}
     >
       <SupabaseTableList scopeByAcademicYear
         table="StudentEnrollment"

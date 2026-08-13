@@ -35,9 +35,7 @@ import {
 import {
   ACADEMIC_BRANCHES,
   ACADEMIC_SUB_SYSTEMS,
-  branchLabel,
   levelDisplayLabel,
-  subSystemLabel,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
 import {
@@ -57,6 +55,7 @@ import { useSubjectsForClass } from '@/hooks/use-subjects-for-class';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type ClassRow = {
   id: string;
@@ -79,6 +78,7 @@ export function ClassFormDialog({
   record?: ClassRow | null;
   defaultFilters?: CatalogFilters;
 }) {
+  const { t } = useTranslation();
   const { createClass, updateClass } = useAcademicStructureMutations();
   const { data: session } = useAcadiaCollegeSession();
   const { activeYearId } = useActiveAcademicYear();
@@ -211,18 +211,18 @@ export function ClassFormDialog({
   const subjectsErrorMessage = subjectsError
     ? subjectsQueryError instanceof Error
       ? subjectsQueryError.message
-      : 'Failed to load subjects.'
+      : t('academics.loadSubjectsFailed')
     : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(90dvh,720px)] max-w-lg overflow-hidden">
         <DialogHeader className="shrink-0">
-          <DialogTitle>{isEdit ? 'Edit class' : 'New class'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('academics.editClass') : t('academics.newClass')}</DialogTitle>
           <DialogDescription className="sr-only">
             {isEdit
-              ? 'Update class details, assigned subjects, and class teacher.'
-              : 'Create a class and assign subjects for the selected level and stream.'}
+              ? t('academics.editClassDescription')
+              : t('academics.newClassDescription')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -233,9 +233,9 @@ export function ClassFormDialog({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Class name</FormLabel>
+                    <FormLabel>{t('academics.className')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Form 5 Arts" {...field} />
+                      <Input placeholder={t('academics.classNamePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -246,11 +246,11 @@ export function ClassFormDialog({
                 name="levelId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Level</FormLabel>
+                    <FormLabel>{t('students.level')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select level" />
+                          <SelectValue placeholder={t('academics.selectLevel')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -270,7 +270,7 @@ export function ClassFormDialog({
                 name="subSystem"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>System</FormLabel>
+                    <FormLabel>{t('catalog.subSystemLabel')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -280,7 +280,7 @@ export function ClassFormDialog({
                       <SelectContent>
                         {ACADEMIC_SUB_SYSTEMS.map((value) => (
                           <SelectItem key={value} value={value}>
-                            {subSystemLabel(value)}
+                            {t(`catalog.subSystem.${value}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -294,7 +294,7 @@ export function ClassFormDialog({
                 name="branch"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Branch</FormLabel>
+                    <FormLabel>{t('catalog.branchLabel')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -304,7 +304,7 @@ export function ClassFormDialog({
                       <SelectContent>
                         {ACADEMIC_BRANCHES.map((value) => (
                           <SelectItem key={value} value={value}>
-                            {branchLabel(value)}
+                            {t(`catalog.branch.${value}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -318,10 +318,10 @@ export function ClassFormDialog({
                 name="subjectSelections"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subjects</FormLabel>
+                    <FormLabel>{t('nav.subjects')}</FormLabel>
                     {!levelId ? (
                       <p className="text-sm text-muted-foreground">
-                        Select a level to see subjects.
+                        {t('academics.subjectsHint')}
                       </p>
                     ) : (
                       <FormControl>
@@ -335,7 +335,7 @@ export function ClassFormDialog({
                           }
                           loading={subjectsLoading}
                           error={subjectsErrorMessage}
-                          emptyMessage="No subjects found for this level and stream."
+                          emptyMessage={t('academics.noSubjectsForLevel')}
                         />
                       </FormControl>
                     )}
@@ -348,18 +348,18 @@ export function ClassFormDialog({
                 name="staffProfileId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Class teacher</FormLabel>
+                    <FormLabel>{t('academics.classTeacher')}</FormLabel>
                     <Select
                       value={field.value || '__none__'}
                       onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Unassigned" />
+                          <SelectValue placeholder={t('common.labels.unassigned')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="__none__">Unassigned</SelectItem>
+                        <SelectItem value="__none__">{t('common.labels.unassigned')}</SelectItem>
                         {staff.map((member) => {
                           const user = unwrapRelation<{ name?: string | null }>(member.User);
                           const label =
@@ -383,7 +383,7 @@ export function ClassFormDialog({
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>{t('common.labels.status')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -393,7 +393,7 @@ export function ClassFormDialog({
                       <SelectContent>
                         {CLASS_STATUSES.map((value) => (
                           <SelectItem key={value} value={value}>
-                            {value === 'ACTIVE' ? 'Active' : 'Inactive'}
+                            {value === 'ACTIVE' ? t('common.labels.active') : t('common.labels.inactive')}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -413,17 +413,17 @@ export function ClassFormDialog({
                   }
                   className="text-primary hover:underline"
                 >
-                  Configure promotion policy for this class
+                  {t('academics.configurePromotion')}
                 </Link>
               </p>
             ) : null}
             <DialogFooter className="shrink-0">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.buttons.cancel')}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-                {isEdit ? 'Save' : 'Create'}
+                {isEdit ? t('common.buttons.save') : t('common.buttons.create')}
               </Button>
             </DialogFooter>
           </form>

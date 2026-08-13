@@ -8,6 +8,7 @@ import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { threadSubjectDisplay, messageGroupScopeLabel } from '@/lib/acadia/communication';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type GroupThreadRow = {
   id: string;
@@ -46,9 +47,10 @@ const columns: ColumnDef<GroupThreadRow>[] = [
 ];
 
 export default function MessageGroupsPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Group messaging"
+      title={t('communication.groupsTitle')}
       description="Create department, stream, or level group conversations."
     >
       <div className="mb-6">
@@ -66,7 +68,7 @@ export default function MessageGroupsPage() {
           <h2 className="text-lg font-semibold mb-4">Existing groups</h2>
           <SupabaseTableList
             table="MessageThread"
-            title="Group threads"
+            title={t('communication.groupThreads')}
             select="id, kind, subjectEn, subjectFr, groupScope, updatedAt"
             columns={columns}
             searchKeys={['subjectEn']}

@@ -44,6 +44,7 @@ import {
   useTermOptions,
 } from '@/hooks/use-academic-calendar-options';
 import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type SequenceRow = {
   id: string;
@@ -64,6 +65,7 @@ export function SequenceFormDialog({
   record?: SequenceRow | null;
   defaultAcademicYearId?: string;
 }) {
+  const { t } = useTranslation();
   const { createSequence, updateSequence } = useAcademicCalendarMutations();
   const { data: years = [] } = useAcademicYearOptions();
   const isEdit = !!record;
@@ -163,7 +165,7 @@ export function SequenceFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit sequence' : 'New sequence'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('academics.editSequence') : t('academics.newSequence')}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit}>
@@ -173,7 +175,7 @@ export function SequenceFormDialog({
                 name="academicYearId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Academic year</FormLabel>
+                    <FormLabel>{t('students.academicYear')}</FormLabel>
                     <Select
                       value={field.value}
                       onValueChange={(v) => {
@@ -183,7 +185,7 @@ export function SequenceFormDialog({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select year" />
+                          <SelectValue placeholder={t('academics.selectYear')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -203,7 +205,7 @@ export function SequenceFormDialog({
                 name="number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sequence number (1–{structure.sequencesPerYear})</FormLabel>
+                    <FormLabel>{t('academics.sequenceNumber', { max: structure.sequencesPerYear })}</FormLabel>
                     <Select
                       value={String(field.value)}
                       disabled={!!academicYearId && termsLoading}
@@ -221,7 +223,7 @@ export function SequenceFormDialog({
                       <SelectContent>
                         {sequenceNumbers.map((n) => (
                           <SelectItem key={n} value={String(n)}>
-                            Sequence {n}
+                            {t('catalog.sequenceN', { number: n })}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -235,17 +237,17 @@ export function SequenceFormDialog({
                 name="termId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Term</FormLabel>
+                    <FormLabel>{t('academics.term')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select term" />
+                          <SelectValue placeholder={t('academics.selectTerm')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {terms.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {termLabel({ number: t.number })}
+                        {terms.map((term) => (
+                          <SelectItem key={term.id} value={term.id}>
+                            {termLabel({ number: term.number })}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -259,7 +261,7 @@ export function SequenceFormDialog({
                 name="numberInTerm"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Position in term</FormLabel>
+                    <FormLabel>{t('academics.positionInTerm')}</FormLabel>
                     <Select
                       value={String(field.value)}
                       onValueChange={(v) => field.onChange(Number(v))}
@@ -272,7 +274,11 @@ export function SequenceFormDialog({
                       <SelectContent>
                         {numberInTermOptions.map((n) => (
                           <SelectItem key={n} value={String(n)}>
-                            {n === 1 ? '1st in term' : n === 2 ? '2nd in term' : `${n}th in term`}
+                            {n === 1
+                              ? t('academics.inTerm1')
+                              : n === 2
+                                ? t('academics.inTerm2')
+                                : t('academics.inTermN', { n })}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -284,11 +290,11 @@ export function SequenceFormDialog({
             </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.buttons.cancel')}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-                {isEdit ? 'Save' : 'Create'}
+                {isEdit ? t('common.buttons.save') : t('common.buttons.create')}
               </Button>
             </DialogFooter>
           </form>

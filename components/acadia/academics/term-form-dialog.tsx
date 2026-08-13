@@ -38,6 +38,7 @@ import {
   useLevelOptions,
 } from '@/hooks/use-academic-calendar-options';
 import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type TermRow = {
   id: string;
@@ -57,6 +58,7 @@ export function TermFormDialog({
   record?: TermRow | null;
   defaultAcademicYearId?: string;
 }) {
+  const { t } = useTranslation();
   const { createTerm, updateTerm } = useAcademicCalendarMutations();
   const { data: years = [] } = useAcademicYearOptions();
   const { data: levels = [] } = useLevelOptions();
@@ -120,7 +122,7 @@ export function TermFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit term' : 'New term'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('academics.editTerm') : t('academics.newTerm')}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={onSubmit}>
@@ -130,18 +132,18 @@ export function TermFormDialog({
                 name="academicYearId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Academic year</FormLabel>
+                    <FormLabel>{t('students.academicYear')}</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select year" />
+                          <SelectValue placeholder={t('academics.selectYear')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {years.map((y) => (
                           <SelectItem key={y.id} value={y.id}>
                             {y.label}
-                            {y.isCurrent ? ' (current)' : ''}
+                            {y.isCurrent ? t('academics.currentSuffix') : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -155,7 +157,7 @@ export function TermFormDialog({
                 name="number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Term</FormLabel>
+                    <FormLabel>{t('academics.term')}</FormLabel>
                     <Select
                       value={String(field.value)}
                       onValueChange={(v) => field.onChange(Number(v))}
@@ -182,7 +184,7 @@ export function TermFormDialog({
                 name="levelId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Level (optional)</FormLabel>
+                    <FormLabel>{t('academics.levelOptional')}</FormLabel>
                     <Select
                       value={field.value || '__none__'}
                       onValueChange={(v) =>
@@ -191,11 +193,11 @@ export function TermFormDialog({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="All levels" />
+                          <SelectValue placeholder={t('academics.allLevels')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="__none__">All levels</SelectItem>
+                        <SelectItem value="__none__">{t('academics.allLevels')}</SelectItem>
                         {levels.map((l) => (
                           <SelectItem key={l.id} value={l.id}>
                             {levelDisplayLabel(l)}
@@ -210,11 +212,11 @@ export function TermFormDialog({
             </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t('common.buttons.cancel')}
               </Button>
               <Button type="submit" disabled={pending}>
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-                {isEdit ? 'Save' : 'Create'}
+                {isEdit ? t('common.buttons.save') : t('common.buttons.create')}
               </Button>
             </DialogFooter>
           </form>

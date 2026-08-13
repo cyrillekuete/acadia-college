@@ -11,10 +11,10 @@ export const USER_STATUSES = [
 export const createUserSchema = z.object({
   email: z
     .string()
-    .email({ message: 'Please enter a valid email address.' })
-    .min(1, { message: 'Email is required.' }),
-  name: z.string().min(1, { message: 'Name is required.' }).max(120),
-  roleId: z.string().min(1, { message: 'Role is required.' }),
+    .email({ message: 'validation.email' })
+    .min(1, { message: 'validation.required.email' }),
+  name: z.string().min(1, { message: 'validation.required.name' }).max(120),
+  roleId: z.string().min(1, { message: 'validation.required.role' }),
   status: z.enum(USER_STATUSES),
   password: getPasswordSchema(),
   country: z.string().max(80).optional().or(z.literal('')),
@@ -26,10 +26,10 @@ export type CreateUserFormValues = z.infer<typeof createUserSchema>;
 export const editUserSchema = z.object({
   email: z
     .string()
-    .email({ message: 'Please enter a valid email address.' })
-    .min(1, { message: 'Email is required.' }),
-  name: z.string().min(1, { message: 'Name is required.' }).max(120),
-  roleId: z.string().min(1, { message: 'Role is required.' }),
+    .email({ message: 'validation.email' })
+    .min(1, { message: 'validation.required.email' }),
+  name: z.string().min(1, { message: 'validation.required.name' }).max(120),
+  roleId: z.string().min(1, { message: 'validation.required.role' }),
   status: z.enum(USER_STATUSES),
   country: z.string().max(80).optional().or(z.literal('')),
   timezone: z.string().max(80).optional().or(z.literal('')),
@@ -42,16 +42,16 @@ export const tenantSessionSettingsSchema = z
     sessionTimeoutMinutes: z.coerce
       .number()
       .int()
-      .min(15, { message: 'Session timeout must be at least 15 minutes.' })
-      .max(1440, { message: 'Session timeout cannot exceed 24 hours.' }),
+      .min(15, { message: 'validation.sessionTimeoutMin' })
+      .max(1440, { message: 'validation.sessionTimeoutMax' }),
     sessionWarningMinutes: z.coerce
       .number()
       .int()
-      .min(1, { message: 'Warning must be at least 1 minute.' })
-      .max(60, { message: 'Warning cannot exceed 60 minutes.' }),
+      .min(1, { message: 'validation.warningMin' })
+      .max(60, { message: 'validation.warningMax' }),
   })
   .refine((data) => data.sessionWarningMinutes < data.sessionTimeoutMinutes, {
-    message: 'Warning time must be less than session timeout.',
+    message: 'validation.warningBeforeTimeout',
     path: ['sessionWarningMinutes'],
   });
 

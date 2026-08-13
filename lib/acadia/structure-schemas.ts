@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ACADEMIC_BRANCHES, ACADEMIC_SUB_SYSTEMS } from '@/lib/acadia/education-system';
 
 export const levelFormSchema = z.object({
-  name: z.string().trim().min(1, 'Level name is required').max(120),
+  name: z.string().trim().min(1, 'validation.required.levelName').max(120),
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
   branch: z.enum(ACADEMIC_BRANCHES),
 });
@@ -25,8 +25,8 @@ export const subjectClassAssignmentSchema = z.object({
 });
 
 export const classFormSchema = z.object({
-  name: z.string().trim().min(1, 'Class name is required').max(160),
-  levelId: z.string().min(1, 'Level is required'),
+  name: z.string().trim().min(1, 'validation.required.className').max(160),
+  levelId: z.string().min(1, 'validation.required.level'),
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
   branch: z.enum(ACADEMIC_BRANCHES),
   staffProfileId: z.string().optional(),

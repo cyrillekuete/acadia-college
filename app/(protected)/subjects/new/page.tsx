@@ -8,14 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function NewSubjectPage() {
+  const { t } = useTranslation();
   const { data: session, isLoading } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
 
   return (
     <AcadiaPageShell
-      title="New subject"
+      title={t('subjects.newTitle')}
       description="Add a subject to the catalog for all terms in the academic year."
     >
       <div className="mb-5">
@@ -35,7 +37,7 @@ export default function NewSubjectPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Subject details</CardTitle>
+            <CardTitle>{t('subjects.details')}</CardTitle>
           </CardHeader>
           <CardContent>
             <SubjectForm onCancelHref="/subjects" />

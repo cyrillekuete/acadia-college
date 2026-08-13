@@ -24,8 +24,10 @@ import {
 import { useSubjectGroupingMutations } from '@/hooks/use-subject-grouping-mutations';
 import { isAdmin } from '@/lib/acadia/roles';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function SubjectGroupingsPage() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get('highlight');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -102,8 +104,8 @@ export default function SubjectGroupingsPage() {
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Subject groupings"
-      description="Define optional groupings that subjects can belong to (e.g. science block, languages)."
+      title={t('subjects.groupingsTitle')}
+      description={t('subjects.groupingsDescription')}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Button type="button" size="sm" variant="outline" asChild>

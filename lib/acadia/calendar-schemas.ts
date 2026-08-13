@@ -15,12 +15,12 @@ export type CalendarMilestoneKind = (typeof CALENDAR_MILESTONE_KINDS)[number];
 
 const dateString = z
   .string()
-  .min(1, 'Date is required')
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
+  .min(1, 'validation.required.date')
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.dateFormat');
 
 const optionalDateString = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.dateFormat')
   .optional()
   .or(z.literal(''));
 
@@ -28,24 +28,24 @@ const structureFields = {
   termsPerYear: z.coerce
     .number()
     .int()
-    .min(1, 'At least 1 term')
-    .max(12, 'At most 12 terms'),
+    .min(1, 'validation.termsMin')
+    .max(12, 'validation.termsMax'),
   sequencesPerTerm: z.coerce
     .number()
     .int()
-    .min(1, 'At least 1 sequence per term')
-    .max(6, 'At most 6 sequences per term'),
+    .min(1, 'validation.sequencesPerTermMin')
+    .max(6, 'validation.sequencesPerTermMax'),
   sequencesPerYear: z.coerce
     .number()
     .int()
-    .min(1, 'At least 1 sequence per year')
-    .max(24, 'At most 24 sequences per year'),
+    .min(1, 'validation.sequencesPerYearMin')
+    .max(24, 'validation.sequencesPerYearMax'),
 };
 
 export const academicYearStructureSchema = z
   .object(structureFields)
   .refine((v) => v.sequencesPerYear >= v.termsPerYear, {
-    message: 'Sequences per year must be at least equal to terms per year',
+    message: 'validation.sequencesVsTerms',
     path: ['sequencesPerYear'],
   });
 
@@ -63,7 +63,7 @@ export const sequencesStructureSchema = z
     sequencesPerYear: structureFields.sequencesPerYear,
   })
   .refine((v) => v.sequencesPerYear >= 1, {
-    message: 'Sequences per year is required',
+    message: 'validation.required.sequencesPerYear',
     path: ['sequencesPerYear'],
   });
 
@@ -71,7 +71,7 @@ export type SequencesStructureFormValues = z.infer<typeof sequencesStructureSche
 
 export const academicYearSchema = z
   .object({
-    label: z.string().trim().min(1, 'Label is required'),
+    label: z.string().trim().min(1, 'validation.required.label'),
     startsOn: dateString,
     endsOn: dateString,
     isCurrent: z.boolean(),
@@ -83,11 +83,11 @@ export const academicYearSchema = z
     enrollmentClosesAt: optionalDateString,
   })
   .refine((v) => v.endsOn >= v.startsOn, {
-    message: 'End date must be on or after start date',
+    message: 'validation.endAfterStart',
     path: ['endsOn'],
   })
   .refine((v) => v.sequencesPerYear >= v.termsPerYear, {
-    message: 'Sequences per year must be at least equal to terms per year',
+    message: 'validation.sequencesVsTerms',
     path: ['sequencesPerYear'],
   })
   .refine(
@@ -100,7 +100,7 @@ export const academicYearSchema = z
       return close >= open;
     },
     {
-      message: 'Enrollment close must be on or after enrollment open',
+      message: 'validation.enrollmentCloseAfterOpen',
       path: ['enrollmentClosesAt'],
     },
   );
@@ -109,7 +109,7 @@ export type AcademicYearFormValues = z.infer<typeof academicYearSchema>;
 
 export function termSchemaForStructure(termsPerYear: number) {
   return z.object({
-    academicYearId: z.string().min(1, 'Academic year is required'),
+    academicYearId: z.string().min(1, 'validation.required.academicYear'),
     number: z.coerce.number().int().min(1).max(termsPerYear),
     levelId: z.string().optional(),
   });
@@ -121,8 +121,8 @@ export type TermFormValues = z.infer<typeof termSchema>;
 
 export function sequenceSchemaForStructure(sequencesPerYear: number, maxNumberInTerm = 6) {
   return z.object({
-    academicYearId: z.string().min(1, 'Academic year is required'),
-    termId: z.string().min(1, 'Term is required'),
+    academicYearId: z.string().min(1, 'validation.required.academicYear'),
+    termId: z.string().min(1, 'validation.required.term'),
     number: z.coerce.number().int().min(1).max(sequencesPerYear),
     numberInTerm: z.coerce.number().int().min(1).max(maxNumberInTerm),
   });
@@ -133,7 +133,7 @@ export const sequenceSchema = sequenceSchemaForStructure(24, 6);
 export type SequenceFormValues = z.infer<typeof sequenceSchema>;
 
 export const calendarMilestoneSchema = z.object({
-  academicYearId: z.string().min(1, 'Academic year is required'),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
   kind: z.enum(CALENDAR_MILESTONE_KINDS),
   onDate: dateString,
   termId: z.string().optional(),

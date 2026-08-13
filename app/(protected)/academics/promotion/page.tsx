@@ -2,12 +2,14 @@
 
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { PromotionAdminPanel } from '@/components/acadia/promotion/promotion-admin-panel';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AcademicsPromotionPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Promotion management"
-      description="Configure per-class promotion rules and compute student promotion decisions."
+      title={t('academics.promotionTitle')}
+      description={t('academics.promotionDescription')}
     >
       <PromotionAdminPanel />
     </AcadiaPageShell>

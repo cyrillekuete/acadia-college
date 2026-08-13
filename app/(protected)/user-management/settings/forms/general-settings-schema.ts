@@ -7,24 +7,24 @@ import {
 
 export const GeneralSettingsSchema = z
   .object({
-  name: z.string().min(1, 'Company name is required'),
+  name: z.string().min(1, 'validation.required.companyName'),
   logoFile: z
     .instanceof(File)
     .nullable()
     .optional()
     .refine(
       (file) => !file || file.size <= 1024 * 1024, // Check if file is not present or <= 1MB
-      { message: 'Logo file must be smaller than 1MB' },
+      { message: 'validation.logoMaxSize' },
     ),
   logoAction: z.string().optional(),
   active: z.boolean(),
   address: z.string().nullable().optional(),
   websiteURL: z
     .string()
-    .url('Must be a valid URL')
+    .url('validation.url')
     .or(z.literal(''))
     .optional(),
-  supportEmail: z.string().email('Must be a valid email'),
+  supportEmail: z.string().email('validation.email'),
   supportPhoneCountry: phoneCountryField(),
   supportPhone: phoneNationalField(),
   language: z.string(),

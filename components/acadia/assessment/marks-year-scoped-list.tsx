@@ -3,6 +3,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { useExamSessionIdsForActiveYear } from '@/hooks/use-exam-session-ids-for-year';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function MarksYearScopedList<T extends Record<string, unknown>>({
   columns,
@@ -11,12 +12,13 @@ export function MarksYearScopedList<T extends Record<string, unknown>>({
   columns: ColumnDef<T>[];
   select: string;
 }) {
+  const { t } = useTranslation();
   const { data: examSessionIds = [], isLoading } = useExamSessionIdsForActiveYear();
 
   if (isLoading) {
     return (
       <p className="text-sm text-muted-foreground p-5">
-        Loading marks for the selected academic year…
+        {t('marks.loadingYear')}
       </p>
     );
   }
@@ -24,7 +26,7 @@ export function MarksYearScopedList<T extends Record<string, unknown>>({
   if (examSessionIds.length === 0) {
     return (
       <p className="text-sm text-muted-foreground p-5">
-        No exam sessions for this academic year yet.
+        {t('marks.noExamSessions')}
       </p>
     );
   }
@@ -32,7 +34,7 @@ export function MarksYearScopedList<T extends Record<string, unknown>>({
   return (
     <SupabaseTableList<T>
       table="SubjectMark"
-      title="Subject marks"
+      title={t('marks.allMarks')}
       select={select}
       columns={columns}
       searchKeys={[]}

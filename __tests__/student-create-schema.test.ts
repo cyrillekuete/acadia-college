@@ -136,7 +136,7 @@ describe('studentCreateSchema parent contact', () => {
         result.error.issues.some(
           (i) =>
             i.path.includes('parent_email') &&
-            i.message.includes('must be different'),
+            i.message === 'validation.emailsMustDiffer',
         ),
       ).toBe(true);
     }

@@ -12,6 +12,7 @@ import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { Button } from '@/components/ui/button';
 import { formatRecordValue } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type Row = {
   id: string;
@@ -23,6 +24,7 @@ type Row = {
 };
 
 export default function AcademicYearsPage() {
+  const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const { setAcademicYearCurrent } = useAcademicCalendarMutations();
@@ -47,19 +49,19 @@ export default function AcademicYearsPage() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                title="Set as current year"
+                title={t('academics.setCurrentYear')}
                 disabled={setAcademicYearCurrent.isPending}
                 onClick={() => setAcademicYearCurrent.mutate(row.original.id)}
               >
                 <Star className="size-4" />
               </Button>
             ) : null}
-            <Button type="button" variant="ghost" size="icon" title="Promotion" asChild>
+            <Button type="button" variant="ghost" size="icon" title={t('academics.promotionTitle')} asChild>
               <Link href={`/academics/promotion?year=${row.original.id}`}>
                 <Users className="size-4" />
               </Link>
             </Button>
-            <Button type="button" variant="ghost" size="icon" title="Year rollover" asChild>
+            <Button type="button" variant="ghost" size="icon" title={t('academics.yearRollover')} asChild>
               <Link href={`/academics/years/${row.original.id}/rollover`}>
                 <ArrowRightLeft className="size-4" />
               </Link>
@@ -74,16 +76,16 @@ export default function AcademicYearsPage() {
         ),
       },
     ],
-    [setAcademicYearCurrent],
+    [setAcademicYearCurrent, t],
   );
 
   return (
     <AcadiaPageShell
-      title="Acadia College — Academic years"
-      description="Define school years and set the current year. New years auto-provision three terms and six sequences."
+      title={t('academics.yearsTitle')}
+      description={t('academics.yearsDescription')}
     >
       <AdminToolbar
-        addLabel="New academic year"
+        addLabel={t('academics.addYear')}
         onAdd={() => {
           setEditing(null);
           setDialogOpen(true);
@@ -91,7 +93,7 @@ export default function AcademicYearsPage() {
       />
       <SupabaseTableList
         table="AcademicYear"
-        title="Academic years"
+        title={t('academics.yearsTitle')}
         select="id, label, startsOn, endsOn, isCurrent, isActive, termsPerYear, sequencesPerTerm, sequencesPerYear, enrollmentOpensAt, enrollmentClosesAt"
         columns={columns}
         searchKeys={['label']}

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { localizedText, translate } from '@/lib/acadia/locale';
 
 export type UserRecentUploadRow = {
   id: string;
@@ -41,7 +42,10 @@ export function mapUserRecentUploadRow(
 
   return {
     id: row.id,
-    title: row.titleEn?.trim() || fileName || 'Untitled file',
+    title:
+      localizedText(row.titleEn, row.titleFr) ||
+      fileName ||
+      translate('common.messages.untitled', { defaultValue: 'Untitled file' }),
     fileName,
     fileSizeBytes: row.fileSizeBytes,
     mimeType: row.mimeType,

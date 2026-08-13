@@ -8,6 +8,13 @@ import {
   type ClassSubjectEligibilitySubject,
 } from '@/lib/acadia/class-subject-eligibility';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { unwrapRelation } from '@/lib/acadia/record-display';
+import {
+  toStudentClassSubjectRow,
+  type StudentClassSubjectRow,
+  type StudentClassSubjectSubBranch,
+} from '@/lib/acadia/student-class-subjects';
+import { embed, FK } from '@/lib/supabase/embed-selects';
 import { fetchSubjectLevelIds } from '@/lib/supabase/queries/subject-levels';
 
 type Client = SupabaseClient<Database>;
@@ -86,6 +93,118 @@ export async function fetchClassSubjectSelections(
         !branches || branches.length === 0 ? null : branches,
     };
   });
+}
+
+type ClassSubjectDisplayQueryRow = {
+  subjectId: string;
+  groupingId: string | null;
+  Subject?: unknown;
+  ClassGrouping?: unknown;
+};
+
+type NestedSubjectRow = {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameFr: string;
+  coefficient: number;
+  deactivatedAt: string | null;
+  SubjectGrouping?: unknown;
+  SubjectSubBranch?: StudentClassSubjectSubBranch[] | null;
+};
+
+function groupingNameFromRelation(value: unknown): string | null {
+  const grouping = unwrapRelation<{ nameEn?: string | null }>(value);
+  return grouping?.nameEn?.trim() || null;
+}
+
+export async function fetchClassSubjectDisplayRows(
+  supabase: Client,
+  tenantId: string,
+  classId: string,
+): Promise<StudentClassSubjectRow[]> {
+  const { data, error } = await supabase
+    .from('ClassSubject')
+    .select(
+      [
+        'subjectId',
+        'groupingId',
+        embed(
+          'Subject',
+          FK.ClassSubject_subject,
+          [
+            'id, code, nameEn, nameFr, coefficient, deactivatedAt',
+            embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn'),
+            'SubjectSubBranch ( id, name, nameFr, sortOrder )',
+          ].join(', '),
+        ),
+        `ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn')}`,
+      ].join(', '),
+    )
+    .eq('tenantId', tenantId)
+    .eq('classId', classId);
+
+  if (error) {
+    throw error;
+  }
+
+  const classSubjectRows = (data ?? []) as unknown as ClassSubjectDisplayQueryRow[];
+  if (classSubjectRows.length === 0) {
+    return [];
+  }
+
+  const { data: branchRows, error: branchError } = await supabase
+    .from('ClassSubjectSubBranch')
+    .select('subjectId, subjectSubBranchId')
+    .eq('tenantId', tenantId)
+    .eq('classId', classId);
+
+  if (branchError) {
+    throw branchError;
+  }
+
+  const assignedBranchesBySubject = new Map<string, string[]>();
+  for (const row of branchRows ?? []) {
+    const subjectId = row.subjectId as string;
+    const subBranchId = row.subjectSubBranchId as string;
+    const list = assignedBranchesBySubject.get(subjectId) ?? [];
+    list.push(subBranchId);
+    assignedBranchesBySubject.set(subjectId, list);
+  }
+
+  const rows: StudentClassSubjectRow[] = [];
+  for (const row of classSubjectRows) {
+    const subject = unwrapRelation<NestedSubjectRow>(row.Subject);
+    const subBranches = Array.isArray(subject?.SubjectSubBranch)
+      ? [...subject.SubjectSubBranch].sort(
+          (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+        )
+      : [];
+    const assignedIds = subject
+      ? (assignedBranchesBySubject.get(subject.id) ?? [])
+      : [];
+    const mapped = toStudentClassSubjectRow({
+      subject: subject
+        ? {
+            id: subject.id,
+            code: subject.code,
+            nameEn: subject.nameEn,
+            nameFr: subject.nameFr,
+            coefficient: subject.coefficient,
+            deactivatedAt: subject.deactivatedAt,
+            groupingName: groupingNameFromRelation(subject.SubjectGrouping),
+            subBranches,
+          }
+        : null,
+      classGroupingName: groupingNameFromRelation(row.ClassGrouping),
+      assignedSubBranchIds: assignedIds.length > 0 ? assignedIds : null,
+    });
+    if (mapped) {
+      rows.push(mapped);
+    }
+  }
+
+  return rows.sort((a, b) => a.nameEn.localeCompare(b.nameEn));
 }
 
 export async function fetchSubjectClassAssignments(

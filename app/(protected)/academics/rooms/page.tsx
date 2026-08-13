@@ -7,6 +7,7 @@ import { RoomAssignmentsPanel } from '@/components/acadia/resources/room-assignm
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type RoomRow = {
   id: string;
@@ -22,23 +23,24 @@ const columns: ColumnDef<RoomRow>[] = [
 ];
 
 export default function RoomsPage() {
+  const { t } = useTranslation();
   return (
     <AcadiaPageShell
-      title="Rooms & facilities"
-      description="Room registry, timetable assignments, usage, and maintenance."
+      title={t('academics.roomsTitle')}
+      description={t('academics.roomsDescription')}
     >
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
         <Button size="sm" variant="outline" asChild>
-          <Link href="/academics/rooms/usage">Facility usage</Link>
+          <Link href="/academics/rooms/usage">{t('academics.usageTitle')}</Link>
         </Button>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/academics/rooms/maintenance">Maintenance</Link>
+          <Link href="/academics/rooms/maintenance">{t('academics.maintenanceTitle')}</Link>
         </Button>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/timetable">Timetable</Link>
+          <Link href="/timetable">{t('timetable.title')}</Link>
         </Button>
         <Button size="sm" variant="outline" asChild>
-          <Link href="/resources">School resources</Link>
+          <Link href="/resources">{t('resources.title')}</Link>
         </Button>
       </div>
 

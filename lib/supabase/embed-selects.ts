@@ -62,6 +62,10 @@ export const FK = {
   Subject_term: 'Subject_semesterId_tenantId_fkey',
   Subject_grouping: 'Subject_groupingId_tenantId_fkey',
 
+  // ClassSubject
+  ClassSubject_subject: 'ClassSubject_subjectId_tenantId_fkey',
+  ClassSubject_grouping: 'ClassSubject_groupingId_tenantId_fkey',
+
   // StudentProfile (nested)
   StudentProfile_user: 'StudentProfile_userId_tenantId_fkey',
 

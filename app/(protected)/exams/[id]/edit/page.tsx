@@ -12,6 +12,7 @@ import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canEditExamSession } from '@/lib/acadia/assessment';
 import { canWriteOperations } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const SELECT = `
   id,
@@ -32,6 +33,7 @@ export default function EditExamSessionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useTranslation();
   const { id } = use(params);
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
@@ -45,7 +47,7 @@ export default function EditExamSessionPage({
 
   return (
     <AcadiaPageShell
-      title="Edit exam session"
+      title={t('exams.editTitle')}
       description="Update examination dates and academic placement."
     >
       <div className="mb-4">
