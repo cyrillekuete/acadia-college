@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  ATTENDANCE_ROSTER_ENROLLMENT_STATUS,
   ATTENDANCE_STATUSES,
   attendanceStatusLabel,
   type AttendanceStatus,
@@ -98,7 +99,7 @@ export function AttendanceEntryGrid({
         .eq('subSystem', subject.subSystem)
         .eq('branch', subject.branch)
         .eq('levelId', subject.levelId)
-        .eq('status', 'ACTIVE');
+        .eq('status', ATTENDANCE_ROSTER_ENROLLMENT_STATUS);
 
       if (enrollError) {
         throw enrollError;
