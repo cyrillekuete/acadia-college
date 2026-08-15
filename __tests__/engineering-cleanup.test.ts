@@ -1,8 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { createElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import {
   ACADIA_DEMO_REDIRECTS,
   isAcadiaDemoRoute,
 } from '@/lib/acadia/demo-routes';
+import { ModulesProvider } from '@/providers/modules-provider';
 import {
   deprecatedUserManagementResponse,
   mapAcadiaProfileToAccountUser,
@@ -35,6 +39,29 @@ describe('ACADIA_DEMO_REDIRECTS', () => {
         entry.source.startsWith('/account/billing'),
       ),
     ).toBe(true);
+  });
+});
+
+describe('ModulesProvider', () => {
+  it('returns children without wrapping store-client sheets', () => {
+    const child = createElement('span', { id: 'page' });
+    expect(ModulesProvider({ children: child })).toBe(child);
+  });
+
+  it('does not import store-client into the root layout provider', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'providers/modules-provider.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/store-client/);
+  });
+
+  it('does not import StoreClientTopbar in the Acadia header', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/components/layouts/demo1/components/header.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/StoreClientTopbar/);
   });
 });
 
