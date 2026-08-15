@@ -4,17 +4,25 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
+  aggregateExpenditureStats,
   aggregateFinanceSummary,
+  aggregateSalesStats,
+  canApproveExpenditure,
+  canMarkExpenditurePaid,
   computeFeeAccountTotals,
+  computeSaleTotalMinor,
   effectiveInstallmentStatus,
   formatMoneyMinor,
   isInstallmentOverdue,
+  nextExpenditureStatus,
   parseMoneyToMinor,
   paymentProgressPercent,
   sumInstallmentTemplates,
 } from '@/lib/acadia/finance';
 import {
+  expenditureSchema,
   financeLedgerEntrySchema,
+  financeSaleSchema,
   recordFeePaymentSchema,
   streamFeePlanSchema,
 } from '@/lib/acadia/finance-schemas';
@@ -144,6 +152,76 @@ describe('aggregateFinanceSummary', () => {
     expect(summary.outstandingMinor).toBe(60000);
     expect(summary.netMinor).toBe(3000);
   });
+
+  it('adds completed sales and paid expenditures to ledger totals', () => {
+    const summary = aggregateFinanceSummary(
+      [],
+      [
+        { entryType: 'INCOME', amountMinor: 1000 },
+        { entryType: 'EXPENSE', amountMinor: 400 },
+      ],
+      { completedSalesMinor: 2500, paidExpendituresMinor: 800 },
+    );
+    expect(summary.incomeMinor).toBe(3500);
+    expect(summary.expenseMinor).toBe(1200);
+    expect(summary.netMinor).toBe(2300);
+  });
+});
+
+describe('computeSaleTotalMinor', () => {
+  it('multiplies quantity by unit price in minor units', () => {
+    expect(computeSaleTotalMinor(3, 150000)).toBe(450000);
+  });
+
+  it('returns zero for invalid inputs', () => {
+    expect(computeSaleTotalMinor(Number.NaN, 100)).toBe(0);
+    expect(computeSaleTotalMinor(-2, 100)).toBe(0);
+  });
+});
+
+describe('expenditure status workflow', () => {
+  it('allows pending to approved and approved to paid', () => {
+    expect(canApproveExpenditure('PENDING')).toBe(true);
+    expect(canMarkExpenditurePaid('APPROVED')).toBe(true);
+    expect(nextExpenditureStatus('approve', 'PENDING')).toBe('APPROVED');
+    expect(nextExpenditureStatus('pay', 'APPROVED')).toBe('PAID');
+  });
+
+  it('rejects invalid transitions', () => {
+    expect(canApproveExpenditure('APPROVED')).toBe(false);
+    expect(canMarkExpenditurePaid('PENDING')).toBe(false);
+    expect(nextExpenditureStatus('approve', 'PAID')).toBeNull();
+    expect(nextExpenditureStatus('pay', 'PENDING')).toBeNull();
+  });
+});
+
+describe('aggregateSalesStats', () => {
+  it('counts only completed sales', () => {
+    const stats = aggregateSalesStats([
+      { status: 'COMPLETED', quantity: 2, totalMinor: 20000 },
+      { status: 'PENDING', quantity: 1, totalMinor: 5000 },
+      { status: 'CANCELLED', quantity: 4, totalMinor: 8000 },
+    ]);
+    expect(stats.count).toBe(1);
+    expect(stats.revenueMinor).toBe(20000);
+    expect(stats.itemsSold).toBe(2);
+    expect(stats.averageOrderMinor).toBe(20000);
+  });
+});
+
+describe('aggregateExpenditureStats', () => {
+  it('sums paid amounts and counts pending and approved', () => {
+    const stats = aggregateExpenditureStats([
+      { status: 'PENDING', amountMinor: 1000 },
+      { status: 'APPROVED', amountMinor: 2000 },
+      { status: 'PAID', amountMinor: 5000 },
+      { status: 'REJECTED', amountMinor: 9000 },
+    ]);
+    expect(stats.count).toBe(4);
+    expect(stats.totalAmountMinor).toBe(5000);
+    expect(stats.pendingCount).toBe(1);
+    expect(stats.approvedCount).toBe(1);
+  });
 });
 
 describe('streamFeePlanSchema', () => {
@@ -187,6 +265,40 @@ describe('financeLedgerEntrySchema', () => {
         amountMinor: 12000,
         currency: 'XAF',
         occurredOn: '2026-05-19',
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('financeSaleSchema', () => {
+  it('accepts a merchandise sale', () => {
+    expect(
+      financeSaleSchema.safeParse({
+        academicYearId: 'year-1',
+        studentProfileId: 'stu-1',
+        itemType: 'UNIFORM',
+        itemName: 'School Uniform',
+        quantity: 2,
+        unitPriceMinor: 150000,
+        saleDate: '2026-08-15',
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('expenditureSchema', () => {
+  it('accepts a vendor expenditure', () => {
+    expect(
+      expenditureSchema.safeParse({
+        academicYearId: 'year-1',
+        title: 'Generator fuel',
+        category: 'utilities',
+        amountMinor: 250000,
+        currency: 'XAF',
+        paymentMethod: 'CASH',
+        paymentDate: '2026-08-15',
+        vendor: 'Total',
+        budgetCategory: 'Facilities',
       }).success,
     ).toBe(true);
   });

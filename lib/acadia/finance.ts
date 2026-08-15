@@ -215,11 +215,15 @@ export type FinanceSummary = {
 export function aggregateFinanceSummary(
   accounts: FeeAccountTotals[],
   ledger: Array<{ entryType: string; amountMinor: number }>,
+  extras?: {
+    completedSalesMinor?: number;
+    paidExpendituresMinor?: number;
+  },
 ): FinanceSummary {
   const totalDueMinor = accounts.reduce((s, a) => s + a.totalDueMinor, 0);
   const totalPaidMinor = accounts.reduce((s, a) => s + a.totalPaidMinor, 0);
-  let incomeMinor = 0;
-  let expenseMinor = 0;
+  let incomeMinor = extras?.completedSalesMinor ?? 0;
+  let expenseMinor = extras?.paidExpendituresMinor ?? 0;
   for (const row of ledger) {
     if (row.entryType === 'INCOME') {
       incomeMinor += row.amountMinor;
@@ -246,5 +250,179 @@ export const FEE_BUDGET_CATEGORIES = [
   'Supplies',
   'Transport',
   'Scholarships',
+  'Merchandise',
   'Other',
 ] as const;
+
+export type FeeBudgetCategory = (typeof FEE_BUDGET_CATEGORIES)[number];
+
+export const MERCHANDISE_BUDGET_CATEGORY = 'Merchandise' satisfies FeeBudgetCategory;
+
+export const FINANCE_SALE_ITEM_TYPES = [
+  'PULLOVER',
+  'SPORT_WEAR',
+  'UNIFORM',
+  'T_SHIRT',
+  'OTHER',
+] as const;
+
+export type FinanceSaleItemType = (typeof FINANCE_SALE_ITEM_TYPES)[number];
+
+export const FINANCE_SALE_STATUSES = [
+  'COMPLETED',
+  'PENDING',
+  'CANCELLED',
+] as const;
+
+export type FinanceSaleStatus = (typeof FINANCE_SALE_STATUSES)[number];
+
+export const FINANCE_PAYMENT_METHODS = [
+  'CASH',
+  'BANK_TRANSFER',
+  'MOBILE_MONEY',
+  'CHECK',
+  'CREDIT_CARD',
+] as const;
+
+export type FinancePaymentMethod = (typeof FINANCE_PAYMENT_METHODS)[number];
+
+export const EXPENDITURE_STATUSES = [
+  'PENDING',
+  'APPROVED',
+  'PAID',
+  'REJECTED',
+] as const;
+
+export type ExpenditureStatus = (typeof EXPENDITURE_STATUSES)[number];
+
+export const EXPENDITURE_CATEGORIES = [
+  'academic',
+  'administrative',
+  'infrastructure',
+  'utilities',
+  'maintenance',
+  'transportation',
+  'food_catering',
+  'equipment',
+  'supplies',
+  'professional_services',
+  'marketing',
+  'training',
+  'other',
+] as const;
+
+export type ExpenditureCategory = (typeof EXPENDITURE_CATEGORIES)[number];
+
+export const SALE_ITEM_DEFAULT_NAMES: Record<FinanceSaleItemType, string> = {
+  PULLOVER: 'School Pullover',
+  SPORT_WEAR: 'Sport Wear',
+  UNIFORM: 'School Uniform',
+  T_SHIRT: 'T-Shirt',
+  OTHER: '',
+};
+
+export function computeSaleTotalMinor(
+  quantity: number,
+  unitPriceMinor: number,
+): number {
+  if (!Number.isFinite(quantity) || !Number.isFinite(unitPriceMinor)) {
+    return 0;
+  }
+  return Math.max(0, Math.round(quantity) * Math.round(unitPriceMinor));
+}
+
+export function canApproveExpenditure(status: string): boolean {
+  return status === 'PENDING';
+}
+
+export function canMarkExpenditurePaid(status: string): boolean {
+  return status === 'APPROVED';
+}
+
+export function nextExpenditureStatus(
+  action: 'approve' | 'pay',
+  status: string,
+): ExpenditureStatus | null {
+  if (action === 'approve' && canApproveExpenditure(status)) {
+    return 'APPROVED';
+  }
+  if (action === 'pay' && canMarkExpenditurePaid(status)) {
+    return 'PAID';
+  }
+  return null;
+}
+
+export type FinanceSaleRow = {
+  id: string;
+  studentProfileId: string;
+  studentLabel: string;
+  itemType: FinanceSaleItemType;
+  itemName: string;
+  quantity: number;
+  unitPriceMinor: number;
+  totalMinor: number;
+  saleDate: string;
+  status: FinanceSaleStatus;
+  notes: string | null;
+};
+
+export type ExpenditureRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: ExpenditureCategory;
+  amountMinor: number;
+  currency: string;
+  paymentMethod: FinancePaymentMethod | null;
+  paymentDate: string;
+  vendor: string;
+  vendorContact: string | null;
+  receiptNumber: string | null;
+  invoiceNumber: string | null;
+  status: ExpenditureStatus;
+  budgetCategory: string | null;
+  department: string | null;
+  notes: string | null;
+};
+
+export type SalesStats = {
+  count: number;
+  revenueMinor: number;
+  itemsSold: number;
+  averageOrderMinor: number;
+};
+
+export function aggregateSalesStats(
+  sales: Array<{ status: string; quantity: number; totalMinor: number }>,
+): SalesStats {
+  const completed = sales.filter((row) => row.status === 'COMPLETED');
+  const revenueMinor = completed.reduce((sum, row) => sum + row.totalMinor, 0);
+  const itemsSold = completed.reduce((sum, row) => sum + row.quantity, 0);
+  return {
+    count: completed.length,
+    revenueMinor,
+    itemsSold,
+    averageOrderMinor:
+      completed.length > 0 ? Math.round(revenueMinor / completed.length) : 0,
+  };
+}
+
+export type ExpenditureStats = {
+  count: number;
+  totalAmountMinor: number;
+  pendingCount: number;
+  approvedCount: number;
+};
+
+export function aggregateExpenditureStats(
+  rows: Array<{ status: string; amountMinor: number }>,
+): ExpenditureStats {
+  return {
+    count: rows.length,
+    totalAmountMinor: rows
+      .filter((row) => row.status === 'PAID')
+      .reduce((sum, row) => sum + row.amountMinor, 0),
+    pendingCount: rows.filter((row) => row.status === 'PENDING').length,
+    approvedCount: rows.filter((row) => row.status === 'APPROVED').length,
+  };
+}

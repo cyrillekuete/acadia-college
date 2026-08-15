@@ -117,6 +117,8 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     icon: 'wallet',
     children: [
       { title: 'Student fees', titleKey: 'nav.studentFees', path: '/finance/fees' },
+      { title: 'Sales', titleKey: 'nav.sales', path: '/finance/sales' },
+      { title: 'Expenditures', titleKey: 'nav.expenditures', path: '/finance/expenditures' },
       { title: 'Fee plan setup', titleKey: 'nav.feePlanSetup', path: '/finance/fees/setup' },
       { title: 'Financial reports', titleKey: 'nav.financialReports', path: '/finance/reports' },
       { title: 'Ledger', titleKey: 'nav.ledger', path: '/finance/ledger' },
@@ -308,6 +310,8 @@ const BURSAR_MENU: AcadiaMenuConfig = [
     icon: 'wallet',
     children: [
       { title: 'Student fees', titleKey: 'nav.studentFees', path: '/finance/fees' },
+      { title: 'Sales', titleKey: 'nav.sales', path: '/finance/sales' },
+      { title: 'Expenditures', titleKey: 'nav.expenditures', path: '/finance/expenditures' },
       { title: 'Fee plan setup', titleKey: 'nav.feePlanSetup', path: '/finance/fees/setup' },
       { title: 'Financial reports', titleKey: 'nav.financialReports', path: '/finance/reports' },
       { title: 'Ledger', titleKey: 'nav.ledger', path: '/finance/ledger' },

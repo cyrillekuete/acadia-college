@@ -19,6 +19,7 @@ export const LUCIDE_TO_KEEN = {
   Check: 'check',
   ClipboardList: 'clipboard',
   DollarSign: 'dollar',
+  Download: 'file-down',
   ExternalLink: 'exit-up',
   Eye: 'eye',
   EyeOff: 'eye-slash',

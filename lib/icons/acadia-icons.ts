@@ -20,6 +20,7 @@ export const Check = lucideToKeenIcon('Check');
 export const ClipboardList = lucideToKeenIcon('ClipboardList');
 export const AppWindowMac = lucideToKeenIcon('AppWindowMac');
 export const DollarSign = lucideToKeenIcon('DollarSign');
+export const Download = lucideToKeenIcon('Download');
 export const Ellipsis = lucideToKeenIcon('Ellipsis');
 export const ExternalLink = lucideToKeenIcon('ExternalLink');
 export const Eye = lucideToKeenIcon('Eye');

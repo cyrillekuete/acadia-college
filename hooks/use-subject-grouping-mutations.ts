@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { SubjectGroupingFormValues } from '@/lib/acadia/subject-catalog';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { catalogTags } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -14,11 +16,17 @@ function mutationErrorMessage(error: unknown): string {
   return 'Operation failed.';
 }
 
-function invalidateGroupingQueries(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateGroupingQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
+) {
   void queryClient.invalidateQueries({ queryKey: ['subject-grouping-options'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-grouping-list'] });
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-list'] });
+  if (tenantId) {
+    invalidateAcadiaCache(catalogTags(tenantId));
+  }
 }
 
 export function useSubjectGroupingMutations() {
@@ -49,7 +57,7 @@ export function useSubjectGroupingMutations() {
       }
     },
     onSuccess: () => {
-      invalidateGroupingQueries(queryClient);
+      invalidateGroupingQueries(queryClient, tenantId);
       toast.success('Grouping created.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -85,7 +93,7 @@ export function useSubjectGroupingMutations() {
       }
     },
     onSuccess: () => {
-      invalidateGroupingQueries(queryClient);
+      invalidateGroupingQueries(queryClient, tenantId);
       toast.success('Grouping updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -107,7 +115,7 @@ export function useSubjectGroupingMutations() {
       }
     },
     onSuccess: () => {
-      invalidateGroupingQueries(queryClient);
+      invalidateGroupingQueries(queryClient, tenantId);
       toast.success('Grouping deleted.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),

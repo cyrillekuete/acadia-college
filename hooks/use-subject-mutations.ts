@@ -26,6 +26,8 @@ import {
   assertTimetableSlotValid,
   buildTimetableSlotWritePayload,
 } from '@/lib/supabase/queries/timetable';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { catalogTags, dashboardTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 function mutationErrorMessage(error: unknown): string {
@@ -35,7 +37,10 @@ function mutationErrorMessage(error: unknown): string {
   return 'Operation failed.';
 }
 
-function invalidateSubjectQueries(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateSubjectQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
+) {
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['supabase-record'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-list'] });
@@ -44,6 +49,9 @@ function invalidateSubjectQueries(queryClient: ReturnType<typeof useQueryClient>
   void queryClient.invalidateQueries({ queryKey: ['subject-timetable'] });
   void queryClient.invalidateQueries({ queryKey: ['timetable-slots'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-options'] });
+  if (tenantId) {
+    invalidateAcadiaCache([...catalogTags(tenantId), ...dashboardTags(tenantId)]);
+  }
 }
 
 async function replaceSubjectSubBranches(
@@ -179,7 +187,7 @@ export function useSubjectMutations() {
       return id;
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject created.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -251,7 +259,7 @@ export function useSubjectMutations() {
       await replaceSubjectLevels(supabase, tenantId, id, values.levelIds, now);
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -276,7 +284,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject deactivated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -301,7 +309,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject reactivated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -337,7 +345,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Teacher assigned to subject.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -359,7 +367,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Assignment removed.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -398,7 +406,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject material added.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -420,7 +428,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Material removed.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -446,7 +454,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Timetable slot created.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -478,7 +486,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Timetable slot updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -500,7 +508,7 @@ export function useSubjectMutations() {
       }
     },
     onSuccess: () => {
-      invalidateSubjectQueries(queryClient);
+      invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Timetable slot deleted.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),

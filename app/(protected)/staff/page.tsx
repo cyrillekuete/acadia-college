@@ -1,35 +1,25 @@
-'use client';
-
-import Link from 'next/link';
-import { Plus } from '@/lib/icons';
-import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { StaffRegistry } from '@/components/acadia/staff/staff-registry';
-import { Button } from '@/components/ui/button';
-import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { useTranslation } from '@/hooks/useTranslation';
-import { canWriteRegistry } from '@/lib/acadia/roles';
+import { Suspense } from 'react';
+import { StaffPageView } from '@/components/acadia/staff/staff-page-view';
+import { getCachedStaffList } from '@/lib/acadia/cache/queries';
+import { getCachedPageContext, loadCachedValue } from '@/lib/acadia/cache/load';
 
 export default function StaffPage() {
-  const { t } = useTranslation();
-  const { data: session } = useAcadiaCollegeSession();
-  const canAdd = canWriteRegistry(session?.roleSlug);
-
   return (
-    <AcadiaPageShell
-      title={t('staff.title')}
-      description={t('staff.description')}
-      actions={
-        canAdd ? (
-          <Button asChild size="sm">
-            <Link href="/staff/new">
-              <Plus className="size-4" />
-              {t('staff.add')}
-            </Link>
-          </Button>
-        ) : undefined
-      }
-    >
-      <StaffRegistry />
-    </AcadiaPageShell>
+    <Suspense>
+      <StaffCachedPage />
+    </Suspense>
   );
+}
+
+async function StaffCachedPage() {
+  const ctx = await getCachedPageContext();
+  if (!ctx) {
+    return <StaffPageView />;
+  }
+
+  const initialStaff = await loadCachedValue(() =>
+    getCachedStaffList(ctx.tenantId, ctx.yearId),
+  );
+
+  return <StaffPageView initialStaff={initialStaff} seedYearId={ctx.yearId} />;
 }

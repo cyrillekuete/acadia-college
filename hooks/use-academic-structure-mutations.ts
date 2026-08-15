@@ -28,9 +28,14 @@ import {
   fetchLevelDeleteBlockers,
   hasNonClassBlockers,
 } from '@/lib/supabase/queries/level-delete';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { catalogTags, dashboardTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
-function invalidateStructureQueries(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateStructureQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
+) {
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['level-list'] });
   void queryClient.invalidateQueries({ queryKey: ['level-options'] });
@@ -41,6 +46,9 @@ function invalidateStructureQueries(queryClient: ReturnType<typeof useQueryClien
   void queryClient.invalidateQueries({ queryKey: ['subjects-for-class'] });
   void queryClient.invalidateQueries({ queryKey: ['classes-for-subject'] });
   void queryClient.invalidateQueries({ queryKey: ['subject-list'] });
+  if (tenantId) {
+    invalidateAcadiaCache([...catalogTags(tenantId), ...dashboardTags(tenantId)]);
+  }
 }
 
 async function nextLevelNumber(
@@ -95,7 +103,7 @@ export function useAcademicStructureMutations() {
       }
     },
     onSuccess: () => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       toast.success('Level created.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),
@@ -124,7 +132,7 @@ export function useAcademicStructureMutations() {
       }
     },
     onSuccess: () => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       toast.success('Level updated.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),
@@ -156,7 +164,7 @@ export function useAcademicStructureMutations() {
       }
     },
     onSuccess: () => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       toast.success('Level deleted.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),
@@ -197,7 +205,7 @@ export function useAcademicStructureMutations() {
       }
     },
     onSuccess: () => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       toast.success('Class created.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),
@@ -237,7 +245,7 @@ export function useAcademicStructureMutations() {
       }
     },
     onSuccess: () => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       toast.success('Class updated.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),
@@ -261,7 +269,7 @@ export function useAcademicStructureMutations() {
       }
     },
     onSuccess: () => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       toast.success('Class deleted.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),
@@ -331,7 +339,7 @@ export function useAcademicStructureMutations() {
       return { created, skipped };
     },
     onSuccess: ({ created, skipped }) => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       if (created === 0 && skipped > 0) {
         toast.info(`All standard levels already exist (${skipped} skipped).`);
       } else {
@@ -360,7 +368,7 @@ export function useAcademicStructureMutations() {
       });
     },
     onSuccess: (result) => {
-      invalidateStructureQueries(queryClient);
+      invalidateStructureQueries(queryClient, tenantId);
       const parts: string[] = [];
       if (result.added > 0) {
         parts.push(`${result.added} assignment(s) added`);

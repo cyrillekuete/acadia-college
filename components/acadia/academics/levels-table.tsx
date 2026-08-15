@@ -43,11 +43,13 @@ export function LevelsTable({
   onCreate,
   onEdit,
   onDelete,
+  initialLevels,
 }: {
   filters: CatalogFilters;
   onCreate?: () => void;
   onEdit?: (row: LevelListRow) => void;
   onDelete?: (row: LevelListRow) => void;
+  initialLevels?: LevelListRow[];
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -59,10 +61,13 @@ export function LevelsTable({
 
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
-  const { data = [], isLoading, isError, error } = useLevelList({
-    subSystem: filters.subSystem,
-    branch: filters.branch,
-  });
+  const { data = [], isLoading, isError, error } = useLevelList(
+    {
+      subSystem: filters.subSystem,
+      branch: filters.branch,
+    },
+    initialLevels,
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

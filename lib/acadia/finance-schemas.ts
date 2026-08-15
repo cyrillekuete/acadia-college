@@ -4,9 +4,14 @@ import {
   ACADEMIC_SUB_SYSTEMS,
 } from '@/lib/acadia/education-system';
 import {
+  EXPENDITURE_CATEGORIES,
+  EXPENDITURE_STATUSES,
   FEE_BUDGET_CATEGORIES,
   FEE_INSTALLMENT_STATUSES,
   FINANCE_LEDGER_TYPES,
+  FINANCE_PAYMENT_METHODS,
+  FINANCE_SALE_ITEM_TYPES,
+  FINANCE_SALE_STATUSES,
 } from '@/lib/acadia/finance';
 
 export const feeInstallmentTemplateSchema = z.object({
@@ -98,3 +103,38 @@ export type FinanceReportFiltersValues = z.infer<
 >;
 
 export const feeInstallmentStatusSchema = z.enum(FEE_INSTALLMENT_STATUSES);
+
+export const financeSaleSchema = z.object({
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
+  studentProfileId: z.string().min(1, 'validation.required.student'),
+  itemType: z.enum(FINANCE_SALE_ITEM_TYPES),
+  itemName: z.string().min(1, 'validation.required.itemName'),
+  quantity: z.coerce.number().int().min(1, 'validation.quantityMin'),
+  unitPriceMinor: z.coerce.number().int().min(0, 'validation.amountPositive'),
+  saleDate: z.string().min(1, 'validation.required.date'),
+  status: z.enum(FINANCE_SALE_STATUSES).optional(),
+  notes: z.string().optional().or(z.literal('')),
+});
+
+export type FinanceSaleFormValues = z.infer<typeof financeSaleSchema>;
+
+export const expenditureSchema = z.object({
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
+  title: z.string().min(1, 'validation.required.title'),
+  description: z.string().optional().or(z.literal('')),
+  category: z.enum(EXPENDITURE_CATEGORIES),
+  amountMinor: z.coerce.number().int().min(1, 'validation.amountPositive'),
+  currency: z.string().min(1),
+  paymentMethod: z.enum(FINANCE_PAYMENT_METHODS),
+  paymentDate: z.string().min(1, 'validation.required.date'),
+  vendor: z.string().min(1, 'validation.required.vendor'),
+  vendorContact: z.string().optional().or(z.literal('')),
+  receiptNumber: z.string().optional().or(z.literal('')),
+  invoiceNumber: z.string().optional().or(z.literal('')),
+  status: z.enum(EXPENDITURE_STATUSES).optional(),
+  budgetCategory: z.enum(FEE_BUDGET_CATEGORIES),
+  department: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+});
+
+export type ExpenditureFormValues = z.infer<typeof expenditureSchema>;

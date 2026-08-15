@@ -131,6 +131,43 @@ async function sumLedgerIncome(
   return (data ?? []).reduce((sum, row) => sum + Number(row.amountMinor ?? 0), 0);
 }
 
+async function sumCompletedSales(
+  supabase: Client,
+  tenantId: string,
+  from?: string,
+  to?: string,
+) {
+  let query = supabase
+    .from('FinanceSale')
+    .select('totalMinor')
+    .eq('tenantId', tenantId)
+    .eq('status', 'COMPLETED');
+  if (from) {
+    query = query.gte('saleDate', from.slice(0, 10));
+  }
+  if (to) {
+    query = query.lte('saleDate', to.slice(0, 10));
+  }
+  const { data, error } = await query;
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).reduce((sum, row) => sum + Number(row.totalMinor ?? 0), 0);
+}
+
+async function sumRevenue(
+  supabase: Client,
+  tenantId: string,
+  from?: string,
+  to?: string,
+) {
+  const [ledgerIncome, salesIncome] = await Promise.all([
+    sumLedgerIncome(supabase, tenantId, from, to),
+    sumCompletedSales(supabase, tenantId, from, to),
+  ]);
+  return ledgerIncome + salesIncome;
+}
+
 export async function fetchAdminDashboardStats(
   supabase: Client,
   tenantId: string,
@@ -154,12 +191,12 @@ export async function fetchAdminDashboardStats(
     countStaffProfiles(supabase, tenantId, thisMonth.start),
     countActiveClasses(supabase, tenantId),
     countActiveSubjects(supabase, tenantId),
-    sumLedgerIncome(supabase, tenantId),
-    sumLedgerIncome(supabase, tenantId, lastMonth.start, lastMonth.end),
+    sumRevenue(supabase, tenantId),
+    sumRevenue(supabase, tenantId, lastMonth.start, lastMonth.end),
     countStudentProfiles(supabase, tenantId, thisMonth.start),
   ]);
 
-  const revenueThisMonthMinor = await sumLedgerIncome(
+  const revenueThisMonthMinor = await sumRevenue(
     supabase,
     tenantId,
     thisMonth.start,

@@ -40,6 +40,8 @@ export function FinanceAnnualReport() {
         { data: accounts, error: accountsError },
         { data: ledger, error: ledgerError },
         { data: budget, error: budgetError },
+        { data: sales, error: salesError },
+        { data: expenditures, error: expendituresError },
       ] = await Promise.all([
         supabase
           .from('StudentFeeAccount')
@@ -62,6 +64,18 @@ export function FinanceAnnualReport() {
           .select('budgetedMinor')
           .eq('tenantId', tenantId!)
           .eq('academicYearId', activeYearId!),
+        supabase
+          .from('FinanceSale')
+          .select('totalMinor')
+          .eq('tenantId', tenantId!)
+          .eq('academicYearId', activeYearId!)
+          .eq('status', 'COMPLETED'),
+        supabase
+          .from('Expenditure')
+          .select('amountMinor')
+          .eq('tenantId', tenantId!)
+          .eq('academicYearId', activeYearId!)
+          .eq('status', 'PAID'),
       ]);
       if (accountsError) {
         throw accountsError;
@@ -71,6 +85,12 @@ export function FinanceAnnualReport() {
       }
       if (budgetError) {
         throw budgetError;
+      }
+      if (salesError) {
+        throw salesError;
+      }
+      if (expendituresError) {
+        throw expendituresError;
       }
 
       const accountTotals = (accounts ?? []).map((account) => {
@@ -96,6 +116,16 @@ export function FinanceAnnualReport() {
       const summary = aggregateFinanceSummary(
         accountTotals,
         (ledger ?? []) as Array<{ entryType: string; amountMinor: number }>,
+        {
+          completedSalesMinor: (sales ?? []).reduce(
+            (sum, row) => sum + Number(row.totalMinor ?? 0),
+            0,
+          ),
+          paidExpendituresMinor: (expenditures ?? []).reduce(
+            (sum, row) => sum + Number(row.amountMinor ?? 0),
+            0,
+          ),
+        },
       );
 
       const totalBudgeted = (budget ?? []).reduce(

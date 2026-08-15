@@ -13,6 +13,7 @@ import {
   getStaffSubjectOptions,
   type StaffRegistryFilters,
 } from '@/lib/acadia/staff-registry';
+import { seededInitialData } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchStaffList } from '@/lib/supabase/queries/staff-list';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
@@ -21,7 +22,13 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 
-export function StaffRegistry() {
+export function StaffRegistry({
+  initialStaff,
+  seedYearId,
+}: {
+  initialStaff?: DummyStaff[];
+  seedYearId?: string | null;
+}) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -36,6 +43,8 @@ export function StaffRegistry() {
       const supabase = requireBrowserClient();
       return fetchStaffList(supabase, tenantId, activeYearId);
     },
+    initialData: seededInitialData(initialStaff, seedYearId, activeYearId),
+    staleTime: 60_000,
     enabled: isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 

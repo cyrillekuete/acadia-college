@@ -6,9 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { resolveSubjectsViewMode } from '@/lib/acadia/subject-views';
+import type { SubjectListRowView } from '@/lib/supabase/queries/subject-list';
 import { useTranslation } from '@/hooks/useTranslation';
 
-export function SubjectsPageContent() {
+export function SubjectsPageContent({
+  initialSubjects,
+}: {
+  initialSubjects?: SubjectListRowView[];
+}) {
   const { t } = useTranslation();
   const { data: session, isLoading, isError, error, refetch } =
     useAcadiaCollegeSession();
@@ -42,5 +47,5 @@ export function SubjectsPageContent() {
   if (mode === 'student') {
     return <StudentSubjectsView />;
   }
-  return <SubjectCatalogView />;
+  return <SubjectCatalogView initialSubjects={initialSubjects} />;
 }

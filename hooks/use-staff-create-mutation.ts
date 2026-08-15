@@ -2,6 +2,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { StaffCreateInput } from '@/lib/acadia/staff-create-schemas';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { staffListTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 type CreateStaffResult = {
@@ -50,6 +52,7 @@ export function useStaffCreateMutation() {
       if (tenantId) {
         queryClient.invalidateQueries({ queryKey: ['staff-list', tenantId] });
         queryClient.invalidateQueries({ queryKey: ['department-options', tenantId] });
+        invalidateAcadiaCache(staffListTags(tenantId));
       }
     },
   });

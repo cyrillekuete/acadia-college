@@ -60,7 +60,11 @@ function buildEmptyMessage(
   return `No subjects for ${scope}. Create one to get started.`;
 }
 
-export function SubjectCatalogView() {
+export function SubjectCatalogView({
+  initialSubjects,
+}: {
+  initialSubjects?: SubjectListRowView[];
+}) {
   const { t } = useTranslation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [catalogFilters, setCatalogFilters] =
@@ -72,7 +76,7 @@ export function SubjectCatalogView() {
     null,
   );
   const { data: groupings = [] } = useSubjectGroupingOptions();
-  const { data: subjects = [] } = useSubjectList(catalogFilters);
+  const { data: subjects = [] } = useSubjectList(catalogFilters, initialSubjects);
 
   const levelOptions = useMemo(() => {
     const map = new Map<string, { id: string; label: string }>();

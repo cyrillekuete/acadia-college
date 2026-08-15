@@ -1,49 +1,27 @@
-'use client';
-
-import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import {
-  DashboardStatCard,
-  formatDashboardStatValue,
-} from '@/components/acadia/dashboard-stat-card';
-import { useGuardianDashboardStats } from '@/hooks/use-role-dashboard-stats';
-import { formatMoneyMinor } from '@/lib/acadia/finance';
-import { useTranslation } from '@/hooks/useTranslation';
+import { Suspense } from 'react';
+import { GuardianDashboardView } from '@/components/acadia/guardian-dashboard/guardian-dashboard-view';
+import { getCachedGuardianDashboardStats } from '@/lib/acadia/cache/queries';
+import { getCachedPageContext, loadCachedValue } from '@/lib/acadia/cache/load';
 
 export default function GuardianDashboardPage() {
-  const { t } = useTranslation();
-  const { data: stats } = useGuardianDashboardStats();
+  return (
+    <Suspense>
+      <GuardianDashboardCachedPage />
+    </Suspense>
+  );
+}
+
+async function GuardianDashboardCachedPage() {
+  const ctx = await getCachedPageContext();
+  if (!ctx?.yearId) {
+    return <GuardianDashboardView />;
+  }
+
+  const initialStats = await loadCachedValue(() =>
+    getCachedGuardianDashboardStats(ctx.tenantId, ctx.yearId!, ctx.actorUserId),
+  );
 
   return (
-    <AcadiaPageShell
-      title={t('admin.guardianDashboard')}
-      description="Welcome to Acadia College. Overview for linked students."
-    >
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <DashboardStatCard
-          title={t('admin.linkedStudents')}
-          value={formatDashboardStatValue(stats?.linkedStudentCount)}
-          icon="users"
-        />
-        <DashboardStatCard
-          title={t('admin.attendanceAlerts')}
-          value={formatDashboardStatValue(stats?.attendanceAlertCount)}
-          icon="calendar-tick"
-        />
-        <DashboardStatCard
-          title={t('admin.recentMarks')}
-          value={formatDashboardStatValue(stats?.recentMarkCount)}
-          icon="document"
-        />
-        <DashboardStatCard
-          title={t('admin.outstandingFees')}
-          value={
-            stats?.outstandingFeesMinor != null
-              ? formatMoneyMinor(stats.outstandingFeesMinor)
-              : formatDashboardStatValue(undefined)
-          }
-          icon="wallet"
-        />
-      </div>
-    </AcadiaPageShell>
+    <GuardianDashboardView initialStats={initialStats} seedYearId={ctx.yearId} />
   );
 }

@@ -6,13 +6,21 @@ import type { SubjectClassAssignment } from '@/lib/acadia/class-subject-selectio
 import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { syncSubjectClassAssignments } from '@/lib/supabase/queries/class-subjects';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { catalogTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
-function invalidateClassAssignmentQueries(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateClassAssignmentQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
+) {
   queryClient.invalidateQueries({ queryKey: ['class-list'] });
   queryClient.invalidateQueries({ queryKey: ['subjects-for-class'] });
   queryClient.invalidateQueries({ queryKey: ['classes-for-subject'] });
   queryClient.invalidateQueries({ queryKey: ['subject-list'] });
+  if (tenantId) {
+    invalidateAcadiaCache(catalogTags(tenantId));
+  }
 }
 
 export function useSubjectClassAssignmentMutations() {
@@ -35,7 +43,7 @@ export function useSubjectClassAssignmentMutations() {
       await syncSubjectClassAssignments(supabase, tenantId, subjectId, assignments);
     },
     onSuccess: () => {
-      invalidateClassAssignmentQueries(queryClient);
+      invalidateClassAssignmentQueries(queryClient, tenantId);
       toast.success('Class assignments saved.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),

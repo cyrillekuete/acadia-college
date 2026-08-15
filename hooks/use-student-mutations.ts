@@ -10,6 +10,8 @@ import { resolveClassIdForEnrollment } from '@/lib/acadia/class-assignment';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { studentListTags } from '@/lib/acadia/cache/tags';
 import { canWriteRegistry } from '@/lib/acadia/roles';
 
 function mutationErrorMessage(error: unknown): string {
@@ -82,6 +84,9 @@ export function useStudentMutations() {
       void queryClient.invalidateQueries({
         queryKey: ['student-detail', tenantId, variables.profileId],
       });
+      if (tenantId) {
+        invalidateAcadiaCache(studentListTags(tenantId));
+      }
       toast.success('Student profile updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -159,6 +164,9 @@ export function useStudentMutations() {
       void queryClient.invalidateQueries({
         queryKey: ['student-academic-progress'],
       });
+      if (tenantId) {
+        invalidateAcadiaCache(studentListTags(tenantId, variables.values.academicYearId));
+      }
       toast.success('Student class placement updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),

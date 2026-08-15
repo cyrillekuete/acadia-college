@@ -8,10 +8,13 @@ import {
   removeClassTeacherAssignment,
   syncClassTeacherAssignment,
 } from '@/lib/supabase/queries/staff-class-assignments';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { catalogTags, dashboardTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 function invalidateTeacherAssignmentQueries(
   queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
 ) {
   void queryClient.invalidateQueries({ queryKey: ['class-teacher-assignments'] });
   void queryClient.invalidateQueries({ queryKey: ['staff-teaching-assignments'] });
@@ -19,6 +22,9 @@ function invalidateTeacherAssignmentQueries(
   void queryClient.invalidateQueries({ queryKey: ['subject-teacher-options'] });
   void queryClient.invalidateQueries({ queryKey: ['teacher-students'] });
   void queryClient.invalidateQueries({ queryKey: ['staff-dashboard'] });
+  if (tenantId) {
+    invalidateAcadiaCache([...catalogTags(tenantId), ...dashboardTags(tenantId)]);
+  }
 }
 
 export function useClassTeacherAssignmentMutations() {
@@ -40,7 +46,7 @@ export function useClassTeacherAssignmentMutations() {
       await syncClassTeacherAssignment(supabase, tenantId, input);
     },
     onSuccess: () => {
-      invalidateTeacherAssignmentQueries(queryClient);
+      invalidateTeacherAssignmentQueries(queryClient, tenantId);
       toast.success('Teacher assignment saved.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),
@@ -59,7 +65,7 @@ export function useClassTeacherAssignmentMutations() {
       await removeClassTeacherAssignment(supabase, tenantId, input);
     },
     onSuccess: () => {
-      invalidateTeacherAssignmentQueries(queryClient);
+      invalidateTeacherAssignmentQueries(queryClient, tenantId);
       toast.success('Teacher removed from class.');
     },
     onError: (error) => toast.error(getMutationErrorMessage(error)),

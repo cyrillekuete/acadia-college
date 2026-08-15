@@ -1,25 +1,24 @@
-'use client';
-
-import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { SubjectsPageContent } from '@/components/acadia/subjects/subjects-page-content';
-import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { resolveSubjectsViewMode } from '@/lib/acadia/subject-views';
-import { useTranslation } from '@/hooks/useTranslation';
+import { Suspense } from 'react';
+import { SubjectsPageView } from '@/components/acadia/subjects/subjects-page-view';
+import { getCachedSubjectList } from '@/lib/acadia/cache/queries';
+import { getCachedPageContext, loadCachedValue } from '@/lib/acadia/cache/load';
+import { isStudent } from '@/lib/acadia/roles';
 
 export default function SubjectsPage() {
-  const { t } = useTranslation();
-  const { data: session } = useAcadiaCollegeSession();
-  const mode = resolveSubjectsViewMode(session?.roleSlug);
-  const isStudentView = mode === 'student';
-
   return (
-    <AcadiaPageShell
-      title={isStudentView ? t('subjects.myTitle') : t('subjects.title')}
-      description={
-        isStudentView ? t('subjects.myDescription') : t('subjects.description')
-      }
-    >
-      <SubjectsPageContent />
-    </AcadiaPageShell>
+    <Suspense>
+      <SubjectsCachedPage />
+    </Suspense>
   );
+}
+
+async function SubjectsCachedPage() {
+  const ctx = await getCachedPageContext();
+  const studentView = ctx ? isStudent(ctx.roleSlug) : false;
+  const initialSubjects =
+    ctx && !studentView
+      ? await loadCachedValue(() => getCachedSubjectList(ctx.tenantId))
+      : undefined;
+
+  return <SubjectsPageView initialSubjects={initialSubjects} />;
 }

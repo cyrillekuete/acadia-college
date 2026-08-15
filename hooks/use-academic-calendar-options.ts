@@ -5,16 +5,15 @@ import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-s
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchCurrentAcademicYear } from '@/lib/supabase/queries/academic-year';
 import {
+  fetchAcademicYearOptions,
+  type AcademicYearOption,
+} from '@/lib/supabase/queries/academic-year-options';
+import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 
-export type AcademicYearOption = {
-  id: string;
-  label: string;
-  isCurrent: boolean;
-  timetablePublishedAt: string | null;
-};
+export type { AcademicYearOption };
 
 export type TermOption = {
   id: string;
@@ -55,7 +54,7 @@ export function useCurrentAcademicYearOption() {
   });
 }
 
-export function useAcademicYearOptions() {
+export function useAcademicYearOptions(initialData?: AcademicYearOption[]) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
 
@@ -63,21 +62,10 @@ export function useAcademicYearOptions() {
     queryKey: ['academic-year-options', tenantId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      const { data, error } = await supabase
-        .from('AcademicYear')
-        .select('id, label, isCurrent, timetablePublishedAt')
-        .eq('tenantId', tenantId!)
-        .order('startsOn', { ascending: false });
-      if (error) {
-        throw error;
-      }
-      return (data ?? []).map((row) => ({
-        id: row.id as string,
-        label: row.label as string,
-        isCurrent: row.isCurrent as boolean,
-        timetablePublishedAt: (row.timetablePublishedAt as string | null) ?? null,
-      })) satisfies AcademicYearOption[];
+      return fetchAcademicYearOptions(supabase, tenantId!);
     },
+    initialData,
+    staleTime: 60_000,
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 }

@@ -14,6 +14,8 @@ import type {
   TermFormValues,
 } from '@/lib/acadia/calendar-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { catalogTags, dashboardTags } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -37,7 +39,10 @@ function optionalDateField(value: string | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function invalidateCalendarQueries(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateCalendarQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
+) {
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-year-options'] });
   void queryClient.invalidateQueries({ queryKey: ['current-academic-year'] });
@@ -45,6 +50,9 @@ function invalidateCalendarQueries(queryClient: ReturnType<typeof useQueryClient
   void queryClient.invalidateQueries({ queryKey: ['academic-year-structure'] });
   void queryClient.invalidateQueries({ queryKey: ['academic-calendar-milestones'] });
   void queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+  if (tenantId) {
+    invalidateAcadiaCache([...catalogTags(tenantId), ...dashboardTags(tenantId)]);
+  }
 }
 
 export function useAcademicCalendarMutations() {
@@ -96,7 +104,7 @@ export function useAcademicCalendarMutations() {
       return { id, structure, provisioned };
     },
     onSuccess: (result) => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success(
         `Academic year created with ${result.structure.termsPerYear} terms and ${result.structure.sequencesPerYear} sequences.`,
       );
@@ -144,7 +152,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Academic year updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -159,7 +167,7 @@ export function useAcademicCalendarMutations() {
       await setCurrentAcademicYear(supabase, tenantId, academicYearId);
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Current academic year updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -185,7 +193,7 @@ export function useAcademicCalendarMutations() {
       });
     },
     onSuccess: (result) => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       const parts: string[] = [];
       if (result.termsCreated > 0) {
         parts.push(`${result.termsCreated} term(s) created`);
@@ -222,7 +230,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Term created.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -248,7 +256,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Term updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -270,7 +278,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Term deleted.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -295,7 +303,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Sequence created.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -328,7 +336,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Sequence updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -350,7 +358,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Sequence deleted.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -379,7 +387,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Calendar milestone created.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -415,7 +423,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Calendar milestone updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -437,7 +445,7 @@ export function useAcademicCalendarMutations() {
       }
     },
     onSuccess: () => {
-      invalidateCalendarQueries(queryClient);
+      invalidateCalendarQueries(queryClient, tenantId);
       toast.success('Calendar milestone deleted.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),

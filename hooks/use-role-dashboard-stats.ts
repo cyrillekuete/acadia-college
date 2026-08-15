@@ -22,6 +22,8 @@ function useRoleDashboardBase<T>(
   entityId: string | null | undefined,
   queryFn: () => Promise<T>,
   extraEnabled = true,
+  initialData?: T,
+  seedYearId?: string | null,
 ) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -30,6 +32,11 @@ function useRoleDashboardBase<T>(
   return useQuery({
     queryKey: [queryKey, tenantId, activeYearId, entityId],
     queryFn,
+    initialData:
+      seedYearId === undefined || seedYearId === activeYearId
+        ? initialData
+        : undefined,
+    staleTime: 60_000,
     enabled:
       extraEnabled &&
       !!entityId &&
@@ -38,7 +45,10 @@ function useRoleDashboardBase<T>(
   });
 }
 
-export function useStaffDashboardStats() {
+export function useStaffDashboardStats(
+  initialData?: StaffDashboardStats | null,
+  seedYearId?: string | null,
+) {
   const { data: linkedProfile } = useLinkedAcadiaProfile();
   const staffProfileId = linkedProfile?.staffProfileId ?? null;
   const { data: session } = useAcadiaCollegeSession();
@@ -58,10 +68,15 @@ export function useStaffDashboardStats() {
       );
     },
     !!staffProfileId,
+    initialData ?? undefined,
+    seedYearId,
   );
 }
 
-export function useStudentDashboardStats() {
+export function useStudentDashboardStats(
+  initialData?: StudentDashboardStats | null,
+  seedYearId?: string | null,
+) {
   const { data: linkedProfile } = useLinkedAcadiaProfile();
   const studentProfileId = linkedProfile?.studentProfileId ?? null;
   const { data: session } = useAcadiaCollegeSession();
@@ -81,10 +96,15 @@ export function useStudentDashboardStats() {
       );
     },
     !!studentProfileId,
+    initialData ?? undefined,
+    seedYearId,
   );
 }
 
-export function useGuardianDashboardStats() {
+export function useGuardianDashboardStats(
+  initialData?: GuardianDashboardStats | null,
+  seedYearId?: string | null,
+) {
   const { data: session } = useAcadiaCollegeSession();
   const guardianUserId = session?.profile?.id ?? null;
   const tenantId = session?.tenantId ?? null;
@@ -103,5 +123,7 @@ export function useGuardianDashboardStats() {
       );
     },
     !!guardianUserId,
+    initialData ?? undefined,
+    seedYearId,
   );
 }

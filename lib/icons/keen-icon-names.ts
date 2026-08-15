@@ -18,6 +18,7 @@ export type KeenIconName =
   | 'exit-up'
   | 'eye'
   | 'eye-slash'
+  | 'file-down'
   | 'file-sheet'
   | 'file-up'
   | 'folder'

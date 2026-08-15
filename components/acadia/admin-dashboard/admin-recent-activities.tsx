@@ -41,12 +41,18 @@ const CATEGORY_STYLES: Record<
   },
 };
 
-export function AdminRecentActivities() {
+export function AdminRecentActivities({
+  initialActivities,
+}: {
+  initialActivities?: AdminActivityItem[];
+}) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery({
     queryKey: ['admin-dashboard-activities', tenantId],
+    initialData: initialActivities,
+    staleTime: 60_000,
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant context is required');
       const supabase = requireBrowserClient();

@@ -24,6 +24,7 @@ export function useAcadiaTenant() {
       const supabase = requireBrowserClient();
       return fetchAcadiaTenant(supabase, tenantId);
     },
+    staleTime: 60_000,
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 }

@@ -1,0 +1,230 @@
+import { describe, expect, it } from 'vitest';
+import { rankStudents } from '@/lib/acadia/assessment';
+import {
+  buildReportCardData,
+  buildSubjectSequenceScores,
+  computeWeightedTotals,
+  countGcePasses,
+  getSequenceSlotsForTerm,
+  subjectTypeToCategory,
+  type ReportCardBundle,
+  type ReportCardMarkRow,
+  type ReportCardSubjectDef,
+} from '@/lib/acadia/report-card';
+import {
+  buildReportCardPdfFilename,
+  calculateGrade,
+  getGradeRemarks,
+  hasGceSubjectCode,
+  isNegativeRemark,
+  sanitizeReportCardFilenamePart,
+} from '@/lib/acadia/report-card-grading';
+import type { ReportCardBranding, SubjectGrade } from '@/lib/acadia/report-card-types';
+
+const branding: ReportCardBranding = {
+  displayNameEn: 'Acadia College',
+  displayNameFr: 'Collège Acadia',
+  logoUrl: null,
+  contactLine: 'Douala',
+  regionEn: 'Regional Delegation of Littoral',
+  regionFr: 'Délégation Régionale de Littoral',
+  principalName: 'Principal',
+};
+
+const math: ReportCardSubjectDef = {
+  subjectId: 'math',
+  nameEn: 'Mathematics',
+  code: 'MATH',
+  coefficient: 4,
+  subjectType: 'OTHERS',
+  requiredSubBranchIds: [],
+};
+
+const english: ReportCardSubjectDef = {
+  subjectId: 'eng',
+  nameEn: 'English',
+  code: 'ENG',
+  coefficient: 3,
+  subjectType: 'LANGUAGES',
+  requiredSubBranchIds: [],
+};
+
+function mark(
+  studentProfileId: string,
+  subjectId: string,
+  sequenceNumber: number,
+  totalScore: number,
+): ReportCardMarkRow {
+  return {
+    studentProfileId,
+    subjectId,
+    subjectSubBranchId: null,
+    totalScore,
+    sequenceNumber,
+    subjectCoefficient: subjectId === 'math' ? 4 : 3,
+    subBranchCoefficient: null,
+  };
+}
+
+describe('report-card grading', () => {
+  it('maps the Cameroon 0–20 letter scale', () => {
+    expect(calculateGrade(17)).toBe('A');
+    expect(calculateGrade(14)).toBe('B');
+    expect(calculateGrade(10)).toBe('C');
+    expect(calculateGrade(7)).toBe('D');
+    expect(calculateGrade(6.9)).toBe('U');
+    expect(getGradeRemarks('A')).toBe('Excellent');
+    expect(getGradeRemarks('U')).toBe('Very weak');
+    expect(isNegativeRemark('Failed')).toBe(true);
+    expect(isNegativeRemark('Pass')).toBe(false);
+  });
+
+  it('detects GCE codes and sanitizes filenames', () => {
+    expect(hasGceSubjectCode('  MATH ')).toBe(true);
+    expect(hasGceSubjectCode('')).toBe(false);
+    expect(sanitizeReportCardFilenamePart('Jean Dupont')).toBe('Jean_Dupont');
+    expect(
+      buildReportCardPdfFilename({
+        studentName: 'Jean Dupont',
+        year: '2025/2026',
+        term: '1',
+      }),
+    ).toBe('ReportCard_Jean_Dupont_2025/2026_Term1.pdf');
+    expect(
+      buildReportCardPdfFilename({
+        studentName: 'Jean',
+        year: '2026',
+        term: 'annual',
+      }),
+    ).toBe('ReportCard_Jean_2026_Annual.pdf');
+  });
+});
+
+describe('sequence slots and categories', () => {
+  it('maps default 6 sequences to three terms', () => {
+    expect(getSequenceSlotsForTerm(1)).toEqual([1, 2]);
+    expect(getSequenceSlotsForTerm(2)).toEqual([3, 4]);
+    expect(getSequenceSlotsForTerm(3)).toEqual([5, 6]);
+  });
+
+  it('maps subject types to bulletin categories', () => {
+    expect(subjectTypeToCategory('LANGUAGES')).toBe('languages');
+    expect(subjectTypeToCategory('TRADE_SUBJECTS')).toBe('trade_subjects');
+    expect(subjectTypeToCategory('RELATED_TRADE_SUBJECTS')).toBe(
+      'related_trade_subjects',
+    );
+    expect(subjectTypeToCategory('OTHERS')).toBe('others');
+  });
+});
+
+describe('subject sequence scores', () => {
+  it('averages sequences into terms and a partial annual average', () => {
+    const scores = buildSubjectSequenceScores(
+      [
+        mark('s1', 'math', 1, 12),
+        mark('s1', 'math', 2, 14),
+        mark('s1', 'math', 3, 10),
+      ],
+      math,
+    );
+    expect(scores.termAverages.term1).toBe(13);
+    expect(scores.termAverages.term2).toBe(10);
+    expect(scores.termAverages.term3).toBeUndefined();
+    expect(scores.annualAverage).toBe(11.5);
+  });
+});
+
+describe('weighted totals and GCE counts', () => {
+  it('ignores subjects without a mark', () => {
+    expect(
+      computeWeightedTotals([
+        { average: 12, plannedCoefficient: 4 },
+        { average: null, plannedCoefficient: 3 },
+      ]),
+    ).toEqual({ coefficient: 4, totalScore: 48, average: 12 });
+  });
+
+  it('counts GCE passes by category', () => {
+    const subjects: SubjectGrade[] = [
+      {
+        subjectName: 'Welding',
+        code: 'WELD',
+        coefficient: 2,
+        category: 'trade_subjects',
+        termAverage: 14,
+        annualAverage: 14,
+      },
+      {
+        subjectName: 'English',
+        code: 'ENG',
+        coefficient: 3,
+        category: 'languages',
+        termAverage: 8,
+        annualAverage: 8,
+      },
+      {
+        subjectName: 'PE',
+        code: '',
+        coefficient: 1,
+        category: 'others',
+        termAverage: 16,
+        annualAverage: 16,
+      },
+    ];
+    expect(countGcePasses(subjects, '1')).toEqual({
+      gceTradeSubjects: 1,
+      gceRelatedTrade: 0,
+      gceLanguageSubjects: 0,
+      gceOtherSubjects: 0,
+      gceSubjectsPassed: 1,
+    });
+  });
+});
+
+describe('buildReportCardData', () => {
+  it('ranks the class and fills term history', () => {
+    const bundle: ReportCardBundle = {
+      student: {
+        studentProfileId: 's1',
+        name: 'Ada Lovelace',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        matricule: 'AC-001',
+        sex: 'F',
+        dob: '01/01/2010',
+        pob: '—',
+        speciality: 'Grammar',
+      },
+      classId: 'c1',
+      className: 'Form 5 A',
+      classMaster: 'Mr. Teacher',
+      classSize: 2,
+      academicYearLabel: '2025/2026',
+      structure: {
+        termsPerYear: 3,
+        sequencesPerTerm: 2,
+        sequencesPerYear: 6,
+      },
+      subjects: [math, english],
+      marks: [
+        mark('s1', 'math', 1, 16),
+        mark('s1', 'math', 2, 18),
+        mark('s1', 'eng', 1, 12),
+        mark('s1', 'eng', 2, 12),
+        mark('s2', 'math', 1, 8),
+        mark('s2', 'math', 2, 8),
+        mark('s2', 'eng', 1, 9),
+        mark('s2', 'eng', 2, 9),
+      ],
+      branding,
+    };
+
+    const card = buildReportCardData(bundle, '1');
+    expect(card.student.studentId).toBe('AC-001');
+    expect(card.history.rank).toBe(1);
+    expect(card.totals.average).toBeGreaterThan(10);
+    expect(card.stats.classSize).toBe(2);
+    expect(card.subjects).toHaveLength(2);
+    expect(rankStudents([{ studentProfileId: 's1', average: 14 }])[0]?.rank).toBe(1);
+  });
+});

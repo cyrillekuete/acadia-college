@@ -35,6 +35,8 @@ const nextConfig = {
   assetPrefix: basePathEnv || '',
   images: {},
   output: 'standalone',
+  cacheComponents: true,
+  serverExternalPackages: ['puppeteer', 'puppeteer-core', '@sparticuz/chromium'],
   async redirects() {
     return [
       {

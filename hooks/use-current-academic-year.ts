@@ -35,6 +35,7 @@ export function useCurrentAcademicYearQuery(): UseCurrentAcademicYearResult & {
       const supabase = requireBrowserClient();
       return fetchAcademicYearSetupStatus(supabase, tenantId!);
     },
+    staleTime: 60_000,
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 

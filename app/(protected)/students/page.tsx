@@ -1,41 +1,34 @@
-'use client';
-
-import Link from 'next/link';
-import { Plus } from '@/lib/icons';
-import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { StudentRegistry } from '@/components/acadia/student/student-registry';
-import { Button } from '@/components/ui/button';
-import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { useTranslation } from '@/hooks/useTranslation';
-import { canWriteRegistry, isAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
+import { Suspense } from 'react';
+import { StudentsPageView } from '@/components/acadia/student/students-page-view';
+import { getCachedStudentsList } from '@/lib/acadia/cache/queries';
+import { getCachedPageContext, loadCachedValue } from '@/lib/acadia/cache/load';
+import { isAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 
 export default function StudentsPage() {
-  const { t } = useTranslation();
-  const { data: session } = useAcadiaCollegeSession();
-  const canAdd = canWriteRegistry(session?.roleSlug);
+  return (
+    <Suspense>
+      <StudentsCachedPage />
+    </Suspense>
+  );
+}
+
+async function StudentsCachedPage() {
+  const ctx = await getCachedPageContext();
   const isTeacherView =
-    isStaffOrTeacher(session?.roleSlug) && !isAdmin(session?.roleSlug);
+    !!ctx && isStaffOrTeacher(ctx.roleSlug) && !isAdmin(ctx.roleSlug);
+
+  if (!ctx?.yearId || isTeacherView) {
+    return <StudentsPageView seedYearId={ctx?.yearId ?? null} />;
+  }
+
+  const initialStudents = await loadCachedValue(() =>
+    getCachedStudentsList(ctx.tenantId, ctx.yearId!),
+  );
 
   return (
-    <AcadiaPageShell
-      title={t('students.title')}
-      description={
-        isTeacherView
-          ? t('students.teacherDescription')
-          : t('students.description')
-      }
-      actions={
-        canAdd ? (
-          <Button asChild size="sm">
-            <Link href="/students/new">
-              <Plus className="size-4" />
-              {t('students.add')}
-            </Link>
-          </Button>
-        ) : undefined
-      }
-    >
-      <StudentRegistry />
-    </AcadiaPageShell>
+    <StudentsPageView
+      initialStudents={initialStudents}
+      seedYearId={ctx.yearId}
+    />
   );
 }

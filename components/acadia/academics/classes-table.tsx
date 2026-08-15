@@ -59,6 +59,8 @@ export function ClassesTable({
   onDelete,
   onAssignSubjects,
   onAssignTeachers,
+  initialClasses,
+  seedYearId,
 }: {
   filters: CatalogFilters;
   onCreate?: () => void;
@@ -66,6 +68,8 @@ export function ClassesTable({
   onDelete?: (row: ClassListRow) => void;
   onAssignSubjects?: (row: ClassListRow) => void;
   onAssignTeachers?: (row: ClassListRow) => void;
+  initialClasses?: ClassListRow[];
+  seedYearId?: string | null;
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -77,10 +81,15 @@ export function ClassesTable({
 
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
-  const { data = [], isLoading, isError, error } = useClassList({
-    subSystem: filters.subSystem,
-    branch: filters.branch,
-  });
+  const { data = [], isLoading, isError, error } = useClassList(
+    {
+      subSystem: filters.subSystem,
+      branch: filters.branch,
+    },
+    initialClasses
+      ? { data: initialClasses, yearId: seedYearId }
+      : undefined,
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

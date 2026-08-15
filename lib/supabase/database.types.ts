@@ -1136,6 +1136,113 @@ export type Database = {
           },
         ]
       }
+      Expenditure: {
+        Row: {
+          academicYearId: string
+          amountMinor: number
+          approvedAt: string | null
+          approvedByUserId: string | null
+          budgetCategory: string | null
+          category: string
+          createdAt: string
+          createdByUserId: string | null
+          currency: string
+          department: string | null
+          description: string | null
+          id: string
+          invoiceNumber: string | null
+          notes: string | null
+          paymentDate: string
+          paymentMethod: Database["public"]["Enums"]["FinancePaymentMethod"] | null
+          receiptNumber: string | null
+          status: Database["public"]["Enums"]["ExpenditureStatus"]
+          tenantId: string
+          title: string
+          updatedAt: string
+          vendor: string
+          vendorContact: string | null
+        }
+        Insert: {
+          academicYearId: string
+          amountMinor: number
+          approvedAt?: string | null
+          approvedByUserId?: string | null
+          budgetCategory?: string | null
+          category: string
+          createdAt?: string
+          createdByUserId?: string | null
+          currency?: string
+          department?: string | null
+          description?: string | null
+          id: string
+          invoiceNumber?: string | null
+          notes?: string | null
+          paymentDate: string
+          paymentMethod?: Database["public"]["Enums"]["FinancePaymentMethod"] | null
+          receiptNumber?: string | null
+          status?: Database["public"]["Enums"]["ExpenditureStatus"]
+          tenantId: string
+          title: string
+          updatedAt: string
+          vendor: string
+          vendorContact?: string | null
+        }
+        Update: {
+          academicYearId?: string
+          amountMinor?: number
+          approvedAt?: string | null
+          approvedByUserId?: string | null
+          budgetCategory?: string | null
+          category?: string
+          createdAt?: string
+          createdByUserId?: string | null
+          currency?: string
+          department?: string | null
+          description?: string | null
+          id?: string
+          invoiceNumber?: string | null
+          notes?: string | null
+          paymentDate?: string
+          paymentMethod?: Database["public"]["Enums"]["FinancePaymentMethod"] | null
+          receiptNumber?: string | null
+          status?: Database["public"]["Enums"]["ExpenditureStatus"]
+          tenantId?: string
+          title?: string
+          updatedAt?: string
+          vendor?: string
+          vendorContact?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Expenditure_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "Expenditure_approvedByUserId_fkey"
+            columns: ["approvedByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Expenditure_createdByUserId_fkey"
+            columns: ["createdByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Expenditure_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ExamSession: {
         Row: {
           academicYearId: string
@@ -1328,6 +1435,89 @@ export type Database = {
           },
           {
             foreignKeyName: "FinanceLedgerEntry_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      FinanceSale: {
+        Row: {
+          academicYearId: string
+          createdAt: string
+          createdByUserId: string | null
+          id: string
+          itemName: string
+          itemType: Database["public"]["Enums"]["FinanceSaleItemType"]
+          notes: string | null
+          quantity: number
+          saleDate: string
+          status: Database["public"]["Enums"]["FinanceSaleStatus"]
+          studentProfileId: string
+          tenantId: string
+          totalMinor: number
+          unitPriceMinor: number
+          updatedAt: string
+        }
+        Insert: {
+          academicYearId: string
+          createdAt?: string
+          createdByUserId?: string | null
+          id: string
+          itemName: string
+          itemType: Database["public"]["Enums"]["FinanceSaleItemType"]
+          notes?: string | null
+          quantity: number
+          saleDate: string
+          status?: Database["public"]["Enums"]["FinanceSaleStatus"]
+          studentProfileId: string
+          tenantId: string
+          totalMinor: number
+          unitPriceMinor: number
+          updatedAt: string
+        }
+        Update: {
+          academicYearId?: string
+          createdAt?: string
+          createdByUserId?: string | null
+          id?: string
+          itemName?: string
+          itemType?: Database["public"]["Enums"]["FinanceSaleItemType"]
+          notes?: string | null
+          quantity?: number
+          saleDate?: string
+          status?: Database["public"]["Enums"]["FinanceSaleStatus"]
+          studentProfileId?: string
+          tenantId?: string
+          totalMinor?: number
+          unitPriceMinor?: number
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FinanceSale_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "FinanceSale_createdByUserId_fkey"
+            columns: ["createdByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "FinanceSale_studentProfileId_tenantId_fkey"
+            columns: ["studentProfileId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "StudentProfile"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "FinanceSale_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"
@@ -5252,6 +5442,7 @@ export type Database = {
       DeploymentMode: "CLOUD" | "LAN"
       EnrollmentApplicationKind: "NEW" | "RE_ENROLL"
       EnrollmentApplicationStatus: "PENDING" | "APPROVED" | "REJECTED"
+      ExpenditureStatus: "PENDING" | "APPROVED" | "PAID" | "REJECTED"
       ExamSessionType:
         | "NORMAL"
         | "RESIT"
@@ -5261,6 +5452,19 @@ export type Database = {
         | "BACCALAUREAT"
       FeeInstallmentStatus: "PENDING" | "PAID" | "OVERDUE" | "WAIVED"
       FinanceLedgerEntryType: "INCOME" | "EXPENSE"
+      FinancePaymentMethod:
+        | "CASH"
+        | "BANK_TRANSFER"
+        | "MOBILE_MONEY"
+        | "CHECK"
+        | "CREDIT_CARD"
+      FinanceSaleItemType:
+        | "PULLOVER"
+        | "SPORT_WEAR"
+        | "UNIFORM"
+        | "T_SHIRT"
+        | "OTHER"
+      FinanceSaleStatus: "COMPLETED" | "PENDING" | "CANCELLED"
       GradingMode: "FRANCOPHONE" | "ANGLOPHONE" | "PER_STREAM"
       LearningMaterialKind: "DOCUMENT" | "VIDEO" | "LINK" | "OTHER"
       MarkEntryCalendarPolicy: "SESSION_DATES_ONLY" | "CALENDAR_AND_SESSION"
@@ -5450,6 +5654,7 @@ export const Constants = {
       DeploymentMode: ["CLOUD", "LAN"],
       EnrollmentApplicationKind: ["NEW", "RE_ENROLL"],
       EnrollmentApplicationStatus: ["PENDING", "APPROVED", "REJECTED"],
+      ExpenditureStatus: ["PENDING", "APPROVED", "PAID", "REJECTED"],
       ExamSessionType: [
         "NORMAL",
         "RESIT",
@@ -5460,6 +5665,21 @@ export const Constants = {
       ],
       FeeInstallmentStatus: ["PENDING", "PAID", "OVERDUE", "WAIVED"],
       FinanceLedgerEntryType: ["INCOME", "EXPENSE"],
+      FinancePaymentMethod: [
+        "CASH",
+        "BANK_TRANSFER",
+        "MOBILE_MONEY",
+        "CHECK",
+        "CREDIT_CARD",
+      ],
+      FinanceSaleItemType: [
+        "PULLOVER",
+        "SPORT_WEAR",
+        "UNIFORM",
+        "T_SHIRT",
+        "OTHER",
+      ],
+      FinanceSaleStatus: ["COMPLETED", "PENDING", "CANCELLED"],
       GradingMode: ["FRANCOPHONE", "ANGLOPHONE", "PER_STREAM"],
       LearningMaterialKind: ["DOCUMENT", "VIDEO", "LINK", "OTHER"],
       MarkEntryCalendarPolicy: ["SESSION_DATES_ONLY", "CALENDAR_AND_SESSION"],

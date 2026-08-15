@@ -1,52 +1,27 @@
-'use client';
-
-import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { AdminOverviewStatCard } from '@/components/acadia/admin-dashboard/admin-overview-stat-card';
-import { formatDashboardStatValue } from '@/components/acadia/dashboard-stat-card';
-import { useStudentDashboardStats } from '@/hooks/use-role-dashboard-stats';
-import { formatAttendancePercentage } from '@/lib/acadia/attendance';
-import { formatMoneyMinor } from '@/lib/acadia/finance';
-import { useTranslation } from '@/hooks/useTranslation';
+import { Suspense } from 'react';
+import { StudentDashboardView } from '@/components/acadia/student-dashboard/student-dashboard-view';
+import { getCachedStudentDashboardStats } from '@/lib/acadia/cache/queries';
+import { getCachedPageContext, loadCachedValue } from '@/lib/acadia/cache/load';
 
 export default function StudentDashboardPage() {
-  const { t } = useTranslation();
-  const { data: stats } = useStudentDashboardStats();
+  return (
+    <Suspense>
+      <StudentDashboardCachedPage />
+    </Suspense>
+  );
+}
+
+async function StudentDashboardCachedPage() {
+  const ctx = await getCachedPageContext();
+  if (!ctx?.yearId) {
+    return <StudentDashboardView />;
+  }
+
+  const initialStats = await loadCachedValue(() =>
+    getCachedStudentDashboardStats(ctx.tenantId, ctx.yearId!, ctx.actorUserId),
+  );
 
   return (
-    <AcadiaPageShell
-      title={t('admin.studentDashboard')}
-      description="Welcome to Acadia College. Your enrollment, schedule, and academic progress."
-    >
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <AdminOverviewStatCard
-          title={t('admin.enrolledSubjects')}
-          value={formatDashboardStatValue(stats?.enrolledSubjectCount)}
-          footer="Current term"
-          icon="book"
-        />
-        <AdminOverviewStatCard
-          title={t('admin.timetableToday')}
-          value={formatDashboardStatValue(stats?.todaysSessionCount)}
-          footer="Today's schedule"
-          icon="calendar-tick"
-        />
-        <AdminOverviewStatCard
-          title={t('attendance.title')}
-          value={formatAttendancePercentage(stats?.attendancePercent)}
-          footer="This term"
-          icon="document"
-        />
-        <AdminOverviewStatCard
-          title={t('admin.feeBalance')}
-          value={
-            stats?.feeBalanceMinor != null
-              ? formatMoneyMinor(stats.feeBalanceMinor)
-              : formatDashboardStatValue(undefined)
-          }
-          footer="Outstanding balance"
-          icon="wallet"
-        />
-      </div>
-    </AcadiaPageShell>
+    <StudentDashboardView initialStats={initialStats} seedYearId={ctx.yearId} />
   );
 }

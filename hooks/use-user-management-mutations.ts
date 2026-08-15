@@ -10,6 +10,8 @@ import type {
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import { userStatusLogEvent } from '@/lib/acadia/user-management';
 import { UserStatus } from '@/app/models/user';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { catalogTag, dashboardTags } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -28,11 +30,17 @@ function mutationErrorMessage(error: unknown): string {
   return 'Operation failed.';
 }
 
-function invalidateUserQueries(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateUserQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
+) {
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['acadia-user-detail'] });
   void queryClient.invalidateQueries({ queryKey: ['acadia-college-session'] });
   void queryClient.invalidateQueries({ queryKey: ['acadia-tenant'] });
+  if (tenantId) {
+    invalidateAcadiaCache([catalogTag(tenantId), ...dashboardTags(tenantId)]);
+  }
 }
 
 export function useUserManagementMutations() {
@@ -55,7 +63,7 @@ export function useUserManagementMutations() {
       return payload.id;
     },
     onSuccess: () => {
-      invalidateUserQueries(queryClient);
+      invalidateUserQueries(queryClient, tenantId);
       toast.success('User created.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -132,7 +140,7 @@ export function useUserManagementMutations() {
       }
     },
     onSuccess: () => {
-      invalidateUserQueries(queryClient);
+      invalidateUserQueries(queryClient, tenantId);
       toast.success('User updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -179,7 +187,7 @@ export function useUserManagementMutations() {
       }
     },
     onSuccess: () => {
-      invalidateUserQueries(queryClient);
+      invalidateUserQueries(queryClient, tenantId);
       toast.success('User status updated.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -231,7 +239,7 @@ export function useUserManagementMutations() {
       });
     },
     onSuccess: () => {
-      invalidateUserQueries(queryClient);
+      invalidateUserQueries(queryClient, tenantId);
       toast.success('Session settings saved.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),

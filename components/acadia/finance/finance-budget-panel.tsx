@@ -46,6 +46,7 @@ import {
 import {
   FEE_BUDGET_CATEGORIES,
   formatMoneyMinor,
+  MERCHANDISE_BUDGET_CATEGORY,
   parseMoneyToMinor,
 } from '@/lib/acadia/finance';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
@@ -92,7 +93,12 @@ export function FinanceBudgetPanel() {
     queryKey: ['finance-budget', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      const [{ data: budgetLines, error: budgetError }, { data: ledger, error: ledgerError }] =
+      const [
+        { data: budgetLines, error: budgetError },
+        { data: ledger, error: ledgerError },
+        { data: sales, error: salesError },
+        { data: expenditures, error: expendituresError },
+      ] =
         await Promise.all([
           supabase
             .from('FinanceBudgetLine')
@@ -104,12 +110,30 @@ export function FinanceBudgetPanel() {
             .select('category, entryType, amountMinor')
             .eq('tenantId', tenantId!)
             .eq('academicYearId', activeYearId!),
+          supabase
+            .from('FinanceSale')
+            .select('totalMinor')
+            .eq('tenantId', tenantId!)
+            .eq('academicYearId', activeYearId!)
+            .eq('status', 'COMPLETED'),
+          supabase
+            .from('Expenditure')
+            .select('amountMinor, budgetCategory')
+            .eq('tenantId', tenantId!)
+            .eq('academicYearId', activeYearId!)
+            .eq('status', 'PAID'),
         ]);
       if (budgetError) {
         throw budgetError;
       }
       if (ledgerError) {
         throw ledgerError;
+      }
+      if (salesError) {
+        throw salesError;
+      }
+      if (expendituresError) {
+        throw expendituresError;
       }
 
       const actualByCategory = new Map<string, { income: number; expense: number }>();
@@ -121,6 +145,21 @@ export function FinanceBudgetPanel() {
         } else {
           current.expense += Number(row.amountMinor);
         }
+        actualByCategory.set(cat, current);
+      }
+      const merchandise = actualByCategory.get(MERCHANDISE_BUDGET_CATEGORY) ?? {
+        income: 0,
+        expense: 0,
+      };
+      merchandise.income += (sales ?? []).reduce(
+        (sum, row) => sum + Number(row.totalMinor ?? 0),
+        0,
+      );
+      actualByCategory.set(MERCHANDISE_BUDGET_CATEGORY, merchandise);
+      for (const row of expenditures ?? []) {
+        const cat = String(row.budgetCategory || 'Other');
+        const current = actualByCategory.get(cat) ?? { income: 0, expense: 0 };
+        current.expense += Number(row.amountMinor ?? 0);
         actualByCategory.set(cat, current);
       }
 

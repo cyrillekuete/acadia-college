@@ -1,7 +1,7 @@
 'use client';
 
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { AcademicReportView } from '@/components/acadia/assessment/academic-report-view';
+import { ReportCardsWrapper } from '@/components/acadia/report-cards/report-cards-wrapper';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AnnualSummaryReportPage() {
@@ -9,9 +9,9 @@ export default function AnnualSummaryReportPage() {
   return (
     <AcadiaPageShell
       title={t('reports.annualTitle')}
-      description="Year-end academic summary by class (FR-4.3.3)."
+      description={t('reports.annualDescription')}
     >
-      <AcademicReportView kind="annual" />
+      <ReportCardsWrapper defaultTerm="annual" />
     </AcadiaPageShell>
   );
 }

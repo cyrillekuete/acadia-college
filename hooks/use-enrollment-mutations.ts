@@ -11,6 +11,8 @@ import type { EnrollmentApplicationInput } from '@/lib/acadia/enrollment-schemas
 import type { ReviewApplicationInput } from '@/lib/acadia/enrollment-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { checkRegistryStudentEmail } from '@/lib/acadia/registry-lookups';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { studentListTags } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -163,6 +165,9 @@ export function useEnrollmentMutations() {
       invalidateEnrollmentQueries(queryClient);
       void queryClient.invalidateQueries({ queryKey: ['students-list'] });
       void queryClient.invalidateQueries({ queryKey: ['student-detail'] });
+      if (tenantId) {
+        invalidateAcadiaCache(studentListTags(tenantId));
+      }
       if (variables.input.decision === 'approve') {
         toast.success('Application approved and enrollment created.');
       } else {

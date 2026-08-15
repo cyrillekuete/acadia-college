@@ -1,4 +1,50 @@
-import type { AcademicYearOption } from '@/hooks/use-academic-calendar-options';
+import type { AcademicYearOption } from '@/lib/supabase/queries/academic-year-options';
+
+export const ACTIVE_ACADEMIC_YEAR_COOKIE = 'acadia-active-year';
+export const ACTIVE_ACADEMIC_YEAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+export function encodeActiveAcademicYearCookie(
+  tenantId: string,
+  yearId: string,
+): string {
+  return `${tenantId}:${yearId}`;
+}
+
+export function parseActiveAcademicYearCookie(
+  value: string | null | undefined,
+  tenantId: string,
+): string | null {
+  if (!value || !tenantId) {
+    return null;
+  }
+  const separator = value.indexOf(':');
+  if (separator <= 0) {
+    return null;
+  }
+  const cookieTenantId = value.slice(0, separator);
+  const yearId = value.slice(separator + 1);
+  if (cookieTenantId !== tenantId || !yearId) {
+    return null;
+  }
+  return yearId;
+}
+
+export function writeActiveAcademicYearCookie(
+  tenantId: string,
+  yearId: string | null,
+): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  if (!yearId) {
+    document.cookie = `${ACTIVE_ACADEMIC_YEAR_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    return;
+  }
+  const encoded = encodeURIComponent(
+    encodeActiveAcademicYearCookie(tenantId, yearId),
+  );
+  document.cookie = `${ACTIVE_ACADEMIC_YEAR_COOKIE}=${encoded}; Path=/; Max-Age=${ACTIVE_ACADEMIC_YEAR_COOKIE_MAX_AGE}; SameSite=Lax`;
+}
 
 export function activeAcademicYearStorageKey(
   tenantId: string,
@@ -49,19 +95,19 @@ export function writeStoredActiveAcademicYearId(
   userId?: string | null,
 ): void {
   const storage = getBrowserStorage();
-  if (!storage) {
-    return;
-  }
-  try {
-    const key = activeAcademicYearStorageKey(tenantId, userId);
-    if (yearId) {
-      storage.setItem(key, yearId);
-    } else {
-      storage.removeItem(key);
+  if (storage) {
+    try {
+      const key = activeAcademicYearStorageKey(tenantId, userId);
+      if (yearId) {
+        storage.setItem(key, yearId);
+      } else {
+        storage.removeItem(key);
+      }
+    } catch {
+      // ignore quota / private mode
     }
-  } catch {
-    // ignore quota / private mode
   }
+  writeActiveAcademicYearCookie(tenantId, yearId);
 }
 
 /** Pick the active viewing year from storage, current flag, or first available. */

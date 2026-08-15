@@ -6,18 +6,24 @@ import { toast } from 'sonner';
 import {
   buildFeeInstallmentRows,
   buildFeePaymentUpdate,
+  computeSaleTotalMinor,
   DEFAULT_FEE_CURRENCY,
+  nextExpenditureStatus,
   sumInstallmentTemplates,
 } from '@/lib/acadia/finance';
 import type {
   CreateStudentFeeAccountValues,
+  ExpenditureFormValues,
   FinanceBudgetLineFormValues,
   FinanceLedgerEntryFormValues,
+  FinanceSaleFormValues,
   RecordFeePaymentValues,
   StreamFeePlanFormValues,
 } from '@/lib/acadia/finance-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
+import { dashboardTags, studentListTags } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -30,6 +36,7 @@ function mutationErrorMessage(error: unknown): string {
 
 function invalidateFinanceQueries(
   queryClient: ReturnType<typeof useQueryClient>,
+  tenantId?: string | null,
 ) {
   void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
   void queryClient.invalidateQueries({ queryKey: ['supabase-record'] });
@@ -39,6 +46,11 @@ function invalidateFinanceQueries(
   void queryClient.invalidateQueries({ queryKey: ['finance-ledger'] });
   void queryClient.invalidateQueries({ queryKey: ['finance-budget'] });
   void queryClient.invalidateQueries({ queryKey: ['finance-annual'] });
+  void queryClient.invalidateQueries({ queryKey: ['finance-sales'] });
+  void queryClient.invalidateQueries({ queryKey: ['finance-expenditures'] });
+  if (tenantId) {
+    invalidateAcadiaCache([...dashboardTags(tenantId), ...studentListTags(tenantId)]);
+  }
 }
 
 export function useFinanceMutations() {
@@ -114,7 +126,7 @@ export function useFinanceMutations() {
       return id;
     },
     onSuccess: () => {
-      invalidateFinanceQueries(queryClient);
+      invalidateFinanceQueries(queryClient, tenantId);
       toast.success('Fee plan saved.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -195,7 +207,7 @@ export function useFinanceMutations() {
       return accountId;
     },
     onSuccess: (accountId) => {
-      invalidateFinanceQueries(queryClient);
+      invalidateFinanceQueries(queryClient, tenantId);
       toast.success('Fee account created.');
       router.push(`/finance/fees/${accountId}`);
     },
@@ -250,7 +262,7 @@ export function useFinanceMutations() {
       });
     },
     onSuccess: () => {
-      invalidateFinanceQueries(queryClient);
+      invalidateFinanceQueries(queryClient, tenantId);
       toast.success('Payment recorded.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -289,7 +301,7 @@ export function useFinanceMutations() {
       });
     },
     onSuccess: () => {
-      invalidateFinanceQueries(queryClient);
+      invalidateFinanceQueries(queryClient, tenantId);
       toast.success('Ledger entry added.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -352,8 +364,361 @@ export function useFinanceMutations() {
       });
     },
     onSuccess: () => {
-      invalidateFinanceQueries(queryClient);
+      invalidateFinanceQueries(queryClient, tenantId);
       toast.success('Budget line saved.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const createSale = useMutation({
+    mutationFn: async (values: FinanceSaleFormValues) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const nowIso = new Date().toISOString();
+      const id = generateAcadiaId('sale');
+      const totalMinor = computeSaleTotalMinor(
+        values.quantity,
+        values.unitPriceMinor,
+      );
+      const { error } = await supabase.from('FinanceSale').insert({
+        id,
+        tenantId,
+        academicYearId: values.academicYearId,
+        studentProfileId: values.studentProfileId,
+        itemType: values.itemType,
+        itemName: values.itemName.trim(),
+        quantity: values.quantity,
+        unitPriceMinor: values.unitPriceMinor,
+        totalMinor,
+        saleDate: values.saleDate,
+        status: values.status ?? 'COMPLETED',
+        notes: values.notes?.trim() || null,
+        createdByUserId: userId,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      });
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'finance_sale.created',
+        entityId: id,
+        entityType: 'FinanceSale',
+        description: `${values.itemName.trim()} (${formatMinor(totalMinor)})`,
+      });
+      return id;
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Sale recorded.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const updateSale = useMutation({
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: FinanceSaleFormValues;
+    }) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const nowIso = new Date().toISOString();
+      const totalMinor = computeSaleTotalMinor(
+        values.quantity,
+        values.unitPriceMinor,
+      );
+      const { error } = await supabase
+        .from('FinanceSale')
+        .update({
+          itemType: values.itemType,
+          itemName: values.itemName.trim(),
+          quantity: values.quantity,
+          unitPriceMinor: values.unitPriceMinor,
+          totalMinor,
+          saleDate: values.saleDate,
+          status: values.status ?? 'COMPLETED',
+          notes: values.notes?.trim() || null,
+          updatedAt: nowIso,
+        })
+        .eq('tenantId', tenantId)
+        .eq('id', id);
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'finance_sale.updated',
+        entityId: id,
+        entityType: 'FinanceSale',
+      });
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Sale updated.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const deleteSale = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase
+        .from('FinanceSale')
+        .delete()
+        .eq('tenantId', tenantId)
+        .eq('id', id);
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'finance_sale.deleted',
+        entityId: id,
+        entityType: 'FinanceSale',
+      });
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Sale deleted.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const createExpenditure = useMutation({
+    mutationFn: async (values: ExpenditureFormValues) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const nowIso = new Date().toISOString();
+      const id = generateAcadiaId('exp');
+      const { error } = await supabase.from('Expenditure').insert({
+        id,
+        tenantId,
+        academicYearId: values.academicYearId,
+        title: values.title.trim(),
+        description: values.description?.trim() || null,
+        category: values.category,
+        amountMinor: values.amountMinor,
+        currency: values.currency || DEFAULT_FEE_CURRENCY,
+        paymentMethod: values.paymentMethod,
+        paymentDate: values.paymentDate,
+        vendor: values.vendor.trim(),
+        vendorContact: values.vendorContact?.trim() || null,
+        receiptNumber: values.receiptNumber?.trim() || null,
+        invoiceNumber: values.invoiceNumber?.trim() || null,
+        status: values.status ?? 'PENDING',
+        budgetCategory: values.budgetCategory,
+        department: values.department?.trim() || null,
+        notes: values.notes?.trim() || null,
+        createdByUserId: userId,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      });
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'expenditure.created',
+        entityId: id,
+        entityType: 'Expenditure',
+        description: `${values.title.trim()} (${formatMinor(values.amountMinor)})`,
+      });
+      return id;
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Expenditure recorded.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const updateExpenditure = useMutation({
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: ExpenditureFormValues;
+    }) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('Expenditure')
+        .update({
+          title: values.title.trim(),
+          description: values.description?.trim() || null,
+          category: values.category,
+          amountMinor: values.amountMinor,
+          currency: values.currency || DEFAULT_FEE_CURRENCY,
+          paymentMethod: values.paymentMethod,
+          paymentDate: values.paymentDate,
+          vendor: values.vendor.trim(),
+          vendorContact: values.vendorContact?.trim() || null,
+          receiptNumber: values.receiptNumber?.trim() || null,
+          invoiceNumber: values.invoiceNumber?.trim() || null,
+          status: values.status ?? 'PENDING',
+          budgetCategory: values.budgetCategory,
+          department: values.department?.trim() || null,
+          notes: values.notes?.trim() || null,
+          updatedAt: nowIso,
+        })
+        .eq('tenantId', tenantId)
+        .eq('id', id);
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'expenditure.updated',
+        entityId: id,
+        entityType: 'Expenditure',
+      });
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Expenditure updated.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const deleteExpenditure = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase
+        .from('Expenditure')
+        .delete()
+        .eq('tenantId', tenantId)
+        .eq('id', id);
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'expenditure.deleted',
+        entityId: id,
+        entityType: 'Expenditure',
+      });
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Expenditure deleted.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const approveExpenditure = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const { data: row, error: fetchError } = await supabase
+        .from('Expenditure')
+        .select('id, status')
+        .eq('tenantId', tenantId)
+        .eq('id', id)
+        .maybeSingle();
+      if (fetchError) {
+        throw fetchError;
+      }
+      if (!row) {
+        throw new Error('Expenditure not found.');
+      }
+      const next = nextExpenditureStatus('approve', String(row.status));
+      if (!next) {
+        throw new Error('Only pending expenditures can be approved.');
+      }
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('Expenditure')
+        .update({
+          status: next,
+          approvedByUserId: userId,
+          approvedAt: nowIso,
+          updatedAt: nowIso,
+        })
+        .eq('tenantId', tenantId)
+        .eq('id', id);
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'expenditure.approved',
+        entityId: id,
+        entityType: 'Expenditure',
+      });
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Expenditure approved.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const markExpenditurePaid = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const { data: row, error: fetchError } = await supabase
+        .from('Expenditure')
+        .select('id, status')
+        .eq('tenantId', tenantId)
+        .eq('id', id)
+        .maybeSingle();
+      if (fetchError) {
+        throw fetchError;
+      }
+      if (!row) {
+        throw new Error('Expenditure not found.');
+      }
+      const next = nextExpenditureStatus('pay', String(row.status));
+      if (!next) {
+        throw new Error('Only approved expenditures can be marked paid.');
+      }
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('Expenditure')
+        .update({
+          status: next,
+          updatedAt: nowIso,
+        })
+        .eq('tenantId', tenantId)
+        .eq('id', id);
+      if (error) {
+        throw error;
+      }
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'expenditure.paid',
+        entityId: id,
+        entityType: 'Expenditure',
+      });
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Expenditure marked paid.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -364,6 +729,14 @@ export function useFinanceMutations() {
     recordFeePayment,
     createLedgerEntry,
     saveBudgetLine,
+    createSale,
+    updateSale,
+    deleteSale,
+    createExpenditure,
+    updateExpenditure,
+    deleteExpenditure,
+    approveExpenditure,
+    markExpenditurePaid,
   };
 }
 

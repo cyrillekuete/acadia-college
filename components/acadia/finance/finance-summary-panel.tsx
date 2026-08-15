@@ -30,7 +30,12 @@ export function FinanceSummaryPanel() {
     queryKey: ['finance-summary', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      const [{ data: accounts, error: accountsError }, { data: ledger, error: ledgerError }] =
+      const [
+        { data: accounts, error: accountsError },
+        { data: ledger, error: ledgerError },
+        { data: sales, error: salesError },
+        { data: expenditures, error: expendituresError },
+      ] =
         await Promise.all([
           supabase
             .from('StudentFeeAccount')
@@ -48,12 +53,30 @@ export function FinanceSummaryPanel() {
             .select('entryType, amountMinor')
             .eq('tenantId', tenantId!)
             .eq('academicYearId', activeYearId!),
+          supabase
+            .from('FinanceSale')
+            .select('totalMinor')
+            .eq('tenantId', tenantId!)
+            .eq('academicYearId', activeYearId!)
+            .eq('status', 'COMPLETED'),
+          supabase
+            .from('Expenditure')
+            .select('amountMinor')
+            .eq('tenantId', tenantId!)
+            .eq('academicYearId', activeYearId!)
+            .eq('status', 'PAID'),
         ]);
       if (accountsError) {
         throw accountsError;
       }
       if (ledgerError) {
         throw ledgerError;
+      }
+      if (salesError) {
+        throw salesError;
+      }
+      if (expendituresError) {
+        throw expendituresError;
       }
 
       const accountTotals = (accounts ?? []).map((account) => {
@@ -91,6 +114,16 @@ export function FinanceSummaryPanel() {
       const summary = aggregateFinanceSummary(
         accountTotals,
         (ledger ?? []) as Array<{ entryType: string; amountMinor: number }>,
+        {
+          completedSalesMinor: (sales ?? []).reduce(
+            (sum, row) => sum + Number(row.totalMinor ?? 0),
+            0,
+          ),
+          paidExpendituresMinor: (expenditures ?? []).reduce(
+            (sum, row) => sum + Number(row.amountMinor ?? 0),
+            0,
+          ),
+        },
       );
       summary.overdueInstallments = overdueInstallments;
       return summary;
