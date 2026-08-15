@@ -165,7 +165,10 @@ export async function fetchClassPromotionPolicy(
   };
 }
 
-export { fetchClassSubjectIds } from '@/lib/supabase/queries/class-subjects';
+export {
+  fetchClassSubjectIds,
+  fetchClassSubjectSelections,
+} from '@/lib/supabase/queries/class-subjects';
 
 export async function countEnrollmentsForClass(
   supabase: Client,

@@ -189,7 +189,8 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
         (sessions ?? []).map((s) => [
           s.id as string,
           {
-            termId: s.termId as string,
+            termId: s.termId as string | null,
+            sequenceId: (s.sequenceId as string | null) ?? null,
             sequenceNumber:
               unwrapRelation<{ number?: number }>(s.AcademicSequence)?.number ??
               null,
@@ -223,6 +224,8 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
             studentProfileId: mark.studentProfileId as string,
             subjectId: mark.subjectId as string,
             totalScore: total,
+            sequenceId: meta?.sequenceId ?? null,
+            termId: meta?.termId ?? null,
             subjectSubBranchId: (mark.subjectSubBranchId as string | null) ?? null,
             subjectCoefficient:
               subject?.coefficient != null ? Number(subject.coefficient) : 1,

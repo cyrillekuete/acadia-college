@@ -99,6 +99,7 @@ export function collapseMarksToSubjectScore(
     subjectCoefficient?: number | null;
     subBranchCoefficient?: number | null;
   }[],
+  requiredSubBranchIds?: readonly string[] | null,
 ): number | null {
   const scored = marks.filter(
     (mark): mark is typeof mark & { totalScore: number } =>
@@ -106,6 +107,28 @@ export function collapseMarksToSubjectScore(
   );
   if (scored.length === 0) {
     return null;
+  }
+
+  const presentBranchIds = [
+    ...new Set(
+      marks
+        .map((mark) => mark.subjectSubBranchId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const required = [
+    ...new Set((requiredSubBranchIds ?? []).filter((id) => id.trim().length > 0)),
+  ];
+  const expectedBranches = required.length > 0 ? required : presentBranchIds;
+  if (expectedBranches.length > 0) {
+    const scoredBranches = new Set(
+      scored
+        .map((mark) => mark.subjectSubBranchId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    if (!expectedBranches.every((id) => scoredBranches.has(id))) {
+      return null;
+    }
   }
 
   const branchMarks = scored.filter((mark) => mark.subjectSubBranchId);
@@ -179,36 +202,54 @@ export type SubjectMarkSnapshot = {
   subBranchCoefficient?: number | null;
 };
 
-/** Group marks by student and compute coefficient-weighted subject averages. */
+function markPeriodKey(mark: SubjectMarkSnapshot): string {
+  return mark.sequenceId?.trim() || mark.termId?.trim() || '__none__';
+}
+
+/**
+ * Group marks by student, then by sequence/term, collapse sub-branches within
+ * each period, coefficient-weight subjects, and average those period scores.
+ * Matches the per-sequence collapse used for promotion.
+ */
 export function computeStudentSubjectAverages(
   marks: SubjectMarkSnapshot[],
 ): Map<string, number> {
-  const byStudentSubject = new Map<string, Map<string, SubjectMarkSnapshot[]>>();
+  const byStudentPeriodSubject = new Map<
+    string,
+    Map<string, Map<string, SubjectMarkSnapshot[]>>
+  >();
 
   marks.forEach((mark, index) => {
-    const studentMap = byStudentSubject.get(mark.studentProfileId) ?? new Map();
+    const periodKey = markPeriodKey(mark);
     const subjectKey = mark.subjectId?.trim() ? mark.subjectId : `__row_${index}`;
-    const list = studentMap.get(subjectKey) ?? [];
+    const periods = byStudentPeriodSubject.get(mark.studentProfileId) ?? new Map();
+    const subjects = periods.get(periodKey) ?? new Map();
+    const list = subjects.get(subjectKey) ?? [];
     list.push(mark);
-    studentMap.set(subjectKey, list);
-    byStudentSubject.set(mark.studentProfileId, studentMap);
+    subjects.set(subjectKey, list);
+    periods.set(periodKey, subjects);
+    byStudentPeriodSubject.set(mark.studentProfileId, periods);
   });
 
   const averages = new Map<string, number>();
-  Array.from(byStudentSubject.entries()).forEach(([studentId, subjects]) => {
-    const subjectScores = Array.from(subjects.values()).flatMap((subjectMarks) => {
-      const score = collapseMarksToSubjectScore(subjectMarks);
-      if (score == null) {
-        return [];
-      }
-      return [
-        {
-          score,
-          coefficient: subjectMarks[0]?.subjectCoefficient ?? 1,
-        },
-      ];
+  Array.from(byStudentPeriodSubject.entries()).forEach(([studentId, periods]) => {
+    const periodAverages = Array.from(periods.values()).flatMap((subjects) => {
+      const subjectScores = Array.from(subjects.values()).flatMap((subjectMarks) => {
+        const score = collapseMarksToSubjectScore(subjectMarks);
+        if (score == null) {
+          return [];
+        }
+        return [
+          {
+            score,
+            coefficient: subjectMarks[0]?.subjectCoefficient ?? 1,
+          },
+        ];
+      });
+      const periodAvg = weightedAverage(subjectScores);
+      return periodAvg == null ? [] : [periodAvg];
     });
-    const avg = weightedAverage(subjectScores);
+    const avg = averageScores(periodAverages);
     if (avg != null) {
       averages.set(studentId, avg);
     }

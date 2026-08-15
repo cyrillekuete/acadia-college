@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   classSubjectPairsForSelection,
+  hasClassTeacherSubjects,
   uniqueIds,
   validateSubjectIdsOfferedInClass,
 } from '@/lib/acadia/staff-class-assignments';
@@ -62,5 +63,13 @@ describe('classSubjectPairsForSelection', () => {
 describe('uniqueIds', () => {
   it('removes blanks and duplicates', () => {
     expect(uniqueIds(['a', ' a ', '', 'b', 'a'])).toEqual(['a', 'b']);
+  });
+});
+
+describe('hasClassTeacherSubjects', () => {
+  it('requires at least one real subject id', () => {
+    expect(hasClassTeacherSubjects([])).toBe(false);
+    expect(hasClassTeacherSubjects(['', '  '])).toBe(false);
+    expect(hasClassTeacherSubjects(['math'])).toBe(true);
   });
 });

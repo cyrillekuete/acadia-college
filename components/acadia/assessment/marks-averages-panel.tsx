@@ -66,7 +66,7 @@ export function MarksAveragesPanel() {
       const supabase = requireBrowserClient();
       let examQuery = supabase
         .from('ExamSession')
-        .select('id')
+        .select('id, sequenceId, termId')
         .eq('tenantId', tenantId!)
         .eq('academicYearId', activeYearId!);
       if (sequenceId) {
@@ -80,6 +80,15 @@ export function MarksAveragesPanel() {
       if (sessionIds.length === 0) {
         return [];
       }
+      const sessionMeta = new Map(
+        (sessions ?? []).map((s) => [
+          s.id as string,
+          {
+            sequenceId: (s.sequenceId as string | null) ?? null,
+            termId: (s.termId as string | null) ?? null,
+          },
+        ]),
+      );
 
       const { data: marks, error: marksError } = await supabase
         .from('SubjectMark')
@@ -89,6 +98,7 @@ export function MarksAveragesPanel() {
           subjectId,
           subjectSubBranchId,
           totalScore,
+          examSessionId,
           StudentProfile!SubjectMark_studentProfileId_tenantId_fkey (
             registrationNumber,
             User!StudentProfile_userId_tenantId_fkey ( name )
@@ -110,10 +120,13 @@ export function MarksAveragesPanel() {
           const subBranch = unwrapRelation<{ coefficient?: number | null }>(
             m.SubjectSubBranch,
           );
+          const meta = sessionMeta.get(m.examSessionId as string);
           return {
             studentProfileId: m.studentProfileId as string,
             subjectId: m.subjectId as string,
             totalScore: m.totalScore != null ? Number(m.totalScore) : null,
+            sequenceId: meta?.sequenceId ?? null,
+            termId: meta?.termId ?? null,
             subjectSubBranchId: (m.subjectSubBranchId as string | null) ?? null,
             subjectCoefficient:
               subject?.coefficient != null ? Number(subject.coefficient) : 1,

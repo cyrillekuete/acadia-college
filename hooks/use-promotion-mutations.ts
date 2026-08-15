@@ -24,7 +24,7 @@ import { unwrapRelation } from '@/lib/acadia/record-display';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import {
   fetchClassPromotionPolicy,
-  fetchClassSubjectIds,
+  fetchClassSubjectSelections,
   fetchClassesMissingPolicies,
   fetchEnrollmentsForClassPromotion,
   isPromotionYearLocked,
@@ -88,12 +88,12 @@ async function computePromotionForClass(
 
   const [
     enrollments,
-    classSubjectIds,
+    classSubjects,
     { data: levels, error: levelError },
     { data: sessions, error: sessionError },
   ] = await Promise.all([
     fetchEnrollmentsForClassPromotion(supabase, tenantId, academicYearId, classId),
-    fetchClassSubjectIds(supabase, tenantId, classId),
+    fetchClassSubjectSelections(supabase, tenantId, classId),
     supabase
       .from('Level')
       .select('id, number, subSystem, branch, sortOrder, isDefaultPromotionTarget')
@@ -113,6 +113,7 @@ async function computePromotionForClass(
   }
 
   const sessionIds = (sessions ?? []).map((s) => s.id as string);
+  const classSubjectIds = classSubjects.map((subject) => subject.subjectId);
   const subjectFilter =
     classSubjectIds.length > 0 ? classSubjectIds : null;
 
@@ -221,7 +222,12 @@ async function computePromotionForClass(
       const yearResult = computeYearAverageForPromotionFromMarks(
         marks,
         studentId,
-        subjectFilter,
+        classSubjects.length > 0
+          ? classSubjects.map((subject) => ({
+              subjectId: subject.subjectId,
+              subBranchIds: subject.subBranchIds,
+            }))
+          : null,
       );
       return {
         studentProfileId: studentId,

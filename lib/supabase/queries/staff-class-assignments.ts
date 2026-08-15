@@ -3,6 +3,7 @@ import { generateAcadiaId } from '@/lib/acadia/ids';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import {
   classSubjectPairsForSelection,
+  hasClassTeacherSubjects,
   uniqueIds,
   validateSubjectIdsOfferedInClass,
 } from '@/lib/acadia/staff-class-assignments';
@@ -329,6 +330,15 @@ export async function syncClassTeacherAssignment(
     offeredSubjectIds,
     input.subjectIds,
   );
+  if (!hasClassTeacherSubjects(subjectIds)) {
+    await removeClassTeacherAssignment(supabase, tenantId, {
+      classId: input.classId,
+      academicYearId: input.academicYearId,
+      staffProfileId: input.staffProfileId,
+    });
+    return;
+  }
+
   const now = new Date().toISOString();
 
   await ensureStaffClassAssignment(

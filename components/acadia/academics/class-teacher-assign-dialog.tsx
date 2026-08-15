@@ -31,6 +31,7 @@ import {
   useStaffOptions,
 } from '@/hooks/use-subject-catalog-options';
 import { useTranslation } from '@/hooks/useTranslation';
+import { hasClassTeacherSubjects } from '@/lib/acadia/staff-class-assignments';
 
 export function ClassTeacherAssignDialog({
   open,
@@ -122,7 +123,10 @@ export function ClassTeacherAssignDialog({
   };
 
   const pending = syncAssignment.isPending || removeAssignment.isPending;
-  const canSave = Boolean(classId && activeYearId && selectedStaffId) && !pending;
+  const canSave =
+    Boolean(classId && activeYearId && selectedStaffId) &&
+    hasClassTeacherSubjects(selectedSubjectIds) &&
+    !pending;
   const formOpen = selectedStaffId.length > 0 || editingStaffId !== null;
 
   return (

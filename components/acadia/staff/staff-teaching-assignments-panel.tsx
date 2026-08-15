@@ -23,6 +23,7 @@ import { useClassSubjectOptions } from '@/hooks/use-subject-catalog-options';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useTranslation } from '@/hooks/useTranslation';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import { hasClassTeacherSubjects } from '@/lib/acadia/staff-class-assignments';
 
 export function StaffTeachingAssignmentsPanel({
   staffProfileId,
@@ -103,7 +104,10 @@ export function StaffTeachingAssignmentsPanel({
   };
 
   const pending = syncAssignment.isPending || removeAssignment.isPending;
-  const canSave = Boolean(activeYearId && selectedClassId) && !pending;
+  const canSave =
+    Boolean(activeYearId && selectedClassId) &&
+    hasClassTeacherSubjects(selectedSubjectIds) &&
+    !pending;
 
   return (
     <div className="space-y-5">

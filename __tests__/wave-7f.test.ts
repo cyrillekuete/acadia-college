@@ -182,6 +182,38 @@ describe('weighted averages', () => {
     ).toBe(13.14);
   });
 
+  it('returns null when a paper in the group is unscored', () => {
+    expect(
+      collapseMarksToSubjectScore([
+        {
+          totalScore: 12,
+          subjectSubBranchId: 'organic',
+          subjectCoefficient: 5,
+        },
+        {
+          totalScore: null,
+          subjectSubBranchId: 'inorganic',
+          subjectCoefficient: 5,
+        },
+      ]),
+    ).toBeNull();
+  });
+
+  it('returns null when a required paper is absent', () => {
+    expect(
+      collapseMarksToSubjectScore(
+        [
+          {
+            totalScore: 12,
+            subjectSubBranchId: 'organic',
+            subjectCoefficient: 5,
+          },
+        ],
+        ['organic', 'inorganic'],
+      ),
+    ).toBeNull();
+  });
+
   it('computes a student average from subject coefficients', () => {
     const averages = computeStudentSubjectAverages([
       {
@@ -198,5 +230,63 @@ describe('weighted averages', () => {
       },
     ]);
     expect(averages.get('stu-1')).toBe(13.75);
+  });
+
+  it('collapses sub-branches per sequence before averaging periods', () => {
+    const averages = computeStudentSubjectAverages([
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'chem',
+        sequenceId: 'seq-1',
+        totalScore: 18,
+        subjectCoefficient: 5,
+      },
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'chem',
+        sequenceId: 'seq-2',
+        subjectSubBranchId: 'organic',
+        totalScore: 10,
+        subjectCoefficient: 5,
+        subBranchCoefficient: 5,
+      },
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'chem',
+        sequenceId: 'seq-2',
+        subjectSubBranchId: 'inorganic',
+        totalScore: 10,
+        subjectCoefficient: 5,
+        subBranchCoefficient: 2,
+      },
+    ]);
+    expect(averages.get('stu-1')).toBe(14);
+  });
+
+  it('weights subjects within each sequence then averages those scores', () => {
+    const averages = computeStudentSubjectAverages([
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'chem',
+        sequenceId: 'seq-1',
+        totalScore: 10,
+        subjectCoefficient: 3,
+      },
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'math',
+        sequenceId: 'seq-1',
+        totalScore: 16,
+        subjectCoefficient: 5,
+      },
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'chem',
+        sequenceId: 'seq-2',
+        totalScore: 20,
+        subjectCoefficient: 3,
+      },
+    ]);
+    expect(averages.get('stu-1')).toBe(16.88);
   });
 });

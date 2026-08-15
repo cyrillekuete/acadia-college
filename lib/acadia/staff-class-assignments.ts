@@ -2,6 +2,11 @@ export function uniqueIds(ids: string[]): string[] {
   return Array.from(new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0)));
 }
 
+/** Class assignment rows are only meaningful when the teacher has at least one subject. */
+export function hasClassTeacherSubjects(subjectIds: string[]): boolean {
+  return uniqueIds(subjectIds).length > 0;
+}
+
 export function validateSubjectIdsOfferedInClass(
   offeredSubjectIds: string[],
   requestedSubjectIds: string[],

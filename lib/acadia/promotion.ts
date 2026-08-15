@@ -325,9 +325,82 @@ type YearAverageMark = {
   subBranchCoefficient?: number | null;
 };
 
+export type PromotionClassSubject = {
+  subjectId: string;
+  /** Assigned papers; empty/null means a single subject-level mark. */
+  subBranchIds?: string[] | null;
+};
+
+function isScoredTotal(totalScore: number | null | undefined): boolean {
+  return totalScore != null && !Number.isNaN(totalScore);
+}
+
+function normalizePromotionClassSubjects(
+  classSubjects: Array<string | PromotionClassSubject> | null,
+): PromotionClassSubject[] | null {
+  if (!classSubjects || classSubjects.length === 0) {
+    return null;
+  }
+  return classSubjects.map((item) =>
+    typeof item === 'string' ? { subjectId: item } : item,
+  );
+}
+
+function requiredSubBranchesBySubject(
+  classSubjects: PromotionClassSubject[],
+): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const subject of classSubjects) {
+    const ids = (subject.subBranchIds ?? []).filter((id) => id.trim().length > 0);
+    if (ids.length > 0) {
+      map.set(subject.subjectId, ids);
+    }
+  }
+  return map;
+}
+
+function promotionMarksAreComplete(
+  marks: YearAverageMark[],
+  classSubjects: PromotionClassSubject[],
+): boolean {
+  for (const subject of classSubjects) {
+    const papers = (subject.subBranchIds ?? []).filter((id) => id.trim().length > 0);
+    const subjectMarks = marks.filter((mark) => mark.subjectId === subject.subjectId);
+
+    if (papers.length === 0) {
+      if (!subjectMarks.some((mark) => isScoredTotal(mark.totalScore))) {
+        return false;
+      }
+      continue;
+    }
+
+    const sequences = new Set(subjectMarks.map((mark) => mark.sequenceNumber ?? 1));
+    if (sequences.size === 0) {
+      return false;
+    }
+
+    for (const seq of Array.from(sequences)) {
+      const seqMarks = subjectMarks.filter(
+        (mark) => (mark.sequenceNumber ?? 1) === seq,
+      );
+      const allPapersScored = papers.every((paperId) =>
+        seqMarks.some(
+          (mark) =>
+            mark.subjectSubBranchId === paperId && isScoredTotal(mark.totalScore),
+        ),
+      );
+      if (!allPapersScored) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 /** Aggregate sequence marks into a year average per student. */
 export function computeYearAveragesFromMarks(
   marks: YearAverageMark[],
+  requiredSubBranchesBySubjectId?: ReadonlyMap<string, readonly string[]>,
 ): Map<string, number> {
   const byStudent = new Map<string, { sequenceNumber: number; average: number }[]>();
   const grouped = new Map<string, YearAverageMark[]>();
@@ -349,7 +422,11 @@ export function computeYearAveragesFromMarks(
   for (const [key, subjectMarks] of Array.from(grouped.entries())) {
     const [studentId, seqRaw] = key.split('::');
     const seqNum = Number(seqRaw);
-    const score = collapseMarksToSubjectScore(subjectMarks);
+    const subjectId = subjectMarks[0]?.subjectId?.trim() ?? '';
+    const score = collapseMarksToSubjectScore(
+      subjectMarks,
+      requiredSubBranchesBySubjectId?.get(subjectId),
+    );
     if (score == null) {
       continue;
     }
@@ -393,7 +470,7 @@ export function computeYearAveragesFromMarks(
   return result;
 }
 
-/** Class-scoped year average: requires marks for all class subjects when mappings exist. */
+/** Class-scoped year average: requires scored marks for every class subject and paper. */
 export function computeYearAverageForPromotionFromMarks(
   marks: {
     studentProfileId: string;
@@ -405,22 +482,18 @@ export function computeYearAverageForPromotionFromMarks(
     subBranchCoefficient?: number | null;
   }[],
   studentProfileId: string,
-  classSubjectIds: string[] | null,
+  classSubjects: Array<string | PromotionClassSubject> | null,
 ): YearAverageForPromotion {
+  const requirements = normalizePromotionClassSubjects(classSubjects);
   const studentMarks = marks.filter((m) => m.studentProfileId === studentProfileId);
+  const requiredSubjectIds = requirements?.map((subject) => subject.subjectId) ?? [];
   const scopedMarks =
-    classSubjectIds && classSubjectIds.length > 0
-      ? studentMarks.filter((m) => classSubjectIds.includes(m.subjectId))
+    requiredSubjectIds.length > 0
+      ? studentMarks.filter((m) => requiredSubjectIds.includes(m.subjectId))
       : studentMarks;
 
-  if (classSubjectIds && classSubjectIds.length > 0) {
-    const subjectsWithMarks = new Set(scopedMarks.map((m) => m.subjectId));
-    const allSubjectsCovered = classSubjectIds.every((id) =>
-      subjectsWithMarks.has(id),
-    );
-    if (!allSubjectsCovered) {
-      return { average: null, status: 'incomplete' };
-    }
+  if (requirements && !promotionMarksAreComplete(scopedMarks, requirements)) {
+    return { average: null, status: 'incomplete' };
   }
 
   const averages = computeYearAveragesFromMarks(
@@ -433,6 +506,7 @@ export function computeYearAverageForPromotionFromMarks(
       subjectCoefficient: m.subjectCoefficient,
       subBranchCoefficient: m.subBranchCoefficient,
     })),
+    requirements ? requiredSubBranchesBySubject(requirements) : undefined,
   );
 
   const average = averages.get(studentProfileId) ?? null;

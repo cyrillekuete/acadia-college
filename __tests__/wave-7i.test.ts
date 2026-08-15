@@ -182,6 +182,107 @@ describe('computeYearAverageForPromotionFromMarks', () => {
     );
     expect(result.status).toBe('incomplete');
   });
+
+  it('returns incomplete when only one assigned paper is scored', () => {
+    const result = computeYearAverageForPromotionFromMarks(
+      [
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'organic',
+          totalScore: 12,
+          sequenceNumber: 1,
+        },
+      ],
+      'stu-1',
+      [{ subjectId: 'chem', subBranchIds: ['organic', 'inorganic'] }],
+    );
+    expect(result).toEqual({ average: null, status: 'incomplete' });
+  });
+
+  it('returns incomplete when an assigned paper has a null score', () => {
+    const result = computeYearAverageForPromotionFromMarks(
+      [
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'organic',
+          totalScore: 12,
+          sequenceNumber: 1,
+        },
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'inorganic',
+          totalScore: null,
+          sequenceNumber: 1,
+        },
+      ],
+      'stu-1',
+      [{ subjectId: 'chem', subBranchIds: ['organic', 'inorganic'] }],
+    );
+    expect(result).toEqual({ average: null, status: 'incomplete' });
+  });
+
+  it('returns incomplete when a later sequence is missing a paper', () => {
+    const result = computeYearAverageForPromotionFromMarks(
+      [
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'organic',
+          totalScore: 12,
+          sequenceNumber: 1,
+        },
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'inorganic',
+          totalScore: 16,
+          sequenceNumber: 1,
+        },
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'organic',
+          totalScore: 10,
+          sequenceNumber: 2,
+        },
+      ],
+      'stu-1',
+      [{ subjectId: 'chem', subBranchIds: ['organic', 'inorganic'] }],
+    );
+    expect(result).toEqual({ average: null, status: 'incomplete' });
+  });
+
+  it('returns complete when every assigned paper is scored', () => {
+    const result = computeYearAverageForPromotionFromMarks(
+      [
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'organic',
+          totalScore: 12,
+          sequenceNumber: 1,
+          subjectCoefficient: 5,
+          subBranchCoefficient: 5,
+        },
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'inorganic',
+          totalScore: 16,
+          sequenceNumber: 1,
+          subjectCoefficient: 5,
+          subBranchCoefficient: 2,
+        },
+      ],
+      'stu-1',
+      [{ subjectId: 'chem', subBranchIds: ['organic', 'inorganic'] }],
+    );
+    expect(result.status).toBe('complete');
+    expect(result.average).toBe(13.14);
+  });
 });
 
 describe('computeYearAveragesFromMarks', () => {
@@ -211,6 +312,23 @@ describe('computeYearAveragesFromMarks', () => {
       },
     ]);
     expect(averages.get('stu-1')).toBe(13.75);
+  });
+
+  it('does not collapse a subject from a subset of required papers', () => {
+    const averages = computeYearAveragesFromMarks(
+      [
+        {
+          studentProfileId: 'stu-1',
+          subjectId: 'chem',
+          subjectSubBranchId: 'organic',
+          totalScore: 12,
+          sequenceNumber: 1,
+          subjectCoefficient: 5,
+        },
+      ],
+      new Map([['chem', ['organic', 'inorganic']]]),
+    );
+    expect(averages.has('stu-1')).toBe(false);
   });
 });
 
