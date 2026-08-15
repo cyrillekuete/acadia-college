@@ -30,7 +30,6 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Container } from '@/components/common/container';
-import { StoreClientTopbar } from '@/app/(protected)/store-client/components/common/topbar';
 import { AcadiaNavbarMenu } from './acadia-navbar-menu';
 import { Breadcrumb } from './breadcrumb';
 import { SidebarMenu } from './sidebar-menu';
@@ -98,71 +97,65 @@ export function Header() {
         {/* HeaderTopbar */}
         <div className="flex items-center gap-3">
           <AcademicYearSwitcher />
-          {pathname.startsWith('/store-client') ? (
-            <StoreClientTopbar />
-          ) : (
-            <>
-              {!mobileMode && (
-                <SearchDialog
-                  trigger={
-                    <Button
-                      variant="ghost"
-                      mode="icon"
-                      shape="circle"
-                      className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
-                    >
-                      <Search className="size-4.5!" />
-                    </Button>
-                  }
-                />
-              )}
-              <NotificationsSheet
-                trigger={
-                  <Button
-                    variant="ghost"
-                    mode="icon"
-                    shape="circle"
-                    className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
-                  >
-                    <Bell className="size-4.5!" />
-                  </Button>
-                }
-              />
-              <ChatSheet
-                trigger={
-                  <Button
-                    variant="ghost"
-                    mode="icon"
-                    shape="circle"
-                    className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
-                  >
-                    <MessageCircleMore className="size-4.5!" />
-                  </Button>
-                }
-              />
-              <AppsDropdownMenu
-                trigger={
-                  <Button
-                    variant="ghost"
-                    mode="icon"
-                    shape="circle"
-                    className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
-                  >
-                    <LayoutGrid className="size-4.5!" />
-                  </Button>
-                }
-              />
-              <UserDropdownMenu
-                trigger={
-                  <img
-                    className="size-9 rounded-full border-2 border-green-500 shrink-0 cursor-pointer"
-                    src={toAbsoluteUrl('/media/avatars/300-2.png')}
-                    alt="User Avatar"
-                  />
-                }
-              />
-            </>
+          {!mobileMode && (
+            <SearchDialog
+              trigger={
+                <Button
+                  variant="ghost"
+                  mode="icon"
+                  shape="circle"
+                  className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
+                >
+                  <Search className="size-4.5!" />
+                </Button>
+              }
+            />
           )}
+          <NotificationsSheet
+            trigger={
+              <Button
+                variant="ghost"
+                mode="icon"
+                shape="circle"
+                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
+              >
+                <Bell className="size-4.5!" />
+              </Button>
+            }
+          />
+          <ChatSheet
+            trigger={
+              <Button
+                variant="ghost"
+                mode="icon"
+                shape="circle"
+                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
+              >
+                <MessageCircleMore className="size-4.5!" />
+              </Button>
+            }
+          />
+          <AppsDropdownMenu
+            trigger={
+              <Button
+                variant="ghost"
+                mode="icon"
+                shape="circle"
+                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
+              >
+                <LayoutGrid className="size-4.5!" />
+              </Button>
+            }
+          />
+          <UserDropdownMenu
+            trigger={
+              <img
+                className="size-9 rounded-full border-2 border-green-500 shrink-0 cursor-pointer"
+                src={toAbsoluteUrl('/media/avatars/300-2.png')}
+                alt="User Avatar"
+              />
+            }
+          />
         </div>
       </Container>
     </header>
