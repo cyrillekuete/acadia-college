@@ -71,10 +71,13 @@ export function dashboardTags(
 }
 
 export function isAllowedAcadiaCacheTag(tag: string, tenantId: string): boolean {
-  if (!tenantId || !tag.includes(tenantId)) {
+  if (!tenantId) {
     return false;
   }
-  const prefix = tag.split(':')[0];
+  const [prefix, tagTenantId] = tag.split(':');
+  if (!prefix || tagTenantId !== tenantId) {
+    return false;
+  }
   return (ACADIA_CACHE_TAG_PREFIXES as readonly string[]).includes(prefix);
 }
 

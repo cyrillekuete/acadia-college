@@ -47,6 +47,8 @@ import { canWriteFinance } from '@/lib/acadia/roles';
 import {
   aggregateExpenditureStats,
   canApproveExpenditure,
+  canDeleteExpenditure,
+  canEditExpenditure,
   canMarkExpenditurePaid,
   EXPENDITURE_CATEGORIES,
   EXPENDITURE_STATUSES,
@@ -313,30 +315,30 @@ export function ExpendituresPanel() {
                 <Wallet className="size-4" />
               </Button>
             ) : null}
-            {canManage ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setEditing(row.original);
-                    setFormOpen(true);
-                  }}
-                  aria-label={t('common.buttons.edit')}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDeleting(row.original)}
-                  aria-label={t('common.buttons.delete')}
-                >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
-              </>
+            {canManage && canEditExpenditure(row.original.status) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setEditing(row.original);
+                  setFormOpen(true);
+                }}
+                aria-label={t('common.buttons.edit')}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            ) : null}
+            {canManage && canDeleteExpenditure(row.original.status) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setDeleting(row.original)}
+                aria-label={t('common.buttons.delete')}
+              >
+                <Trash2 className="size-4 text-destructive" />
+              </Button>
             ) : null}
           </div>
         ),

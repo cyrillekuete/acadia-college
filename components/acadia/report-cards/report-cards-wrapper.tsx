@@ -80,6 +80,7 @@ export function ReportCardsWrapper({
     let cancelled = false;
     const load = async () => {
       setLoadingReport(true);
+      setReportData(null);
       setError(null);
       try {
         const qs = new URLSearchParams({
@@ -191,19 +192,11 @@ export function ReportCardsWrapper({
           <p className="text-sm text-muted-foreground">{t('reports.loadingBulletin')}</p>
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {reportData && selectedTerm === 'annual' ? (
+        {reportData && !loadingReport && selectedTerm === 'annual' ? (
           <AnnualReportCard data={reportData} />
         ) : null}
-        {reportData && selectedTerm !== 'annual' ? (
-          <TermReportCard
-            data={{
-              ...reportData,
-              academic: {
-                ...reportData.academic,
-                term: selectedTerm === '1' ? 1 : selectedTerm === '2' ? 2 : 3,
-              },
-            }}
-          />
+        {reportData && !loadingReport && selectedTerm !== 'annual' ? (
+          <TermReportCard data={reportData} />
         ) : null}
       </div>
     );

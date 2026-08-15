@@ -339,6 +339,14 @@ export function canMarkExpenditurePaid(status: string): boolean {
   return status === 'APPROVED';
 }
 
+export function canEditExpenditure(status: string): boolean {
+  return status !== 'PAID';
+}
+
+export function canDeleteExpenditure(status: string): boolean {
+  return status !== 'PAID';
+}
+
 export function nextExpenditureStatus(
   action: 'approve' | 'pay',
   status: string,

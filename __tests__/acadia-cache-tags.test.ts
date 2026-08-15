@@ -50,6 +50,9 @@ describe('acadia cache tags', () => {
     expect(isAllowedAcadiaCacheTag(studentsTag(OTHER), TENANT)).toBe(false);
     expect(isAllowedAcadiaCacheTag('marks:tenant-a', TENANT)).toBe(false);
     expect(isAllowedAcadiaCacheTag('students', TENANT)).toBe(false);
+    expect(isAllowedAcadiaCacheTag('students:tenant-abc', TENANT)).toBe(false);
+    expect(isAllowedAcadiaCacheTag(studentsTag(TENANT), 'tenant')).toBe(false);
+    expect(isAllowedAcadiaCacheTag('students:abc', 'ab')).toBe(false);
   });
 
   it('filters and dedupes tags for revalidation', () => {

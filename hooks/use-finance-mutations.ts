@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import {
   buildFeeInstallmentRows,
   buildFeePaymentUpdate,
+  canDeleteExpenditure,
+  canEditExpenditure,
   computeSaleTotalMinor,
   DEFAULT_FEE_CURRENCY,
   nextExpenditureStatus,
@@ -557,6 +559,21 @@ export function useFinanceMutations() {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
+      const { data: row, error: fetchError } = await supabase
+        .from('Expenditure')
+        .select('id, status')
+        .eq('tenantId', tenantId)
+        .eq('id', id)
+        .maybeSingle();
+      if (fetchError) {
+        throw fetchError;
+      }
+      if (!row) {
+        throw new Error('Expenditure not found.');
+      }
+      if (!canEditExpenditure(String(row.status))) {
+        throw new Error('Paid expenditures cannot be edited.');
+      }
       const nowIso = new Date().toISOString();
       const { error } = await supabase
         .from('Expenditure')
@@ -602,6 +619,21 @@ export function useFinanceMutations() {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
+      const { data: row, error: fetchError } = await supabase
+        .from('Expenditure')
+        .select('id, status')
+        .eq('tenantId', tenantId)
+        .eq('id', id)
+        .maybeSingle();
+      if (fetchError) {
+        throw fetchError;
+      }
+      if (!row) {
+        throw new Error('Expenditure not found.');
+      }
+      if (!canDeleteExpenditure(String(row.status))) {
+        throw new Error('Paid expenditures cannot be deleted.');
+      }
       const { error } = await supabase
         .from('Expenditure')
         .delete()

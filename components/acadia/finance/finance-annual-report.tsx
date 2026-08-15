@@ -208,19 +208,19 @@ export function FinanceAnnualReport() {
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Ledger income</TableCell>
+                  <TableCell>Income</TableCell>
                   <TableCell className="text-right">
                     {formatMoneyMinor(query.data.summary.incomeMinor)}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Ledger expenses</TableCell>
+                  <TableCell>Expenses</TableCell>
                   <TableCell className="text-right">
                     {formatMoneyMinor(query.data.summary.expenseMinor)}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-semibold">Net ledger</TableCell>
+                  <TableCell className="font-semibold">Net</TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatMoneyMinor(query.data.summary.netMinor)}
                   </TableCell>

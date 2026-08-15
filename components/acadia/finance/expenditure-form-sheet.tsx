@@ -37,6 +37,7 @@ import { useActiveAcademicYear } from '@/components/acadia/academics/academic-ye
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
 import {
+  canEditExpenditure,
   EXPENDITURE_CATEGORIES,
   FEE_BUDGET_CATEGORIES,
   FINANCE_PAYMENT_METHODS,
@@ -143,6 +144,9 @@ export function ExpenditureFormSheet({
   }, [open, record, activeYearId, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
+    if (isEdit && record && !canEditExpenditure(record.status)) {
+      return;
+    }
     const payload = {
       ...values,
       academicYearId: activeYearId!,
@@ -423,7 +427,14 @@ export function ExpenditureFormSheet({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.buttons.cancel')}
               </Button>
-              <Button type="submit" disabled={pending || !activeYearId}>
+              <Button
+                type="submit"
+                disabled={
+                  pending ||
+                  !activeYearId ||
+                  (isEdit && !!record && !canEditExpenditure(record.status))
+                }
+              >
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
                 {isEdit ? t('common.buttons.save') : t('finance.addExpenditure')}
               </Button>

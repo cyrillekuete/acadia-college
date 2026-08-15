@@ -8,6 +8,8 @@ import {
   aggregateFinanceSummary,
   aggregateSalesStats,
   canApproveExpenditure,
+  canDeleteExpenditure,
+  canEditExpenditure,
   canMarkExpenditurePaid,
   computeFeeAccountTotals,
   computeSaleTotalMinor,
@@ -192,6 +194,15 @@ describe('expenditure status workflow', () => {
     expect(canMarkExpenditurePaid('PENDING')).toBe(false);
     expect(nextExpenditureStatus('approve', 'PAID')).toBeNull();
     expect(nextExpenditureStatus('pay', 'PENDING')).toBeNull();
+  });
+
+  it('locks paid expenditures from edit and delete', () => {
+    expect(canEditExpenditure('PENDING')).toBe(true);
+    expect(canEditExpenditure('APPROVED')).toBe(true);
+    expect(canEditExpenditure('REJECTED')).toBe(true);
+    expect(canEditExpenditure('PAID')).toBe(false);
+    expect(canDeleteExpenditure('PENDING')).toBe(true);
+    expect(canDeleteExpenditure('PAID')).toBe(false);
   });
 });
 
