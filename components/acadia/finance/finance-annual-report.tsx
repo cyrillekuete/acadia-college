@@ -120,7 +120,7 @@ export function FinanceAnnualReport() {
     <div className="space-y-6">
       <ActiveAcademicYearPrintHeader />
       <div className="flex flex-wrap items-end gap-3 print:hidden">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         {activeYearId ? (
           <Button size="sm" onClick={() => window.print()}>
             Print statement

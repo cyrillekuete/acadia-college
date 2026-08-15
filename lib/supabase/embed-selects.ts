@@ -22,6 +22,7 @@ export const FK = {
   SubjectMark_studentProfile: 'SubjectMark_studentProfileId_tenantId_fkey',
   SubjectMark_subject: 'SubjectMark_subjectId_tenantId_fkey',
   SubjectMark_examSession: 'SubjectMark_examSessionId_tenantId_fkey',
+  SubjectMark_subBranch: 'SubjectMark_subjectSubBranchId_tenantId_fkey',
 
   // AttendanceRecord
   AttendanceRecord_studentProfile: 'AttendanceRecord_studentProfileId_tenantId_fkey',
@@ -73,6 +74,19 @@ export const FK = {
   SubjectAssignment_staffProfile: 'SubjectAssignment_staffProfileId_tenantId_fkey',
   SubjectAssignment_academicYear: 'SubjectAssignment_academicYearId_tenantId_fkey',
 
+  // StaffClassAssignment
+  StaffClassAssignment_staffProfile: 'StaffClassAssignment_staffProfileId_tenantId_fkey',
+  StaffClassAssignment_class: 'StaffClassAssignment_classId_tenantId_fkey',
+  StaffClassAssignment_academicYear: 'StaffClassAssignment_academicYearId_tenantId_fkey',
+
+  // StaffClassSubjectAssignment
+  StaffClassSubjectAssignment_staffProfile:
+    'StaffClassSubjectAssignment_staffProfileId_tenantId_fkey',
+  StaffClassSubjectAssignment_class: 'StaffClassSubjectAssignment_classId_tenantId_fkey',
+  StaffClassSubjectAssignment_subject: 'StaffClassSubjectAssignment_subjectId_tenantId_fkey',
+  StaffClassSubjectAssignment_academicYear:
+    'StaffClassSubjectAssignment_academicYearId_tenantId_fkey',
+
   // StudentPromotionDecision
   StudentPromotionDecision_studentProfile: 'StudentPromotionDecision_studentProfileId_tenantId_fkey',
   StudentPromotionDecision_targetLevel: 'StudentPromotionDecision_targetLevelId_tenantId_fkey',
@@ -87,6 +101,16 @@ export const FK = {
 
   // StaffProfile
   StaffProfile_user: 'StaffProfile_userId_tenantId_fkey',
+
+  // Scheme of work
+  SchemeOfWork_academicYear: 'SchemeOfWork_academicYearId_tenantId_fkey',
+  SchemeOfWork_subject: 'SchemeOfWork_subjectId_tenantId_fkey',
+  SchemeOfWork_level: 'SchemeOfWork_levelId_tenantId_fkey',
+  SchemeOfWorkTopic_scheme: 'SchemeOfWorkTopic_schemeOfWorkId_tenantId_fkey',
+  SchemeOfWorkTopic_term: 'SchemeOfWorkTopic_termId_tenantId_fkey',
+  SchemeOfWorkTopicProgress_topic: 'SchemeOfWorkTopicProgress_topicId_tenantId_fkey',
+  SchemeOfWorkTopicProgress_class: 'SchemeOfWorkTopicProgress_classId_tenantId_fkey',
+  SchemeOfWorkTopicProgress_completedBy: 'SchemeOfWorkTopicProgress_completedBy_tenantId_fkey',
 } as const;
 
 /** Common nested User embed inside StudentProfile. */

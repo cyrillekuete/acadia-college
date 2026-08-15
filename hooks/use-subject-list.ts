@@ -32,6 +32,7 @@ export type SubjectListRow = {
   branch: AcademicBranch;
   levelId: string;
   levelIds: string[];
+  academicYearId: string | null;
   termId: string | null;
   groupingId: string | null;
   Level?: { labelEn?: string | null; number?: number } | null;
@@ -71,6 +72,7 @@ export function useSubjectList(filters: CatalogFilters) {
           subSystem,
           branch,
           levelId,
+          academicYearId,
           termId,
           groupingId,
           Level!Subject_levelId_tenantId_fkey ( labelEn, number ),

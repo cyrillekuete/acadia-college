@@ -1,13 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ColumnDef } from '@tanstack/react-table';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { CreateFeeAccountFormDialog } from '@/components/acadia/finance/create-fee-account-form-dialog';
 import { FeeOutstandingPanel } from '@/components/acadia/finance/fee-outstanding-panel';
 import { FeeStatusBadge } from '@/components/acadia/finance/fee-status-badge';
 import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Button } from '@/components/ui/button';
@@ -18,7 +29,6 @@ import {
   formatMoneyMinor,
   paymentProgressPercent,
 } from '@/lib/acadia/finance';
-import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteFinance } from '@/lib/acadia/roles';
@@ -29,14 +39,7 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation, streamLabel } from '@/lib/acadia/record-display';
-import {
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { useState } from 'react';
-import { Input } from '@/components/ui/input';
+import { Input, InputWrapper } from '@/components/ui/input';
 import { Search } from '@/lib/icons';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,58 +58,15 @@ type FeeAccountRow = {
   AcademicYear?: unknown;
 };
 
-const columns: ColumnDef<FeeAccountRow>[] = [
-  {
-    accessorKey: 'id',
-    header: 'Account',
-    cell: ({ row }) => (
-      <Link
-        href={`/finance/fees/${row.original.id}`}
-        className="font-medium text-primary hover:underline"
-      >
-        {row.original.id.slice(-8).toUpperCase()}
-      </Link>
-    ),
-  },
-  nestedFieldColumn<FeeAccountRow>('student', 'Student ID', 'StudentProfile', 'registrationNumber'),
-  nestedFieldColumn<FeeAccountRow>('year', 'Year', 'AcademicYear', 'label'),
-  {
-    id: 'stream',
-    header: 'Sub-system / branch',
-    cell: ({ row }) => streamLabel(row.original.subSystem, row.original.branch),
-  },
-  {
-    id: 'due',
-    header: 'Due',
-    cell: ({ row }) =>
-      formatMoneyMinor(row.original.totalDueMinor, row.original.feeCurrency),
-  },
-  {
-    id: 'paid',
-    header: 'Paid',
-    cell: ({ row }) =>
-      formatMoneyMinor(row.original.totalPaidMinor, row.original.feeCurrency),
-  },
-  {
-    id: 'balance',
-    header: 'Balance',
-    cell: ({ row }) =>
-      formatMoneyMinor(row.original.balanceMinor, row.original.feeCurrency),
-  },
-  {
-    id: 'status',
-    header: 'Status',
-    cell: ({ row }) => (
-      <FeeStatusBadge
-        status={
-          row.original.balanceMinor <= 0
-            ? 'PAID'
-            : row.original.paymentStatus
-        }
-      />
-    ),
-  },
-];
+function studentRegistration(row: FeeAccountRow): string {
+  const profile = unwrapRelation<{ registrationNumber?: string }>(row.StudentProfile);
+  return profile?.registrationNumber?.trim() || '—';
+}
+
+function academicYearLabel(row: FeeAccountRow): string {
+  const year = unwrapRelation<{ label?: string }>(row.AcademicYear);
+  return year?.label?.trim() || '—';
+}
 
 function FeeAccountsTable() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -114,6 +74,21 @@ function FeeAccountsTable() {
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const [search, setSearch] = useState('');
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'id',
+    'student',
+    'year',
+    'stream',
+    'due',
+    'paid',
+    'balance',
+    'status',
+  ]);
 
   const query = useQuery({
     queryKey: ['fee-accounts', tenantId, activeYearId],
@@ -207,14 +182,127 @@ function FeeAccountsTable() {
     });
   }, [query.data, search]);
 
+  const columns = useMemo<ColumnDef<FeeAccountRow>[]>(
+    () => [
+      {
+        accessorKey: 'id',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Account" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <Link
+            href={`/finance/fees/${row.original.id}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {row.original.id.slice(-8).toUpperCase()}
+          </Link>
+        ),
+        size: 130,
+        enableSorting: true,
+      },
+      {
+        id: 'student',
+        accessorFn: (row) => studentRegistration(row),
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Student ID" visibility column={column} />
+        ),
+        cell: ({ row }) => studentRegistration(row.original),
+        size: 150,
+        enableSorting: true,
+      },
+      {
+        id: 'year',
+        accessorFn: (row) => academicYearLabel(row),
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Year" visibility column={column} />
+        ),
+        cell: ({ row }) => academicYearLabel(row.original),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        id: 'stream',
+        accessorFn: (row) => streamLabel(row.subSystem, row.branch),
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Sub-system / branch" visibility column={column} />
+        ),
+        cell: ({ row }) => streamLabel(row.original.subSystem, row.original.branch),
+        size: 180,
+        enableSorting: true,
+      },
+      {
+        id: 'due',
+        accessorFn: (row) => row.totalDueMinor,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Due" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.totalDueMinor, row.original.feeCurrency),
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        id: 'paid',
+        accessorFn: (row) => row.totalPaidMinor,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Paid" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.totalPaidMinor, row.original.feeCurrency),
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        id: 'balance',
+        accessorFn: (row) => row.balanceMinor,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Balance" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.balanceMinor, row.original.feeCurrency),
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        id: 'status',
+        accessorFn: (row) =>
+          row.balanceMinor <= 0 ? 'PAID' : row.paymentStatus,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Status" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <FeeStatusBadge
+            status={
+              row.original.balanceMinor <= 0
+                ? 'PAID'
+                : row.original.paymentStatus
+            }
+          />
+        ),
+        size: 120,
+        enableSorting: true,
+      },
+    ],
+    [],
+  );
+
   const table = useReactTable({
     data: filtered,
     columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
   });
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [search, filtered.length]);
 
   if (query.isError) {
     return (
@@ -225,20 +313,29 @@ function FeeAccountsTable() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 py-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+        <InputWrapper className="w-full max-w-sm">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
           <Input
             placeholder="Search student or account…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
           />
-        </div>
+        </InputWrapper>
       </CardHeader>
       <DataGrid
         table={table}
         recordCount={filtered.length}
         isLoading={query.isLoading}
+        tableLayout={{
+          width: 'fixed',
+          columnsResizable: true,
+          columnsPinnable: true,
+          columnsMovable: true,
+          columnsVisibility: true,
+        }}
+        tableClassNames={{
+          edgeCell: 'px-5',
+        }}
       >
         <CardTable>
           {query.isLoading ? (
@@ -250,7 +347,7 @@ function FeeAccountsTable() {
             </ScrollArea>
           )}
         </CardTable>
-        <CardFooter className="justify-end">
+        <CardFooter>
           <DataGridPagination />
         </CardFooter>
       </DataGrid>
@@ -262,6 +359,7 @@ export default function StudentFeesPage() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteFinance(session?.roleSlug);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <AcadiaPageShell
@@ -274,8 +372,8 @@ export default function StudentFeesPage() {
             <Button size="sm" asChild>
               <Link href="/finance/fees/setup">{t('finance.setupDescription')}</Link>
             </Button>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/finance/fees/new">{t('finance.newAccount')}</Link>
+            <Button size="sm" variant="outline" onClick={() => setSheetOpen(true)}>
+              {t('finance.newAccount')}
             </Button>
           </>
         ) : null}
@@ -302,6 +400,13 @@ export default function StudentFeesPage() {
           <FeeOutstandingPanel />
         </TabsContent>
       </Tabs>
+
+      {canManage ? (
+        <CreateFeeAccountFormDialog
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+        />
+      ) : null}
     </AcadiaPageShell>
   );
 }

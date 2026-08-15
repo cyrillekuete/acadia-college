@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { StudentListItem } from '@/lib/acadia/student-list-item';
+import { buildTeacherTeachingScope } from '@/lib/acadia/staff-class-assignments';
 import type { Database } from '@/lib/supabase/database.types';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { embed, FK } from '@/lib/supabase/embed-selects';
 import { fetchStudentsFromEnrollmentsForClassIds } from '@/lib/supabase/queries/students-list';
 
 type Client = SupabaseClient<Database>;
@@ -24,121 +26,44 @@ export type TeacherStudentsResult = {
   scope: TeacherTeachingScope;
 };
 
-export function resolveTeacherTeachingClassIds(input: {
-  assignedClassIds: string[];
-  assignedSubjectIds: string[];
-  classSubjectPairs: Array<{ classId: string; subjectId: string }>;
-}): string[] {
-  const assignedClasses = new Set(input.assignedClassIds);
-  const assignedSubjects = new Set(input.assignedSubjectIds);
-  const classIds = new Set<string>();
-
-  for (const pair of input.classSubjectPairs) {
-    if (
-      assignedClasses.has(pair.classId) &&
-      assignedSubjects.has(pair.subjectId)
-    ) {
-      classIds.add(pair.classId);
-    }
-  }
-
-  return Array.from(classIds);
-}
-
 export async function fetchTeacherTeachingScope(
   supabase: Client,
   tenantId: string,
   academicYearId: string,
   staffProfileId: string,
 ): Promise<TeacherTeachingScope> {
-  const [subjectResult, classResult] = await Promise.all([
-    supabase
-      .from('SubjectAssignment')
-      .select('subjectId, Subject!SubjectAssignment_subjectId_tenantId_fkey ( nameEn, code )')
-      .eq('tenantId', tenantId)
-      .eq('academicYearId', academicYearId)
-      .eq('staffProfileId', staffProfileId),
-    supabase
-      .from('StaffClassAssignment')
-      .select('classId, Class!StaffClassAssignment_classId_tenantId_fkey ( name )')
-      .eq('tenantId', tenantId)
-      .eq('academicYearId', academicYearId)
-      .eq('staffProfileId', staffProfileId),
-  ]);
-
-  if (subjectResult.error) {
-    throw subjectResult.error;
-  }
-  if (classResult.error) {
-    throw classResult.error;
-  }
-
-  const subjectIds = (subjectResult.data ?? []).map((row) => row.subjectId as string);
-  const assignedClassIds = (classResult.data ?? []).map((row) => row.classId as string);
-
-  const subjectNameById = new Map<string, string>();
-  for (const row of subjectResult.data ?? []) {
-    const subjectId = row.subjectId as string;
-    const subject = unwrapRelation<{ nameEn?: string; code?: string }>(row.Subject);
-    const label = subject?.nameEn?.trim() || subject?.code?.trim() || subjectId;
-    subjectNameById.set(subjectId, label);
-  }
-
-  const classNameById = new Map<string, string>();
-  for (const row of classResult.data ?? []) {
-    const classId = row.classId as string;
-    const classRow = unwrapRelation<{ name?: string }>(row.Class);
-    classNameById.set(classId, classRow?.name?.trim() || classId);
-  }
-
-  if (assignedClassIds.length === 0 || subjectIds.length === 0) {
-    return { classIds: [], subjectIds, pairs: [] };
-  }
-
-  const { data: classSubjectRows, error: classSubjectError } = await supabase
-    .from('ClassSubject')
-    .select('classId, subjectId')
+  const { data, error } = await supabase
+    .from('StaffClassSubjectAssignment')
+    .select(
+      `
+      classId,
+      subjectId,
+      ${embed('Class', FK.StaffClassSubjectAssignment_class, 'name')},
+      ${embed('Subject', FK.StaffClassSubjectAssignment_subject, 'nameEn, code')}
+    `,
+    )
     .eq('tenantId', tenantId)
-    .in('classId', assignedClassIds);
+    .eq('academicYearId', academicYearId)
+    .eq('staffProfileId', staffProfileId);
 
-  if (classSubjectError) {
-    throw classSubjectError;
+  if (error) {
+    throw error;
   }
 
-  const classSubjectPairs = (classSubjectRows ?? []).map((row) => ({
-    classId: row.classId as string,
-    subjectId: row.subjectId as string,
-  }));
-
-  const scopedClassIds = resolveTeacherTeachingClassIds({
-    assignedClassIds,
-    assignedSubjectIds: subjectIds,
-    classSubjectPairs,
+  const rows = (data ?? []).map((row) => {
+    const classId = row.classId as string;
+    const subjectId = row.subjectId as string;
+    const classRow = unwrapRelation<{ name?: string }>(row.Class);
+    const subject = unwrapRelation<{ nameEn?: string; code?: string }>(row.Subject);
+    return {
+      classId,
+      subjectId,
+      className: classRow?.name?.trim() || classId,
+      subjectName: subject?.nameEn?.trim() || subject?.code?.trim() || subjectId,
+    };
   });
 
-  const scopedClassIdSet = new Set(scopedClassIds);
-  const pairs: TeacherTeachingScopePair[] = [];
-
-  for (const pair of classSubjectPairs) {
-    if (
-      !scopedClassIdSet.has(pair.classId) ||
-      !subjectIds.includes(pair.subjectId)
-    ) {
-      continue;
-    }
-    pairs.push({
-      classId: pair.classId,
-      subjectId: pair.subjectId,
-      className: classNameById.get(pair.classId) ?? pair.classId,
-      subjectName: subjectNameById.get(pair.subjectId) ?? pair.subjectId,
-    });
-  }
-
-  return {
-    classIds: scopedClassIds,
-    subjectIds,
-    pairs,
-  };
+  return buildTeacherTeachingScope(rows);
 }
 
 export async function fetchStudentsForTeacher(

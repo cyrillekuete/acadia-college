@@ -1,17 +1,26 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { aggregateRoomUsage, formatWeeklyHours } from '@/lib/acadia/resources';
 import {
   isAcadiaTenantQueryEnabled,
@@ -25,7 +34,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export function RoomUsagePanel() {
-  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -111,32 +119,140 @@ export function RoomUsagePanel() {
 
   return (
     <div className="space-y-4">
-      <CurrentAcademicYearBadge />
+      <CurrentAcademicYearBadge label="Year" />
 
-      {query.isLoading ? (
-        <Skeleton className="h-48 w-full" />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('resources.room')}</TableHead>
-              <TableHead>{t('resources.capacity')}</TableHead>
-              <TableHead>{t('resources.weeklySlots')}</TableHead>
-              <TableHead>{t('resources.scheduledHours')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.roomId}>
-                <TableCell className="font-medium">{row.label}</TableCell>
-                <TableCell>{row.capacity ?? '—'}</TableCell>
-                <TableCell>{row.slotCount}</TableCell>
-                <TableCell>{formatWeeklyHours(row.weeklyMinutes)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <RoomUsageTable data={rows} isLoading={query.isLoading} />
     </div>
+  );
+}
+
+type RoomUsageRow = {
+  roomId: string;
+  label: string;
+  capacity: number | null;
+  slotCount: number;
+  weeklyMinutes: number;
+};
+
+function RoomUsageTable({
+  data,
+  isLoading,
+}: {
+  data: RoomUsageRow[];
+  isLoading: boolean;
+}) {
+  const { t } = useTranslation();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'label',
+    'capacity',
+    'slotCount',
+    'weeklyMinutes',
+  ]);
+
+  const columns = useMemo<ColumnDef<RoomUsageRow>[]>(
+    () => [
+      {
+        accessorKey: 'label',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('resources.room')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.label}</span>
+        ),
+        size: 240,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'capacity',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('resources.capacity')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => row.original.capacity ?? '—',
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'slotCount',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('resources.weeklySlots')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => row.original.slotCount,
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'weeklyMinutes',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('resources.scheduledHours')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => formatWeeklyHours(row.original.weeklyMinutes),
+        size: 160,
+        enableSorting: true,
+      },
+    ],
+    [t],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

@@ -1,24 +1,33 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { CloudDownload, Download } from 'lucide-react';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
+  CardTable,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface IInvoicingItem {
   number: string;
@@ -68,65 +77,131 @@ const Invoicing = () => {
     },
   ];
 
-  const renderItem = (table: IInvoicingItem, index: number) => {
-    return (
-      <TableRow key={index}>
-        <TableCell className="text-sm text-foreground font-normal">
-          {table.number}
-        </TableCell>
-        <TableCell className="lg:text-end">
-          <Badge variant={table.color} appearance="light">
-            {table.label}
-          </Badge>
-        </TableCell>
-        <TableCell className="text-sm text-foreground font-normal lg:text-end">
-          {table.date}
-        </TableCell>
-        <TableCell className="text-sm text-secondary-foreground font-normal lg:text-end">
-          ${table.amount}
-        </TableCell>
-        <TableCell>
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo<ColumnDef<IInvoicingItem>[]>(
+    () => [
+      {
+        accessorKey: 'number',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Invoice" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm text-foreground font-normal">
+            {row.original.number}
+          </span>
+        ),
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'label',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Status" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="lg:text-end">
+            <Badge variant={row.original.color} appearance="light">
+              {row.original.label}
+            </Badge>
+          </div>
+        ),
+        size: 120,
+        enableSorting: true,
+        meta: { cellClassName: 'lg:text-end' },
+      },
+      {
+        accessorKey: 'date',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Date" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm text-foreground font-normal lg:text-end">
+            {row.original.date}
+          </span>
+        ),
+        size: 140,
+        enableSorting: true,
+        meta: { cellClassName: 'lg:text-end' },
+      },
+      {
+        accessorKey: 'amount',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Amount" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm text-secondary-foreground font-normal lg:text-end">
+            ${row.original.amount}
+          </span>
+        ),
+        size: 120,
+        enableSorting: true,
+        meta: { cellClassName: 'lg:text-end' },
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: () => (
           <Button variant="ghost" mode="icon">
             <Download className="text-blue-500" />
           </Button>
-        </TableCell>
-      </TableRow>
-    );
-  };
+        ),
+        size: 64,
+        enableSorting: false,
+        enableResizing: false,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: tables,
+    columns,
+    state: { sorting, pagination },
+    columnResizeMode: 'onChange',
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Billing and Invoicing</CardTitle>
-        <Button variant="outline">
-          <CloudDownload size={16} />
-          Download All
-        </Button>
-      </CardHeader>
-      <CardContent className="kt-scrollable-x-auto p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-accent/60">
-              <TableHead className="min-w-52 h-10">Invoice</TableHead>
-              <TableHead className="min-w-24 text-end h-10">Status</TableHead>
-              <TableHead className="min-w-32 text-end h-10">Date</TableHead>
-              <TableHead className="min-w-20 text-end h-10">Amount</TableHead>
-              <TableHead className="w-8 h-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tables.map((table, index) => {
-              return renderItem(table, index);
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-      <CardFooter className="justify-center">
-        <Button mode="link" underlined="dashed" asChild>
-          <Link href="/account/billing/history">View all Payments</Link>
-        </Button>
-      </CardFooter>
-    </Card>
+    <DataGrid
+      table={table}
+      recordCount={tables.length}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing and Invoicing</CardTitle>
+          <Button variant="outline">
+            <CloudDownload size={16} />
+            Download All
+          </Button>
+        </CardHeader>
+        <CardTable>
+          <ScrollArea>
+            <DataGridTable />
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </CardTable>
+        <CardFooter className="flex flex-wrap items-center justify-between gap-3">
+          <DataGridPagination />
+          <Button mode="link" underlined="dashed" asChild>
+            <Link href="/account/billing/history">View all Payments</Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 };
 

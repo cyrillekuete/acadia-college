@@ -115,18 +115,20 @@ async function fetchTimetableSlotsForDay(
   return (data ?? []).map(mapInterval);
 }
 
-async function isTeacherAssignedToSubject(
+async function isTeacherAssignedToClassSubject(
   supabase: Client,
   tenantId: string,
   academicYearId: string,
+  classId: string,
   subjectId: string,
   staffProfileId: string,
 ): Promise<boolean> {
   const { data, error } = await supabase
-    .from('SubjectAssignment')
+    .from('StaffClassSubjectAssignment')
     .select('id')
     .eq('tenantId', tenantId)
     .eq('academicYearId', academicYearId)
+    .eq('classId', classId)
     .eq('subjectId', subjectId)
     .eq('staffProfileId', staffProfileId)
     .maybeSingle();
@@ -152,16 +154,17 @@ export async function assertTimetableSlotValid(
       throw new Error('This subject is not assigned to the selected class.');
     }
 
-    const teacherAssigned = await isTeacherAssignedToSubject(
+    const teacherAssigned = await isTeacherAssignedToClassSubject(
       supabase,
       tenantId,
       values.academicYearId,
+      classId,
       values.subjectId,
       values.staffProfileId,
     );
     if (!teacherAssigned) {
       throw new Error(
-        'This teacher is not assigned to the selected subject for this academic year.',
+        'This teacher is not assigned to the selected subject in this class.',
       );
     }
   }

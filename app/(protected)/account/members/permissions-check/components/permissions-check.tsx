@@ -1,23 +1,32 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
+  CardTable,
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface IPermissionsCheckItem {
   module: string;
@@ -95,78 +104,140 @@ const PermissionsCheck = () => {
     },
   ];
 
-  const renderItem = (each: IPermissionsCheckItem, index: number) => {
-    return (
-      <TableRow key={index}>
-        <TableCell className="py-5.5!">{each.module}</TableCell>
-        <TableCell className="py-5.5! text-center">
-          <Checkbox defaultChecked={each.view} />
-        </TableCell>
-        <TableCell className="py-5.5! text-center">
-          <Checkbox defaultChecked={each.modify} />
-        </TableCell>
-        <TableCell className="py-5.5! text-center">
-          <Checkbox defaultChecked={each.publish} />
-        </TableCell>
-        <TableCell className="py-5.5! text-center">
-          <Checkbox defaultChecked={each.configure} />
-        </TableCell>
-      </TableRow>
-    );
-  };
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo<ColumnDef<IPermissionsCheckItem>[]>(
+    () => [
+      {
+        accessorKey: 'module',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Module" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-mono font-medium">{row.original.module}</span>
+        ),
+        size: 300,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'view',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="View" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="text-center">
+            <Checkbox defaultChecked={row.original.view} />
+          </div>
+        ),
+        size: 100,
+        enableSorting: false,
+        meta: { cellClassName: 'text-center' },
+      },
+      {
+        accessorKey: 'modify',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Modify" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="text-center">
+            <Checkbox defaultChecked={row.original.modify} />
+          </div>
+        ),
+        size: 100,
+        enableSorting: false,
+        meta: { cellClassName: 'text-center' },
+      },
+      {
+        accessorKey: 'publish',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Publish" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="text-center">
+            <Checkbox defaultChecked={row.original.publish} />
+          </div>
+        ),
+        size: 100,
+        enableSorting: false,
+        meta: { cellClassName: 'text-center' },
+      },
+      {
+        accessorKey: 'configure',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Configure" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="text-center">
+            <Checkbox defaultChecked={row.original.configure} />
+          </div>
+        ),
+        size: 120,
+        enableSorting: false,
+        meta: { cellClassName: 'text-center' },
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination },
+    columnResizeMode: 'onChange',
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
 
   return (
-    <Card>
-      <CardHeader className="gap-2">
-        <CardTitle>
-          <Button mode="link" asChild className="text-xl">
-            <Link href="#">Project Manager</Link>
-          </Button>{' '}
-          Role Permissions
-        </CardTitle>
-        <div className="flex gap-5">
-          <Button variant="outline">
-            <Link href="#">New Permission</Link>
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="kt-scrollable-x-auto p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-accent/60">
-              <TableHead className="text-start text-secondary-foreground font-normal min-w-[300px] h-10">
-                Module
-              </TableHead>
-              <TableHead className="min-w-24 text-secondary-foreground font-normal text-center h-10">
-                View
-              </TableHead>
-              <TableHead className="min-w-24 text-secondary-foreground font-normal text-center h-10">
-                Modify
-              </TableHead>
-              <TableHead className="min-w-24 text-secondary-foreground font-normal text-center h-10">
-                Publish
-              </TableHead>
-              <TableHead className="min-w-24 text-secondary-foreground font-normal text-center h-10">
-                Configure
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="text-mono font-medium">
-            {data.map((each, index) => {
-              return renderItem(each, index);
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-      <CardFooter className="justify-end py-7.5 gap-2.5">
-        <Button variant="outline">
-          <Link href="#">Restore Defaults</Link>
-        </Button>
-        <Button>
-          <Link href="#">Save Changes</Link>
-        </Button>
-      </CardFooter>
-    </Card>
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardHeader className="gap-2">
+          <CardTitle>
+            <Button mode="link" asChild className="text-xl">
+              <Link href="#">Project Manager</Link>
+            </Button>{' '}
+            Role Permissions
+          </CardTitle>
+          <div className="flex gap-5">
+            <Button variant="outline">
+              <Link href="#">New Permission</Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardTable>
+          <ScrollArea>
+            <DataGridTable />
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </CardTable>
+        <CardFooter className="flex flex-wrap items-center justify-between gap-2.5 py-7.5">
+          <DataGridPagination />
+          <div className="flex gap-2.5">
+            <Button variant="outline">
+              <Link href="#">Restore Defaults</Link>
+            </Button>
+            <Button>
+              <Link href="#">Save Changes</Link>
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 };
 

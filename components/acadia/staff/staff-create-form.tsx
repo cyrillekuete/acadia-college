@@ -338,6 +338,10 @@ export function StaffCreateForm() {
                       value={field.value ?? ''}
                       onChange={field.onChange}
                       placeholder={t('staff.pickDateOfBirth')}
+                      captionLayout="dropdown"
+                      startMonth={new Date(1920, 0)}
+                      endMonth={new Date()}
+                      disabledDates={{ after: new Date() }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -602,6 +606,9 @@ export function StaffCreateForm() {
                         value={field.value ?? ''}
                         onChange={field.onChange}
                         placeholder={t('staff.pickStartDate')}
+                        captionLayout="dropdown"
+                        startMonth={new Date(1990, 0)}
+                        endMonth={new Date(new Date().getFullYear() + 1, 11)}
                       />
                     </FormControl>
                     <FormMessage />

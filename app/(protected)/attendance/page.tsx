@@ -1,13 +1,18 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AttendancePercentagesPanel } from '@/components/acadia/attendance/attendance-percentages-panel';
+import { AttendanceSessionFormDialog } from '@/components/acadia/attendance/attendance-session-form-dialog';
+import { ATTENDANCE_TABLE_LAYOUT } from '@/components/acadia/attendance/attendance-table-layout';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { Button } from '@/components/ui/button';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { nestedFieldColumn } from '@/lib/acadia/list-columns';
+import { unwrapRelation } from '@/lib/acadia/record-display';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -19,23 +24,6 @@ type AttendanceRow = {
   Subject?: unknown;
 } & Record<string, unknown>;
 
-const columns: ColumnDef<AttendanceRow>[] = [
-  {
-    accessorKey: 'sessionDate',
-    header: 'Date',
-    cell: ({ row }) => (
-      <Link
-        href={`/attendance/sessions/${row.original.id}`}
-        className="font-medium text-primary hover:underline"
-      >
-        {String(row.original.sessionDate ?? '—')}
-      </Link>
-    ),
-  },
-  nestedFieldColumn<AttendanceRow>('subject', 'Subject', 'Subject', 'code'),
-  { accessorKey: 'label', header: 'Label' },
-];
-
 const ATTENDANCE_SELECT = `
   id,
   sessionDate,
@@ -46,8 +34,60 @@ const ATTENDANCE_SELECT = `
 
 export default function AttendancePage() {
   const { t } = useTranslation();
-  const { data: session } = useAcadiaCollegeSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, isLoading: sessionLoading } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const columns = useMemo<ColumnDef<AttendanceRow>[]>(
+    () => [
+      {
+        accessorKey: 'sessionDate',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Date" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <Link
+            href={`/attendance/sessions/${row.original.id}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {String(row.original.sessionDate ?? '—')}
+          </Link>
+        ),
+        size: 160,
+      },
+      {
+        id: 'subject',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Subject" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const subject = unwrapRelation<{ code?: string }>(row.original.Subject);
+          return subject?.code ?? '—';
+        },
+        size: 140,
+      },
+      {
+        accessorKey: 'label',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Label" visibility column={column} />
+        ),
+        size: 200,
+      },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    if (searchParams.get('new') !== '1' || sessionLoading) {
+      return;
+    }
+    if (canManage) {
+      setSheetOpen(true);
+    }
+    router.replace('/attendance', { scroll: false });
+  }, [searchParams, canManage, sessionLoading, router]);
 
   return (
     <AcadiaPageShell
@@ -56,8 +96,8 @@ export default function AttendancePage() {
     >
       <div className="mb-4 flex flex-wrap gap-2 print:hidden">
         {canManage ? (
-          <Button size="sm" asChild>
-            <Link href="/attendance/sessions/new">{t('attendance.newSession')}</Link>
+          <Button size="sm" onClick={() => setSheetOpen(true)}>
+            {t('attendance.newSession')}
           </Button>
         ) : null}
         <Button size="sm" variant="outline" asChild>
@@ -80,12 +120,20 @@ export default function AttendancePage() {
             select={ATTENDANCE_SELECT}
             columns={columns}
             searchKeys={['label']}
+            tableLayout={ATTENDANCE_TABLE_LAYOUT}
           />
         </TabsContent>
         <TabsContent value="rates" className="mt-4">
           <AttendancePercentagesPanel />
         </TabsContent>
       </Tabs>
+
+      {canManage ? (
+        <AttendanceSessionFormDialog
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+        />
+      ) : null}
     </AcadiaPageShell>
   );
 }

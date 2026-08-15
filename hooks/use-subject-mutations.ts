@@ -1,7 +1,6 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { subBranchNameFr, type SubjectType } from '@/lib/acadia/subject-catalog';
 import { buildSubjectRow } from '@/lib/acadia/subject';
@@ -15,6 +14,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { replaceSubjectLevels } from '@/lib/supabase/queries/subject-levels';
+import {
+  assertNoOverlappingSubjectVariant,
+  copySubjectAssignments,
+} from '@/lib/supabase/queries/subject-variants';
 import {
   assertTimetableSlotValid,
   buildTimetableSlotWritePayload,
@@ -79,16 +82,28 @@ async function replaceSubjectSubBranches(
 
 export function useSubjectMutations() {
   const queryClient = useQueryClient();
-  const router = useRouter();
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
 
   const createSubject = useMutation({
-    mutationFn: async (values: SubjectFormValues) => {
+    mutationFn: async ({
+      values,
+      copyAssignmentsFromSubjectId,
+    }: {
+      values: SubjectFormValues;
+      copyAssignmentsFromSubjectId?: string;
+    }) => {
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertNoOverlappingSubjectVariant(supabase, tenantId, {
+        nameEn: values.nameEn,
+        subSystem: values.subSystem,
+        branch: values.branch,
+        academicYearId: values.academicYearId,
+        levelIds: values.levelIds,
+      });
       const id = generateAcadiaId('subject');
       const now = new Date().toISOString();
       const row = buildSubjectRow(tenantId, id, values, now, 'OTHERS');
@@ -102,12 +117,21 @@ export function useSubjectMutations() {
       }
       await replaceSubjectSubBranches(supabase, tenantId, id, values, now);
       await replaceSubjectLevels(supabase, tenantId, id, values.levelIds, now);
+      if (copyAssignmentsFromSubjectId) {
+        await copySubjectAssignments(
+          supabase,
+          tenantId,
+          copyAssignmentsFromSubjectId,
+          id,
+          now,
+          generateAcadiaId,
+        );
+      }
       return id;
     },
-    onSuccess: (id) => {
+    onSuccess: () => {
       invalidateSubjectQueries(queryClient);
       toast.success('Subject created.');
-      router.push(`/subjects/${id}`);
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -124,6 +148,14 @@ export function useSubjectMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertNoOverlappingSubjectVariant(supabase, tenantId, {
+        id,
+        nameEn: values.nameEn,
+        subSystem: values.subSystem,
+        branch: values.branch,
+        academicYearId: values.academicYearId,
+        levelIds: values.levelIds,
+      });
       const now = new Date().toISOString();
       const { data: existing, error: fetchError } = await supabase
         .from('Subject')

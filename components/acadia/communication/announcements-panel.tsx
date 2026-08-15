@@ -1,15 +1,28 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { ColumnDef, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
-import { Card, CardHeader, CardTable } from '@/components/ui/card';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import {
   announcementAudienceLabel,
   announcementStatusLabel,
@@ -85,11 +98,19 @@ export function AnnouncementsPanel({
     enabled: isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   const columns = useMemo<ColumnDef<AnnouncementRow>[]>(() => {
     const base: ColumnDef<AnnouncementRow>[] = [
       {
         accessorKey: 'titleEn',
-        header: t('common.labels.title'),
+        header: ({ column }) => (
+          <DataGridColumnHeader title={t('common.labels.title')} visibility column={column} />
+        ),
         cell: ({ row }) => (
           <Link
             href={`/announcements/${row.original.id}`}
@@ -98,10 +119,15 @@ export function AnnouncementsPanel({
             {localizedText(row.original.titleEn, row.original.titleFr)}
           </Link>
         ),
+        size: 240,
+        enableSorting: true,
       },
       {
         id: 'kind',
-        header: t('common.labels.type'),
+        accessorFn: (row) => row.kind,
+        header: ({ column }) => (
+          <DataGridColumnHeader title={t('common.labels.type')} visibility column={column} />
+        ),
         cell: ({ row }) => (
           <Badge variant="outline">
             {row.original.kind === 'EVENT'
@@ -109,18 +135,32 @@ export function AnnouncementsPanel({
               : t('communication.broadcast')}
           </Badge>
         ),
+        size: 130,
+        enableSorting: true,
       },
       {
         id: 'audience',
-        header: t('communication.audienceLabel'),
+        accessorFn: (row) => row.audience,
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('communication.audienceLabel')}
+            visibility
+            column={column}
+          />
+        ),
         cell: ({ row }) =>
           t(`communication.audience.${row.original.audience}`, {
             defaultValue: announcementAudienceLabel(row.original.audience),
           }),
+        size: 140,
+        enableSorting: true,
       },
       {
         id: 'status',
-        header: t('common.labels.status'),
+        accessorFn: (row) => resolveAnnouncementLifecycleStatus(row),
+        header: ({ column }) => (
+          <DataGridColumnHeader title={t('common.labels.status')} visibility column={column} />
+        ),
         cell: ({ row }) => {
           const effective = resolveAnnouncementLifecycleStatus(row.original);
           return (
@@ -134,16 +174,23 @@ export function AnnouncementsPanel({
             </Badge>
           );
         },
+        size: 130,
+        enableSorting: true,
       },
       {
         id: 'schedule',
-        header: t('communication.publish'),
+        accessorFn: (row) => row.publishedAt ?? row.publishAt ?? '',
+        header: ({ column }) => (
+          <DataGridColumnHeader title={t('communication.publish')} visibility column={column} />
+        ),
         cell: ({ row }) =>
           row.original.publishedAt
             ? formatDateTime(row.original.publishedAt)
             : row.original.publishAt
               ? formatDateTime(row.original.publishAt)
               : '—',
+        size: 180,
+        enableSorting: true,
       },
     ];
 
@@ -172,6 +219,9 @@ export function AnnouncementsPanel({
             </Button>
           );
         },
+        size: 140,
+        enableSorting: false,
+        enableResizing: false,
       } satisfies ColumnDef<AnnouncementRow>,
     ];
   }, [canManage, publishAnnouncementNow, t]);
@@ -179,7 +229,14 @@ export function AnnouncementsPanel({
   const table = useReactTable({
     data: query.data ?? [],
     columns,
+    state: { sorting, pagination },
+    columnResizeMode: 'onChange',
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   if (query.isError) {
@@ -189,17 +246,28 @@ export function AnnouncementsPanel({
   }
 
   return (
-    <Card>
-      <CardHeader className="py-4" />
-      <CardTable>
-        {query.isLoading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : (
-          <DataGrid table={table} recordCount={(query.data ?? []).length}>
-            <DataGridTable />
-          </DataGrid>
-        )}
-      </CardTable>
-    </Card>
+    <DataGrid
+      table={table}
+      recordCount={(query.data ?? []).length}
+      isLoading={query.isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{ edgeCell: 'px-5' }}
+    >
+      <Card>
+        <CardTable>
+          {query.isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

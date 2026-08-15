@@ -1,10 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import {
   Form,
   FormControl,
@@ -21,14 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   resourceRequestReviewSchema,
@@ -200,61 +209,25 @@ export function ResourceRequestsPanel() {
         </Form>
       ) : null}
 
-      {requestsQuery.isLoading ? (
-        <Skeleton className="h-40 w-full" />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Resource</TableHead>
-              <TableHead>Requester</TableHead>
-              <TableHead>Qty</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Purpose</TableHead>
-              {canManage ? <TableHead /> : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(requestsQuery.data ?? []).map((row) => {
-              const resource = unwrapRelation<{ code?: string; nameEn?: string }>(
-                row.SchoolResource,
-              );
-              const requester = unwrapRelation<{ name?: string }>(row.Requester);
-              const status = String(row.status);
-              return (
-                <TableRow key={row.id as string}>
-                  <TableCell>
-                    {resource?.code} — {resource?.nameEn}
-                  </TableCell>
-                  <TableCell>{requester?.name ?? '—'}</TableCell>
-                  <TableCell>{String(row.quantity)}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {resourceRequestStatusLabel(status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {String(row.purpose ?? '')}
-                  </TableCell>
-                  {canManage ? (
-                    <TableCell className="text-right">
-                      {status === 'PENDING' || status === 'APPROVED' ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setReviewingId(row.id as string)}
-                        >
-                          Review
-                        </Button>
-                      ) : null}
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
+      <ResourceRequestsTable
+        data={(requestsQuery.data ?? []).map((row) => {
+          const resource = unwrapRelation<{ code?: string; nameEn?: string }>(
+            row.SchoolResource,
+          );
+          const requester = unwrapRelation<{ name?: string }>(row.Requester);
+          return {
+            id: row.id as string,
+            resourceLabel: `${resource?.code ?? ''} — ${resource?.nameEn ?? ''}`,
+            requester: requester?.name ?? '—',
+            quantity: Number(row.quantity),
+            status: String(row.status),
+            purpose: String(row.purpose ?? ''),
+          };
+        })}
+        isLoading={requestsQuery.isLoading}
+        canManage={canManage}
+        onReview={setReviewingId}
+      />
 
       {reviewingId && canManage ? (
         <Form {...reviewForm}>
@@ -320,5 +293,169 @@ export function ResourceRequestsPanel() {
         </Form>
       ) : null}
     </div>
+  );
+}
+
+type ResourceRequestRow = {
+  id: string;
+  resourceLabel: string;
+  requester: string;
+  quantity: number;
+  status: string;
+  purpose: string;
+};
+
+function ResourceRequestsTable({
+  data,
+  isLoading,
+  canManage,
+  onReview,
+}: {
+  data: ResourceRequestRow[];
+  isLoading: boolean;
+  canManage: boolean;
+  onReview: (id: string) => void;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'resourceLabel',
+    'requester',
+    'quantity',
+    'status',
+    'purpose',
+    'actions',
+  ]);
+
+  const columns = useMemo<ColumnDef<ResourceRequestRow>[]>(() => {
+    const base: ColumnDef<ResourceRequestRow>[] = [
+      {
+        accessorKey: 'resourceLabel',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Resource" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.resourceLabel,
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'requester',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Requester" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.requester,
+        size: 180,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'quantity',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Qty" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.quantity,
+        size: 80,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'status',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Status" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="outline">
+            {resourceRequestStatusLabel(row.original.status)}
+          </Badge>
+        ),
+        size: 130,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'purpose',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Purpose" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="max-w-xs truncate">{row.original.purpose}</span>
+        ),
+        size: 240,
+        enableSorting: true,
+      },
+    ];
+
+    if (!canManage) {
+      return base;
+    }
+
+    return [
+      ...base,
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => {
+          const status = row.original.status;
+          if (status !== 'PENDING' && status !== 'APPROVED') {
+            return null;
+          }
+          return (
+            <div className="text-right">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onReview(row.original.id)}
+              >
+                Review
+              </Button>
+            </div>
+          );
+        },
+        size: 120,
+        enableSorting: false,
+      } satisfies ColumnDef<ResourceRequestRow>,
+    ];
+  }, [canManage, onReview]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

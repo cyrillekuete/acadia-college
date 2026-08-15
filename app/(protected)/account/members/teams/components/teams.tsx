@@ -777,6 +777,8 @@ const Teams = () => {
       table={table}
       recordCount={filteredData?.length || 0}
       tableLayout={{
+        width: 'fixed',
+        columnsResizable: true,
         columnsPinnable: true,
         columnsMovable: true,
         columnsVisibility: true,

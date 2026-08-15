@@ -7,15 +7,16 @@ import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { normalizeSubjectSelections } from '@/lib/acadia/class-subject-selections';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
@@ -215,19 +216,21 @@ export function ClassFormDialog({
     : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90dvh,720px)] max-w-lg overflow-hidden">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>{isEdit ? t('academics.editClass') : t('academics.newClass')}</DialogTitle>
-          <DialogDescription className="sr-only">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="p-0 gap-0 sm:w-[500px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+        <SheetHeader className="mb-0">
+          <SheetTitle className="p-3">{isEdit ? t('academics.editClass') : t('academics.newClass')}</SheetTitle>
+          <SheetDescription className="sr-only">
             {isEdit
               ? t('academics.editClassDescription')
               : t('academics.newClassDescription')}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <Form {...form}>
           <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
-            <DialogBody className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+            <SheetBody className="p-0">
+              <ScrollArea className="h-[calc(100vh-10.5rem)]">
+                <div className="space-y-4 px-5 py-2.5">
               <FormField
                 control={form.control}
                 name="name"
@@ -402,22 +405,24 @@ export function ClassFormDialog({
                   </FormItem>
                 )}
               />
-            </DialogBody>
-            {isEdit && record ? (
-              <p className="shrink-0 px-6 pb-2 text-sm text-muted-foreground">
-                <Link
-                  href={
-                    activeYearId
-                      ? `/academics/promotion?year=${activeYearId}&class=${record.id}`
-                      : `/academics/promotion?class=${record.id}`
-                  }
-                  className="text-primary hover:underline"
-                >
-                  {t('academics.configurePromotion')}
-                </Link>
-              </p>
-            ) : null}
-            <DialogFooter className="shrink-0">
+                  {isEdit && record ? (
+                    <p className="text-sm text-muted-foreground">
+                      <Link
+                        href={
+                          activeYearId
+                            ? `/academics/promotion?year=${activeYearId}&class=${record.id}`
+                            : `/academics/promotion?class=${record.id}`
+                        }
+                        className="text-primary hover:underline"
+                      >
+                        {t('academics.configurePromotion')}
+                      </Link>
+                    </p>
+                  ) : null}
+                </div>
+              </ScrollArea>
+            </SheetBody>
+            <SheetFooter className="border-t border-border p-5">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.buttons.cancel')}
               </Button>
@@ -425,10 +430,10 @@ export function ClassFormDialog({
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
                 {isEdit ? t('common.buttons.save') : t('common.buttons.create')}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         </Form>
-      </DialogContent>
+      </SheetContent>
       <RegistryCreateConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -437,6 +442,6 @@ export function ClassFormDialog({
         onConfirm={() => void confirmCreate()}
         pending={createClass.isPending}
       />
-    </Dialog>
+    </Sheet>
   );
 }

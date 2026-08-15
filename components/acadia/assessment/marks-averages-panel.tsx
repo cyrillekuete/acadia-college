@@ -1,17 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { MarksDataGrid } from '@/components/acadia/assessment/marks-data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import {
   Select,
   SelectContent,
@@ -24,6 +27,7 @@ import {
   formatMarkScore,
   isPassingScore,
   rankStudents,
+  type StudentAverage,
 } from '@/lib/acadia/assessment';
 import {
   sequenceOptionLabel,
@@ -33,12 +37,26 @@ import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 
+type AverageRow = StudentAverage & {
+  name: string;
+  registrationNumber: string;
+  passing: boolean;
+};
+
+const DEFAULT_COLUMN_ORDER = ['rank', 'student', 'average', 'status'];
+
 export function MarksAveragesPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const [sequenceId, setSequenceId] = useState('');
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMN_ORDER);
 
   const { data: sequences = [] } = useSequenceOptions(activeYearId ?? '');
 
@@ -68,11 +86,15 @@ export function MarksAveragesPanel() {
         .select(
           `
           studentProfileId,
+          subjectId,
+          subjectSubBranchId,
           totalScore,
           StudentProfile!SubjectMark_studentProfileId_tenantId_fkey (
             registrationNumber,
             User!StudentProfile_userId_tenantId_fkey ( name )
-          )
+          ),
+          Subject!SubjectMark_subjectId_tenantId_fkey ( coefficient ),
+          SubjectSubBranch!SubjectMark_subjectSubBranchId_tenantId_fkey ( coefficient )
         `,
         )
         .eq('tenantId', tenantId!)
@@ -83,12 +105,22 @@ export function MarksAveragesPanel() {
       }
 
       const averages = computeStudentSubjectAverages(
-        (marks ?? []).map((m) => ({
-          studentProfileId: m.studentProfileId as string,
-          subjectId: '',
-          totalScore:
-            m.totalScore != null ? Number(m.totalScore) : null,
-        })),
+        (marks ?? []).map((m) => {
+          const subject = unwrapRelation<{ coefficient?: number | null }>(m.Subject);
+          const subBranch = unwrapRelation<{ coefficient?: number | null }>(
+            m.SubjectSubBranch,
+          );
+          return {
+            studentProfileId: m.studentProfileId as string,
+            subjectId: m.subjectId as string,
+            totalScore: m.totalScore != null ? Number(m.totalScore) : null,
+            subjectSubBranchId: (m.subjectSubBranchId as string | null) ?? null,
+            subjectCoefficient:
+              subject?.coefficient != null ? Number(subject.coefficient) : 1,
+            subBranchCoefficient:
+              subBranch?.coefficient != null ? Number(subBranch.coefficient) : null,
+          };
+        }),
       );
 
       const ranked = rankStudents(
@@ -123,10 +155,78 @@ export function MarksAveragesPanel() {
 
   const rows = useMemo(() => query.data ?? [], [query.data]);
 
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [sequenceId, rows.length]);
+
+  const columns = useMemo<ColumnDef<AverageRow>[]>(
+    () => [
+      {
+        accessorKey: 'rank',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Rank" visibility column={column} />
+        ),
+        size: 80,
+        enableSorting: true,
+      },
+      {
+        id: 'student',
+        accessorFn: (row) => row.name,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Student" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <>
+            <span className="font-medium">{row.original.name}</span>
+            <span className="text-xs text-muted-foreground block">
+              {row.original.registrationNumber}
+            </span>
+          </>
+        ),
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'average',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Average" visibility column={column} />
+        ),
+        cell: ({ row }) => formatMarkScore(row.original.average),
+        size: 100,
+        enableSorting: true,
+      },
+      {
+        id: 'status',
+        accessorFn: (row) => (row.passing ? 'Pass' : 'Below 10'),
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Status" visibility column={column} />
+        ),
+        cell: ({ row }) => (row.original.passing ? 'Pass' : 'Below 10'),
+        size: 120,
+        enableSorting: true,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getRowId: (row) => row.studentProfileId,
+    state: { pagination, sorting, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         <div className="min-w-[200px]">
           <p className="text-sm font-medium mb-1.5">Sequence (optional)</p>
           <Select
@@ -148,37 +248,14 @@ export function MarksAveragesPanel() {
         </div>
       </div>
 
-      {query.isLoading ? (
-        <p className="text-sm text-muted-foreground">Calculating averages…</p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No marks for this scope yet.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Rank</TableHead>
-              <TableHead>Student</TableHead>
-              <TableHead>Average</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.studentProfileId}>
-                <TableCell>{row.rank}</TableCell>
-                <TableCell>
-                  <span className="font-medium">{row.name}</span>
-                  <span className="text-xs text-muted-foreground block">
-                    {row.registrationNumber}
-                  </span>
-                </TableCell>
-                <TableCell>{formatMarkScore(row.average)}</TableCell>
-                <TableCell>{row.passing ? 'Pass' : 'Below 10'}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <MarksDataGrid
+        table={table}
+        recordCount={rows.length}
+        isLoading={query.isLoading}
+        isError={query.isError}
+        error={query.error}
+        emptyMessage="No marks for this scope yet."
+      />
     </div>
   );
 }

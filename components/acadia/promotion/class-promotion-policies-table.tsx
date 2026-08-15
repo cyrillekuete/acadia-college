@@ -2,20 +2,25 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 import Link from 'next/link';
 import { LoaderCircleIcon } from '@/lib/icons';
+import { ACADEMIC_STRUCTURE_TABLE_LAYOUT } from '@/components/acadia/academics/academic-structure-table-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   DEFAULT_MIN_PROMOTION_AVERAGE,
   type ClassPromotionPolicyFormValues,
@@ -32,6 +37,13 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
+
+type PolicyTableRow = {
+  id: string;
+  name: string;
+  enrolled: number;
+  configured: boolean;
+};
 
 type PolicyDraft = {
   autoPromotionEnabled: boolean;
@@ -140,6 +152,148 @@ export function ClassPromotionPoliciesTable({
     });
   };
 
+  const classes = query.data?.classes ?? [];
+  const tableRows = useMemo<PolicyTableRow[]>(
+    () =>
+      classes.map((cls) => ({
+        id: cls.id,
+        name: cls.name,
+        enrolled: enrollmentByClassId.get(cls.id) ?? 0,
+        configured: !!policyByClassId.get(cls.id),
+      })),
+    [classes, enrollmentByClassId, policyByClassId],
+  );
+
+  const [columnOrder, setColumnOrder] = useState([
+    'name',
+    'enrolled',
+    'minAverage',
+    'autoPromotion',
+    'status',
+    'actions',
+  ]);
+
+  const columns = useMemo<ColumnDef<PolicyTableRow>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Class" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <Link
+            href={`/academics/promotion?year=${academicYearId}&class=${row.original.id}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {row.original.name}
+          </Link>
+        ),
+        size: 180,
+      },
+      {
+        accessorKey: 'enrolled',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Enrolled" visibility column={column} />
+        ),
+        size: 100,
+      },
+      {
+        id: 'minAverage',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Min average" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const draft = getDraft(row.original.id);
+          return (
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              max={20}
+              className="w-24"
+              title="Students promote when year average ≥ this value (2 decimal places)."
+              value={draft.minPromotionAverage}
+              onChange={(e) =>
+                updateDraft(row.original.id, {
+                  minPromotionAverage: e.target.value,
+                })
+              }
+            />
+          );
+        },
+        size: 140,
+        enableSorting: false,
+      },
+      {
+        id: 'autoPromotion',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Auto-promotion" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const draft = getDraft(row.original.id);
+          return (
+            <Switch
+              checked={draft.autoPromotionEnabled}
+              onCheckedChange={(checked) =>
+                updateDraft(row.original.id, { autoPromotionEnabled: checked })
+              }
+            />
+          );
+        },
+        size: 140,
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'configured',
+        id: 'status',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Status" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          row.original.configured ? (
+            <Badge variant="secondary">Configured</Badge>
+          ) : (
+            <Badge variant="outline">Not configured</Badge>
+          ),
+        size: 140,
+      },
+      {
+        id: 'actions',
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={saveClassPromotionPolicy.isPending}
+              onClick={() => handleSave(row.original.id)}
+            >
+              Save
+            </Button>
+          </div>
+        ),
+        size: 90,
+        enableResizing: false,
+        enableSorting: false,
+        enableHiding: false,
+      },
+    ],
+    [academicYearId, drafts, policyByClassId, saveClassPromotionPolicy.isPending],
+  );
+
+  const table = useReactTable({
+    data: tableRows,
+    columns,
+    getRowId: (row) => row.id,
+    state: { columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+  });
+
   if (query.isLoading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -154,8 +308,6 @@ export function ClassPromotionPoliciesTable({
       <p className="text-sm text-destructive">{getQueryErrorMessage(query.error)}</p>
     );
   }
-
-  const classes = query.data?.classes ?? [];
 
   if (classes.length === 0) {
     return (
@@ -208,79 +360,23 @@ export function ClassPromotionPoliciesTable({
         </div>
       ) : null}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Class</TableHead>
-            <TableHead>Enrolled</TableHead>
-            <TableHead>Min average</TableHead>
-            <TableHead>Auto-promotion</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {classes.map((cls) => {
-            const policy = policyByClassId.get(cls.id);
-            const draft = getDraft(cls.id);
-            const configured = !!policy;
-            const enrolled = enrollmentByClassId.get(cls.id) ?? 0;
-            return (
-              <TableRow key={cls.id}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/academics/promotion?year=${academicYearId}&class=${cls.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {cls.name}
-                  </Link>
-                </TableCell>
-                <TableCell>{enrolled}</TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    max={20}
-                    className="w-24"
-                    title="Students promote when year average ≥ this value (2 decimal places)."
-                    value={draft.minPromotionAverage}
-                    onChange={(e) =>
-                      updateDraft(cls.id, { minPromotionAverage: e.target.value })
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={draft.autoPromotionEnabled}
-                    onCheckedChange={(checked) =>
-                      updateDraft(cls.id, { autoPromotionEnabled: checked })
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  {configured ? (
-                    <Badge variant="secondary">Configured</Badge>
-                  ) : (
-                    <Badge variant="outline">Not configured</Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={saveClassPromotionPolicy.isPending}
-                    onClick={() => handleSave(cls.id)}
-                  >
-                    Save
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <DataGrid
+        table={table}
+        recordCount={tableRows.length}
+        tableLayout={ACADEMIC_STRUCTURE_TABLE_LAYOUT}
+      >
+        <Card>
+          <CardTable>
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </CardTable>
+          <CardFooter>
+            <DataGridPagination sizes={[10, 25, 50]} />
+          </CardFooter>
+        </Card>
+      </DataGrid>
     </div>
   );
 }

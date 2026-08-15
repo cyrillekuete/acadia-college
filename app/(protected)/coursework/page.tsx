@@ -1,56 +1,37 @@
 'use client';
 
+import { useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
+import { COURSEWORK_TABLE_LAYOUT } from '@/components/acadia/coursework/coursework-table-layout';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { Badge } from '@/components/ui/badge';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   detailLinkColumn,
   nestedFieldColumn,
 } from '@/lib/acadia/list-columns';
+import { formatDateTime, formatRecordValue } from '@/lib/acadia/record-display';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type TaskRow = {
   id: string;
   titleEn?: string;
+  dueAt?: string;
+  maxScore?: number;
+  isPublished?: boolean;
   Subject?: unknown;
 } & Record<string, unknown>;
 
 type SubmissionRow = {
   id: string;
   status?: string;
+  submittedAt?: string;
+  confirmedScore?: number | null;
   CourseworkTask?: unknown;
   StudentProfile?: unknown;
 } & Record<string, unknown>;
-
-const taskColumns: ColumnDef<TaskRow>[] = [
-  detailLinkColumn<TaskRow>('/coursework', 'titleEn', 'Task'),
-  nestedFieldColumn<TaskRow>('subject', 'Subject', 'Subject', 'code'),
-  { accessorKey: 'dueAt', header: 'Due' },
-  { accessorKey: 'maxScore', header: 'Max score' },
-  { accessorKey: 'isPublished', header: 'Published' },
-];
-
-const submissionColumns: ColumnDef<SubmissionRow>[] = [
-  detailLinkColumn<SubmissionRow>(
-    '/coursework/submissions',
-    'status',
-    'Status',
-  ),
-  nestedFieldColumn<SubmissionRow>(
-    'task',
-    'Task',
-    'CourseworkTask',
-    'titleEn',
-  ),
-  nestedFieldColumn<SubmissionRow>(
-    'student',
-    'Student',
-    'StudentProfile',
-    'registrationNumber',
-  ),
-  { accessorKey: 'submittedAt', header: 'Submitted' },
-  { accessorKey: 'confirmedScore', header: 'Score' },
-];
 
 const TASK_SELECT = `
   id,
@@ -75,6 +56,234 @@ const SUBMISSION_SELECT = `
 
 export default function CourseworkPage() {
   const { t } = useTranslation();
+
+  const taskColumns = useMemo<ColumnDef<TaskRow>[]>(
+    () => [
+      {
+        ...detailLinkColumn<TaskRow>('/coursework', 'titleEn', t('coursework.task')),
+        id: 'titleEn',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('coursework.task')}
+            visibility
+            column={column}
+          />
+        ),
+        size: 220,
+        meta: {
+          headerTitle: t('coursework.task'),
+          skeleton: <Skeleton className="h-4 w-40" />,
+        },
+        enableSorting: true,
+        enableHiding: false,
+      },
+      {
+        ...nestedFieldColumn<TaskRow>('subject', t('nav.subjects'), 'Subject', 'code'),
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('nav.subjects')}
+            visibility
+            column={column}
+          />
+        ),
+        size: 100,
+        meta: {
+          headerTitle: t('nav.subjects'),
+          skeleton: <Skeleton className="h-4 w-16" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'dueAt',
+        id: 'dueAt',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('coursework.due')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => formatDateTime(row.original.dueAt),
+        size: 160,
+        meta: {
+          headerTitle: t('coursework.due'),
+          skeleton: <Skeleton className="h-4 w-28" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'maxScore',
+        id: 'maxScore',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('coursework.maxScore')}
+            visibility
+            column={column}
+            className="justify-center"
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="block text-center tabular-nums">
+            {formatRecordValue(row.original.maxScore)}
+          </span>
+        ),
+        size: 96,
+        meta: {
+          headerTitle: t('coursework.maxScore'),
+          skeleton: <Skeleton className="mx-auto h-4 w-10" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'isPublished',
+        id: 'isPublished',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('coursework.published')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.isPublished ? 'success' : 'secondary'}
+            appearance="light"
+          >
+            {row.original.isPublished
+              ? t('common.labels.yes')
+              : t('common.labels.no')}
+          </Badge>
+        ),
+        size: 100,
+        meta: {
+          headerTitle: t('coursework.published'),
+          skeleton: <Skeleton className="h-7 w-12" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+    ],
+    [t],
+  );
+
+  const submissionColumns = useMemo<ColumnDef<SubmissionRow>[]>(
+    () => [
+      {
+        ...detailLinkColumn<SubmissionRow>(
+          '/coursework/submissions',
+          'status',
+          t('common.labels.status'),
+        ),
+        id: 'status',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.status')}
+            visibility
+            column={column}
+          />
+        ),
+        size: 120,
+        meta: {
+          headerTitle: t('common.labels.status'),
+          skeleton: <Skeleton className="h-4 w-20" />,
+        },
+        enableSorting: true,
+        enableHiding: false,
+      },
+      {
+        ...nestedFieldColumn<SubmissionRow>(
+          'task',
+          t('coursework.task'),
+          'CourseworkTask',
+          'titleEn',
+        ),
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('coursework.task')}
+            visibility
+            column={column}
+          />
+        ),
+        size: 200,
+        meta: {
+          headerTitle: t('coursework.task'),
+          skeleton: <Skeleton className="h-4 w-36" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        ...nestedFieldColumn<SubmissionRow>(
+          'student',
+          t('nav.students'),
+          'StudentProfile',
+          'registrationNumber',
+        ),
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('nav.students')}
+            visibility
+            column={column}
+          />
+        ),
+        size: 140,
+        meta: {
+          headerTitle: t('nav.students'),
+          skeleton: <Skeleton className="h-4 w-24" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'submittedAt',
+        id: 'submittedAt',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('coursework.submitted')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => formatDateTime(row.original.submittedAt),
+        size: 160,
+        meta: {
+          headerTitle: t('coursework.submitted'),
+          skeleton: <Skeleton className="h-4 w-28" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+      {
+        accessorKey: 'confirmedScore',
+        id: 'confirmedScore',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('coursework.score')}
+            visibility
+            column={column}
+            className="justify-center"
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="block text-center tabular-nums">
+            {formatRecordValue(row.original.confirmedScore)}
+          </span>
+        ),
+        size: 88,
+        meta: {
+          headerTitle: t('coursework.score'),
+          skeleton: <Skeleton className="mx-auto h-4 w-10" />,
+        },
+        enableSorting: true,
+        enableHiding: true,
+      },
+    ],
+    [t],
+  );
+
   return (
     <AcadiaPageShell
       title={t('coursework.title')}
@@ -88,6 +297,7 @@ export default function CourseworkPage() {
           select={TASK_SELECT}
           columns={taskColumns}
           searchKeys={['titleEn', 'titleFr']}
+          tableLayout={COURSEWORK_TABLE_LAYOUT}
         />
         <SupabaseTableList
           table="CourseworkSubmission"
@@ -95,6 +305,7 @@ export default function CourseworkPage() {
           select={SUBMISSION_SELECT}
           columns={submissionColumns}
           searchKeys={['status']}
+          tableLayout={COURSEWORK_TABLE_LAYOUT}
         />
       </div>
     </AcadiaPageShell>

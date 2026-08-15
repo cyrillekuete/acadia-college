@@ -1,16 +1,26 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import {
   computeFeeAccountTotals,
   formatMoneyMinor,
@@ -131,10 +141,13 @@ export function FeeOutstandingPanel() {
     [query.data],
   );
 
+  const hasRows = (query.data?.length ?? 0) > 0;
+  const showTable = Boolean(activeYearId) && (query.isLoading || hasRows);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         {activeYearId ? (
           <p className="text-sm text-muted-foreground pb-2">
             Outstanding: {formatMoneyMinor(totalOutstanding)}
@@ -148,47 +161,144 @@ export function FeeOutstandingPanel() {
         </p>
       ) : null}
 
-      {activeYearId && !query.isLoading && (query.data?.length ?? 0) === 0 ? (
+      {activeYearId && !query.isLoading && !hasRows ? (
         <p className="text-sm text-muted-foreground">No outstanding balances.</p>
       ) : null}
 
-      {query.data && query.data.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Reg. #</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Next due</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.data.map((row) => (
-              <TableRow key={row.accountId}>
-                <TableCell>
-                  <Link
-                    href={`/finance/fees/${row.accountId}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {row.studentName}
-                  </Link>
-                </TableCell>
-                <TableCell>{row.registrationNumber}</TableCell>
-                <TableCell>{formatMoneyMinor(row.balanceMinor, row.currency)}</TableCell>
-                <TableCell>{row.nextDueOn ?? '—'}</TableCell>
-                <TableCell>
-                  {row.overdueCount > 0 ? (
-                    <FeeStatusBadge status="OVERDUE" />
-                  ) : (
-                    <FeeStatusBadge status="PENDING" />
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {showTable ? (
+        <OutstandingBalancesTable
+          data={query.data ?? []}
+          isLoading={query.isLoading}
+        />
       ) : null}
     </div>
+  );
+}
+
+function OutstandingBalancesTable({
+  data,
+  isLoading,
+}: {
+  data: OutstandingRow[];
+  isLoading: boolean;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'studentName',
+    'registrationNumber',
+    'balanceMinor',
+    'nextDueOn',
+    'status',
+  ]);
+
+  const columns = useMemo<ColumnDef<OutstandingRow>[]>(
+    () => [
+      {
+        accessorKey: 'studentName',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Student" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <Link
+            href={`/finance/fees/${row.original.accountId}`}
+            className="font-medium text-primary hover:underline"
+          >
+            {row.original.studentName}
+          </Link>
+        ),
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'registrationNumber',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Reg. #" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.registrationNumber,
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'balanceMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Balance" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.balanceMinor, row.original.currency),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'nextDueOn',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Next due" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.nextDueOn ?? '—',
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        id: 'status',
+        accessorFn: (row) => (row.overdueCount > 0 ? 'OVERDUE' : 'PENDING'),
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Status" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          row.original.overdueCount > 0 ? (
+            <FeeStatusBadge status="OVERDUE" />
+          ) : (
+            <FeeStatusBadge status="PENDING" />
+          ),
+        size: 120,
+        enableSorting: true,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

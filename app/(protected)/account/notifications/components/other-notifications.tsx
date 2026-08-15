@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { CardNotification } from '@/partials/cards';
 import {
   CalendarClock,
@@ -8,99 +7,89 @@ import {
   DollarSign,
   FileText,
   MessageCircle,
-  Tablet,
   Users,
+  type LucideIcon,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
-  IChannelsItem,
-  IChannelsItems,
-} from '@/app/(protected)/account/notifications/components/channels';
+  NOTIFICATION_EVENTS,
+  notificationEventLabel,
+  preferenceForEvent,
+  type NotificationEvent,
+} from '@/lib/acadia/communication';
+import { getUiLocale } from '@/lib/acadia/locale';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useNotificationPreferenceToggles } from '@/app/(protected)/account/notifications/use-notification-preference-toggles';
+
+const EVENT_ICONS: Record<NotificationEvent, LucideIcon> = {
+  'attendance.absence': ClipboardCheck,
+  'announcement.broadcast': FileText,
+  'announcement.event': CalendarClock,
+  'message.received': MessageCircle,
+  'marks.published': Users,
+  'fees.overdue': DollarSign,
+};
 
 const OtherNotifications = () => {
-  const items: IChannelsItems = [
-    {
-      icon: Tablet,
-      title: 'Task Alert',
-      description: 'Notification when a task is assigned to you.',
-      actions: <Switch id="size-sm" size="sm" defaultChecked />,
-    },
-    {
-      icon: DollarSign,
-      title: 'Budget Warning',
-      description: 'Get notified if nearing budget limit.',
-      actions: <Switch id="size-sm" size="sm" defaultChecked />,
-    },
-    {
-      icon: FileText,
-      title: 'Invoice Alert',
-      description: 'Alert for new and unpaid invoices.',
-      actions: (
-        <Button variant="outline">
-          <Link href="#">View Invoices</Link>
-        </Button>
-      ),
-    },
-    {
-      icon: MessageCircle,
-      title: 'Feedback Alert',
-      description: 'When a client submits new feedback.',
-      actions: <Switch id="size-sm" size="sm" defaultChecked />,
-    },
-    {
-      icon: Users,
-      title: 'Collaboration Request',
-      description: 'Invite to collaborate on a new document.',
-      actions: <Switch id="size-sm" size="sm" defaultChecked />,
-    },
-    {
-      icon: CalendarClock,
-      title: 'Meeting Reminder',
-      description: 'Reminder of scheduled meetings for the day.',
-      actions: (
-        <Button variant="outline">
-          <Link href="#">Show Meetings</Link>
-        </Button>
-      ),
-    },
-    {
-      icon: ClipboardCheck,
-      title: 'Status Change',
-      description: 'Notifies changes in project or task status.',
-      actions: <Switch id="size-sm" size="sm" defaultChecked />,
-    },
-  ];
+  const { t } = useTranslation();
+  const locale = getUiLocale();
+  const {
+    preferences,
+    allInAppEnabled,
+    pending,
+    isLoading,
+    setEventInApp,
+    setAllInApp,
+  } = useNotificationPreferenceToggles();
 
-  const renderItem = (item: IChannelsItem, index: number) => {
-    return (
-      <CardNotification
-        icon={item.icon}
-        title={item.title}
-        description={item.description}
-        button={item.button}
-        actions={item.actions}
-        key={index}
-      />
-    );
-  };
+  const disabled = pending || isLoading;
 
   return (
     <Card>
       <CardHeader className="gap-2">
-        <CardTitle>Other Notifications</CardTitle>
+        <CardTitle>{t('account.otherNotifications')}</CardTitle>
         <div className="flex items-center gap-2">
-          <Label htmlFor="size-sm" className="text-sm">
-            Team-Wide Alerts
+          <Label htmlFor="notification-enable-all-events" className="text-sm">
+            {t('account.enableAllEvents')}
           </Label>
-          <Switch id="size-sm" size="sm" />
+          <Switch
+            id="notification-enable-all-events"
+            size="sm"
+            checked={allInAppEnabled}
+            disabled={disabled}
+            onCheckedChange={(checked) => {
+              void setAllInApp(checked);
+            }}
+          />
         </div>
       </CardHeader>
       <div id="notifications_cards">
-        {items.map((item, index) => {
-          return renderItem(item, index);
+        {NOTIFICATION_EVENTS.map((event) => {
+          const Icon = EVENT_ICONS[event];
+          const current = preferenceForEvent(preferences, event);
+          return (
+            <CardNotification
+              key={event}
+              icon={Icon}
+              title={t(`communication.eventLabels.${event}`, {
+                defaultValue: notificationEventLabel(event, locale),
+              })}
+              description={t(`communication.eventDescriptions.${event}`)}
+              actions={
+                <Switch
+                  id={`notification-event-${event}`}
+                  size="sm"
+                  checked={current.inApp}
+                  disabled={disabled}
+                  onCheckedChange={(checked) => {
+                    void setEventInApp(event, checked);
+                  }}
+                />
+              }
+            />
+          );
         })}
       </div>
     </Card>

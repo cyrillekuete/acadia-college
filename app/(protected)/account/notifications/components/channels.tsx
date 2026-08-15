@@ -1,13 +1,15 @@
 'use client';
 
 import { ReactNode } from 'react';
-import Link from 'next/link';
 import { CardNotification } from '@/partials/cards';
 import { LucideIcon, Mail, Monitor, Phone, Slack } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useNotificationPreferenceToggles } from '@/app/(protected)/account/notifications/use-notification-preference-toggles';
 
 interface IChannelsItem {
   icon: LucideIcon;
@@ -19,37 +21,79 @@ interface IChannelsItem {
 type IChannelsItems = Array<IChannelsItem>;
 
 const Channels = () => {
+  const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
+  const {
+    emailEnabled,
+    inAppEnabled,
+    allChannelsEnabled,
+    pending,
+    isLoading,
+    setAllEmail,
+    setAllInApp,
+    setAllChannels,
+  } = useNotificationPreferenceToggles();
+
+  const disabled = pending || isLoading;
+  const email = session?.profile?.email ?? t('account.emailChannelFallback');
+
   const items: IChannelsItems = [
     {
       icon: Mail,
-      title: 'Email',
-      description: 'jamescollins@ktstudio.com',
+      title: t('account.emailChannel'),
+      description: email,
       button: true,
-      actions: <Switch id="size-sm" size="sm" defaultChecked />,
+      actions: (
+        <Switch
+          id="notification-channel-email"
+          size="sm"
+          checked={emailEnabled}
+          disabled={disabled}
+          onCheckedChange={(checked) => {
+            void setAllEmail(checked);
+          }}
+        />
+      ),
     },
     {
       icon: Phone,
-      title: 'Mobile',
-      description: '(225) 555-0118',
+      title: t('account.mobileChannel'),
+      description: t('account.mobileChannelDescription'),
       button: true,
-      actions: <Switch id="size-sm" size="sm" />,
+      actions: (
+        <Switch
+          id="notification-channel-mobile"
+          size="sm"
+          checked={false}
+          disabled
+        />
+      ),
     },
     {
       icon: Slack,
-      title: 'Slack',
-      description:
-        'Receive instant alerts for messages and updates directly in Slack.',
+      title: t('account.slackChannel'),
+      description: t('account.slackChannelDescription'),
       actions: (
-        <Button variant="outline">
-          <Link href="#">Connect Slack</Link>
+        <Button variant="outline" disabled>
+          {t('account.connectSlack')}
         </Button>
       ),
     },
     {
       icon: Monitor,
-      title: 'Desctop',
-      description: 'Enable notifications for real-time desktop alerts.',
-      actions: <Switch id="size-sm" size="sm" defaultChecked />,
+      title: t('account.inAppChannel'),
+      description: t('account.inAppChannelDescription'),
+      actions: (
+        <Switch
+          id="notification-channel-in-app"
+          size="sm"
+          checked={inAppEnabled}
+          disabled={disabled}
+          onCheckedChange={(checked) => {
+            void setAllInApp(checked);
+          }}
+        />
+      ),
     },
   ];
 
@@ -69,12 +113,20 @@ const Channels = () => {
   return (
     <Card>
       <CardHeader className="gap-2">
-        <CardTitle>Notification Channels</CardTitle>
+        <CardTitle>{t('account.channelsTitle')}</CardTitle>
         <div className="flex items-center gap-2">
-          <Label htmlFor="size-sm" className="text-sm">
-            Team-Wide Alerts
+          <Label htmlFor="notification-enable-all-channels" className="text-sm">
+            {t('account.enableAllChannels')}
           </Label>
-          <Switch id="size-sm" size="sm" />
+          <Switch
+            id="notification-enable-all-channels"
+            size="sm"
+            checked={allChannelsEnabled}
+            disabled={disabled}
+            onCheckedChange={(checked) => {
+              void setAllChannels(checked);
+            }}
+          />
         </div>
       </CardHeader>
       <div id="notifications_cards">

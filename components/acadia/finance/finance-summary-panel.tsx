@@ -119,7 +119,7 @@ export function FinanceSummaryPanel() {
 
   return (
     <div className="space-y-4">
-      <CurrentAcademicYearBadge />
+      <CurrentAcademicYearBadge label="Year" />
 
       {query.isError ? (
         <p className="text-sm text-destructive">

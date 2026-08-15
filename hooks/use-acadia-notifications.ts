@@ -16,6 +16,7 @@ export type AcadiaNotificationRow = {
   bodyFr: string | null;
   readAt: string | null;
   createdAt: string;
+  data: Record<string, unknown> | null;
 };
 
 export function useAcadiaNotifications(limit = 20) {
@@ -32,7 +33,7 @@ export function useAcadiaNotifications(limit = 20) {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
         .from('Notification')
-        .select('id, event, titleEn, titleFr, bodyEn, bodyFr, readAt, createdAt')
+        .select('id, event, titleEn, titleFr, bodyEn, bodyFr, readAt, createdAt, data')
         .eq('tenantId', tenantId)
         .eq('userId', userId)
         .order('createdAt', { ascending: false })
@@ -40,7 +41,13 @@ export function useAcadiaNotifications(limit = 20) {
       if (error) {
         throw error;
       }
-      return (data ?? []) as AcadiaNotificationRow[];
+      return (data ?? []).map((row) => ({
+        ...row,
+        data:
+          row.data && typeof row.data === 'object' && !Array.isArray(row.data)
+            ? (row.data as Record<string, unknown>)
+            : null,
+      })) as AcadiaNotificationRow[];
     },
     enabled:
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId) &&

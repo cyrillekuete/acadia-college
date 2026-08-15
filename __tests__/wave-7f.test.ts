@@ -9,11 +9,14 @@ import {
   buildSubjectMarkRow,
   buildExamSessionRow,
   canEditExamSession,
+  collapseMarksToSubjectScore,
+  computeStudentSubjectAverages,
   computeTotalScore,
   examSessionTypeLabel,
   isMajorExamType,
   isPassingScore,
   rankStudents,
+  weightedAverage,
 } from '@/lib/acadia/assessment';
 import {
   subjectMarkEntrySchema,
@@ -138,6 +141,7 @@ describe('build rows', () => {
       '2026-05-19T00:00:00.000Z',
     );
     expect(row.totalScore).toBe(12);
+    expect(row.subjectSubBranchId).toBeNull();
   });
 });
 
@@ -146,5 +150,53 @@ describe('passing threshold', () => {
     expect(isPassingScore(10)).toBe(true);
     expect(isPassingScore(9.99)).toBe(false);
     expect(averageScores([8, 12])).toBe(10);
+  });
+});
+
+describe('weighted averages', () => {
+  it('weights scores by coefficient', () => {
+    expect(
+      weightedAverage([
+        { score: 10, coefficient: 3 },
+        { score: 16, coefficient: 5 },
+      ]),
+    ).toBe(13.75);
+  });
+
+  it('collapses sub-branch marks with inherited and custom coefficients', () => {
+    expect(
+      collapseMarksToSubjectScore([
+        {
+          totalScore: 12,
+          subjectSubBranchId: 'organic',
+          subjectCoefficient: 5,
+          subBranchCoefficient: null,
+        },
+        {
+          totalScore: 16,
+          subjectSubBranchId: 'inorganic',
+          subjectCoefficient: 5,
+          subBranchCoefficient: 2,
+        },
+      ]),
+    ).toBe(13.14);
+  });
+
+  it('computes a student average from subject coefficients', () => {
+    const averages = computeStudentSubjectAverages([
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'chem',
+        totalScore: 10,
+        subjectCoefficient: 3,
+      },
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'math',
+        totalScore: 16,
+        subjectCoefficient: 5,
+      },
+    ]);
+    expect(averages.get('stu-1')).toBe(13.75);
   });
 });

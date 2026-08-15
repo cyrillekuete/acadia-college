@@ -2191,6 +2191,194 @@ export type Database = {
           },
         ]
       }
+      SchemeOfWork: {
+        Row: {
+          academicYearId: string
+          createdAt: string
+          id: string
+          levelId: string
+          status: Database["public"]["Enums"]["SchemeOfWorkStatus"]
+          subjectId: string
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          academicYearId: string
+          createdAt?: string
+          id: string
+          levelId: string
+          status?: Database["public"]["Enums"]["SchemeOfWorkStatus"]
+          subjectId: string
+          tenantId: string
+          updatedAt?: string
+        }
+        Update: {
+          academicYearId?: string
+          createdAt?: string
+          id?: string
+          levelId?: string
+          status?: Database["public"]["Enums"]["SchemeOfWorkStatus"]
+          subjectId?: string
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SchemeOfWork_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWork_levelId_tenantId_fkey"
+            columns: ["tenantId", "levelId"]
+            isOneToOne: false
+            referencedRelation: "Level"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWork_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWork_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SchemeOfWorkTopic: {
+        Row: {
+          createdAt: string
+          descriptionEn: string | null
+          descriptionFr: string | null
+          id: string
+          schemeOfWorkId: string
+          sortOrder: number
+          tenantId: string
+          termId: string
+          titleEn: string
+          titleFr: string
+          updatedAt: string
+          weekNumber: number
+        }
+        Insert: {
+          createdAt?: string
+          descriptionEn?: string | null
+          descriptionFr?: string | null
+          id: string
+          schemeOfWorkId: string
+          sortOrder?: number
+          tenantId: string
+          termId: string
+          titleEn: string
+          titleFr: string
+          updatedAt?: string
+          weekNumber: number
+        }
+        Update: {
+          createdAt?: string
+          descriptionEn?: string | null
+          descriptionFr?: string | null
+          id?: string
+          schemeOfWorkId?: string
+          sortOrder?: number
+          tenantId?: string
+          termId?: string
+          titleEn?: string
+          titleFr?: string
+          updatedAt?: string
+          weekNumber?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SchemeOfWorkTopic_schemeOfWorkId_tenantId_fkey"
+            columns: ["tenantId", "schemeOfWorkId"]
+            isOneToOne: false
+            referencedRelation: "SchemeOfWork"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWorkTopic_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWorkTopic_termId_tenantId_fkey"
+            columns: ["termId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "Term"
+            referencedColumns: ["id", "tenantId"]
+          },
+        ]
+      }
+      SchemeOfWorkTopicProgress: {
+        Row: {
+          classId: string
+          completedAt: string
+          completedByStaffProfileId: string | null
+          createdAt: string
+          id: string
+          tenantId: string
+          topicId: string
+        }
+        Insert: {
+          classId: string
+          completedAt?: string
+          completedByStaffProfileId?: string | null
+          createdAt?: string
+          id: string
+          tenantId: string
+          topicId: string
+        }
+        Update: {
+          classId?: string
+          completedAt?: string
+          completedByStaffProfileId?: string | null
+          createdAt?: string
+          id?: string
+          tenantId?: string
+          topicId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SchemeOfWorkTopicProgress_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWorkTopicProgress_completedBy_tenantId_fkey"
+            columns: ["tenantId", "completedByStaffProfileId"]
+            isOneToOne: false
+            referencedRelation: "StaffProfile"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWorkTopicProgress_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchemeOfWorkTopicProgress_topicId_tenantId_fkey"
+            columns: ["tenantId", "topicId"]
+            isOneToOne: false
+            referencedRelation: "SchemeOfWorkTopic"
+            referencedColumns: ["tenantId", "id"]
+          },
+        ]
+      }
       ScholarshipType: {
         Row: {
           createdAt: string
@@ -2441,6 +2629,79 @@ export type Database = {
           },
           {
             foreignKeyName: "StaffClassAssignment_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      StaffClassSubjectAssignment: {
+        Row: {
+          academicYearId: string
+          classId: string
+          createdAt: string
+          id: string
+          staffProfileId: string
+          subjectId: string
+          tenantId: string
+        }
+        Insert: {
+          academicYearId: string
+          classId: string
+          createdAt?: string
+          id: string
+          staffProfileId: string
+          subjectId: string
+          tenantId: string
+        }
+        Update: {
+          academicYearId?: string
+          classId?: string
+          createdAt?: string
+          id?: string
+          staffProfileId?: string
+          subjectId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "StaffClassSubjectAssignment_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StaffClassSubjectAssignment_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StaffClassSubjectAssignment_classSubject_fkey"
+            columns: ["tenantId", "classId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "ClassSubject"
+            referencedColumns: ["tenantId", "classId", "subjectId"]
+          },
+          {
+            foreignKeyName: "StaffClassSubjectAssignment_staffProfileId_tenantId_fkey"
+            columns: ["tenantId", "staffProfileId"]
+            isOneToOne: false
+            referencedRelation: "StaffProfile"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StaffClassSubjectAssignment_subjectId_tenantId_fkey"
+            columns: ["tenantId", "subjectId"]
+            isOneToOne: false
+            referencedRelation: "Subject"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StaffClassSubjectAssignment_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"
@@ -3672,6 +3933,7 @@ export type Database = {
           isResitEligible: boolean
           studentProfileId: string
           subjectId: string
+          subjectSubBranchId: string | null
           tenantId: string
           totalScore: number | null
           updatedAt: string
@@ -3686,6 +3948,7 @@ export type Database = {
           isResitEligible?: boolean
           studentProfileId: string
           subjectId: string
+          subjectSubBranchId?: string | null
           tenantId: string
           totalScore?: number | null
           updatedAt: string
@@ -3700,6 +3963,7 @@ export type Database = {
           isResitEligible?: boolean
           studentProfileId?: string
           subjectId?: string
+          subjectSubBranchId?: string | null
           tenantId?: string
           totalScore?: number | null
           updatedAt?: string
@@ -3732,6 +3996,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Subject"
             referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "SubjectMark_subjectSubBranchId_tenantId_fkey"
+            columns: ["tenantId", "subjectSubBranchId"]
+            isOneToOne: false
+            referencedRelation: "SubjectSubBranch"
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "SubjectMark_tenantId_fkey"
@@ -5009,6 +5280,7 @@ export type Database = {
         | "IN_PROGRESS"
         | "COMPLETED"
         | "CANCELLED"
+      SchemeOfWorkStatus: "DRAFT" | "PUBLISHED"
       ScholarshipDiscountKind: "PERCENT_BPS" | "FIXED_MINOR"
       SchoolAnnouncementKind: "BROADCAST" | "EVENT"
       SchoolAnnouncementStatus:
@@ -5209,6 +5481,7 @@ export const Constants = {
         "COMPLETED",
         "CANCELLED",
       ],
+      SchemeOfWorkStatus: ["DRAFT", "PUBLISHED"],
       ScholarshipDiscountKind: ["PERCENT_BPS", "FIXED_MINOR"],
       SchoolAnnouncementKind: ["BROADCAST", "EVENT"],
       SchoolAnnouncementStatus: [

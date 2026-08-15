@@ -26,14 +26,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogBody,
   DialogContent,
@@ -43,6 +35,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { ClassPromotionPoliciesTable } from '@/components/acadia/promotion/class-promotion-policies-table';
+import { PromotionDecisionsTable } from '@/components/acadia/promotion/promotion-decisions-table';
 import {
   promotionActionLabel,
 } from '@/lib/acadia/promotion';
@@ -71,7 +64,6 @@ import {
 } from '@/hooks/use-acadia-college-session';
 import { usePromotionMutations } from '@/hooks/use-promotion-mutations';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
-import { unwrapRelation } from '@/lib/acadia/record-display';
 import { canManagePromotion } from '@/lib/acadia/roles';
 import {
   countEnrollmentsForClass,
@@ -620,128 +612,13 @@ export function PromotionAdminPanel() {
           </p>
         ) : null}
 
-        {rows.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('students.student')}</TableHead>
-                <TableHead>{t('academics.yearAvg')}</TableHead>
-                <TableHead>{t('academics.threshold')}</TableHead>
-                <TableHead>{t('academics.recommended')}</TableHead>
-                <TableHead>{t('academics.final')}</TableHead>
-                <TableHead>{t('academics.targetLevel')}</TableHead>
-                <TableHead className="text-right">{t('common.labels.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => {
-                const profile = unwrapRelation<{
-                  registrationNumber?: string;
-                  User?: unknown;
-                }>(row.StudentProfile);
-                const user = unwrapRelation<{ name?: string }>(profile?.User);
-                const targetLevel = unwrapRelation<{
-                  number?: number;
-                  labelEn?: string;
-                  labelFr?: string;
-                }>(row.Level);
-                const rowKey =
-                  (row.id as string | null) ??
-                  `pending-${row.studentProfileId as string}`;
-                return (
-                  <TableRow key={rowKey}>
-                    <TableCell>
-                      <Link
-                        href={`/students/${row.studentProfileId}`}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {user?.name ?? profile?.registrationNumber ?? '—'}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {row.isPending
-                        ? '—'
-                        : formatMarkScore(
-                            row.yearAverage != null
-                              ? Number(row.yearAverage)
-                              : null,
-                          )}
-                    </TableCell>
-                    <TableCell>
-                      {row.policyMinAverage != null
-                        ? formatMarkScore(Number(row.policyMinAverage))
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {row.isPending
-                        ? t('academics.pending')
-                        : t(`academics.action.${row.recommendedAction}`, {
-                            defaultValue: promotionActionLabel(
-                              row.recommendedAction as Parameters<
-                                typeof promotionActionLabel
-                              >[0],
-                            ),
-                          })}
-                    </TableCell>
-                    <TableCell>
-                      {row.isPending ? (
-                        <Badge variant="outline">{t('academics.pending')}</Badge>
-                      ) : (
-                        <Badge
-                          variant={row.source === 'MANUAL' ? 'primary' : 'secondary'}
-                        >
-                          {t(`academics.action.${row.finalAction}`, {
-                            defaultValue: promotionActionLabel(
-                              row.finalAction as Parameters<
-                                typeof promotionActionLabel
-                              >[0],
-                            ),
-                          })}
-                        </Badge>
-                      )}
-                      {row.classChangedSinceCompute ? (
-                        <Badge variant="outline" className="ml-1">
-                          {t('academics.classChanged')}
-                        </Badge>
-                      ) : null}
-                      {row.policyStaleAt ? (
-                        <Badge variant="outline" className="ml-1">
-                          {t('academics.recompute')}
-                        </Badge>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      {targetLevel
-                        ? levelDisplayLabel(targetLevel)
-                        : row.finalAction === 'GRADUATE'
-                          ? t('academics.alumni')
-                          : '—'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={yearLocked}
-                        onClick={() =>
-                          setOverrideTarget({
-                            studentProfileId: row.studentProfileId as string,
-                            registrationNumber:
-                              profile?.registrationNumber ?? t('students.student'),
-                            finalAction: (row.finalAction as string) ?? 'REPEAT',
-                            targetLevelId: row.targetLevelId as string | null,
-                            classId: submitted!.classId!,
-                          })
-                        }
-                      >
-                        {t('academics.override')}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        {rows.length > 0 && submitted?.classId ? (
+          <PromotionDecisionsTable
+            rows={rows}
+            yearLocked={yearLocked}
+            classId={submitted.classId}
+            onOverride={setOverrideTarget}
+          />
         ) : null}
 
         {orphanRows.length > 0 && submitted ? (

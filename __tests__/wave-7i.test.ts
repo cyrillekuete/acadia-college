@@ -192,6 +192,26 @@ describe('computeYearAveragesFromMarks', () => {
     ]);
     expect(averages.get('stu-1')).toBe(10);
   });
+
+  it('weights subjects by coefficient within a sequence', () => {
+    const averages = computeYearAveragesFromMarks([
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'chem',
+        totalScore: 10,
+        sequenceNumber: 1,
+        subjectCoefficient: 3,
+      },
+      {
+        studentProfileId: 'stu-1',
+        subjectId: 'math',
+        totalScore: 16,
+        sequenceNumber: 1,
+        subjectCoefficient: 5,
+      },
+    ]);
+    expect(averages.get('stu-1')).toBe(13.75);
+  });
 });
 
 describe('planYearRollover', () => {

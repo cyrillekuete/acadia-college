@@ -1,52 +1,95 @@
 import { describe, expect, it } from 'vitest';
-import { resolveTeacherTeachingClassIds } from '@/lib/supabase/queries/teacher-students';
+import { buildTeacherTeachingScope } from '@/lib/acadia/staff-class-assignments';
 
-describe('resolveTeacherTeachingClassIds', () => {
-  it('returns classes where teacher assignments overlap with ClassSubject', () => {
-    const classIds = resolveTeacherTeachingClassIds({
-      assignedClassIds: ['class-a', 'class-b'],
-      assignedSubjectIds: ['math', 'english'],
-      classSubjectPairs: [
-        { classId: 'class-a', subjectId: 'math' },
-        { classId: 'class-a', subjectId: 'physics' },
-        { classId: 'class-b', subjectId: 'english' },
-        { classId: 'class-c', subjectId: 'math' },
-      ],
-    });
+describe('buildTeacherTeachingScope', () => {
+  it('builds class, subject, and pair lists from class-specific assignments', () => {
+    const scope = buildTeacherTeachingScope([
+      {
+        classId: 'class-a',
+        subjectId: 'math',
+        className: 'Form 5A',
+        subjectName: 'Mathematics',
+      },
+      {
+        classId: 'class-b',
+        subjectId: 'english',
+        className: 'Form 5B',
+        subjectName: 'English',
+      },
+    ]);
 
-    expect(classIds.sort()).toEqual(['class-a', 'class-b']);
+    expect(scope.classIds).toEqual(['class-a', 'class-b']);
+    expect(scope.subjectIds).toEqual(['math', 'english']);
+    expect(scope.pairs).toHaveLength(2);
   });
 
-  it('excludes classes assigned to teacher without matching ClassSubject', () => {
-    const classIds = resolveTeacherTeachingClassIds({
-      assignedClassIds: ['class-a'],
-      assignedSubjectIds: ['math'],
-      classSubjectPairs: [{ classId: 'class-a', subjectId: 'english' }],
-    });
+  it('keeps Math in 5A without implying Math in 5B', () => {
+    const scope = buildTeacherTeachingScope([
+      {
+        classId: 'class-a',
+        subjectId: 'math',
+        className: 'Form 5A',
+        subjectName: 'Mathematics',
+      },
+      {
+        classId: 'class-b',
+        subjectId: 'english',
+        className: 'Form 5B',
+        subjectName: 'English',
+      },
+    ]);
 
-    expect(classIds).toEqual([]);
-  });
-
-  it('excludes ClassSubject pairs for classes not assigned to teacher', () => {
-    const classIds = resolveTeacherTeachingClassIds({
-      assignedClassIds: ['class-a'],
-      assignedSubjectIds: ['math'],
-      classSubjectPairs: [{ classId: 'class-b', subjectId: 'math' }],
-    });
-
-    expect(classIds).toEqual([]);
+    expect(
+      scope.pairs.some(
+        (pair) => pair.classId === 'class-b' && pair.subjectId === 'math',
+      ),
+    ).toBe(false);
+    expect(
+      scope.pairs.some(
+        (pair) => pair.classId === 'class-a' && pair.subjectId === 'english',
+      ),
+    ).toBe(false);
   });
 
   it('deduplicates multiple matching subjects in the same class', () => {
-    const classIds = resolveTeacherTeachingClassIds({
-      assignedClassIds: ['class-a'],
-      assignedSubjectIds: ['math', 'english'],
-      classSubjectPairs: [
-        { classId: 'class-a', subjectId: 'math' },
-        { classId: 'class-a', subjectId: 'english' },
-      ],
-    });
+    const scope = buildTeacherTeachingScope([
+      {
+        classId: 'class-a',
+        subjectId: 'math',
+        className: 'Form 5A',
+        subjectName: 'Mathematics',
+      },
+      {
+        classId: 'class-a',
+        subjectId: 'english',
+        className: 'Form 5A',
+        subjectName: 'English',
+      },
+    ]);
 
-    expect(classIds).toEqual(['class-a']);
+    expect(scope.classIds).toEqual(['class-a']);
+    expect(scope.subjectIds.sort()).toEqual(['english', 'math']);
+    expect(scope.pairs).toHaveLength(2);
+  });
+
+  it('deduplicates identical assignment rows', () => {
+    const scope = buildTeacherTeachingScope([
+      {
+        classId: 'class-a',
+        subjectId: 'math',
+        className: 'Form 5A',
+        subjectName: 'Mathematics',
+      },
+      {
+        classId: 'class-a',
+        subjectId: 'math',
+        className: 'Form 5A',
+        subjectName: 'Mathematics',
+      },
+    ]);
+
+    expect(scope.pairs).toHaveLength(1);
+    expect(scope.classIds).toEqual(['class-a']);
+    expect(scope.subjectIds).toEqual(['math']);
   });
 });

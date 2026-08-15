@@ -144,6 +144,10 @@ BEGIN
   GET DIAGNOSTICS v_rows = ROW_COUNT;
   RAISE NOTICE 'SubjectSubBranch: % deleted', v_rows;
 
+  DELETE FROM "SchemeOfWork" WHERE "tenantId" = v_tenant;
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  RAISE NOTICE 'SchemeOfWork: % deleted', v_rows;
+
   -- Phase C: classes
   DELETE FROM "Class" WHERE "tenantId" = v_tenant;
   GET DIAGNOSTICS v_rows = ROW_COUNT;

@@ -418,6 +418,7 @@ const ApiIntegrations = () => {
       pagination,
       sorting,
     },
+    columnResizeMode: 'onChange',
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -458,6 +459,8 @@ const ApiIntegrations = () => {
       table={table}
       recordCount={filteredData?.length || 0}
       tableLayout={{
+        width: 'fixed',
+        columnsResizable: true,
         columnsPinnable: true,
         columnsMovable: true,
         columnsVisibility: true,

@@ -57,7 +57,7 @@ export function StudentTimetableView() {
   if (!enrollment) {
     return (
       <div className="space-y-4">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             You are not enrolled in a class for this academic year. Your timetable
@@ -72,7 +72,7 @@ export function StudentTimetableView() {
     return (
       <div className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <CurrentAcademicYearBadge />
+          <CurrentAcademicYearBadge label="Year" />
           <p className="text-sm font-medium">{enrollment.className}</p>
         </div>
         <TimetableUnpublishedNotice />
@@ -83,7 +83,7 @@ export function StudentTimetableView() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         <p className="text-sm font-medium">{enrollment.className}</p>
       </div>
       <WeeklyTimetableGrid

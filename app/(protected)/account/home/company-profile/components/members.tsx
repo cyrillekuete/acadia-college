@@ -1,29 +1,38 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { DropdownMenu3 } from '@/partials/dropdown-menu/dropdown-menu-3';
 import { DropdownMenu4 } from '@/partials/dropdown-menu/dropdown-menu-4';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { EllipsisVertical } from 'lucide-react';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
+  CardTable,
 } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Label } from '@/components/ui/label';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 
 interface IMembersItem {
   avatar: string;
@@ -83,13 +92,23 @@ const Members = ({ url }: IMembersProps) => {
     },
   ];
 
-  const renderItem = (table: IMembersItem, index: number) => {
-    return (
-      <TableRow key={index}>
-        <TableCell>
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo<ColumnDef<IMembersItem>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Name" visibility column={column} />
+        ),
+        cell: ({ row }) => (
           <div className="flex items-center grow gap-2.5">
             <img
-              src={toAbsoluteUrl(`/media/avatars/${table.avatar}`)}
+              src={toAbsoluteUrl(`/media/avatars/${row.original.avatar}`)}
               className="rounded-full size-9 shrink-0"
               alt="image"
             />
@@ -98,97 +117,143 @@ const Members = ({ url }: IMembersProps) => {
                 href="#"
                 className="text-sm font-semibold text-mono hover:text-primary-active mb-px"
               >
-                {table.name}
+                {row.original.name}
               </Link>
               <span className="text-xs font-normal text-secondary-foreground">
-                {table.connections} connections
+                {row.original.connections} connections
               </span>
             </div>
           </div>
-        </TableCell>
-        <TableCell className="text-end">
-          <Badge variant="secondary" appearance="light">
-            {table.label}
-          </Badge>
-        </TableCell>
-        <TableCell className="text-end">
-          <Badge
-            appearance="light"
-            variant={table.disabled ? 'destructive' : 'success'}
-          >
-            {table.disabled ? 'Disabled' : 'Enabled'}
-          </Badge>
-        </TableCell>
-        <TableCell className="text-end text-secondary-foreground text-sm">
-          {table.joined}
-        </TableCell>
-        <TableCell className="text-end">
-          <DropdownMenu4
-            trigger={
-              <Button variant="ghost" mode="icon">
-                <EllipsisVertical />
-              </Button>
-            }
-          />
-        </TableCell>
-      </TableRow>
-    );
-  };
+        ),
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'label',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Role" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="text-end">
+            <Badge variant="secondary" appearance="light">
+              {row.original.label}
+            </Badge>
+          </div>
+        ),
+        size: 160,
+        enableSorting: true,
+        meta: { cellClassName: 'text-end' },
+      },
+      {
+        accessorKey: 'disabled',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="2FA" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="text-end">
+            <Badge
+              appearance="light"
+              variant={row.original.disabled ? 'destructive' : 'success'}
+            >
+              {row.original.disabled ? 'Disabled' : 'Enabled'}
+            </Badge>
+          </div>
+        ),
+        size: 120,
+        enableSorting: true,
+        meta: { cellClassName: 'text-end' },
+      },
+      {
+        accessorKey: 'joined',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Joined" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-end text-secondary-foreground text-sm">
+            {row.original.joined}
+          </span>
+        ),
+        size: 120,
+        enableSorting: true,
+        meta: { cellClassName: 'text-end' },
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: () => (
+          <div className="text-end">
+            <DropdownMenu4
+              trigger={
+                <Button variant="ghost" mode="icon">
+                  <EllipsisVertical />
+                </Button>
+              }
+            />
+          </div>
+        ),
+        size: 64,
+        enableSorting: false,
+        enableResizing: false,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: tables,
+    columns,
+    state: { sorting, pagination },
+    columnResizeMode: 'onChange',
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
 
   return (
-    <Card className="min-w-full">
-      <CardHeader>
-        <CardTitle>Members</CardTitle>
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="auto-update" className="text-sm">
-              Enforce 2FA
-            </Label>
-            <Switch defaultChecked size="sm" />
+    <DataGrid
+      table={table}
+      recordCount={tables.length}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card className="min-w-full">
+        <CardHeader>
+          <CardTitle>Members</CardTitle>
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="auto-update" className="text-sm">
+                Enforce 2FA
+              </Label>
+              <Switch defaultChecked size="sm" />
+            </div>
+            <DropdownMenu3
+              trigger={
+                <Button variant="ghost" mode="icon">
+                  <EllipsisVertical />
+                </Button>
+              }
+            />
           </div>
-          <DropdownMenu3
-            trigger={
-              <Button variant="ghost" mode="icon">
-                <EllipsisVertical />
-              </Button>
-            }
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="kt-scrollable-x-auto p-0">
-        <div className="kt-scrollable-auto">
-          <Table className="align-middle text-sm text-secondary-foreground">
-            <TableHeader>
-              <TableRow className="bg-accent/60">
-                <TableHead className="text-start font-medium min-w-52 h-10">
-                  Name
-                </TableHead>
-                <TableHead className="text-end font-medium min-w-36 h-10">
-                  Role
-                </TableHead>
-                <TableHead className="text-end font-medium min-w-32 h-10">
-                  2FA
-                </TableHead>
-                <TableHead className="text-end font-medium min-w-20 h-10">
-                  Joined
-                </TableHead>
-                <TableCell className="min-w-16 h-10"></TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tables.map((table, index) => {
-                return renderItem(table, index);
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-      <CardFooter className="justify-center">
-        <Button mode="link" underlined="dashed" asChild>
-          <Link href={url}>View 64 more</Link>
-        </Button>
-      </CardFooter>
-    </Card>
+        </CardHeader>
+        <CardTable>
+          <ScrollArea>
+            <DataGridTable />
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </CardTable>
+        <CardFooter className="flex flex-wrap items-center justify-between gap-3">
+          <DataGridPagination />
+          <Button mode="link" underlined="dashed" asChild>
+            <Link href={url}>View 64 more</Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 };
 

@@ -31,7 +31,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  averageScores,
   computeStudentSubjectAverages,
   formatMarkScore,
   isPassingScore,
@@ -168,7 +167,17 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
 
       const { data: marks, error: marksError } = await supabase
         .from('SubjectMark')
-        .select('studentProfileId, totalScore, examSessionId')
+        .select(
+          `
+          studentProfileId,
+          subjectId,
+          subjectSubBranchId,
+          totalScore,
+          examSessionId,
+          Subject!SubjectMark_subjectId_tenantId_fkey ( coefficient ),
+          SubjectSubBranch!SubjectMark_subjectSubBranchId_tenantId_fkey ( coefficient )
+        `,
+        )
         .eq('tenantId', tenantId!)
         .in('examSessionId', sessionIds);
 
@@ -188,35 +197,58 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
         ]),
       );
 
-      const marksByStudent = new Map<string, number[]>();
-
-      for (const mark of marks ?? []) {
+      const snapshots = (marks ?? []).flatMap((mark) => {
         const total =
           mark.totalScore != null ? Number(mark.totalScore) : null;
         if (total == null) {
-          continue;
+          return [];
         }
         const meta = sessionMeta.get(mark.examSessionId as string);
         if (kind === 'term' && submitted.termId && meta?.termId !== submitted.termId) {
-          continue;
+          return [];
         }
         if (
           kind === 'sequence' &&
           submitted.sequenceId &&
           meta?.sequenceNumber == null
         ) {
-          continue;
+          return [];
         }
-        const list = marksByStudent.get(mark.studentProfileId as string) ?? [];
-        list.push(total);
-        marksByStudent.set(mark.studentProfileId as string, list);
+        const subject = unwrapRelation<{ coefficient?: number | null }>(mark.Subject);
+        const subBranch = unwrapRelation<{ coefficient?: number | null }>(
+          mark.SubjectSubBranch,
+        );
+        return [
+          {
+            studentProfileId: mark.studentProfileId as string,
+            subjectId: mark.subjectId as string,
+            totalScore: total,
+            subjectSubBranchId: (mark.subjectSubBranchId as string | null) ?? null,
+            subjectCoefficient:
+              subject?.coefficient != null ? Number(subject.coefficient) : 1,
+            subBranchCoefficient:
+              subBranch?.coefficient != null ? Number(subBranch.coefficient) : null,
+          },
+        ];
+      });
+
+      const averages = computeStudentSubjectAverages(snapshots);
+      const courseCountByStudent = new Map<string, number>();
+      for (const snapshot of snapshots) {
+        const key = `${snapshot.studentProfileId}:${snapshot.subjectId}`;
+        courseCountByStudent.set(key, 1);
+      }
+      const subjectCounts = new Map<string, number>();
+      for (const key of Array.from(courseCountByStudent.keys())) {
+        const studentId = key.split(':')[0];
+        subjectCounts.set(studentId, (subjectCounts.get(studentId) ?? 0) + 1);
       }
 
       const ranked = rankStudents(
-        Array.from(marksByStudent.entries()).map(([studentProfileId, scores]) => ({
+        Array.from(averages.entries()).map(([studentProfileId, average]) => ({
           studentProfileId,
-          average: averageScores(scores) ?? 0,
-          courseCount: scores.length,
+          average,
+          courseCount: subjectCounts.get(studentProfileId) ?? 0,
         })),
       );
 
@@ -268,7 +300,7 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
             render={({ field }) => (
               <FormItem className="min-w-[160px]">
                 <FormLabel>Year</FormLabel>
-                <CurrentAcademicYearBadge className="mb-2" />
+                <CurrentAcademicYearBadge />
                 <FormControl>
                   <Input type="hidden" {...field} />
                 </FormControl>

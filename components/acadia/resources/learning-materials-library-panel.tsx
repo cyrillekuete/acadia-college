@@ -1,11 +1,27 @@
 'use client';
 
-import { useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { ExternalLink, LoaderCircleIcon } from '@/lib/icons';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import {
   Form,
   FormControl,
@@ -22,17 +38,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   learningMaterialSchema,
   type LearningMaterialFormValues,
@@ -264,60 +272,196 @@ export function LearningMaterialsLibraryPanel() {
         </Form>
       ) : null}
 
-      {query.isLoading ? (
-        <Skeleton className="h-48 w-full" />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('common.labels.title')}</TableHead>
-              <TableHead>{t('common.labels.type')}</TableHead>
-              <TableHead>{t('resources.size')}</TableHead>
-              <TableHead>{t('common.labels.status')}</TableHead>
-              <TableHead className="text-right">{t('resources.access')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(query.data ?? []).map((row) => {
-              const url =
-                row.externalUrl ||
-                getLearningMaterialPublicUrl(row.storageKey as string | null);
-              return (
-                <TableRow key={row.id as string}>
-                  <TableCell className="font-medium">
-                    {learningMaterialTitleDisplay(row)}
-                  </TableCell>
-                  <TableCell>
-                    {t(`resources.kind.${String(row.kind)}`, {
-                      defaultValue: learningMaterialKindLabel(String(row.kind)),
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    {formatFileSize(row.fileSizeBytes as number | null)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={row.isPublished ? 'success' : 'secondary'}>
-                      {row.isPublished ? t('resources.published') : t('resources.draft')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {url ? (
-                      <Button size="sm" variant="outline" asChild>
-                        <a href={url} target="_blank" rel="noreferrer">
-                          <ExternalLink className="size-3.5" />
-                          {t('resources.open')}
-                        </a>
-                      </Button>
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      )}
+      <LearningMaterialsTable
+        data={(query.data ?? []).map((row) => ({
+          id: row.id as string,
+          titleEn: row.titleEn as string | null,
+          titleFr: row.titleFr as string | null,
+          kind: String(row.kind),
+          storageKey: (row.storageKey as string | null) ?? null,
+          externalUrl: (row.externalUrl as string | null) ?? null,
+          fileSizeBytes: (row.fileSizeBytes as number | null) ?? null,
+          isPublished: Boolean(row.isPublished),
+        }))}
+        isLoading={query.isLoading}
+      />
     </div>
+  );
+}
+
+type LearningMaterialRow = {
+  id: string;
+  titleEn: string | null;
+  titleFr: string | null;
+  kind: string;
+  storageKey: string | null;
+  externalUrl: string | null;
+  fileSizeBytes: number | null;
+  isPublished: boolean;
+};
+
+function LearningMaterialsTable({
+  data,
+  isLoading,
+}: {
+  data: LearningMaterialRow[];
+  isLoading: boolean;
+}) {
+  const { t } = useTranslation();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'title',
+    'kind',
+    'fileSizeBytes',
+    'isPublished',
+    'access',
+  ]);
+
+  const columns = useMemo<ColumnDef<LearningMaterialRow>[]>(
+    () => [
+      {
+        id: 'title',
+        accessorFn: (row) => learningMaterialTitleDisplay(row),
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.title')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {learningMaterialTitleDisplay(row.original)}
+          </span>
+        ),
+        size: 240,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'kind',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.type')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) =>
+          t(`resources.kind.${row.original.kind}`, {
+            defaultValue: learningMaterialKindLabel(row.original.kind),
+          }),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'fileSizeBytes',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('resources.size')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => formatFileSize(row.original.fileSizeBytes),
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'isPublished',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.status')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <Badge variant={row.original.isPublished ? 'success' : 'secondary'}>
+            {row.original.isPublished
+              ? t('resources.published')
+              : t('resources.draft')}
+          </Badge>
+        ),
+        size: 130,
+        enableSorting: true,
+      },
+      {
+        id: 'access',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('resources.access')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => {
+          const url =
+            row.original.externalUrl ||
+            getLearningMaterialPublicUrl(row.original.storageKey);
+          if (!url) {
+            return '—';
+          }
+          return (
+            <div className="text-right">
+              <Button size="sm" variant="outline" asChild>
+                <a href={url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-3.5" />
+                  {t('resources.open')}
+                </a>
+              </Button>
+            </div>
+          );
+        },
+        size: 140,
+        enableSorting: false,
+      },
+    ],
+    [t],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

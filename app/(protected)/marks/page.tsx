@@ -20,12 +20,18 @@ type Row = {
 } & Record<string, unknown>;
 
 const columns: ColumnDef<Row>[] = [
-  nestedFieldColumn<Row>('student', 'Student', 'StudentProfile', 'registrationNumber'),
-  nestedFieldColumn<Row>('subject', 'Subject', 'Subject', 'code'),
-  { accessorKey: 'caScore', header: 'CA' },
-  { accessorKey: 'examScore', header: 'Exam' },
-  { accessorKey: 'totalScore', header: 'Total' },
-  { accessorKey: 'updatedAt', header: 'Updated' },
+  {
+    ...nestedFieldColumn<Row>('student', 'Student', 'StudentProfile', 'registrationNumber'),
+    size: 180,
+  },
+  {
+    ...nestedFieldColumn<Row>('subject', 'Subject', 'Subject', 'code'),
+    size: 140,
+  },
+  { accessorKey: 'caScore', header: 'CA', size: 80 },
+  { accessorKey: 'examScore', header: 'Exam', size: 80 },
+  { accessorKey: 'totalScore', header: 'Total', size: 80 },
+  { accessorKey: 'updatedAt', header: 'Updated', size: 180 },
 ];
 
 const SELECT = `

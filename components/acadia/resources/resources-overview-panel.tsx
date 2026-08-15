@@ -1,11 +1,27 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { LoaderCircleIcon } from '@/lib/icons';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import {
   Form,
   FormControl,
@@ -15,6 +31,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -23,14 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -354,36 +364,18 @@ export function ResourcesOverviewPanel() {
           </Form>
         ) : null}
 
-        {inventoryQuery.isLoading ? (
-          <Skeleton className="h-40 w-full" />
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Available</TableHead>
-                <TableHead>Allocated</TableHead>
-                <TableHead>Total uses</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(inventoryQuery.data ?? []).map((row) => (
-                <TableRow key={row.id as string}>
-                  <TableCell className="font-mono text-sm">{String(row.code)}</TableCell>
-                  <TableCell>{String(row.nameEn)}</TableCell>
-                  <TableCell>
-                    {schoolResourceTypeLabel(String(row.resourceType))}
-                  </TableCell>
-                  <TableCell>{row.summary.available}</TableCell>
-                  <TableCell>{row.summary.allocated}</TableCell>
-                  <TableCell>{row.summary.totalUses}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <InventoryTable
+          data={(inventoryQuery.data ?? []).map((row) => ({
+            id: row.id as string,
+            code: String(row.code),
+            nameEn: String(row.nameEn),
+            resourceType: String(row.resourceType),
+            available: row.summary.available,
+            allocated: row.summary.allocated,
+            totalUses: row.summary.totalUses,
+          }))}
+          isLoading={inventoryQuery.isLoading}
+        />
       </TabsContent>
 
       <TabsContent value="allocations" className="space-y-4">
@@ -463,7 +455,10 @@ export function ResourcesOverviewPanel() {
                   <FormItem>
                     <FormLabel>Allocated on</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DatePickerInput
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -476,7 +471,10 @@ export function ResourcesOverviewPanel() {
                   <FormItem className="md:col-span-2">
                     <FormLabel>Expected return (optional)</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DatePickerInput
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -493,60 +491,26 @@ export function ResourcesOverviewPanel() {
           </Form>
         ) : null}
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Resource</TableHead>
-              <TableHead>Assignee</TableHead>
-              <TableHead>Qty</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(allocationsQuery.data ?? []).map((row) => {
-              const resource = unwrapRelation<{ code?: string; nameEn?: string }>(
-                row.SchoolResource,
-              );
-              const user = unwrapRelation<{ name?: string }>(row.User);
-              const effective = resolveAllocationStatus({
-                status: String(row.status),
-                quantity: Number(row.quantity),
-                expectedReturnOn: row.expectedReturnOn as string | null,
-                returnedAt: row.returnedAt as string | null,
-              });
-              return (
-                <TableRow key={row.id as string}>
-                  <TableCell>
-                    {resource?.code} — {resource?.nameEn}
-                  </TableCell>
-                  <TableCell>{user?.name ?? '—'}</TableCell>
-                  <TableCell>{String(row.quantity)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        effective === 'OVERDUE' ? 'destructive' : 'secondary'
-                      }
-                    >
-                      {resourceAllocationStatusLabel(effective)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {canManage && effective !== 'RETURNED' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => returnAllocation.mutate(row.id as string)}
-                      >
-                        Mark returned
-                      </Button>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <AllocationsTable
+          data={(allocationsQuery.data ?? []).map((row) => {
+            const resource = unwrapRelation<{ code?: string; nameEn?: string }>(
+              row.SchoolResource,
+            );
+            const user = unwrapRelation<{ name?: string }>(row.User);
+            return {
+              id: row.id as string,
+              resourceLabel: `${resource?.code ?? ''} — ${resource?.nameEn ?? ''}`,
+              assignee: user?.name ?? '—',
+              quantity: Number(row.quantity),
+              status: String(row.status),
+              expectedReturnOn: (row.expectedReturnOn as string | null) ?? null,
+              returnedAt: (row.returnedAt as string | null) ?? null,
+            };
+          })}
+          isLoading={allocationsQuery.isLoading}
+          canManage={canManage}
+          onReturn={(id) => returnAllocation.mutate(id)}
+        />
       </TabsContent>
 
       <TabsContent value="usage" className="space-y-4">
@@ -613,7 +577,10 @@ export function ResourcesOverviewPanel() {
                   <FormItem>
                     <FormLabel>Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DatePickerInput
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -658,5 +625,302 @@ export function ResourcesOverviewPanel() {
         </p>
       </TabsContent>
     </Tabs>
+  );
+}
+
+type InventoryTableRow = {
+  id: string;
+  code: string;
+  nameEn: string;
+  resourceType: string;
+  available: number;
+  allocated: number;
+  totalUses: number;
+};
+
+function InventoryTable({
+  data,
+  isLoading,
+}: {
+  data: InventoryTableRow[];
+  isLoading: boolean;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'code',
+    'nameEn',
+    'resourceType',
+    'available',
+    'allocated',
+    'totalUses',
+  ]);
+
+  const columns = useMemo<ColumnDef<InventoryTableRow>[]>(
+    () => [
+      {
+        accessorKey: 'code',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Code" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-sm">{row.original.code}</span>
+        ),
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'nameEn',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Name" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.nameEn,
+        size: 200,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'resourceType',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Type" visibility column={column} />
+        ),
+        cell: ({ row }) => schoolResourceTypeLabel(row.original.resourceType),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'available',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Available" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.available,
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'allocated',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Allocated" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.allocated,
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'totalUses',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Total uses" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.totalUses,
+        size: 130,
+        enableSorting: true,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
+  );
+}
+
+type AllocationTableRow = {
+  id: string;
+  resourceLabel: string;
+  assignee: string;
+  quantity: number;
+  status: string;
+  expectedReturnOn: string | null;
+  returnedAt: string | null;
+};
+
+function AllocationsTable({
+  data,
+  isLoading,
+  canManage,
+  onReturn,
+}: {
+  data: AllocationTableRow[];
+  isLoading: boolean;
+  canManage: boolean;
+  onReturn: (id: string) => void;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'resourceLabel',
+    'assignee',
+    'quantity',
+    'status',
+    'actions',
+  ]);
+
+  const columns = useMemo<ColumnDef<AllocationTableRow>[]>(
+    () => [
+      {
+        accessorKey: 'resourceLabel',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Resource" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.resourceLabel,
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'assignee',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Assignee" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.assignee,
+        size: 180,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'quantity',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Qty" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.quantity,
+        size: 80,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'status',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Status" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const effective = resolveAllocationStatus({
+            status: row.original.status,
+            quantity: row.original.quantity,
+            expectedReturnOn: row.original.expectedReturnOn,
+            returnedAt: row.original.returnedAt,
+          });
+          return (
+            <Badge
+              variant={effective === 'OVERDUE' ? 'destructive' : 'secondary'}
+            >
+              {resourceAllocationStatusLabel(effective)}
+            </Badge>
+          );
+        },
+        size: 130,
+        enableSorting: true,
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => {
+          const effective = resolveAllocationStatus({
+            status: row.original.status,
+            quantity: row.original.quantity,
+            expectedReturnOn: row.original.expectedReturnOn,
+            returnedAt: row.original.returnedAt,
+          });
+          if (!canManage || effective === 'RETURNED') {
+            return null;
+          }
+          return (
+            <div className="text-right">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onReturn(row.original.id)}
+              >
+                Mark returned
+              </Button>
+            </div>
+          );
+        },
+        size: 150,
+        enableSorting: false,
+      },
+    ],
+    [canManage, onReturn],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

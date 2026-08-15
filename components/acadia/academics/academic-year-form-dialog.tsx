@@ -5,15 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
@@ -22,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -133,17 +135,19 @@ export function AcademicYearFormDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90dvh,720px)] max-w-md overflow-hidden">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>{isEdit ? t('academics.editYear') : t('academics.newYear')}</DialogTitle>
-          <DialogDescription className="sr-only">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="p-0 gap-0 sm:w-[500px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+        <SheetHeader className="mb-0">
+          <SheetTitle className="p-3">{isEdit ? t('academics.editYear') : t('academics.newYear')}</SheetTitle>
+          <SheetDescription className="sr-only">
             {t('academics.yearFormDescription')}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <Form {...form}>
           <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
-            <DialogBody className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+            <SheetBody className="p-0">
+              <ScrollArea className="h-[calc(100vh-10.5rem)]">
+                <div className="space-y-4 px-5 py-2.5">
               {!isEdit ? (
                 <p className="text-sm text-muted-foreground">
                   {t('academics.yearCreateHint')}
@@ -174,7 +178,10 @@ export function AcademicYearFormDialog({
                     <FormItem>
                       <FormLabel>{t('common.labels.starts')}</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePickerInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -187,7 +194,10 @@ export function AcademicYearFormDialog({
                     <FormItem>
                       <FormLabel>{t('common.labels.ends')}</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePickerInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -288,7 +298,10 @@ export function AcademicYearFormDialog({
                     <FormItem>
                       <FormLabel>{t('academics.enrollmentOpens')}</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePickerInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -301,7 +314,10 @@ export function AcademicYearFormDialog({
                     <FormItem>
                       <FormLabel>{t('academics.enrollmentCloses')}</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePickerInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -315,7 +331,7 @@ export function AcademicYearFormDialog({
                 control={form.control}
                 name="isCurrent"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                  <FormItem className="flex flex-row items-center justify-between gap-3 rounded-lg border p-3">
                     <div>
                       <FormLabel>{t('academics.currentYear')}</FormLabel>
                       <p className="text-xs text-muted-foreground">
@@ -332,7 +348,7 @@ export function AcademicYearFormDialog({
                 control={form.control}
                 name="isActive"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                  <FormItem className="flex flex-row items-center justify-between gap-3 rounded-lg border p-3">
                     <FormLabel>{t('common.labels.active')}</FormLabel>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -340,8 +356,10 @@ export function AcademicYearFormDialog({
                   </FormItem>
                 )}
               />
-            </DialogBody>
-            <DialogFooter className="shrink-0">
+                </div>
+              </ScrollArea>
+            </SheetBody>
+            <SheetFooter className="border-t border-border p-5">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.buttons.cancel')}
               </Button>
@@ -349,10 +367,10 @@ export function AcademicYearFormDialog({
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
                 {isEdit ? t('common.messages.saveChanges') : t('academics.createYear')}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

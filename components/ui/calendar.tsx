@@ -3,27 +3,89 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { DayPicker } from 'react-day-picker';
+import { DayPicker, type DropdownProps } from 'react-day-picker';
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: React.ComponentProps<typeof DayPicker>) {
+function CalendarDropdown({ options, value, onChange, disabled }: DropdownProps) {
+  const selected = value?.toString();
+
+  return (
+    <Select
+      value={selected}
+      onValueChange={(next) => {
+        onChange?.({
+          target: { value: next },
+        } as React.ChangeEvent<HTMLSelectElement>);
+      }}
+      disabled={disabled}
+    >
+      <SelectTrigger
+        size="md"
+        className="h-8.5 w-fit min-w-20 gap-1 px-2.5 shadow-xs shadow-black/5"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent
+        className="max-h-[min(16rem,var(--radix-select-content-available-height))]"
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        {options?.map((option) => (
+          <SelectItem
+            key={option.value}
+            value={String(option.value)}
+            disabled={option.disabled}
+          >
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  captionLayout,
+  components,
+  ...props
+}: React.ComponentProps<typeof DayPicker>) {
+  const isDropdown =
+    captionLayout === 'dropdown' ||
+    captionLayout === 'dropdown-months' ||
+    captionLayout === 'dropdown-years';
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      captionLayout={captionLayout}
       className={cn('p-3', className)}
       classNames={{
         months: 'relative flex flex-col sm:flex-row gap-4',
         month: 'w-full',
-        month_caption: 'relative mx-10 mb-1 flex h-8 items-center justify-center z-20',
-        caption_label: 'text-sm font-medium',
-        nav: 'absolute top-0 flex w-full justify-between z-10',
+        month_caption: cn(
+          'relative mb-1 flex items-center justify-center z-20',
+          isDropdown ? 'mx-8 h-8.5' : 'mx-10 h-8',
+        ),
+        caption_label: isDropdown ? 'hidden' : 'text-sm font-medium',
+        dropdowns: 'flex w-full items-center justify-center gap-1.5',
+        dropdown_root: 'relative',
+        nav: 'pointer-events-none absolute top-0 z-10 flex w-full justify-between',
         button_previous: cn(
           buttonVariants({ variant: 'ghost' }),
-          'size-8 text-muted-foreground/80 hover:text-foreground p-0',
+          'pointer-events-auto size-8 text-muted-foreground/80 hover:text-foreground p-0',
         ),
         button_next: cn(
           buttonVariants({ variant: 'ghost' }),
-          'size-8 text-muted-foreground/80 hover:text-foreground p-0',
+          'pointer-events-auto size-8 text-muted-foreground/80 hover:text-foreground p-0',
         ),
         weekday: 'size-8 p-0 text-xs font-medium text-muted-foreground/80',
         day_button:
@@ -47,6 +109,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: R
             return <ChevronRight className="h-4 w-4 rtl:rotate-180" />;
           }
         },
+        Dropdown: CalendarDropdown,
+        ...components,
       }}
       {...props}
     />

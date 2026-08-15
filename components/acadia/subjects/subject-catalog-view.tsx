@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { SubjectsTable } from '@/components/acadia/subjects/subjects-table';
 import { SubjectClassAssignDialog } from '@/components/acadia/subjects/subject-class-assign-dialog';
+import { SubjectFormDialog } from '@/components/acadia/subjects/subject-form-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -62,7 +62,7 @@ function buildEmptyMessage(
 
 export function SubjectCatalogView() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
   const [listFilters, setListFilters] = useState<SubjectListFilters>(
@@ -222,7 +222,7 @@ export function SubjectCatalogView() {
         <AdminToolbar
           className="mb-0"
           addLabel={t('subjects.newTitle')}
-          onAdd={() => router.push('/subjects/new')}
+          onAdd={() => setSheetOpen(true)}
         />
       </div>
 
@@ -232,6 +232,8 @@ export function SubjectCatalogView() {
         emptyMessage={emptyMessage}
         onAssignToClasses={handleAssignToClasses}
       />
+
+      <SubjectFormDialog open={sheetOpen} onOpenChange={setSheetOpen} />
 
       {assignSubject &&
       assignSubjectStream?.subSystem &&

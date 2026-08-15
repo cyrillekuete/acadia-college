@@ -1,8 +1,9 @@
 import {
-  averageScores,
+  collapseMarksToSubjectScore,
   computeAnnualAverage,
   computeTermAverageFromSequences,
   PASSING_AVERAGE,
+  weightedAverage,
 } from '@/lib/acadia/assessment';
 import type { ClassPromotionPolicyRow } from '@/lib/acadia/class-promotion-policy-schemas';
 import type { PromotionAction } from '@/lib/acadia/promotion-schemas';
@@ -314,29 +315,63 @@ export function buildPromotionCandidates(
   });
 }
 
+type YearAverageMark = {
+  studentProfileId: string;
+  totalScore: number | null;
+  sequenceNumber: number | null;
+  subjectId?: string;
+  subjectSubBranchId?: string | null;
+  subjectCoefficient?: number | null;
+  subBranchCoefficient?: number | null;
+};
+
 /** Aggregate sequence marks into a year average per student. */
 export function computeYearAveragesFromMarks(
-  marks: {
-    studentProfileId: string;
-    totalScore: number | null;
-    sequenceNumber: number | null;
-  }[],
+  marks: YearAverageMark[],
 ): Map<string, number> {
   const byStudent = new Map<string, { sequenceNumber: number; average: number }[]>();
+  const grouped = new Map<string, YearAverageMark[]>();
 
-  for (const mark of marks) {
-    if (mark.totalScore == null || Number.isNaN(mark.totalScore)) {
+  marks.forEach((mark, index) => {
+    const seqNum = mark.sequenceNumber ?? 1;
+    const subjectKey = mark.subjectId?.trim() ? mark.subjectId : `__row_${index}`;
+    const key = `${mark.studentProfileId}::${seqNum}::${subjectKey}`;
+    const list = grouped.get(key) ?? [];
+    list.push(mark);
+    grouped.set(key, list);
+  });
+
+  const sequenceSubjects = new Map<
+    string,
+    Map<number, { score: number; coefficient: number }[]>
+  >();
+
+  for (const [key, subjectMarks] of Array.from(grouped.entries())) {
+    const [studentId, seqRaw] = key.split('::');
+    const seqNum = Number(seqRaw);
+    const score = collapseMarksToSubjectScore(subjectMarks);
+    if (score == null) {
       continue;
     }
-    const seqNum = mark.sequenceNumber ?? 1;
-    const list = byStudent.get(mark.studentProfileId) ?? [];
-    const existing = list.find((r) => r.sequenceNumber === seqNum);
-    if (existing) {
-      existing.average = averageScores([existing.average, mark.totalScore]) ?? existing.average;
-    } else {
-      list.push({ sequenceNumber: seqNum, average: mark.totalScore });
+    const studentMap = sequenceSubjects.get(studentId) ?? new Map();
+    const sequenceList = studentMap.get(seqNum) ?? [];
+    sequenceList.push({
+      score,
+      coefficient: subjectMarks[0]?.subjectCoefficient ?? 1,
+    });
+    studentMap.set(seqNum, sequenceList);
+    sequenceSubjects.set(studentId, studentMap);
+  }
+
+  for (const [studentId, sequences] of Array.from(sequenceSubjects.entries())) {
+    const list: { sequenceNumber: number; average: number }[] = [];
+    for (const [seqNum, subjectScores] of Array.from(sequences.entries())) {
+      const average = weightedAverage(subjectScores);
+      if (average != null) {
+        list.push({ sequenceNumber: seqNum, average });
+      }
     }
-    byStudent.set(mark.studentProfileId, list);
+    byStudent.set(studentId, list);
   }
 
   const result = new Map<string, number>();
@@ -365,6 +400,9 @@ export function computeYearAverageForPromotionFromMarks(
     subjectId: string;
     totalScore: number | null;
     sequenceNumber: number | null;
+    subjectSubBranchId?: string | null;
+    subjectCoefficient?: number | null;
+    subBranchCoefficient?: number | null;
   }[],
   studentProfileId: string,
   classSubjectIds: string[] | null,
@@ -388,8 +426,12 @@ export function computeYearAverageForPromotionFromMarks(
   const averages = computeYearAveragesFromMarks(
     scopedMarks.map((m) => ({
       studentProfileId: m.studentProfileId,
+      subjectId: m.subjectId,
       totalScore: m.totalScore,
       sequenceNumber: m.sequenceNumber,
+      subjectSubBranchId: m.subjectSubBranchId,
+      subjectCoefficient: m.subjectCoefficient,
+      subBranchCoefficient: m.subBranchCoefficient,
     })),
   );
 

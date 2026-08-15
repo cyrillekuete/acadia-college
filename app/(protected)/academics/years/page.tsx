@@ -6,10 +6,12 @@ import Link from 'next/link';
 import { ArrowRightLeft, Star, Users } from '@/lib/icons';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AcademicYearFormDialog } from '@/components/acadia/academics/academic-year-form-dialog';
+import { ACADEMIC_STRUCTURE_TABLE_LAYOUT } from '@/components/acadia/academics/academic-structure-table-layout';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { Button } from '@/components/ui/button';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { formatRecordValue } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -31,17 +33,42 @@ export default function AcademicYearsPage() {
 
   const columns = useMemo<ColumnDef<Row>[]>(
     () => [
-      { accessorKey: 'label', header: 'Label' },
-      { accessorKey: 'startsOn', header: 'Starts' },
-      { accessorKey: 'endsOn', header: 'Ends' },
+      {
+        accessorKey: 'label',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Label" visibility column={column} />
+        ),
+        size: 180,
+      },
+      {
+        accessorKey: 'startsOn',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Starts" visibility column={column} />
+        ),
+        size: 140,
+      },
+      {
+        accessorKey: 'endsOn',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Ends" visibility column={column} />
+        ),
+        size: 140,
+      },
       {
         accessorKey: 'isCurrent',
-        header: 'Current',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Current" visibility column={column} />
+        ),
         cell: ({ row }) => formatRecordValue(row.original.isCurrent),
+        size: 100,
       },
       {
         id: 'actions',
         header: '',
+        size: 160,
+        enableResizing: false,
+        enableSorting: false,
+        enableHiding: false,
         cell: ({ row }) => (
           <div className="flex items-center justify-end gap-1">
             {!row.original.isCurrent ? (
@@ -83,20 +110,24 @@ export default function AcademicYearsPage() {
     <AcadiaPageShell
       title={t('academics.yearsTitle')}
       description={t('academics.yearsDescription')}
+      actions={
+        <AdminToolbar
+          addLabel={t('academics.addYear')}
+          onAdd={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+          className="mb-0"
+        />
+      }
     >
-      <AdminToolbar
-        addLabel={t('academics.addYear')}
-        onAdd={() => {
-          setEditing(null);
-          setDialogOpen(true);
-        }}
-      />
       <SupabaseTableList
         table="AcademicYear"
         title={t('academics.yearsTitle')}
         select="id, label, startsOn, endsOn, isCurrent, isActive, termsPerYear, sequencesPerTerm, sequencesPerYear, enrollmentOpensAt, enrollmentClosesAt"
         columns={columns}
         searchKeys={['label']}
+        tableLayout={ACADEMIC_STRUCTURE_TABLE_LAYOUT}
       />
       <AcademicYearFormDialog
         open={dialogOpen}

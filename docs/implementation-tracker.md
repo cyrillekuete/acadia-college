@@ -181,7 +181,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
 | F-077 | Subject create/edit | FR-3.2.1 | `done` | `/subjects/new`, `/subjects/[id]/edit` | teams form | `subject-schemas.ts`, `SubjectForm`, term + catalog placement |
-| F-078 | SubjectAssignment (teacher ↔ subject) | FR-3.1.2, FR-3.2.2 | `done` | `/subjects/[id]` | — | `SubjectAssignmentPanel` CRUD |
+| F-078 | SubjectAssignment (teacher ↔ subject) | FR-3.1.2, FR-3.2.2 | `done` | `/subjects/[id]` | — | `SubjectAssignmentPanel` CRUD; class-specific teaching via `StaffClassSubjectAssignment` on `/academics/classes` and `/staff/[id]` |
 | F-079 | Class rosters by year/branch/level | FR-3.1.1, FR-3.1.3 | `done` | `/classes` | DataGrid | Year + catalog + stream/level filters; link to `/academics/classes` |
 | F-080 | Timetable slot create/edit | FR-3.1.4 | `done` | `/timetable` | DataGrid + form | `TimetableSlotFormDialog` + edit/delete |
 | F-081 | Subject-specific resources (course materials) | FR-3.2.3, FR-8.1.1 | `done` | `/subjects/[id]` | — | `CourseworkTask` via `SubjectMaterialsPanel` |
@@ -283,7 +283,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | FR-2.2.3 | F-075 | F-026 (exams list) |
 | FR-2.2.4 | F-076, F-109 | — |
 | FR-3.1.1 | F-079 | — |
-| FR-3.1.2 | F-078 | — |
+| FR-3.1.2 | F-078 | Class teacher + class-subject assignment (`StaffClassSubjectAssignment`) |
 | FR-3.1.3 | F-079 | F-021 (list) |
 | FR-3.1.4 | F-080 | F-024 (list) |
 | FR-3.2.1 | F-077 | F-014 (list) |

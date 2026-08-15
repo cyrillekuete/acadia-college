@@ -5,16 +5,16 @@ import { useQuery } from '@tanstack/react-query';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   subjectMatchesClass,
@@ -224,12 +224,14 @@ export function ClassSubjectAssignDialog({
     selectedClassIds.length > 0 && selectedSubjectIds.length > 0 && !pending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Assign subjects to classes</DialogTitle>
-        </DialogHeader>
-        <DialogBody className="space-y-6">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="p-0 gap-0 sm:w-[500px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+        <SheetHeader className="mb-0">
+          <SheetTitle className="p-3">Assign subjects to classes</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="p-0">
+          <ScrollArea className="h-[calc(100vh-10.5rem)]">
+            <div className="space-y-6 px-5 py-2.5">
           <p className="text-sm text-muted-foreground">
             {subSystemLabel(subSystem)} · {branchLabel(branch)}. Existing class–subject links
             are kept; only new pairs are added.
@@ -376,8 +378,10 @@ export function ClassSubjectAssignDialog({
               {selectedClassIds.length === 1 ? '' : 'es'}.
             </p>
           ) : null}
-        </DialogBody>
-        <DialogFooter>
+            </div>
+          </ScrollArea>
+        </SheetBody>
+        <SheetFooter className="border-t border-border p-5">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -385,8 +389,8 @@ export function ClassSubjectAssignDialog({
             {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
             Assign subjects
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

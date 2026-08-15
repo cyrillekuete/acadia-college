@@ -44,7 +44,21 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 
-export function CreateFeeAccountForm() {
+export const CREATE_FEE_ACCOUNT_FORM_ID = 'create-fee-account-form';
+
+export function CreateFeeAccountForm({
+  onCancelHref = '/finance/fees',
+  onCancel,
+  hideActions = false,
+  formId = CREATE_FEE_ACCOUNT_FORM_ID,
+  onPendingChange,
+}: {
+  onCancelHref?: string;
+  onCancel?: () => void;
+  hideActions?: boolean;
+  formId?: string;
+  onPendingChange?: (pending: boolean) => void;
+}) {
   const { createStudentFeeAccount } = useFinanceMutations();
   const { activeYearId } = useActiveAcademicYear();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -123,16 +137,26 @@ export function CreateFeeAccountForm() {
     });
   });
 
+  const pending = createStudentFeeAccount.isPending;
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-4 max-w-lg">
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        className={hideActions ? 'space-y-4' : 'space-y-4 max-w-lg'}
+      >
         <FormField
           control={form.control}
           name="academicYearId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Academic year</FormLabel>
-              <CurrentAcademicYearBadge className="mb-2" />
+              <CurrentAcademicYearBadge />
               <FormControl>
                 <Input type="hidden" {...field} />
               </FormControl>
@@ -235,17 +259,25 @@ export function CreateFeeAccountForm() {
           />
         </div>
 
-        <div className="flex gap-2">
-          <Button type="submit" disabled={createStudentFeeAccount.isPending || !activeYearId}>
-            {createStudentFeeAccount.isPending ? (
-              <LoaderCircleIcon className="size-4 animate-spin" />
-            ) : null}
-            Create fee account
-          </Button>
-          <Button type="button" variant="outline" asChild>
-            <Link href="/finance/fees">Cancel</Link>
-          </Button>
-        </div>
+        {hideActions ? null : (
+          <div className="flex gap-2">
+            <Button type="submit" disabled={pending || !activeYearId}>
+              {pending ? (
+                <LoaderCircleIcon className="size-4 animate-spin" />
+              ) : null}
+              Create fee account
+            </Button>
+            {onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" asChild>
+                <Link href={onCancelHref}>Cancel</Link>
+              </Button>
+            )}
+          </div>
+        )}
       </form>
     </Form>
   );

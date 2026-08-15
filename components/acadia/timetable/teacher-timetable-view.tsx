@@ -65,7 +65,7 @@ export function TeacherTimetableView({
 
   const toolbar = (
     <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-      <CurrentAcademicYearBadge />
+      <CurrentAcademicYearBadge label="Year" />
       {showPrintAction ? <TimetablePrintButton /> : null}
     </div>
   );

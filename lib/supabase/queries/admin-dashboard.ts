@@ -1,4 +1,8 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { unwrapRelation } from '@/lib/acadia/record-display';
+import type { Database } from '@/lib/supabase/database.types';
+
+type Client = SupabaseClient<Database>;
 
 export type AdminDashboardStats = {
   students: number;
@@ -19,6 +23,14 @@ export type AdminActivityItem = {
   category: 'auth' | 'academic' | 'report' | 'general';
 };
 
+export type SystemLogActivityRow = {
+  id: string;
+  event: string | null;
+  description: string | null;
+  createdAt: string;
+  User?: unknown;
+};
+
 function monthRange(monthOffset: number) {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
@@ -33,49 +45,57 @@ function percentChange(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-async function countRows(
-  supabase: SupabaseClient,
-  table: string,
-  options?: {
-    tenantColumn?: string;
-    tenantId?: string;
-    filters?: { column: string; op: 'eq' | 'gte' | 'lte' | 'lt'; value: string | boolean }[];
-  },
+async function countStudentProfiles(
+  supabase: Client,
+  tenantId: string,
+  createdBefore?: string,
 ) {
-  let q = supabase.from(table).select('*', { count: 'exact', head: true });
-  if (options?.tenantColumn && options.tenantId) {
-    q = q.eq(options.tenantColumn, options.tenantId);
+  let query = supabase
+    .from('StudentProfile')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenantId', tenantId);
+  if (createdBefore) {
+    query = query.lt('createdAt', createdBefore);
   }
-  for (const f of options?.filters ?? []) {
-    if (f.op === 'eq') q = q.eq(f.column, f.value);
-    if (f.op === 'gte') q = q.gte(f.column, f.value);
-    if (f.op === 'lte') q = q.lte(f.column, f.value);
-    if (f.op === 'lt') q = q.lt(f.column, f.value);
+  const { count, error } = await query;
+  if (error) {
+    throw error;
   }
-  const { count, error } = await q;
-  if (error) throw error;
   return count ?? 0;
 }
 
-async function sumLedgerIncome(
-  supabase: SupabaseClient,
+async function countStaffProfiles(
+  supabase: Client,
   tenantId: string,
-  from?: string,
-  to?: string,
+  createdSince?: string,
 ) {
-  let q = supabase
-    .from('FinanceLedgerEntry')
-    .select('amountMinor')
-    .eq('tenantId', tenantId)
-    .eq('entryType', 'INCOME');
-  if (from) q = q.gte('occurredOn', from.slice(0, 10));
-  if (to) q = q.lte('occurredOn', to.slice(0, 10));
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []).reduce((sum, row) => sum + Number(row.amountMinor ?? 0), 0);
+  let query = supabase
+    .from('StaffProfile')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenantId', tenantId);
+  if (createdSince) {
+    query = query.gte('createdAt', createdSince);
+  }
+  const { count, error } = await query;
+  if (error) {
+    throw error;
+  }
+  return count ?? 0;
 }
 
-async function countActiveSubjects(supabase: SupabaseClient, tenantId: string) {
+async function countActiveClasses(supabase: Client, tenantId: string) {
+  const { count, error } = await supabase
+    .from('Class')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenantId', tenantId)
+    .eq('status', 'ACTIVE');
+  if (error) {
+    throw error;
+  }
+  return count ?? 0;
+}
+
+async function countActiveSubjects(supabase: Client, tenantId: string) {
   const { count, error } = await supabase
     .from('Subject')
     .select('*', { count: 'exact', head: true })
@@ -87,10 +107,34 @@ async function countActiveSubjects(supabase: SupabaseClient, tenantId: string) {
   return count ?? 0;
 }
 
-export async function fetchAdminDashboardStats(
-  supabase: SupabaseClient,
+async function sumLedgerIncome(
+  supabase: Client,
   tenantId: string,
-  academicYearId?: string,
+  from?: string,
+  to?: string,
+) {
+  let query = supabase
+    .from('FinanceLedgerEntry')
+    .select('amountMinor')
+    .eq('tenantId', tenantId)
+    .eq('entryType', 'INCOME');
+  if (from) {
+    query = query.gte('occurredOn', from.slice(0, 10));
+  }
+  if (to) {
+    query = query.lte('occurredOn', to.slice(0, 10));
+  }
+  const { data, error } = await query;
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).reduce((sum, row) => sum + Number(row.amountMinor ?? 0), 0);
+}
+
+export async function fetchAdminDashboardStats(
+  supabase: Client,
+  tenantId: string,
+  _academicYearId?: string,
 ): Promise<AdminDashboardStats> {
   const thisMonth = monthRange(0);
   const lastMonth = monthRange(-1);
@@ -103,37 +147,17 @@ export async function fetchAdminDashboardStats(
     activeSubjects,
     revenueMinor,
     revenueLastMonthMinor,
+    studentsAtStartOfMonth,
   ] = await Promise.all([
-    countRows(supabase, 'students', {
-      tenantColumn: 'tenant_id',
-      tenantId,
-    }),
-    countTeachers(supabase, tenantId),
-    countTeachersCreatedSince(supabase, tenantId, thisMonth.start),
-    academicYearId
-      ? countRows(supabase, 'StudentEnrollment', {
-          tenantColumn: 'tenantId',
-          tenantId,
-          filters: [
-            { column: 'academicYearId', op: 'eq', value: academicYearId },
-            { column: 'status', op: 'eq', value: 'ACTIVE' },
-          ],
-        })
-      : countRows(supabase, 'classes', {
-          tenantColumn: 'tenant_id',
-          tenantId,
-          filters: [{ column: 'status', op: 'eq', value: 'active' }],
-        }),
+    countStudentProfiles(supabase, tenantId),
+    countStaffProfiles(supabase, tenantId),
+    countStaffProfiles(supabase, tenantId, thisMonth.start),
+    countActiveClasses(supabase, tenantId),
     countActiveSubjects(supabase, tenantId),
     sumLedgerIncome(supabase, tenantId),
     sumLedgerIncome(supabase, tenantId, lastMonth.start, lastMonth.end),
+    countStudentProfiles(supabase, tenantId, thisMonth.start),
   ]);
-
-  const studentsAtStartOfMonth = await countRows(supabase, 'students', {
-    tenantColumn: 'tenant_id',
-    tenantId,
-    filters: [{ column: 'created_at', op: 'lt', value: thisMonth.start }],
-  });
 
   const revenueThisMonthMinor = await sumLedgerIncome(
     supabase,
@@ -141,7 +165,6 @@ export async function fetchAdminDashboardStats(
     thisMonth.start,
     thisMonth.end,
   );
-  const revenuePrevMonthMinor = revenueLastMonthMinor;
 
   return {
     students,
@@ -151,134 +174,81 @@ export async function fetchAdminDashboardStats(
     activeClasses,
     activeSubjects,
     revenueMinor,
-    revenueGrowthPercent: percentChange(revenueThisMonthMinor, revenuePrevMonthMinor),
+    revenueGrowthPercent: percentChange(revenueThisMonthMinor, revenueLastMonthMinor),
   };
 }
 
-async function countTeachers(supabase: SupabaseClient, tenantId: string) {
-  const { count, error } = await supabase
-    .from('teachers')
-    .select('*', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId);
-  if (!error) return count ?? 0;
-
-  return countRows(supabase, 'StaffProfile', {
-    tenantColumn: 'tenantId',
-    tenantId,
-    filters: [{ column: 'isActive', op: 'eq', value: true }],
-  });
-}
-
-async function countTeachersCreatedSince(
-  supabase: SupabaseClient,
-  tenantId: string,
-  since: string,
-) {
-  const { count, error } = await supabase
-    .from('teachers')
-    .select('*', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId)
-    .gte('created_at', since);
-  if (!error) return count ?? 0;
-
-  return countRows(supabase, 'StaffProfile', {
-    tenantColumn: 'tenantId',
-    tenantId,
-    filters: [{ column: 'createdAt', op: 'gte', value: since }],
-  });
-}
-
-function categorizeActivity(action: string): AdminActivityItem['category'] {
+export function categorizeActivity(action: string): AdminActivityItem['category'] {
   const lower = action.toLowerCase();
-  if (lower.includes('login') || lower.includes('sign')) return 'auth';
-  if (lower.includes('exam') || lower.includes('class') || lower.includes('subject')) {
+  if (
+    lower.includes('login') ||
+    lower.includes('sign') ||
+    lower.startsWith('user.') ||
+    lower.startsWith('account.')
+  ) {
+    return 'auth';
+  }
+  if (
+    lower.includes('exam') ||
+    lower.includes('class') ||
+    lower.includes('subject') ||
+    lower.includes('enrollment') ||
+    lower.includes('student') ||
+    lower.includes('attendance') ||
+    lower.includes('promotion') ||
+    lower.includes('academic')
+  ) {
     return 'academic';
   }
-  if (lower.includes('report')) return 'report';
+  if (lower.includes('report') || lower.includes('transcript')) {
+    return 'report';
+  }
   return 'general';
 }
 
-function activityFromLog(row: {
-  id: string;
-  action: string;
-  details: string | null;
-  created_at: string;
-}): AdminActivityItem {
-  const title = row.action;
-  const description = row.details?.trim() || `${row.action} recorded successfully`;
+export function titleFromSystemLogEvent(event: string | null | undefined): string {
+  const raw = event?.trim();
+  if (!raw) {
+    return 'Activity';
+  }
+  const spaced = raw.replace(/[._]/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+export function activityFromSystemLog(row: SystemLogActivityRow): AdminActivityItem {
+  const event = row.event?.trim() || 'activity';
+  const title = titleFromSystemLogEvent(event);
+  const description =
+    row.description?.trim() || `${title} recorded successfully`;
+  const user = unwrapRelation<{ name?: string | null }>(row.User);
+  const namedDescription = user?.name?.trim()
+    ? `${user.name.trim()} · ${description}`
+    : description;
+
   return {
     id: row.id,
     title,
-    description,
-    createdAt: row.created_at,
-    category: categorizeActivity(row.action),
+    description: namedDescription,
+    createdAt: row.createdAt,
+    category: categorizeActivity(event),
   };
 }
 
 export async function fetchAdminRecentActivities(
-  supabase: SupabaseClient,
+  supabase: Client,
   tenantId: string,
   limit = 8,
 ): Promise<AdminActivityItem[]> {
-  const { data: logs, error: logsError } = await supabase
-    .from('user_activity_logs')
-    .select('id, action, details, created_at, users!inner(tenant_id)')
-    .eq('users.tenant_id', tenantId)
-    .order('created_at', { ascending: false })
+  const { data, error } = await supabase
+    .from('SystemLog')
+    .select('id, event, description, createdAt, User:userId ( name, tenantId )')
+    .eq('User.tenantId', tenantId)
+    .order('createdAt', { ascending: false })
     .limit(limit);
 
-  if (!logsError && logs && logs.length > 0) {
-    return logs.map((row) =>
-      activityFromLog({
-        id: row.id,
-        action: row.action,
-        details: row.details,
-        created_at: row.created_at,
-      }),
-    );
+  if (error) {
+    throw error;
   }
 
-  const activities: AdminActivityItem[] = [];
-
-  const { data: recentLogins } = await supabase
-    .from('users')
-    .select('id, name, last_login')
-    .eq('tenant_id', tenantId)
-    .not('last_login', 'is', null)
-    .order('last_login', { ascending: false })
-    .limit(3);
-
-  for (const user of recentLogins ?? []) {
-    if (!user.last_login) continue;
-    activities.push({
-      id: `login-${user.id}`,
-      title: 'User logged in',
-      description: `${user.name} signed in successfully`,
-      createdAt: user.last_login,
-      category: 'auth',
-    });
-  }
-
-  const { data: recentStudents } = await supabase
-    .from('students')
-    .select('id, first_name, last_name, class_name, created_at')
-    .eq('tenant_id', tenantId)
-    .order('created_at', { ascending: false })
-    .limit(3);
-
-  for (const student of recentStudents ?? []) {
-    activities.push({
-      id: `student-${student.id}`,
-      title: `Enrolled ${student.first_name} ${student.last_name}`,
-      description: student.class_name
-        ? `Added to ${student.class_name}`
-        : 'Student record created',
-      createdAt: student.created_at,
-      category: 'academic',
-    });
-  }
-
-  return activities
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, limit);
+  return (data ?? []).map((row) => activityFromSystemLog(row as SystemLogActivityRow));
 }

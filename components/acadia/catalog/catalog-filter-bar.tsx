@@ -13,18 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export function CatalogFilterBar({
   filters,
   onChange,
+  className,
 }: {
   filters: CatalogFilters;
   onChange: (filters: CatalogFilters) => void;
+  className?: string;
 }) {
   const { t } = useTranslation();
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3">
+    <div className={cn('mb-4 flex flex-wrap items-center gap-3', className)}>
       <Select
         value={filters.subSystem ?? '__all__'}
         onValueChange={(value) =>

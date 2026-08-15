@@ -1,6 +1,7 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
+import { MARKS_TABLE_LAYOUT } from '@/components/acadia/assessment/marks-table-layout';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { useExamSessionIdsForActiveYear } from '@/hooks/use-exam-session-ids-for-year';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -40,6 +41,7 @@ export function MarksYearScopedList<T extends Record<string, unknown>>({
       searchKeys={[]}
       filters={[]}
       inFilters={[{ column: 'examSessionId', values: examSessionIds }]}
+      tableLayout={MARKS_TABLE_LAYOUT}
     />
   );
 }

@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -36,7 +37,6 @@ import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import { splitPhoneE164 } from '@/lib/acadia/phone';
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { CalendarWindowGate } from '@/components/acadia/academics/calendar-window-gate';
-import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { checkEnrollmentWindow } from '@/lib/acadia/calendar-milestones';
 import { canManageInstitution } from '@/lib/acadia/roles';
@@ -69,17 +69,27 @@ export type EnrollmentApplicationRecord = {
   academicYearId: string;
 };
 
+export const ENROLLMENT_APPLICATION_FORM_ID = 'enrollment-application-form';
+
 export function EnrollmentApplicationForm({
   record,
   onCancelHref,
+  onCancel,
+  hideActions = false,
+  formId = ENROLLMENT_APPLICATION_FORM_ID,
+  onPendingChange,
 }: {
   record?: EnrollmentApplicationRecord | null;
-  onCancelHref: string;
+  onCancelHref?: string;
+  onCancel?: () => void;
+  hideActions?: boolean;
+  formId?: string;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { t } = useTranslation();
   const isEdit = !!record;
   const { createApplication, updateApplication } = useEnrollmentMutations();
-  const { activeYearId } = useActiveAcademicYear();
+  const { activeYearId, activeYear, years } = useActiveAcademicYear();
   const { data: session, isLoading: sessionLoading } = useAcadiaCollegeSession();
   const { data: calendarContext, isLoading: calendarLoading } =
     useAcademicCalendarMilestones(activeYearId);
@@ -169,6 +179,10 @@ export function EnrollmentApplicationForm({
   const pending =
     createApplication.isPending || updateApplication.isPending;
 
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
   const onSubmit = (values: EnrollmentApplicationInput) => {
     if (isEdit && record) {
       updateApplication.mutate({
@@ -189,7 +203,11 @@ export function EnrollmentApplicationForm({
       bypass={isEdit || canManageInstitution(session?.roleSlug)}
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          id={formId}
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
@@ -305,32 +323,9 @@ export function EnrollmentApplicationForm({
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="firstNameFr"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('enrollment.firstNameFr')}</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="lastNameFr"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('enrollment.lastNameFr')}</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="email"
@@ -349,22 +344,31 @@ export function EnrollmentApplicationForm({
             countryName="phoneCountry"
             phoneName="phone"
           />
-          <FormField
-            control={form.control}
-            name="dateOfBirth"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('common.labels.dateOfBirth')}</FormLabel>
-                <FormControl>
-                  <Input {...field} type="date" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <FormField
+          control={form.control}
+          name="dateOfBirth"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('common.labels.dateOfBirth')}</FormLabel>
+              <FormControl>
+                <DatePickerInput
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  placeholder={t('staff.pickDateOfBirth')}
+                  captionLayout="dropdown"
+                  startMonth={new Date(1920, 0)}
+                  endMonth={new Date()}
+                  disabledDates={{ after: new Date() }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="subSystem"
@@ -425,23 +429,9 @@ export function EnrollmentApplicationForm({
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="academicYearId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('students.academicYear')}</FormLabel>
-                <CurrentAcademicYearBadge className="mb-2" />
-                <FormControl>
-                  <Input type="hidden" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="levelId"
@@ -470,8 +460,29 @@ export function EnrollmentApplicationForm({
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="academicYearId"
+            render={({ field }) => {
+              const yearLabel =
+                years.find((year) => year.id === field.value)?.label ??
+                activeYear?.label ??
+                '';
+              return (
+                <FormItem>
+                  <FormLabel>{t('students.academicYear')}</FormLabel>
+                  <FormControl>
+                    <Input type="hidden" {...field} />
+                  </FormControl>
+                  <Input value={yearLabel} disabled readOnly />
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
         </div>
 
+        {hideActions ? null : (
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={pending}>
             {pending ? (
@@ -479,10 +490,17 @@ export function EnrollmentApplicationForm({
             ) : null}
             {isEdit ? t('common.messages.saveChanges') : t('enrollment.submitApplication')}
           </Button>
-          <Button type="button" variant="outline" asChild>
-            <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
-          </Button>
+          {onCancel ? (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              {t('common.buttons.cancel')}
+            </Button>
+          ) : onCancelHref ? (
+            <Button type="button" variant="outline" asChild>
+              <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
+            </Button>
+          ) : null}
         </div>
+        )}
       </form>
     </Form>
     </CalendarWindowGate>

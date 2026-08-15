@@ -20,5 +20,5 @@ export const ToolbarPageTitle = ({ children, className }: { children?: ReactNode
 );
 
 export const ToolbarDescription = ({ children, className }: { children?: ReactNode; className?: string }) => (
-  <p className={cn('text-sm text-muted-foreground', className)}>{children}</p>
+  <div className={cn('text-sm text-muted-foreground', className)}>{children}</div>
 );

@@ -8,16 +8,27 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Search } from '@/lib/icons';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Card, CardHeader, CardTable, CardFooter } from '@/components/ui/card';
-import { DataGrid } from '@/components/ui/data-grid';
+import { DataGrid, type DataGridProps } from '@/components/ui/data-grid';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input, InputWrapper } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import { useAcademicYearTableFilters } from '@/hooks/use-academic-year-table-filters';
 import { useSupabaseTableList } from '@/hooks/use-supabase-table-list';
+
+function getColumnId<T>(column: ColumnDef<T>, index: number): string {
+  if (column.id) {
+    return column.id;
+  }
+  if ('accessorKey' in column && column.accessorKey != null) {
+    return String(column.accessorKey);
+  }
+  return String(index);
+}
 
 function getQueryErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -52,6 +63,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   filters: filtersProp,
   inFilters: inFiltersProp,
   scopeByAcademicYear = false,
+  tableLayout = METRONIC_RESIZABLE_TABLE_LAYOUT,
 }: {
   table: string;
   title: string;
@@ -67,6 +79,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   inFilters?: { column: string; values: string[] }[];
   /** When true, automatically filters by `academicYearId` from the global year context. */
   scopeByAcademicYear?: boolean;
+  tableLayout?: DataGridProps<T>['tableLayout'];
 }) {
   const yearScope = useAcademicYearTableFilters(table);
   const mergedFilters = useMemo(() => {
@@ -88,6 +101,15 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
     },
   );
   const [search, setSearch] = useState('');
+  const defaultColumnOrder = useMemo(
+    () => columns.map((column, index) => getColumnId(column, index)),
+    [columns],
+  );
+  const [columnOrder, setColumnOrder] = useState<string[]>(defaultColumnOrder);
+
+  useEffect(() => {
+    setColumnOrder(defaultColumnOrder);
+  }, [defaultColumnOrder]);
 
   const filtered = useMemo(() => {
     const rows = rowFilter ? data.filter(rowFilter) : data;
@@ -107,6 +129,9 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   const tableInstance = useReactTable({
     data: filtered,
     columns,
+    state: { columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -131,7 +156,12 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
           </InputWrapper>
         ) : null}
       </CardHeader>
-      <DataGrid table={tableInstance} recordCount={filtered.length} isLoading={isLoading || waitingForYear}>
+      <DataGrid
+        table={tableInstance}
+        recordCount={filtered.length}
+        isLoading={isLoading || waitingForYear}
+        tableLayout={tableLayout}
+      >
         <CardTable>
           <ScrollArea>
             {waitingForYear ? (

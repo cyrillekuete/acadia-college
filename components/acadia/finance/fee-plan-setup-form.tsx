@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -258,7 +259,10 @@ export function FeePlanSetupForm() {
                   <FormItem>
                     <FormLabel>Due date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...f} />
+                      <DatePickerInput
+                        value={f.value ?? ''}
+                        onChange={f.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

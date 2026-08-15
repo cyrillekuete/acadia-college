@@ -121,12 +121,25 @@ async function computePromotionForClass(
     subjectId: string;
     totalScore: number | null;
     sequenceNumber: number | null;
+    subjectSubBranchId?: string | null;
+    subjectCoefficient?: number | null;
+    subBranchCoefficient?: number | null;
   }[] = [];
 
   if (sessionIds.length > 0) {
     let marksQuery = supabase
       .from('SubjectMark')
-      .select('studentProfileId, subjectId, totalScore, examSessionId')
+      .select(
+        `
+        studentProfileId,
+        subjectId,
+        subjectSubBranchId,
+        totalScore,
+        examSessionId,
+        Subject!SubjectMark_subjectId_tenantId_fkey ( coefficient ),
+        SubjectSubBranch!SubjectMark_subjectSubBranchId_tenantId_fkey ( coefficient )
+      `,
+      )
       .eq('tenantId', tenantId)
       .in('examSessionId', sessionIds);
 
@@ -146,12 +159,23 @@ async function computePromotionForClass(
       ]),
     );
 
-    marks = (markRows ?? []).map((m) => ({
-      studentProfileId: m.studentProfileId as string,
-      subjectId: m.subjectId as string,
-      totalScore: m.totalScore != null ? Number(m.totalScore) : null,
-      sequenceNumber: seqBySession.get(m.examSessionId as string) ?? null,
-    }));
+    marks = (markRows ?? []).map((m) => {
+      const subject = unwrapRelation<{ coefficient?: number | null }>(m.Subject);
+      const subBranch = unwrapRelation<{ coefficient?: number | null }>(
+        m.SubjectSubBranch,
+      );
+      return {
+        studentProfileId: m.studentProfileId as string,
+        subjectId: m.subjectId as string,
+        totalScore: m.totalScore != null ? Number(m.totalScore) : null,
+        sequenceNumber: seqBySession.get(m.examSessionId as string) ?? null,
+        subjectSubBranchId: (m.subjectSubBranchId as string | null) ?? null,
+        subjectCoefficient:
+          subject?.coefficient != null ? Number(subject.coefficient) : 1,
+        subBranchCoefficient:
+          subBranch?.coefficient != null ? Number(subBranch.coefficient) : null,
+      };
+    });
   }
 
   const enrollmentByStudent = new Map(

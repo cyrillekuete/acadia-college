@@ -7,6 +7,7 @@ import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { ClassFormDialog } from '@/components/acadia/academics/class-form-dialog';
 import { ClassSubjectAssignDialog } from '@/components/acadia/academics/class-subject-assign-dialog';
+import { ClassTeacherAssignDialog } from '@/components/acadia/academics/class-teacher-assign-dialog';
 import { ClassesTable } from '@/components/acadia/academics/classes-table';
 import { RegistryDeleteDialog } from '@/components/acadia/academics/registry-delete-dialog';
 import { EMPTY_CATALOG_FILTERS, type CatalogFilters } from '@/lib/acadia/education-system';
@@ -55,6 +56,9 @@ export default function ClassesPage() {
   const [deleteTarget, setDeleteTarget] = useState<ClassListRow | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignClassIds, setAssignClassIds] = useState<string[]>([]);
+  const [teacherAssignClass, setTeacherAssignClass] = useState<ClassListRow | null>(
+    null,
+  );
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteRegistry(session?.roleSlug);
   const { deleteClass } = useAcademicStructureMutations();
@@ -82,23 +86,33 @@ export default function ClassesPage() {
       title={t('academics.classesTitle')}
       description={t('academics.classesDescription')}
     >
-      <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <CatalogFilterBar
+          filters={catalogFilters}
+          onChange={setCatalogFilters}
+          className="mb-0"
+        />
 
-      <AdminToolbar addLabel={t('academics.addClass')} onAdd={openCreateDialog}>
-        {canManage ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setAssignClassIds([]);
-              setAssignDialogOpen(true);
-            }}
-          >
-            {t('academics.assignToClasses')}
-          </Button>
-        ) : null}
-      </AdminToolbar>
+        <AdminToolbar
+          addLabel={t('academics.addClass')}
+          onAdd={openCreateDialog}
+          className="mb-0"
+        >
+          {canManage ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setAssignClassIds([]);
+                setAssignDialogOpen(true);
+              }}
+            >
+              {t('academics.assignToClasses')}
+            </Button>
+          ) : null}
+        </AdminToolbar>
+      </div>
 
       <ClassesTable
         filters={catalogFilters}
@@ -116,6 +130,9 @@ export default function ClassesPage() {
               }
             : undefined
         }
+        onAssignTeachers={
+          canManage ? (row) => setTeacherAssignClass(row) : undefined
+        }
       />
 
       <ClassSubjectAssignDialog
@@ -128,6 +145,17 @@ export default function ClassesPage() {
         }}
         catalogFilters={catalogFilters}
         initialClassIds={assignClassIds}
+      />
+
+      <ClassTeacherAssignDialog
+        open={teacherAssignClass !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTeacherAssignClass(null);
+          }
+        }}
+        classId={teacherAssignClass?.id ?? null}
+        className={teacherAssignClass?.name}
       />
 
       <ClassFormDialog

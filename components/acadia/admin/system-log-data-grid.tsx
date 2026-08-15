@@ -324,6 +324,7 @@ export function SystemLogDataGrid({
     pageCount: Math.ceil((filteredData.length || 0) / pagination.pageSize) || 1,
     getRowId: (row) => row.id,
     state: { pagination, sorting },
+    columnResizeMode: 'onChange',
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -374,6 +375,8 @@ export function SystemLogDataGrid({
       recordCount={filteredData.length}
       isLoading={isLoading}
       tableLayout={{
+        width: 'fixed',
+        columnsResizable: true,
         columnsPinnable: true,
         columnsMovable: true,
         columnsVisibility: true,

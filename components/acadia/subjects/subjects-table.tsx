@@ -23,7 +23,9 @@ import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
 import { InputWrapper } from '@/components/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SUBJECTS_TABLE_LAYOUT } from '@/components/acadia/subjects/subjects-table-layout';
 import {
   Tooltip,
   TooltipContent,
@@ -37,6 +39,11 @@ import {
   rowMatchesSubjectListFilters,
   type SubjectListFilters,
 } from '@/lib/acadia/subject';
+import {
+  sortSubjectsWithVariants,
+  subjectVariantGroupKey,
+  variantGroupCounts,
+} from '@/lib/acadia/subject-variants';
 import {
   formatSubjectLevelsLabel,
   levelLabel,
@@ -119,7 +126,7 @@ export function SubjectsTable({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return data
+    const matched = data
       .filter((row) => rowMatchesSubjectListFilters(row, listFilters))
       .filter((row) => {
         if (!q) {
@@ -131,7 +138,10 @@ export function SubjectsTable({
           row.code.toLowerCase().includes(q)
         );
       });
+    return sortSubjectsWithVariants(matched);
   }, [data, listFilters, search]);
+
+  const variantCounts = useMemo(() => variantGroupCounts(filtered), [filtered]);
 
   useEffect(() => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
@@ -145,15 +155,33 @@ export function SubjectsTable({
         header: ({ column }) => (
           <DataGridColumnHeader title={t('common.labels.name')} visibility column={column} />
         ),
-        cell: ({ row }) => (
-          <Link
-            href={`/subjects/${row.original.id}`}
-            className="block truncate font-medium text-primary hover:underline"
-            title={row.original.nameEn}
-          >
-            {row.original.nameEn}
-          </Link>
-        ),
+        cell: ({ row }) => {
+          const variantCount =
+            variantCounts.get(
+              subjectVariantGroupKey({
+                nameEn: row.original.nameEn,
+                subSystem: row.original.subSystem,
+                branch: row.original.branch,
+                academicYearId: row.original.academicYearId ?? '',
+              }),
+            ) ?? 1;
+          return (
+            <div className="flex min-w-0 items-center gap-2">
+              <Link
+                href={`/subjects/${row.original.id}`}
+                className="block truncate font-medium text-primary hover:underline"
+                title={row.original.nameEn}
+              >
+                {row.original.nameEn}
+              </Link>
+              {variantCount > 1 ? (
+                <Badge variant="outline" className="shrink-0">
+                  {variantCount} variants
+                </Badge>
+              ) : null}
+            </div>
+          );
+        },
         size: 180,
         meta: {
           headerTitle: t('common.labels.name'),
@@ -398,7 +426,7 @@ export function SubjectsTable({
     }
 
     return base;
-  }, [router, deactivateSubject, reactivateSubject, canManage, onAssignToClasses, t]);
+  }, [router, deactivateSubject, reactivateSubject, canManage, onAssignToClasses, t, variantCounts]);
 
   const table = useReactTable({
     data: filtered,
@@ -427,13 +455,7 @@ export function SubjectsTable({
       recordCount={recordCount}
       isLoading={isLoading}
       emptyMessage={emptyMessage ?? t('subjects.noSubjectsMatch')}
-      tableLayout={{
-        columnsResizable: true,
-        columnsPinnable: true,
-        columnsMovable: true,
-        columnsVisibility: true,
-        width: 'fixed',
-      }}
+      tableLayout={SUBJECTS_TABLE_LAYOUT}
       tableClassNames={{
         edgeCell: 'px-5',
       }}
@@ -455,8 +477,11 @@ export function SubjectsTable({
             {error instanceof Error ? error.message : t('subjects.loadFailed')}
           </p>
         ) : null}
-        <CardTable className="overflow-x-hidden">
-          <DataGridTable />
+        <CardTable>
+          <ScrollArea>
+            <DataGridTable />
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </CardTable>
         {!isError ? (
           <CardFooter>

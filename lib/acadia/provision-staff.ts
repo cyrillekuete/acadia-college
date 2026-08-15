@@ -8,6 +8,7 @@ import {
 } from '@/lib/acadia/staff-email';
 import type { StaffCreateInput } from '@/lib/acadia/staff-create-schemas';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { insertClassSubjectAssignmentsForStaff } from '@/lib/supabase/queries/staff-class-assignments';
 
 export type ProvisionStaffResult =
   | {
@@ -61,6 +62,11 @@ async function rollbackStaff(
   authId: string,
   tenantId: string,
 ) {
+  await supabase
+    .from('StaffClassSubjectAssignment')
+    .delete()
+    .eq('staffProfileId', authId)
+    .eq('tenantId', tenantId);
   await supabase
     .from('StaffClassAssignment')
     .delete()
@@ -298,6 +304,20 @@ export async function provisionStaff(
   if (!classResult.ok) {
     await rollbackStaff(supabase, admin, authId, tenantId);
     return { ok: false, message: classResult.message, status: 400 };
+  }
+
+  const classSubjectResult = await insertClassSubjectAssignmentsForStaff(
+    supabase,
+    tenantId,
+    authId,
+    input.academicYearId,
+    input.classIds,
+    input.subjectIds,
+    now,
+  );
+  if (!classSubjectResult.ok) {
+    await rollbackStaff(supabase, admin, authId, tenantId);
+    return { ok: false, message: classSubjectResult.message, status: 400 };
   }
 
   return {

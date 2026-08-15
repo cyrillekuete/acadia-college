@@ -113,7 +113,7 @@ export default function ClassRostersPage() {
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
         <Select
           value={levelId || '__all__'}

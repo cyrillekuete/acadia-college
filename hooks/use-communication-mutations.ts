@@ -400,6 +400,86 @@ export function useCommunicationMutations() {
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
 
+  const upsertNotificationPreferences = useMutation({
+    mutationFn: async (values: NotificationPreferenceFormValues[]) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      if (values.length === 0) {
+        return;
+      }
+      const supabase = requireBrowserClient();
+      const now = new Date().toISOString();
+      const events = values.map((item) => item.event);
+
+      const { data: existing, error: findError } = await supabase
+        .from('NotificationPreference')
+        .select('id, event')
+        .eq('tenantId', tenantId)
+        .eq('userId', userId)
+        .in('event', events);
+
+      if (findError) {
+        throw findError;
+      }
+
+      const existingByEvent = new Map(
+        (existing ?? []).map((row) => [row.event as string, row.id as string]),
+      );
+      const toInsert = values
+        .filter((item) => !existingByEvent.has(item.event))
+        .map((item) => ({
+          id: generateAcadiaId('npref'),
+          tenantId,
+          userId,
+          event: item.event,
+          inApp: item.inApp,
+          email: item.email,
+          createdAt: now,
+          updatedAt: now,
+        }));
+      const toUpdate = values.filter((item) => existingByEvent.has(item.event));
+
+      if (toInsert.length > 0) {
+        const { error } = await supabase
+          .from('NotificationPreference')
+          .insert(toInsert);
+        if (error) {
+          throw error;
+        }
+      }
+
+      for (const item of toUpdate) {
+        const id = existingByEvent.get(item.event);
+        if (!id) {
+          continue;
+        }
+        const { error } = await supabase
+          .from('NotificationPreference')
+          .update({
+            inApp: item.inApp,
+            email: item.email,
+            updatedAt: now,
+          })
+          .eq('id', id);
+        if (error) {
+          throw error;
+        }
+      }
+
+      await appendSystemLog(supabase, {
+        userId,
+        event: 'notification.preference_updated',
+        meta: { events },
+      });
+    },
+    onSuccess: () => {
+      invalidateCommunicationQueries(queryClient);
+      toast.success('Preferences saved.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
   const markNotificationRead = useMutation({
     mutationFn: async (notificationId: string) => {
       if (!tenantId || !userId) {
@@ -603,6 +683,7 @@ export function useCommunicationMutations() {
     createGroupThread,
     replyToThread,
     upsertNotificationPreference,
+    upsertNotificationPreferences,
     markNotificationRead,
     markAllNotificationsRead,
     saveAnnouncement,

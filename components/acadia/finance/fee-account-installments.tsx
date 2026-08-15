@@ -1,19 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import {
   computeFeeAccountTotals,
   formatMoneyMinor,
@@ -29,6 +39,17 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { canWriteFinance } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
+
+type InstallmentRow = {
+  id: string;
+  installmentNumber: number;
+  labelEn: string;
+  amountMinor: number;
+  dueOn: string;
+  status: string;
+  paidAmountMinor: number | null;
+  paidAt: string | null;
+};
 
 export function FeeAccountInstallments({
   accountId,
@@ -79,16 +100,7 @@ export function FeeAccountInstallments({
       if (!account) {
         throw new Error('Fee account not found');
       }
-      const installments = (account.StudentFeeInstallment ?? []) as Array<{
-        id: string;
-        installmentNumber: number;
-        labelEn: string;
-        amountMinor: number;
-        dueOn: string;
-        status: string;
-        paidAmountMinor: number | null;
-        paidAt: string | null;
-      }>;
+      const installments = (account.StudentFeeInstallment ?? []) as InstallmentRow[];
       installments.sort((a, b) => a.installmentNumber - b.installmentNumber);
       const scholarships = (account.StudentScholarship ?? []) as Array<{
         discountMinor: number;
@@ -140,87 +152,49 @@ export function FeeAccountInstallments({
     );
   }
 
-  if (!query.data) {
-    return (
-      <p className="text-sm text-muted-foreground">{t('finance.loadingInstallments')}</p>
-    );
-  }
-
-  const { currency, installments, totals, progress } = query.data;
+  const currency = query.data?.currency ?? 'XAF';
+  const totals = query.data?.totals;
+  const progress = query.data?.progress ?? null;
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border p-4 space-y-2">
-        <div className="flex flex-wrap justify-between gap-2 text-sm">
-          <span>
-            {t('finance.due')}: {formatMoneyMinor(totals.totalDueMinor, currency)}
-          </span>
-          <span>
-            {t('finance.paid')}: {formatMoneyMinor(totals.totalPaidMinor, currency)}
-          </span>
-          <span className="font-medium">
-            {t('finance.balance')}: {formatMoneyMinor(totals.balanceMinor, currency)}
-          </span>
+      {query.data && totals ? (
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="flex flex-wrap justify-between gap-2 text-sm">
+            <span>
+              {t('finance.due')}: {formatMoneyMinor(totals.totalDueMinor, currency)}
+            </span>
+            <span>
+              {t('finance.paid')}: {formatMoneyMinor(totals.totalPaidMinor, currency)}
+            </span>
+            <span className="font-medium">
+              {t('finance.balance')}: {formatMoneyMinor(totals.balanceMinor, currency)}
+            </span>
+          </div>
+          {progress !== null ? (
+            <Progress value={progress} className="h-2" />
+          ) : null}
+          <div className="flex gap-2 print:hidden">
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/finance/fees/${accountId}/invoice`}>
+                {t('finance.viewInvoice')}
+              </Link>
+            </Button>
+          </div>
         </div>
-        {progress !== null ? (
-          <Progress value={progress} className="h-2" />
-        ) : null}
-        <div className="flex gap-2 print:hidden">
-          <Button size="sm" variant="outline" asChild>
-            <Link href={`/finance/fees/${accountId}/invoice`}>
-              {t('finance.viewInvoice')}
-            </Link>
-          </Button>
-        </div>
-      </div>
+      ) : null}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>#</TableHead>
-            <TableHead>{t('finance.installment')}</TableHead>
-            <TableHead>{t('finance.due')}</TableHead>
-            <TableHead>{t('finance.amount')}</TableHead>
-            <TableHead>{t('common.labels.status')}</TableHead>
-            {canManage ? (
-              <TableHead className="text-right">{t('common.labels.actions')}</TableHead>
-            ) : null}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {installments.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.installmentNumber}</TableCell>
-              <TableCell>{row.labelEn}</TableCell>
-              <TableCell>{row.dueOn}</TableCell>
-              <TableCell>{formatMoneyMinor(row.amountMinor, currency)}</TableCell>
-              <TableCell>
-                <FeeStatusBadge status={row.status} dueOn={row.dueOn} />
-              </TableCell>
-              {canManage ? (
-                <TableCell className="text-right">
-                  {row.status !== 'PAID' && row.status !== 'WAIVED' ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={recordFeePayment.isPending && payingId === row.id}
-                      onClick={() =>
-                        void handleRecordPayment(row.id, row.amountMinor)
-                      }
-                    >
-                      {t('finance.markPaid')}
-                    </Button>
-                  ) : (
-                    '—'
-                  )}
-                </TableCell>
-              ) : null}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <InstallmentsTable
+        data={query.data?.installments ?? []}
+        currency={currency}
+        isLoading={query.isLoading}
+        canManage={canManage}
+        payingId={payingId}
+        isPaymentPending={recordFeePayment.isPending}
+        onRecordPayment={handleRecordPayment}
+      />
 
-      {canManage ? (
+      {canManage && query.data ? (
         <div className="max-w-md print:hidden">
           <label className="text-sm font-medium">{t('finance.paymentNotes')}</label>
           <Input
@@ -232,5 +206,186 @@ export function FeeAccountInstallments({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function InstallmentsTable({
+  data,
+  currency,
+  isLoading,
+  canManage,
+  payingId,
+  isPaymentPending,
+  onRecordPayment,
+}: {
+  data: InstallmentRow[];
+  currency: string;
+  isLoading: boolean;
+  canManage: boolean;
+  payingId: string | null;
+  isPaymentPending: boolean;
+  onRecordPayment: (installmentId: string, amountMinor: number) => void;
+}) {
+  const { t } = useTranslation();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'installmentNumber',
+    'labelEn',
+    'dueOn',
+    'amountMinor',
+    'status',
+    'actions',
+  ]);
+
+  const columns = useMemo<ColumnDef<InstallmentRow>[]>(() => {
+    const base: ColumnDef<InstallmentRow>[] = [
+      {
+        accessorKey: 'installmentNumber',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="#" visibility column={column} />
+        ),
+        cell: ({ row }) => row.original.installmentNumber,
+        size: 70,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'labelEn',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('finance.installment')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => row.original.labelEn,
+        size: 200,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'dueOn',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('finance.due')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => row.original.dueOn,
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'amountMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('finance.amount')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => formatMoneyMinor(row.original.amountMinor, currency),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'status',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.status')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <FeeStatusBadge status={row.original.status} dueOn={row.original.dueOn} />
+        ),
+        size: 130,
+        enableSorting: true,
+      },
+    ];
+
+    if (!canManage) {
+      return base;
+    }
+
+    return [
+      ...base,
+      {
+        id: 'actions',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.actions')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <div className="text-right">
+            {row.original.status !== 'PAID' && row.original.status !== 'WAIVED' ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isPaymentPending && payingId === row.original.id}
+                onClick={() =>
+                  void onRecordPayment(row.original.id, row.original.amountMinor)
+                }
+              >
+                {t('finance.markPaid')}
+              </Button>
+            ) : (
+              '—'
+            )}
+          </div>
+        ),
+        size: 140,
+        enableSorting: false,
+      },
+    ];
+  }, [canManage, currency, isPaymentPending, onRecordPayment, payingId, t]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

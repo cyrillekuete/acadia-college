@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -114,7 +115,7 @@ export function ExamSessionForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Academic year</FormLabel>
-              <CurrentAcademicYearBadge className="mb-2" />
+              <CurrentAcademicYearBadge />
               <FormControl>
                 <Input type="hidden" {...field} />
               </FormControl>
@@ -235,7 +236,10 @@ export function ExamSessionForm({
               <FormItem>
                 <FormLabel>Starts on</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <DatePickerInput
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -248,7 +252,10 @@ export function ExamSessionForm({
               <FormItem>
                 <FormLabel>Ends on</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <DatePickerInput
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

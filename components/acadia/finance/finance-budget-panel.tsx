@@ -1,11 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import {
   Form,
   FormControl,
@@ -15,6 +30,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -22,14 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   financeBudgetLineSchema,
   type FinanceBudgetLineFormValues,
@@ -50,6 +59,16 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { canWriteFinance } from '@/lib/acadia/roles';
 
+type BudgetRow = {
+  category: string;
+  budgetedMinor: number;
+  currency: string;
+  notes: string | null;
+  incomeMinor: number;
+  expenseMinor: number;
+  netActualMinor: number;
+  varianceMinor: number;
+};
 export function FinanceBudgetPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
@@ -143,7 +162,7 @@ export function FinanceBudgetPanel() {
 
   return (
     <div className="space-y-6">
-      <CurrentAcademicYearBadge />
+      <CurrentAcademicYearBadge label="Year" />
 
       {canManage && activeYearId ? (
         <Form {...form}>
@@ -226,40 +245,155 @@ export function FinanceBudgetPanel() {
         </p>
       ) : null}
 
-      {activeYearId && query.data ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead>Budgeted</TableHead>
-              <TableHead>Income</TableHead>
-              <TableHead>Expense</TableHead>
-              <TableHead>Net actual</TableHead>
-              <TableHead>Variance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.data.map((row) => (
-              <TableRow key={row.category}>
-                <TableCell className="font-medium">{row.category}</TableCell>
-                <TableCell>
-                  {formatMoneyMinor(row.budgetedMinor, row.currency)}
-                </TableCell>
-                <TableCell>{formatMoneyMinor(row.incomeMinor, row.currency)}</TableCell>
-                <TableCell>{formatMoneyMinor(row.expenseMinor, row.currency)}</TableCell>
-                <TableCell>{formatMoneyMinor(row.netActualMinor, row.currency)}</TableCell>
-                <TableCell
-                  className={
-                    row.varianceMinor < 0 ? 'text-destructive' : 'text-muted-foreground'
-                  }
-                >
-                  {formatMoneyMinor(row.varianceMinor, row.currency)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {activeYearId ? (
+        <BudgetLinesTable data={query.data ?? []} isLoading={query.isLoading} />
       ) : null}
     </div>
+  );
+}
+
+function BudgetLinesTable({
+  data,
+  isLoading,
+}: {
+  data: BudgetRow[];
+  isLoading: boolean;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'category',
+    'budgetedMinor',
+    'incomeMinor',
+    'expenseMinor',
+    'netActualMinor',
+    'varianceMinor',
+  ]);
+
+  const columns = useMemo<ColumnDef<BudgetRow>[]>(
+    () => [
+      {
+        accessorKey: 'category',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Category" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.category}</span>
+        ),
+        size: 160,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'budgetedMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Budgeted" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.budgetedMinor, row.original.currency),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'incomeMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Income" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.incomeMinor, row.original.currency),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'expenseMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Expense" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.expenseMinor, row.original.currency),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'netActualMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Net actual" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          formatMoneyMinor(row.original.netActualMinor, row.original.currency),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'varianceMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Variance" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span
+            className={
+              row.original.varianceMinor < 0
+                ? 'text-destructive'
+                : 'text-muted-foreground'
+            }
+          >
+            {formatMoneyMinor(row.original.varianceMinor, row.original.currency)}
+          </span>
+        ),
+        size: 140,
+        enableSorting: true,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={{
+        width: 'fixed',
+        columnsResizable: true,
+        columnsPinnable: true,
+        columnsMovable: true,
+        columnsVisibility: true,
+      }}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

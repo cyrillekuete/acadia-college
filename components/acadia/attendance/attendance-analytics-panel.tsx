@@ -1,19 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
@@ -21,11 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { AttendanceDataGrid } from '@/components/acadia/attendance/attendance-data-grid';
 import {
   detectAttendancePatterns,
   formatAttendancePercentage,
   patternFlagLabel,
   summarizeStudentAttendance,
+  type AttendancePatternInsight,
   type AttendanceStatus,
 } from '@/lib/acadia/attendance';
 import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
@@ -34,10 +38,16 @@ import {
   isAcadiaTenantQueryEnabled,
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
-import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 
 const ALL_SUBJECTS = '__all__';
+
+type PatternRow = AttendancePatternInsight & {
+  name: string;
+  registrationNumber: string;
+};
+
+const DEFAULT_COLUMN_ORDER = ['student', 'rate', 'absent', 'late', 'flags'];
 
 export function AttendanceAnalyticsPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -46,6 +56,12 @@ export function AttendanceAnalyticsPanel() {
   const { activeYearId } = useActiveAcademicYear();
   const [subjectId, setSubjectId] = useState(ALL_SUBJECTS);
   const { data: subjects = [] } = useSubjectOptions(activeYearId ?? '');
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMN_ORDER);
 
   const query = useQuery({
     queryKey: ['attendance-analytics', tenantId, activeYearId, subjectId],
@@ -133,10 +149,95 @@ export function AttendanceAnalyticsPanel() {
 
   const patterns = useMemo(() => query.data?.patterns ?? [], [query.data?.patterns]);
 
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [subjectId, patterns.length]);
+
+  const columns = useMemo<ColumnDef<PatternRow>[]>(
+    () => [
+      {
+        id: 'student',
+        accessorFn: (row) => row.name,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Student" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <>
+            <span className="font-medium">{row.original.name}</span>
+            <span className="text-muted-foreground text-xs block">
+              {row.original.registrationNumber}
+            </span>
+          </>
+        ),
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        id: 'rate',
+        accessorFn: (row) => row.percentage,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Rate" visibility column={column} />
+        ),
+        cell: ({ row }) => formatAttendancePercentage(row.original.percentage),
+        size: 100,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'absent',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Absent" visibility column={column} />
+        ),
+        size: 100,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'late',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Late" visibility column={column} />
+        ),
+        size: 80,
+        enableSorting: true,
+      },
+      {
+        id: 'flags',
+        accessorFn: (row) => row.flags.join(', '),
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Flags" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {row.original.flags.map((flag) => (
+              <Badge key={flag} variant="outline">
+                {patternFlagLabel(flag)}
+              </Badge>
+            ))}
+          </div>
+        ),
+        size: 240,
+        enableSorting: true,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: patterns,
+    columns,
+    getRowId: (row) => row.studentProfileId,
+    state: { pagination, sorting, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-4">
-        <CurrentAcademicYearBadge />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <CurrentAcademicYearBadge label="Year" />
         <div className="min-w-[200px]">
           <p className="text-sm font-medium mb-1.5">Subject (optional)</p>
           <Select value={subjectId} onValueChange={setSubjectId}>
@@ -155,14 +256,6 @@ export function AttendanceAnalyticsPanel() {
         </div>
       </div>
 
-      {query.isLoading ? (
-        <p className="text-sm text-muted-foreground">Analyzing…</p>
-      ) : query.isError ? (
-        <p className="text-sm text-destructive">
-          {getQueryErrorMessage(query.error)}
-        </p>
-      ) : (
-        <>
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
@@ -171,7 +264,9 @@ export function AttendanceAnalyticsPanel() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
-            {formatAttendancePercentage(query.data?.avgRate ?? null)}
+            {query.isLoading
+              ? '—'
+              : formatAttendancePercentage(query.data?.avgRate ?? null)}
           </CardContent>
         </Card>
         <Card>
@@ -181,57 +276,20 @@ export function AttendanceAnalyticsPanel() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
-            {query.data?.atRisk ?? 0}
+            {query.isLoading ? '—' : (query.data?.atRisk ?? 0)}
           </CardContent>
         </Card>
       </div>
 
-      <div>
-        <h3 className="text-lg font-semibold mb-3">Attendance patterns</h3>
-        {patterns.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No concerning patterns detected for this scope.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead>Rate</TableHead>
-                <TableHead>Absent</TableHead>
-                <TableHead>Late</TableHead>
-                <TableHead>Flags</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {patterns.map((row) => (
-                <TableRow key={row.studentProfileId}>
-                  <TableCell>
-                    <span className="font-medium">{row.name}</span>
-                    <span className="text-muted-foreground text-xs block">
-                      {row.registrationNumber}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {formatAttendancePercentage(row.percentage)}
-                  </TableCell>
-                  <TableCell>{row.absent}</TableCell>
-                  <TableCell>{row.late}</TableCell>
-                  <TableCell className="space-x-1">
-                    {row.flags.map((flag) => (
-                      <Badge key={flag} variant="outline">
-                        {patternFlagLabel(flag)}
-                      </Badge>
-                    ))}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-        </>
-      )}
+      <AttendanceDataGrid
+        table={table}
+        title="Attendance patterns"
+        recordCount={patterns.length}
+        isLoading={query.isLoading}
+        isError={query.isError}
+        error={query.error}
+        emptyMessage="No concerning patterns detected for this scope."
+      />
     </div>
   );
 }

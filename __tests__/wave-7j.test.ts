@@ -5,9 +5,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   announcementNotificationEvent,
+  areAllInAppNotificationsPaused,
   deriveAnnouncementStatusOnSave,
   filterUsersByAnnouncementAudience,
   isAnnouncementVisible,
+  isNotificationChannelEnabled,
+  notificationEventLabel,
+  notificationHref,
+  preferenceForEvent,
   resolveAnnouncementLifecycleStatus,
   shouldDeliverInAppNotification,
   threadSubjectDisplay,
@@ -186,5 +191,69 @@ describe('communication schemas', () => {
       publishNow: true,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('notificationEventLabel', () => {
+  it('returns English and French labels', () => {
+    expect(notificationEventLabel('attendance.absence')).toBe(
+      'Absence / late alerts',
+    );
+    expect(notificationEventLabel('attendance.absence', 'fr')).toBe(
+      'Alertes d’absence / retard',
+    );
+  });
+
+  it('falls back to the event key', () => {
+    expect(notificationEventLabel('unknown.event')).toBe('unknown.event');
+  });
+});
+
+describe('notificationHref', () => {
+  it('uses a message thread id when present', () => {
+    expect(notificationHref('message.received', { threadId: 'mth-1' })).toBe(
+      '/messages/mth-1',
+    );
+    expect(notificationHref('message.received')).toBe('/messages');
+  });
+
+  it('maps school events to existing routes', () => {
+    expect(notificationHref('announcement.broadcast')).toBe('/announcements');
+    expect(notificationHref('announcement.event')).toBe('/announcements');
+    expect(notificationHref('attendance.absence')).toBe('/attendance');
+    expect(notificationHref('marks.published')).toBe('/marks');
+    expect(notificationHref('fees.overdue')).toBe('/finance/fees');
+    expect(notificationHref('unknown.event')).toBe('/account/notifications');
+  });
+});
+
+describe('preference helpers', () => {
+  it('defaults missing rows to on', () => {
+    expect(preferenceForEvent([], 'message.received')).toEqual({
+      inApp: true,
+      email: true,
+    });
+    expect(isNotificationChannelEnabled([], 'email')).toBe(true);
+    expect(areAllInAppNotificationsPaused([])).toBe(false);
+  });
+
+  it('treats a channel as enabled only when every event is on', () => {
+    const prefs = [
+      { event: 'attendance.absence', inApp: true, email: false },
+    ];
+    expect(isNotificationChannelEnabled(prefs, 'email')).toBe(false);
+    expect(isNotificationChannelEnabled(prefs, 'inApp')).toBe(true);
+  });
+
+  it('detects a full in-app pause', () => {
+    const prefs = [
+      { event: 'attendance.absence', inApp: false, email: true },
+      { event: 'announcement.broadcast', inApp: false, email: true },
+      { event: 'announcement.event', inApp: false, email: true },
+      { event: 'message.received', inApp: false, email: true },
+      { event: 'marks.published', inApp: false, email: true },
+      { event: 'fees.overdue', inApp: false, email: true },
+    ];
+    expect(areAllInAppNotificationsPaused(prefs)).toBe(true);
   });
 });

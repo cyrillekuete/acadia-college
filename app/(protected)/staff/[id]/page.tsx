@@ -4,6 +4,7 @@ import { use } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
+import { StaffTeachingAssignmentsPanel } from '@/components/acadia/staff/staff-teaching-assignments-panel';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import {
   formatDateTime,
@@ -135,6 +136,7 @@ export default function StaffDetailPage({
                 fields={[{ label: 'Summary', value: formatRecordValue(data.bio) }]}
               />
             ) : null}
+            <StaffTeachingAssignmentsPanel staffProfileId={data.id} />
           </div>
         </div>
       ) : null}

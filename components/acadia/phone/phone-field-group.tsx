@@ -24,6 +24,7 @@ type PhoneFieldGroupProps = {
   countryId?: string;
   phoneId?: string;
   hideCountry?: boolean;
+  hideLabel?: boolean;
 };
 
 export function PhoneFieldGroup({
@@ -39,6 +40,7 @@ export function PhoneFieldGroup({
   countryId,
   phoneId,
   hideCountry = false,
+  hideLabel = false,
 }: PhoneFieldGroupProps) {
   const resolvedCountry = country.trim() || DEFAULT_COUNTRY_NAME;
   const dialCode = getDialCodeForCountryName(resolvedCountry);
@@ -61,10 +63,12 @@ export function PhoneFieldGroup({
         </div>
       ) : null}
       <div className="flex flex-col gap-2">
-        <Label htmlFor={phoneId}>
-          {phoneLabel}
-          {required ? <span className="text-destructive"> *</span> : null}
-        </Label>
+        {!hideLabel ? (
+          <Label htmlFor={phoneId}>
+            {phoneLabel}
+            {required ? <span className="text-destructive"> *</span> : null}
+          </Label>
+        ) : null}
         <div className="flex w-full items-center gap-2">
           <span className="inline-flex h-10 shrink-0 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
             {dialCode}

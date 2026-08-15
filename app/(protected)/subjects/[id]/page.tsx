@@ -11,10 +11,12 @@ import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { SubjectAssignmentPanel } from '@/components/acadia/subjects/subject-assignment-panel';
 import { SubjectClassAssignmentPanel } from '@/components/acadia/subjects/subject-class-assignment-panel';
 import { SubjectMaterialsPanel } from '@/components/acadia/subjects/subject-materials-panel';
+import { SubjectSchemeTab } from '@/components/acadia/scheme-of-work/subject-scheme-tab';
 import { SubjectTimetablePanel } from '@/components/acadia/subjects/subject-timetable-panel';
 import { TimetableSlotFormDialog } from '@/components/acadia/timetable/timetable-slot-form-dialog';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
+import { useSubjectSiblings } from '@/hooks/use-subject-siblings';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canEditSubject } from '@/lib/acadia/subject';
 import { canWriteRegistry, isStudent } from '@/lib/acadia/roles';
@@ -73,6 +75,7 @@ type SubjectDetail = {
   coefficient: number;
   hasSubBranches: boolean;
   termId: string | null;
+  academicYearId: string | null;
   deactivatedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -109,6 +112,13 @@ export default function SubjectDetailPage({
     id,
     SUBJECT_SELECT,
   );
+  const { data: siblings = [] } = useSubjectSiblings({
+    subjectId: data?.id,
+    nameEn: data?.nameEn,
+    subSystem: data?.subSystem,
+    branch: data?.branch,
+    academicYearId: data?.academicYearId,
+  });
 
   const level = unwrapRelation<{ number?: number; labelEn?: string }>(data?.Level);
   const term = unwrapRelation<{ number?: number }>(data?.Term);
@@ -147,6 +157,7 @@ export default function SubjectDetailPage({
                 <TabsTrigger value="teachers">Teachers</TabsTrigger>
               ) : null}
               <TabsTrigger value="materials">Materials</TabsTrigger>
+              <TabsTrigger value="scheme">{t('schemeOfWork.title')}</TabsTrigger>
               <TabsTrigger value="timetable">Timetable</TabsTrigger>
             </TabsList>
             <div className="flex flex-wrap gap-2">
@@ -155,6 +166,13 @@ export default function SubjectDetailPage({
                   <Link href={`/subjects/${id}/edit`}>
                     <Pencil className="size-4" />
                     Edit
+                  </Link>
+                </Button>
+              ) : null}
+              {canManage && isActive ? (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/subjects/new?variantOf=${id}`}>
+                    Create level variant
                   </Link>
                 </Button>
               ) : null}
@@ -230,6 +248,25 @@ export default function SubjectDetailPage({
                   },
                   { label: 'Level', value: levelLabel(level) },
                   { label: 'Term', value: subjectTermScopeLabel(term, data?.termId) },
+                  {
+                    label: 'Also offered as',
+                    value:
+                      siblings.length > 0 ? (
+                        <span className="flex flex-col gap-1">
+                          {siblings.map((sibling) => (
+                            <Link
+                              key={sibling.id}
+                              href={`/subjects/${sibling.id}`}
+                              className="text-primary hover:underline"
+                            >
+                              {sibling.nameEn} ({sibling.code}) — {sibling.levelsLabel}
+                            </Link>
+                          ))}
+                        </span>
+                      ) : (
+                        '—'
+                      ),
+                  },
                 ]}
               />
             </div>
@@ -267,6 +304,10 @@ export default function SubjectDetailPage({
 
           <TabsContent value="materials">
             <SubjectMaterialsPanel subjectId={id} canManage={canManage} />
+          </TabsContent>
+
+          <TabsContent value="scheme">
+            <SubjectSchemeTab subjectId={id} canManage={canManage} />
           </TabsContent>
 
           <TabsContent value="timetable">

@@ -9,13 +9,18 @@ import { cn } from '@/lib/utils';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -39,6 +44,7 @@ import { toAcademicBranch, toAcademicSubSystem } from '@/lib/acadia/catalog-maps
 import { CityAutocomplete } from '@/components/acadia/location/city-autocomplete';
 import { CountryCombobox } from '@/components/acadia/location/country-combobox';
 import { RegionSelect } from '@/components/acadia/location/region-select';
+import { PhoneFieldGroup } from '@/components/acadia/phone/phone-field-group';
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import { isCityValidForLocation } from '@/lib/acadia/locations';
@@ -46,9 +52,6 @@ import { useTranslation } from '@/hooks/useTranslation';
 
 const SECTION_GRID =
   'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-center';
-
-const ROW_GRID_4 =
-  'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4 lg:items-center';
 
 const ROW_GRID_2 =
   'grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:items-center';
@@ -201,7 +204,16 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.dateOfBirth')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <FormControl><Input className="w-full" type="date" {...field} /></FormControl>
+                  <FormControl>
+                    <DatePickerInput
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      captionLayout="dropdown"
+                      startMonth={new Date(1920, 0)}
+                      endMonth={new Date()}
+                      disabledDates={{ after: new Date() }}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </StudentFieldControl>
               </StudentFieldItem>
@@ -296,13 +308,25 @@ export function StudentCreateForm() {
               </StudentFieldItem>
             )} />
 
-            <PhoneFormFields
-              control={form.control}
-              countryName="phone_country"
-              phoneName="phone"
-              hideCountry
-              className={cn(FIELD_ITEM, 'space-y-0')}
-            />
+            <FormField control={form.control} name="phone" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>{t('common.labels.phone')}</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <PhoneFieldGroup
+                      country={form.watch('phone_country')}
+                      onCountryChange={() => {}}
+                      phone={field.value ?? ''}
+                      onPhoneChange={field.onChange}
+                      hideCountry
+                      hideLabel
+                      phoneId={field.name}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
 
             <FormField control={form.control} name="address" render={({ field }) => (
               <StudentFieldItem>
@@ -503,7 +527,12 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('students.enrollmentDate')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <FormControl><Input className="w-full" type="date" {...field} /></FormControl>
+                  <FormControl>
+                    <DatePickerInput
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </StudentFieldControl>
               </StudentFieldItem>
@@ -513,17 +542,21 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('students.matriculeOptional')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <FormControl>
-                    <Input
-                      className="w-full"
-                      placeholder={t('students.matriculePlaceholder')}
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {t('students.matriculeHint')}
-                  </FormDescription>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <FormControl>
+                        <Input
+                          className="w-full"
+                          placeholder={t('students.matriculePlaceholder')}
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      {t('students.matriculeHint')}
+                    </TooltipContent>
+                  </Tooltip>
                   <FormMessage />
                 </StudentFieldControl>
               </StudentFieldItem>
@@ -554,58 +587,17 @@ export function StudentCreateForm() {
           <CardHeader>
             <CardTitle>{t('students.parentGuardian')}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className={ROW_GRID_4}>
-              <FormField control={form.control} name="parent_name" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>{t('common.labels.fullName')} <span className="text-destructive">*</span></StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" {...field} /></FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+          <CardContent className={ROW_GRID_2}>
+            <FormField control={form.control} name="parent_name" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>{t('common.labels.fullName')} <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl><Input className="w-full" {...field} /></FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
 
-              <FormField control={form.control} name="parent_email" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>{t('common.labels.email')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
-                    <FormDescription>
-                      {t('students.parentEmailHint')}
-                    </FormDescription>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
-
-              <FormField control={form.control} name="parent_phone_country" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>{t('common.labels.country')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl>
-                      <CountryCombobox
-                        className="w-full"
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
-
-              <PhoneFormFields
-                control={form.control}
-                countryName="parent_phone_country"
-                phoneName="parent_phone"
-                required
-                hideCountry
-                className={cn(FIELD_ITEM, 'space-y-0')}
-              />
-            </div>
-
-            <div className={SECTION_GRID}>
             <FormField control={form.control} name="parent_relationship" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.relationship')} <span className="text-destructive">*</span></StudentFieldLabel>
@@ -623,6 +615,25 @@ export function StudentCreateForm() {
                       <SelectItem value="other">{t('students.relationship.other')}</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
+
+            <FormField control={form.control} name="parent_email" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>{t('common.labels.email')}</StudentFieldLabel>
+                <StudentFieldControl>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <FormControl>
+                        <Input className="w-full" type="email" {...field} />
+                      </FormControl>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      {t('students.parentEmailHint')}
+                    </TooltipContent>
+                  </Tooltip>
                   <FormMessage />
                 </StudentFieldControl>
               </StudentFieldItem>
@@ -647,7 +658,45 @@ export function StudentCreateForm() {
                 </StudentFieldControl>
               </StudentFieldItem>
             )} />
-            </div>
+
+            <FormField control={form.control} name="parent_phone_country" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>{t('common.labels.country')}</StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <CountryCombobox
+                      className="w-full"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
+
+            <FormField control={form.control} name="parent_phone" render={({ field }) => (
+              <StudentFieldItem>
+                <StudentFieldLabel>
+                  {t('common.labels.phone')} <span className="text-destructive">*</span>
+                </StudentFieldLabel>
+                <StudentFieldControl>
+                  <FormControl>
+                    <PhoneFieldGroup
+                      country={form.watch('parent_phone_country')}
+                      onCountryChange={() => {}}
+                      phone={field.value ?? ''}
+                      onPhoneChange={field.onChange}
+                      required
+                      hideCountry
+                      hideLabel
+                      phoneId={field.name}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </StudentFieldControl>
+              </StudentFieldItem>
+            )} />
           </CardContent>
         </Card>
 

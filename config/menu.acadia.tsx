@@ -42,6 +42,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     children: [
       { title: 'Catalog', titleKey: 'nav.catalog', path: '/subjects' },
       { title: 'Groupings', titleKey: 'nav.groupings', path: '/subjects/groupings' },
+      { title: 'Scheme of work', titleKey: 'nav.schemeOfWork', path: '/scheme-of-work' },
     ],
   },
   {
@@ -206,6 +207,7 @@ const STUDENT_MENU: AcadiaMenuConfig = [
   { title: 'Attendance', titleKey: 'nav.attendance', icon: 'calendar-tick', path: '/attendance' },
   { title: 'Marks', titleKey: 'nav.marks', icon: 'document', path: '/marks' },
   { title: 'Coursework', titleKey: 'nav.coursework', icon: 'clipboard', path: '/coursework' },
+  { title: 'Scheme of work', titleKey: 'nav.schemeOfWork', icon: 'book', path: '/scheme-of-work' },
   { title: 'Fees', titleKey: 'nav.fees', icon: 'wallet', path: '/finance/fees' },
   {
     title: 'Messages',
@@ -255,6 +257,7 @@ const STAFF_MENU: AcadiaMenuConfig = [
     ],
   },
   { title: 'Coursework', titleKey: 'nav.coursework', icon: 'clipboard', path: '/coursework' },
+  { title: 'Scheme of work', titleKey: 'nav.schemeOfWork', icon: 'book', path: '/scheme-of-work' },
   {
     title: 'Exams',
     titleKey: 'nav.exams',
@@ -289,7 +292,10 @@ const STAFF_MENU: AcadiaMenuConfig = [
     title: 'My account',
     titleKey: 'nav.myAccount',
     icon: 'setting-2',
-    children: [{ title: 'Profile', titleKey: 'nav.profile', path: '/account/home/user-profile' }],
+    children: [
+      { title: 'Profile', titleKey: 'nav.profile', path: '/account/home/user-profile' },
+      { title: 'Notifications', titleKey: 'nav.notifications', path: '/account/notifications' },
+    ],
   },
 ];
 

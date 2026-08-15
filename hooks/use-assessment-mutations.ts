@@ -175,14 +175,17 @@ export function useAssessmentMutations() {
       const now = new Date().toISOString();
 
       for (const mark of input.marks) {
-        const { data: existing, error: fetchError } = await supabase
+        let existingQuery = supabase
           .from('SubjectMark')
           .select('id, caScore, examScore, totalScore')
           .eq('tenantId', tenantId)
           .eq('examSessionId', input.examSessionId)
           .eq('studentProfileId', mark.studentProfileId)
-          .eq('subjectId', input.subjectId)
-          .maybeSingle();
+          .eq('subjectId', input.subjectId);
+        existingQuery = mark.subjectSubBranchId
+          ? existingQuery.eq('subjectSubBranchId', mark.subjectSubBranchId)
+          : existingQuery.is('subjectSubBranchId', null);
+        const { data: existing, error: fetchError } = await existingQuery.maybeSingle();
 
         if (fetchError) {
           throw fetchError;

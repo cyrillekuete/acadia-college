@@ -82,33 +82,43 @@ export default function LevelsPage() {
       title={t('academics.levelsTitle')}
       description={t('academics.levelsDescription')}
     >
-      <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <CatalogFilterBar
+          filters={catalogFilters}
+          onChange={setCatalogFilters}
+          className="mb-0"
+        />
 
-      <AdminToolbar addLabel={t('academics.addLevel')} onAdd={openCreateDialog}>
-        {canManage ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!canImportCatalog || importLevelCatalog.isPending}
-            title={
-              canImportCatalog
-                ? undefined
-                : 'Select sub-system and branch in the filters above to import the standard catalog.'
-            }
-            onClick={() => {
-              if (catalogFilters.subSystem && catalogFilters.branch) {
-                importLevelCatalog.mutate({
-                  subSystem: catalogFilters.subSystem,
-                  branch: catalogFilters.branch,
-                });
+        <AdminToolbar
+          addLabel={t('academics.addLevel')}
+          onAdd={openCreateDialog}
+          className="mb-0"
+        >
+          {canManage ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!canImportCatalog || importLevelCatalog.isPending}
+              title={
+                canImportCatalog
+                  ? undefined
+                  : 'Select sub-system and branch in the filters above to import the standard catalog.'
               }
-            }}
-          >
-            Import standard levels
-          </Button>
-        ) : null}
-      </AdminToolbar>
+              onClick={() => {
+                if (catalogFilters.subSystem && catalogFilters.branch) {
+                  importLevelCatalog.mutate({
+                    subSystem: catalogFilters.subSystem,
+                    branch: catalogFilters.branch,
+                  });
+                }
+              }}
+            >
+              Import standard levels
+            </Button>
+          ) : null}
+        </AdminToolbar>
+      </div>
 
       {canManage && !canImportCatalog ? (
         <p className="mb-4 text-sm text-muted-foreground">

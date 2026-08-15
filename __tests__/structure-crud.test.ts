@@ -118,6 +118,7 @@ const emptyBlockers: LevelDeleteBlockers = {
   studentProfiles: 0,
   promotionFrom: 0,
   promotionTarget: 0,
+  schemesOfWork: 0,
 };
 
 describe('level delete blockers', () => {

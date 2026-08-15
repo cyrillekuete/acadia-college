@@ -5,14 +5,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
@@ -23,6 +24,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { TimePickerInput } from '@/components/acadia/forms/time-picker-input';
 import {
   Select,
   SelectContent,
@@ -172,21 +174,25 @@ export function TimetableSlotFormDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit timetable slot' : 'New timetable slot'}</DialogTitle>
-        </DialogHeader>
-        <DialogBody>
-          <Form {...form}>
-            <form id="timetable-slot-form" onSubmit={onSubmit} className="space-y-4">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="p-0 gap-0 sm:w-[500px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+        <SheetHeader className="mb-0">
+          <SheetTitle className="p-3">
+            {isEdit ? 'Edit timetable slot' : 'New timetable slot'}
+          </SheetTitle>
+        </SheetHeader>
+        <Form {...form}>
+          <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
+            <SheetBody className="p-0">
+              <ScrollArea className="h-[calc(100vh-10.5rem)]">
+                <div className="space-y-4 px-5 py-2.5">
               <FormField
                 control={form.control}
                 name="academicYearId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Academic year</FormLabel>
-                    <CurrentAcademicYearBadge className="mb-2" />
+                    <CurrentAcademicYearBadge />
                     <FormControl>
                       <Input type="hidden" {...field} />
                     </FormControl>
@@ -385,7 +391,10 @@ export function TimetableSlotFormDialog({
                     <FormItem>
                       <FormLabel>Start</FormLabel>
                       <FormControl>
-                        <Input {...field} type="time" />
+                        <TimePickerInput
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -398,23 +407,31 @@ export function TimetableSlotFormDialog({
                     <FormItem>
                       <FormLabel>End</FormLabel>
                       <FormControl>
-                        <Input {...field} type="time" />
+                        <TimePickerInput
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-            </form>
-          </Form>
-        </DialogBody>
-        <DialogFooter>
-          <Button type="submit" form="timetable-slot-form" disabled={pending}>
-            {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
-            {isEdit ? 'Save slot' : 'Create slot'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                </div>
+              </ScrollArea>
+            </SheetBody>
+            <SheetFooter className="border-t border-border p-5">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
+                {isEdit ? 'Save slot' : 'Create slot'}
+              </Button>
+            </SheetFooter>
+          </form>
+        </Form>
+      </SheetContent>
+    </Sheet>
   );
 }

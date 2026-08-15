@@ -20,11 +20,14 @@ import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input, InputWrapper } from '@/components/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SUBJECTS_TABLE_LAYOUT } from '@/components/acadia/subjects/subjects-table-layout';
 import { Search } from '@/lib/icons';
 import { formatSubBranchNames } from '@/lib/acadia/subject-catalog';
 import type { StudentClassSubjectRow } from '@/lib/acadia/student-class-subjects';
 import { useStudentClassSubjects } from '@/hooks/use-student-class-subjects';
+import { useStudentSchemeList } from '@/hooks/use-scheme-of-work';
 import { useTranslation } from '@/hooks/useTranslation';
 
 function StudentSubjectsTable({
@@ -33,12 +36,14 @@ function StudentSubjectsTable({
   isError,
   error,
   emptyMessage,
+  schemeHrefBySubjectId,
 }: {
   data: StudentClassSubjectRow[];
   isLoading: boolean;
   isError: boolean;
   error: unknown;
   emptyMessage: string;
+  schemeHrefBySubjectId: Map<string, string>;
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -47,6 +52,15 @@ function StudentSubjectsTable({
     pageSize: 10,
   });
   const [sorting, setSorting] = useState<SortingState>([]);
+  const defaultColumnOrder = [
+    'nameEn',
+    'code',
+    'grouping',
+    'coefficient',
+    'subBranches',
+    'scheme',
+  ];
+  const [columnOrder, setColumnOrder] = useState(defaultColumnOrder);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -201,15 +215,50 @@ function StudentSubjectsTable({
         enableSorting: true,
         enableHiding: true,
       },
+      {
+        id: 'scheme',
+        accessorFn: (row) => schemeHrefBySubjectId.get(row.id) ?? '',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('schemeOfWork.title')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => {
+          const href = schemeHrefBySubjectId.get(row.original.id);
+          if (!href) {
+            return (
+              <span className="text-muted-foreground">
+                {t('schemeOfWork.notPublished')}
+              </span>
+            );
+          }
+          return (
+            <Link href={href} className="font-medium text-primary hover:underline">
+              {t('schemeOfWork.viewScheme')}
+            </Link>
+          );
+        },
+        size: 160,
+        meta: {
+          headerTitle: t('schemeOfWork.title'),
+          skeleton: <Skeleton className="h-4 w-24" />,
+        },
+        enableSorting: false,
+        enableHiding: true,
+      },
     ],
-    [t],
+    [schemeHrefBySubjectId, t],
   );
 
   const table = useReactTable({
     data: filtered,
     columns,
     getRowId: (row) => row.id,
-    state: { pagination, sorting },
+    state: { pagination, sorting, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -224,11 +273,7 @@ function StudentSubjectsTable({
       recordCount={filtered.length}
       isLoading={isLoading}
       emptyMessage={emptyMessage}
-      tableLayout={{
-        columnsPinnable: true,
-        columnsVisibility: true,
-        width: 'fixed',
-      }}
+      tableLayout={SUBJECTS_TABLE_LAYOUT}
       tableClassNames={{
         edgeCell: 'px-5',
       }}
@@ -250,8 +295,11 @@ function StudentSubjectsTable({
             {error instanceof Error ? error.message : t('subjects.loadFailed')}
           </p>
         ) : null}
-        <CardTable className="overflow-x-hidden">
-          <DataGridTable />
+        <CardTable>
+          <ScrollArea>
+            <DataGridTable />
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </CardTable>
         {!isError ? (
           <CardFooter>
@@ -274,6 +322,27 @@ export function StudentSubjectsView() {
     subjectsError,
     subjectsErrorValue,
   } = useStudentClassSubjects();
+  const schemeList = useStudentSchemeList();
+  const schemeHrefBySubjectId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of schemeList.data ?? []) {
+      if (!item.schemeId) {
+        continue;
+      }
+      const params = new URLSearchParams();
+      if (item.classId) {
+        params.set('classId', item.classId);
+      }
+      const query = params.toString();
+      map.set(
+        item.subjectId,
+        query
+          ? `/scheme-of-work/${item.schemeId}?${query}`
+          : `/scheme-of-work/${item.schemeId}`,
+      );
+    }
+    return map;
+  }, [schemeList.data]);
 
   const studentProfileId = linkedProfile?.studentProfileId ?? null;
   const enrollment = linkedProfile?.enrollment ?? null;
@@ -305,7 +374,7 @@ export function StudentSubjectsView() {
   if (!enrollment) {
     return (
       <div className="space-y-4">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             {t('subjects.noEnrollment')}
@@ -318,7 +387,7 @@ export function StudentSubjectsView() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         <p className="text-sm font-medium">{enrollment.className}</p>
       </div>
       <StudentSubjectsTable
@@ -327,6 +396,7 @@ export function StudentSubjectsView() {
         isError={subjectsError}
         error={subjectsErrorValue}
         emptyMessage={t('subjects.noClassSubjects')}
+        schemeHrefBySubjectId={schemeHrefBySubjectId}
       />
     </div>
   );

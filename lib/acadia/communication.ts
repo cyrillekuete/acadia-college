@@ -1,5 +1,6 @@
 import type { AnnouncementFormValues } from '@/lib/acadia/communication-schemas';
 import { localDateTimeInputToIso } from '@/lib/acadia/dates';
+import type { UiLocale } from '@/lib/acadia/locale';
 
 export const MESSAGE_THREAD_KINDS = ['DIRECT', 'GROUP'] as const;
 export type MessageThreadKind = (typeof MESSAGE_THREAD_KINDS)[number];
@@ -196,4 +197,108 @@ export function buildMessageReceivedNotification(
     bodyFr: `${input.senderName} vous a envoyé un message.`,
     data: { threadId: input.threadId },
   };
+}
+
+const NOTIFICATION_EVENT_LABELS: Record<
+  NotificationEvent,
+  { en: string; fr: string }
+> = {
+  'attendance.absence': {
+    en: 'Absence / late alerts',
+    fr: 'Alertes d’absence / retard',
+  },
+  'announcement.broadcast': {
+    en: 'School announcements',
+    fr: 'Annonces de l’établissement',
+  },
+  'announcement.event': {
+    en: 'Event reminders',
+    fr: 'Rappels d’événements',
+  },
+  'message.received': {
+    en: 'New messages',
+    fr: 'Nouveaux messages',
+  },
+  'marks.published': {
+    en: 'Published marks',
+    fr: 'Notes publiées',
+  },
+  'fees.overdue': {
+    en: 'Overdue fees',
+    fr: 'Frais en retard',
+  },
+};
+
+export type NotificationChannel = 'email' | 'inApp';
+
+export type NotificationPreferenceLike = {
+  event: string;
+  inApp: boolean;
+  email: boolean;
+};
+
+export function notificationEventLabel(
+  event: string,
+  locale: UiLocale = 'en',
+): string {
+  const labels = NOTIFICATION_EVENT_LABELS[event as NotificationEvent];
+  if (!labels) {
+    return event;
+  }
+  return locale === 'fr' ? labels.fr : labels.en;
+}
+
+export function notificationHref(
+  event: string,
+  data?: Record<string, unknown> | null,
+): string {
+  if (event === MESSAGE_RECEIVED_EVENT) {
+    const threadId =
+      data && typeof data.threadId === 'string' ? data.threadId.trim() : '';
+    return threadId ? `/messages/${threadId}` : '/messages';
+  }
+  if (
+    event === ANNOUNCEMENT_BROADCAST_EVENT ||
+    event === ANNOUNCEMENT_EVENT_NOTIFICATION
+  ) {
+    return '/announcements';
+  }
+  if (event === 'attendance.absence') {
+    return '/attendance';
+  }
+  if (event === 'marks.published') {
+    return '/marks';
+  }
+  if (event === 'fees.overdue') {
+    return '/finance/fees';
+  }
+  return '/account/notifications';
+}
+
+export function preferenceForEvent(
+  preferences: NotificationPreferenceLike[],
+  event: string,
+): { inApp: boolean; email: boolean } {
+  const row = preferences.find((item) => item.event === event);
+  return {
+    inApp: row?.inApp ?? true,
+    email: row?.email ?? true,
+  };
+}
+
+export function isNotificationChannelEnabled(
+  preferences: NotificationPreferenceLike[],
+  channel: NotificationChannel,
+): boolean {
+  return NOTIFICATION_EVENTS.every(
+    (event) => preferenceForEvent(preferences, event)[channel],
+  );
+}
+
+export function areAllInAppNotificationsPaused(
+  preferences: NotificationPreferenceLike[],
+): boolean {
+  return NOTIFICATION_EVENTS.every(
+    (event) => !preferenceForEvent(preferences, event).inApp,
+  );
 }

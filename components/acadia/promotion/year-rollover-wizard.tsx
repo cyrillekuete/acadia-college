@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -221,7 +222,10 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
                     <FormItem>
                       <FormLabel>Starts</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePickerInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -234,7 +238,10 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
                     <FormItem>
                       <FormLabel>Ends</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePickerInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

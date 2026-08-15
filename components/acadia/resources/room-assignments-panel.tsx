@@ -2,16 +2,24 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import { formatTimetableSlotSummary } from '@/lib/acadia/resources';
 import {
   Select,
@@ -20,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useRoomOptions } from '@/hooks/use-subject-catalog-options';
 import {
   isAcadiaTenantQueryEnabled,
@@ -115,7 +124,7 @@ export function RoomAssignmentsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3">
-        <CurrentAcademicYearBadge />
+        <CurrentAcademicYearBadge label="Year" />
         <Select
           value={roomId || '__all__'}
           onValueChange={(v) => setRoomId(v === '__all__' ? '' : v)}
@@ -134,42 +143,108 @@ export function RoomAssignmentsPanel() {
         </Select>
       </div>
 
-      {query.isLoading ? (
-        <Skeleton className="h-48 w-full" />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Room</TableHead>
-              <TableHead>Weekly assignments (timetable)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {groupedByRoom.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={2} className="text-muted-foreground">
-                  No timetable slots for this filter.
-                </TableCell>
-              </TableRow>
-            ) : (
-              groupedByRoom.map((group) => (
-                <TableRow key={group.roomLabel}>
-                  <TableCell className="font-medium align-top">
-                    {group.roomLabel}
-                  </TableCell>
-                  <TableCell>
-                    <ul className="list-disc space-y-1 pl-4 text-sm">
-                      {group.slots.map((slot) => (
-                        <li key={slot}>{slot}</li>
-                      ))}
-                    </ul>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      )}
+      <RoomAssignmentsTable data={groupedByRoom} isLoading={query.isLoading} />
     </div>
+  );
+}
+
+type RoomAssignmentRow = {
+  roomLabel: string;
+  slots: string[];
+};
+
+function RoomAssignmentsTable({
+  data,
+  isLoading,
+}: {
+  data: RoomAssignmentRow[];
+  isLoading: boolean;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'roomLabel',
+    'slots',
+  ]);
+
+  const columns = useMemo<ColumnDef<RoomAssignmentRow>[]>(
+    () => [
+      {
+        accessorKey: 'roomLabel',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Room" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.roomLabel}</span>
+        ),
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'slots',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title="Weekly assignments (timetable)"
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <ul className="list-disc space-y-1 pl-4 text-sm">
+            {row.original.slots.map((slot) => (
+              <li key={slot}>{slot}</li>
+            ))}
+          </ul>
+        ),
+        size: 480,
+        enableSorting: false,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

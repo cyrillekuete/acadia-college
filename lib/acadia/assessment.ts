@@ -7,6 +7,7 @@ import type {
   ExamSessionFormValues,
   SubjectMarkEntryValues,
 } from '@/lib/acadia/assessment-schemas';
+import { resolveSubBranchCoefficient } from '@/lib/acadia/subject-catalog';
 
 export const MAX_MARK_SCORE = 20;
 export const PASSING_AVERAGE = 10;
@@ -74,6 +75,65 @@ export function averageScores(scores: (number | null | undefined)[]): number | n
   return round2(sum / valid.length);
 }
 
+export function weightedAverage(
+  items: { score: number; coefficient: number }[],
+): number | null {
+  const valid = items.filter(
+    (item) => !Number.isNaN(item.score) && item.coefficient > 0,
+  );
+  if (valid.length === 0) {
+    return null;
+  }
+  const numerator = valid.reduce((sum, item) => sum + item.score * item.coefficient, 0);
+  const denominator = valid.reduce((sum, item) => sum + item.coefficient, 0);
+  if (denominator === 0) {
+    return null;
+  }
+  return round2(numerator / denominator);
+}
+
+export function collapseMarksToSubjectScore(
+  marks: {
+    totalScore: number | null;
+    subjectSubBranchId?: string | null;
+    subjectCoefficient?: number | null;
+    subBranchCoefficient?: number | null;
+  }[],
+): number | null {
+  const scored = marks.filter(
+    (mark): mark is typeof mark & { totalScore: number } =>
+      mark.totalScore != null && !Number.isNaN(mark.totalScore),
+  );
+  if (scored.length === 0) {
+    return null;
+  }
+
+  const branchMarks = scored.filter((mark) => mark.subjectSubBranchId);
+  if (branchMarks.length > 0) {
+    const byBranch = new Map<string, number[]>();
+    for (const mark of branchMarks) {
+      const list = byBranch.get(mark.subjectSubBranchId!) ?? [];
+      list.push(mark.totalScore);
+      byBranch.set(mark.subjectSubBranchId!, list);
+    }
+    return weightedAverage(
+      Array.from(byBranch.entries()).map(([branchId, scores]) => {
+        const sample = branchMarks.find((mark) => mark.subjectSubBranchId === branchId)!;
+        const subjectCoefficient = sample.subjectCoefficient ?? 1;
+        return {
+          score: averageScores(scores) ?? 0,
+          coefficient: resolveSubBranchCoefficient(
+            { coefficient: sample.subBranchCoefficient },
+            subjectCoefficient,
+          ),
+        };
+      }),
+    );
+  }
+
+  return averageScores(scored.map((mark) => mark.totalScore));
+}
+
 export type StudentAverage = {
   studentProfileId: string;
   average: number;
@@ -114,26 +174,41 @@ export type SubjectMarkSnapshot = {
   totalScore: number | null;
   sequenceId?: string | null;
   termId?: string | null;
+  subjectSubBranchId?: string | null;
+  subjectCoefficient?: number | null;
+  subBranchCoefficient?: number | null;
 };
 
-/** Group marks by student and compute per-student subject averages. */
+/** Group marks by student and compute coefficient-weighted subject averages. */
 export function computeStudentSubjectAverages(
   marks: SubjectMarkSnapshot[],
 ): Map<string, number> {
-  const byStudent = new Map<string, number[]>();
+  const byStudentSubject = new Map<string, Map<string, SubjectMarkSnapshot[]>>();
 
-  for (const mark of marks) {
-    if (mark.totalScore == null || Number.isNaN(mark.totalScore)) {
-      continue;
-    }
-    const list = byStudent.get(mark.studentProfileId) ?? [];
-    list.push(mark.totalScore);
-    byStudent.set(mark.studentProfileId, list);
-  }
+  marks.forEach((mark, index) => {
+    const studentMap = byStudentSubject.get(mark.studentProfileId) ?? new Map();
+    const subjectKey = mark.subjectId?.trim() ? mark.subjectId : `__row_${index}`;
+    const list = studentMap.get(subjectKey) ?? [];
+    list.push(mark);
+    studentMap.set(subjectKey, list);
+    byStudentSubject.set(mark.studentProfileId, studentMap);
+  });
 
   const averages = new Map<string, number>();
-  Array.from(byStudent.entries()).forEach(([studentId, scores]) => {
-    const avg = averageScores(scores);
+  Array.from(byStudentSubject.entries()).forEach(([studentId, subjects]) => {
+    const subjectScores = Array.from(subjects.values()).flatMap((subjectMarks) => {
+      const score = collapseMarksToSubjectScore(subjectMarks);
+      if (score == null) {
+        return [];
+      }
+      return [
+        {
+          score,
+          coefficient: subjectMarks[0]?.subjectCoefficient ?? 1,
+        },
+      ];
+    });
+    const avg = weightedAverage(subjectScores);
     if (avg != null) {
       averages.set(studentId, avg);
     }
@@ -232,6 +307,7 @@ export function buildSubjectMarkRow(
     examSessionId: input.examSessionId,
     studentProfileId: input.studentProfileId,
     subjectId: input.subjectId,
+    subjectSubBranchId: input.values.subjectSubBranchId ?? null,
     caScore,
     examScore,
     totalScore: computeTotalScore(caScore, examScore),

@@ -1,15 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  ColumnDef,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import {
   Select,
   SelectContent,
@@ -17,10 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { AttendanceDataGrid } from '@/components/acadia/attendance/attendance-data-grid';
 import {
   formatAttendancePercentage,
   summarizeStudentAttendance,
   type AttendanceStatus,
+  type StudentAttendanceSummary,
 } from '@/lib/acadia/attendance';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
@@ -30,10 +34,24 @@ import {
   isAcadiaTenantQueryEnabled,
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
-import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 
 const ALL_SUBJECTS = '__all__';
+
+type RateRow = StudentAttendanceSummary & {
+  name: string;
+  registrationNumber: string;
+};
+
+const DEFAULT_COLUMN_ORDER = [
+  'student',
+  'sessions',
+  'present',
+  'absent',
+  'late',
+  'excused',
+  'rate',
+];
 
 export function AttendancePercentagesPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -42,6 +60,12 @@ export function AttendancePercentagesPanel() {
   const { activeYearId } = useActiveAcademicYear();
   const [subjectId, setSubjectId] = useState(ALL_SUBJECTS);
   const { data: subjects = [] } = useSubjectOptions(activeYearId ?? '');
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState(DEFAULT_COLUMN_ORDER);
 
   const query = useQuery({
     queryKey: ['attendance-percentages', tenantId, activeYearId, subjectId],
@@ -115,10 +139,101 @@ export function AttendancePercentagesPanel() {
 
   const rows = useMemo(() => query.data ?? [], [query.data]);
 
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [subjectId, rows.length]);
+
+  const columns = useMemo<ColumnDef<RateRow>[]>(
+    () => [
+      {
+        id: 'student',
+        accessorFn: (row) => row.name,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Student" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <>
+            <span className="font-medium">{row.original.name}</span>
+            <span className="text-muted-foreground text-xs block">
+              {row.original.registrationNumber}
+            </span>
+          </>
+        ),
+        size: 220,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'sessions',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Sessions" visibility column={column} />
+        ),
+        size: 100,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'present',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Present" visibility column={column} />
+        ),
+        size: 100,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'absent',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Absent" visibility column={column} />
+        ),
+        size: 100,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'late',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Late" visibility column={column} />
+        ),
+        size: 80,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'excused',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Excused" visibility column={column} />
+        ),
+        size: 100,
+        enableSorting: true,
+      },
+      {
+        id: 'rate',
+        accessorFn: (row) => row.percentage,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Rate" visibility column={column} />
+        ),
+        cell: ({ row }) => formatAttendancePercentage(row.original.percentage),
+        size: 100,
+        enableSorting: true,
+      },
+    ],
+    [],
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getRowId: (row) => row.studentProfileId,
+    state: { pagination, sorting, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-4">
-        <CurrentAcademicYearBadge />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <CurrentAcademicYearBadge label="Year" />
         <div className="min-w-[200px]">
           <p className="text-sm font-medium mb-1.5">Subject (optional)</p>
           <Select value={subjectId} onValueChange={setSubjectId}>
@@ -137,49 +252,14 @@ export function AttendancePercentagesPanel() {
         </div>
       </div>
 
-      {query.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : query.isError ? (
-        <p className="text-sm text-destructive">
-          {getQueryErrorMessage(query.error)}
-        </p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No attendance records for this scope.
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Student</TableHead>
-              <TableHead>Sessions</TableHead>
-              <TableHead>Present</TableHead>
-              <TableHead>Absent</TableHead>
-              <TableHead>Late</TableHead>
-              <TableHead>Excused</TableHead>
-              <TableHead>Rate</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.studentProfileId}>
-                <TableCell>
-                  <span className="font-medium">{row.name}</span>
-                  <span className="text-muted-foreground text-xs block">
-                    {row.registrationNumber}
-                  </span>
-                </TableCell>
-                <TableCell>{row.sessions}</TableCell>
-                <TableCell>{row.present}</TableCell>
-                <TableCell>{row.absent}</TableCell>
-                <TableCell>{row.late}</TableCell>
-                <TableCell>{row.excused}</TableCell>
-                <TableCell>{formatAttendancePercentage(row.percentage)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <AttendanceDataGrid
+        table={table}
+        recordCount={rows.length}
+        isLoading={query.isLoading}
+        isError={query.isError}
+        error={query.error}
+        emptyMessage="No attendance records for this scope."
+      />
     </div>
   );
 }

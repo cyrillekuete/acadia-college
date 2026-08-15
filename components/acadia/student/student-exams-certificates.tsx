@@ -77,14 +77,22 @@ export function StudentExamsCertificates({
 
       let transcriptQuery = supabase
         .from('Transcript')
-        .select('id, status, issuedAt, termId, academicYearId')
+        .select(
+          `
+          id,
+          createdAt,
+          termId,
+          academicYearId,
+          TranscriptVersion!Transcript_currentVersionId_fkey ( issuedAt, status )
+        `,
+        )
         .eq('tenantId', tenantId!)
         .eq('studentProfileId', studentProfileId);
       if (activeYearId) {
         transcriptQuery = transcriptQuery.eq('academicYearId', activeYearId);
       }
       const { data: transcripts, error: transcriptError } = await transcriptQuery
-        .order('issuedAt', { ascending: false })
+        .order('createdAt', { ascending: false })
         .limit(10);
 
       if (transcriptError) {
@@ -157,10 +165,16 @@ export function StudentExamsCertificates({
         fields={[
           ...(transcripts.length === 0
             ? [{ label: 'Transcripts', value: 'None issued.' }]
-            : transcripts.map((row, index) => ({
-                label: `Transcript ${index + 1}`,
-                value: `${formatRecordValue(row.status)} · ${formatDateTime(row.issuedAt as string)}`,
-              }))),
+            : transcripts.map((row, index) => {
+                const version = unwrapRelation<{
+                  issuedAt?: string;
+                  status?: string;
+                }>(row.TranscriptVersion);
+                return {
+                  label: `Transcript ${index + 1}`,
+                  value: `${formatRecordValue(version?.status)} · ${formatDateTime(version?.issuedAt)}`,
+                };
+              })),
           ...(copyRequests.length === 0
             ? [{ label: 'Copy requests', value: 'None.' }]
             : copyRequests.map((row, index) => ({

@@ -933,6 +933,7 @@ const Members = () => {
       pagination,
       sorting,
     },
+    columnResizeMode: 'onChange',
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -974,6 +975,8 @@ const Members = () => {
       table={table}
       recordCount={filteredData?.length || 0}
       tableLayout={{
+        width: 'fixed',
+        columnsResizable: true,
         columnsPinnable: true,
         columnsMovable: true,
         columnsVisibility: true,

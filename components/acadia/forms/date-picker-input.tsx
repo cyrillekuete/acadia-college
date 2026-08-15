@@ -8,6 +8,7 @@ import {
   formatLocalDateInputValue,
   parseLocalDateInputValue,
 } from '@/lib/acadia/dates';
+import type { ComponentProps } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -23,6 +24,10 @@ type DatePickerInputProps = {
   disabled?: boolean;
   className?: string;
   id?: string;
+  captionLayout?: ComponentProps<typeof Calendar>['captionLayout'];
+  startMonth?: Date;
+  endMonth?: Date;
+  disabledDates?: ComponentProps<typeof Calendar>['disabled'];
 };
 
 /**
@@ -36,6 +41,10 @@ export function DatePickerInput({
   disabled,
   className,
   id,
+  captionLayout,
+  startMonth,
+  endMonth,
+  disabledDates,
 }: DatePickerInputProps) {
   const [open, setOpen] = useState(false);
   const selected = parseLocalDateInputValue(value);
@@ -60,10 +69,24 @@ export function DatePickerInput({
           {selected ? format(selected, 'LLL dd, y') : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        className="w-auto p-0"
+        align="start"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest('[data-slot="select-content"]')) {
+            event.preventDefault();
+          }
+        }}
+      >
         <Calendar
           mode="single"
           initialFocus
+          captionLayout={captionLayout}
+          startMonth={startMonth}
+          endMonth={endMonth}
+          disabled={disabledDates}
           defaultMonth={selected}
           selected={selected}
           onSelect={(date) => {

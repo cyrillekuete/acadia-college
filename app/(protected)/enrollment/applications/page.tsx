@@ -2,13 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
+import { EnrollmentApplicationFormDialog } from '@/components/acadia/enrollment/enrollment-application-form-dialog';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
-import { detailLinkColumn } from '@/lib/acadia/list-columns';
 import {
   EMPTY_CATALOG_FILTERS,
   rowMatchesCatalogFilters,
@@ -32,7 +31,7 @@ type Row = Record<string, unknown> & {
 
 export default function EnrollmentApplicationsPage() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
 
@@ -83,11 +82,18 @@ export default function EnrollmentApplicationsPage() {
       title={t('enrollment.applicationsTitle')}
       description={t('enrollment.applicationsDescription')}
     >
-      <AdminToolbar
-        addLabel={t('enrollment.newApplication')}
-        onAdd={() => router.push('/enrollment/applications/new')}
-      />
-      <CatalogFilterBar filters={catalogFilters} onChange={setCatalogFilters} />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <CatalogFilterBar
+          filters={catalogFilters}
+          onChange={setCatalogFilters}
+          className="mb-0"
+        />
+        <AdminToolbar
+          addLabel={t('enrollment.newApplication')}
+          onAdd={() => setSheetOpen(true)}
+          className="mb-0"
+        />
+      </div>
       <SupabaseTableList scopeByAcademicYear
         table="EnrollmentApplication"
         title="Applications"
@@ -95,6 +101,10 @@ export default function EnrollmentApplicationsPage() {
         columns={columns}
         searchKeys={['status', 'kind', 'lastNameEn', 'firstNameEn']}
         rowFilter={(row) => rowMatchesCatalogFilters(row, catalogFilters)}
+      />
+      <EnrollmentApplicationFormDialog
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
       />
     </AcadiaPageShell>
   );

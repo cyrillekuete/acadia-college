@@ -401,6 +401,7 @@ const Invoicing = () => {
       pagination,
       sorting,
     },
+    columnResizeMode: 'onChange',
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
@@ -436,6 +437,8 @@ const Invoicing = () => {
       table={table}
       recordCount={filteredData?.length || 0}
       tableLayout={{
+        width: 'fixed',
+        columnsResizable: true,
         columnsPinnable: true,
         columnsMovable: true,
         columnsVisibility: true,

@@ -11,6 +11,7 @@ export const ACADEMIC_YEAR_SCOPED_TABLES = new Set([
   'FinanceLedgerEntry',
   'StudentEnrollment',
   'StudentFeeAccount',
+  'SchemeOfWork',
   'StudentPromotionDecision',
   'SubjectAssignment',
   'SubjectDiscussionThread',

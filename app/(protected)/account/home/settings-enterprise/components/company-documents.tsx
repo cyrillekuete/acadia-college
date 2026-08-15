@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   formatBytes,
   useFileUpload,
@@ -10,7 +10,6 @@ import {
 import { Alert, AlertContent, AlertDescription, AlertIcon, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   CloudUpload,
   Download,
@@ -27,8 +26,31 @@ import {
 } from 'lucide-react';
 import { toAbsoluteUrl } from '@/lib/helpers';
 import { cn } from '@/lib/utils';
-import { Card, CardContent,CardHeader,CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardTable,
+} from '@/components/ui/card';
 import Link from 'next/link';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface FileUploadItem extends FileWithPreview {
   progress: number;
@@ -44,6 +66,225 @@ interface TableUploadProps {
   className?: string;
   onFilesChange?: (files: FileWithPreview[]) => void;
   simulateUpload?: boolean;
+}
+
+function getFileIcon(file: File | FileMetadata) {
+  const type = file instanceof File ? file.type : file.type;
+  if (type.startsWith('image/')) return <ImageIcon className="size-4" />;
+  if (type.startsWith('video/')) return <VideoIcon className="size-4" />;
+  if (type.startsWith('audio/')) return <HeadphonesIcon className="size-4" />;
+  if (type.includes('pdf')) return <FileTextIcon className="size-4" />;
+  if (type.includes('word') || type.includes('doc')) return <FileTextIcon className="size-4" />;
+  if (type.includes('excel') || type.includes('sheet')) return <FileSpreadsheetIcon className="size-4" />;
+  if (type.includes('zip') || type.includes('rar')) return <FileArchiveIcon className="size-4" />;
+  return <FileTextIcon className="size-4" />;
+}
+
+function getFileTypeLabel(file: File | FileMetadata) {
+  const type = file instanceof File ? file.type : file.type;
+  if (type.startsWith('image/')) return 'Image';
+  if (type.startsWith('video/')) return 'Video';
+  if (type.startsWith('audio/')) return 'Audio';
+  if (type.includes('pdf')) return 'PDF';
+  if (type.includes('word') || type.includes('doc')) return 'Word';
+  if (type.includes('excel') || type.includes('sheet')) return 'Excel';
+  if (type.includes('zip') || type.includes('rar')) return 'Archive';
+  if (type.includes('json')) return 'JSON';
+  if (type.includes('text')) return 'Text';
+  return 'File';
+}
+
+function DocumentsTable({
+  uploadFiles,
+  retryUpload,
+  removeUploadFile,
+}: {
+  uploadFiles: FileUploadItem[];
+  retryUpload: (fileId: string) => void;
+  removeUploadFile: (fileId: string) => void;
+}) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo<ColumnDef<FileUploadItem>[]>(
+    () => [
+      {
+        accessorFn: (row) => row.file.name,
+        id: 'name',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Name" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const fileItem = row.original;
+          return (
+            <div className="flex items-center gap-1 truncate">
+              <div
+                className={cn(
+                  'size-8 shrink-0 relative flex items-center justify-center text-muted-foreground/80',
+                )}
+              >
+                {fileItem.status === 'uploading' ? (
+                  <div className="relative">
+                    <svg className="size-8 -rotate-90" viewBox="0 0 32 32">
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-muted-foreground/20"
+                      />
+                      <circle
+                        cx="16"
+                        cy="16"
+                        r="14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeDasharray={`${2 * Math.PI * 14}`}
+                        strokeDashoffset={`${2 * Math.PI * 14 * (1 - fileItem.progress / 100)}`}
+                        className="text-primary transition-all duration-300"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      {getFileIcon(fileItem.file)}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="not-[]:size-8 flex items-center justify-center">
+                    {getFileIcon(fileItem.file)}
+                  </div>
+                )}
+              </div>
+              <p className="flex items-center gap-1 truncate text-sm font-medium">
+                {fileItem.file.name}
+                {fileItem.status === 'error' && (
+                  <Badge variant="destructive" size="sm" appearance="light">
+                    Error
+                  </Badge>
+                )}
+              </p>
+            </div>
+          );
+        },
+        size: 280,
+        enableSorting: true,
+      },
+      {
+        accessorFn: (row) => getFileTypeLabel(row.file),
+        id: 'type',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Type" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <Badge variant="secondary" className="text-xs">
+            {getFileTypeLabel(row.original.file)}
+          </Badge>
+        ),
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        accessorFn: (row) => row.file.size,
+        id: 'size',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Size" visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {formatBytes(row.original.file.size)}
+          </span>
+        ),
+        size: 120,
+        enableSorting: true,
+      },
+      {
+        id: 'actions',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Actions" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const fileItem = row.original;
+          return (
+            <div className="flex items-center justify-end gap-1">
+              {fileItem.preview && (
+                <Button variant="dim" size="icon" className="size-8" asChild>
+                  <Link href={fileItem.preview} target="_blank">
+                    <Download className="size-3.5" />
+                  </Link>
+                </Button>
+              )}
+              {fileItem.status === 'error' ? (
+                <Button
+                  onClick={() => retryUpload(fileItem.id)}
+                  variant="dim"
+                  size="icon"
+                  className="size-8 text-destructive/80 hover:text-destructive"
+                >
+                  <RefreshCwIcon className="size-3.5" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => removeUploadFile(fileItem.id)}
+                  variant="dim"
+                  size="icon"
+                  className="size-8"
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              )}
+            </div>
+          );
+        },
+        size: 120,
+        enableSorting: false,
+        meta: { headerClassName: 'text-end', cellClassName: 'text-end' },
+      },
+    ],
+    [removeUploadFile, retryUpload],
+  );
+
+  const table = useReactTable({
+    data: uploadFiles,
+    columns,
+    state: { sorting, pagination },
+    columnResizeMode: 'onChange',
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getRowId: (row) => row.id,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={uploadFiles.length}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          <ScrollArea>
+            <DataGridTable />
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
+  );
 }
 
 export function CompanyDocuments({
@@ -189,32 +430,6 @@ export function CompanyDocuments({
     );
   };
 
-  const getFileIcon = (file: File | FileMetadata) => {
-    const type = file instanceof File ? file.type : file.type;
-    if (type.startsWith('image/')) return <ImageIcon className="size-4" />;
-    if (type.startsWith('video/')) return <VideoIcon className="size-4" />;
-    if (type.startsWith('audio/')) return <HeadphonesIcon className="size-4" />;
-    if (type.includes('pdf')) return <FileTextIcon className="size-4" />;
-    if (type.includes('word') || type.includes('doc')) return <FileTextIcon className="size-4" />;
-    if (type.includes('excel') || type.includes('sheet')) return <FileSpreadsheetIcon className="size-4" />;
-    if (type.includes('zip') || type.includes('rar')) return <FileArchiveIcon className="size-4" />;
-    return <FileTextIcon className="size-4" />;
-  };
-
-  const getFileTypeLabel = (file: File | FileMetadata) => {
-    const type = file instanceof File ? file.type : file.type;
-    if (type.startsWith('image/')) return 'Image';
-    if (type.startsWith('video/')) return 'Video';
-    if (type.startsWith('audio/')) return 'Audio';
-    if (type.includes('pdf')) return 'PDF';
-    if (type.includes('word') || type.includes('doc')) return 'Word';
-    if (type.includes('excel') || type.includes('sheet')) return 'Excel';
-    if (type.includes('zip') || type.includes('rar')) return 'Archive';
-    if (type.includes('json')) return 'JSON';
-    if (type.includes('text')) return 'Text';
-    return 'File';
-  };
-
   return (
     <Card>
       <CardHeader className="gap-2" id="settings_set_goal">
@@ -279,117 +494,11 @@ export function CompanyDocuments({
               </div>
             </div>
 
-            <div className="kt-scrollable-x-auto rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="text-xs">
-                      <TableHead className="h-9">Name</TableHead>
-                      <TableHead className="h-9">Type</TableHead>
-                      <TableHead className="h-9">Size</TableHead>
-                      <TableHead className="h-9 w-[100px] text-end">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {uploadFiles.map((fileItem) => (
-                      <TableRow key={fileItem.id}>
-                        <TableCell className="py-2 ps-1.5">
-                          <div className="flex items-center gap-1 truncate">
-                            <div
-                              className={cn(
-                                'size-8 shrink-0 relative flex items-center justify-center text-muted-foreground/80',
-                              )}
-                            >
-                              {fileItem.status === 'uploading' ? (
-                                <div className="relative">
-                                  {/* Circular progress background */}
-                                  <svg className="size-8 -rotate-90" viewBox="0 0 32 32">
-                                    <circle
-                                      cx="16"
-                                      cy="16"
-                                      r="14"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      className="text-muted-foreground/20"
-                                    />
-                                    {/* Progress circle */}
-                                    <circle
-                                      cx="16"
-                                      cy="16"
-                                      r="14"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      strokeDasharray={`${2 * Math.PI * 14}`}
-                                      strokeDashoffset={`${2 * Math.PI * 14 * (1 - fileItem.progress / 100)}`}
-                                      className="text-primary transition-all duration-300"
-                                      strokeLinecap="round"
-                                    />
-                                  </svg>
-                                  {/* File icon in center */}
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    {getFileIcon(fileItem.file)}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="not-[]:size-8 flex items-center justify-center">
-                                  {getFileIcon(fileItem.file)}
-                                </div>
-                              )}
-                            </div>
-                            <p className="flex items-center gap-1 truncate text-sm font-medium">
-                              {fileItem.file.name}
-                              {fileItem.status === 'error' && (
-                                <Badge variant="destructive" size="sm" appearance="light">
-                                  Error
-                                </Badge>
-                              )}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {getFileTypeLabel(fileItem.file)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2 text-sm text-muted-foreground">
-                          {formatBytes(fileItem.file.size)}
-                        </TableCell>
-                        <TableCell className="py-2 pe-1">
-                          <div className="flex items-center gap-1">
-                            {fileItem.preview && (
-                              <Button variant="dim" size="icon" className="size-8" asChild>
-                                <Link href={fileItem.preview} target="_blank">
-                                  <Download className="size-3.5" />
-                                </Link>
-                              </Button>
-                            )}
-                            {fileItem.status === 'error' ? (
-                              <Button
-                                onClick={() => retryUpload(fileItem.id)}
-                                variant="dim"
-                                size="icon"
-                                className="size-8 text-destructive/80 hover:text-destructive"
-                              >
-                                <RefreshCwIcon className="size-3.5" />
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={() => removeUploadFile(fileItem.id)}
-                                variant="dim"
-                                size="icon"
-                                className="size-8"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-            </div>
+            <DocumentsTable
+              uploadFiles={uploadFiles}
+              retryUpload={retryUpload}
+              removeUploadFile={removeUploadFile}
+            />
           </div>
         )}
 

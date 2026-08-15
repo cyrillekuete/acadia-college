@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import { Switch } from '@/components/ui/switch';
 import {
   studentProfileEditSchema,
@@ -172,7 +173,10 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
             <FormItem>
               <FormLabel>{t('students.alumniSince')}</FormLabel>
               <FormControl>
-                <Input {...field} value={field.value ?? ''} type="date" />
+                <DatePickerInput
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

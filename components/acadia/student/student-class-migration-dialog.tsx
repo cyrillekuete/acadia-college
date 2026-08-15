@@ -140,7 +140,7 @@ export function StudentClassMigrationDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Academic year</FormLabel>
-                      <CurrentAcademicYearBadge className="mb-2" />
+                      <CurrentAcademicYearBadge />
                       <FormControl>
                         <Input type="hidden" {...field} />
                       </FormControl>

@@ -63,12 +63,30 @@ export type SubjectFormRecord = {
   subBranches: SubjectFormSubBranch[];
 };
 
+export const SUBJECT_FORM_ID = 'subject-form';
+
 export function SubjectForm({
   record,
+  initialValues,
+  copyAssignmentsFromSubjectId,
+  variantMode = false,
   onCancelHref,
+  onCancel,
+  onCreated,
+  hideActions = false,
+  formId = SUBJECT_FORM_ID,
+  onPendingChange,
 }: {
   record?: SubjectFormRecord | null;
-  onCancelHref: string;
+  initialValues?: Partial<SubjectFormValues>;
+  copyAssignmentsFromSubjectId?: string;
+  variantMode?: boolean;
+  onCancelHref?: string;
+  onCancel?: () => void;
+  onCreated?: (id: string) => void;
+  hideActions?: boolean;
+  formId?: string;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const isEdit = !!record;
   const { createSubject, updateSubject } = useSubjectMutations();
@@ -79,16 +97,16 @@ export function SubjectForm({
   const form = useForm<SubjectFormValues>({
     resolver: zodResolver(subjectSchema),
     defaultValues: {
-      code: '',
-      nameEn: '',
-      academicYearId: '',
-      subSystem: 'ENGLISH',
-      branch: 'GRAMMAR',
-      levelIds: [],
-      coefficient: 1,
-      groupingId: '',
-      hasSubBranches: false,
-      subBranches: [],
+      code: initialValues?.code ?? '',
+      nameEn: initialValues?.nameEn ?? '',
+      academicYearId: initialValues?.academicYearId ?? '',
+      subSystem: initialValues?.subSystem ?? 'ENGLISH',
+      branch: initialValues?.branch ?? 'GRAMMAR',
+      levelIds: initialValues?.levelIds ?? [],
+      coefficient: initialValues?.coefficient ?? 1,
+      groupingId: initialValues?.groupingId ?? '',
+      hasSubBranches: initialValues?.hasSubBranches ?? false,
+      subBranches: initialValues?.subBranches ?? [],
     },
   });
 
@@ -164,17 +182,37 @@ export function SubjectForm({
 
   const pending = createSubject.isPending || updateSubject.isPending;
 
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
   const onSubmit = (values: SubjectFormValues) => {
     if (isEdit && record) {
       updateSubject.mutate({ id: record.id, values });
     } else {
-      createSubject.mutate(values);
+      createSubject.mutate(
+        { values, copyAssignmentsFromSubjectId },
+        {
+          onSuccess: (id) => onCreated?.(id),
+        },
+      );
     }
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form
+        id={formId}
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-6"
+      >
+        {variantMode ? (
+          <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            Creating a level variant. Keep the same name, use a different code and
+            coefficient, and choose levels that do not overlap the original subject.
+            Assigned teachers are copied when you save.
+          </p>
+        ) : null}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <FormField
             control={form.control}
@@ -506,7 +544,10 @@ export function SubjectForm({
                   ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Select one or more levels this subject applies to.
+                  Select one or more levels this subject applies to. If the
+                  coefficient or sub-branches differ by cycle (for example Forms 1–5
+                  vs Lower/Upper Sixth), create a separate level variant instead of
+                  selecting both cycles here.
                 </p>
                 {levelsLoading ? (
                   <p className="text-sm text-muted-foreground">Loading levels…</p>
@@ -547,17 +588,25 @@ export function SubjectForm({
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={pending || !activeYearId}>
-            {pending ? (
-              <LoaderCircleIcon className="size-4 animate-spin" />
+        {hideActions ? null : (
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" disabled={pending || !activeYearId}>
+              {pending ? (
+                <LoaderCircleIcon className="size-4 animate-spin" />
+              ) : null}
+              {isEdit ? 'Save subject' : 'Create subject'}
+            </Button>
+            {onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            ) : onCancelHref ? (
+              <Button type="button" variant="outline" asChild>
+                <Link href={onCancelHref}>Cancel</Link>
+              </Button>
             ) : null}
-            {isEdit ? 'Save subject' : 'Create subject'}
-          </Button>
-          <Button type="button" variant="outline" asChild>
-            <Link href={onCancelHref}>Cancel</Link>
-          </Button>
-        </div>
+          </div>
+        )}
       </form>
     </Form>
   );

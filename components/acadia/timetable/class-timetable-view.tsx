@@ -83,7 +83,7 @@ export function ClassTimetableView({
       {canManage ? <TimetablePublishControls /> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <CurrentAcademicYearBadge />
+          <CurrentAcademicYearBadge label="Year" />
           <Select value={classId} onValueChange={setClassId}>
             <SelectTrigger className="w-full sm:w-[min(100%,20rem)]">
               <SelectValue placeholder="Select class" />

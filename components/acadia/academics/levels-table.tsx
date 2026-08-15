@@ -24,8 +24,10 @@ import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
 import { InputWrapper } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ACADEMIC_STRUCTURE_TABLE_LAYOUT } from '@/components/acadia/academics/academic-structure-table-layout';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
 import { Button } from '@/components/ui/button';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useTranslation } from '@/hooks/useTranslation';
 
 function truncateCell(text: string) {
@@ -79,7 +81,7 @@ export function LevelsTable({
       {
         accessorKey: 'name',
         header: ({ column }) => (
-          <DataGridColumnHeader title={t('academics.levelName')} column={column} />
+          <DataGridColumnHeader title={t('academics.levelName')} visibility column={column} />
         ),
         cell: ({ row }) => truncateCell(row.original.name),
         size: 200,
@@ -88,7 +90,7 @@ export function LevelsTable({
       {
         accessorKey: 'subSystem',
         header: ({ column }) => (
-          <DataGridColumnHeader title={t('catalog.subSystemLabel')} column={column} />
+          <DataGridColumnHeader title={t('catalog.subSystemLabel')} visibility column={column} />
         ),
         cell: ({ row }) =>
           truncateCell(
@@ -102,7 +104,7 @@ export function LevelsTable({
       {
         accessorKey: 'branch',
         header: ({ column }) => (
-          <DataGridColumnHeader title={t('catalog.branchLabel')} column={column} />
+          <DataGridColumnHeader title={t('catalog.branchLabel')} visibility column={column} />
         ),
         cell: ({ row }) =>
           truncateCell(
@@ -118,6 +120,7 @@ export function LevelsTable({
         header: ({ column }) => (
           <DataGridColumnHeader
             title={t('academics.classesTitle')}
+            visibility
             column={column}
             className="justify-center"
           />
@@ -143,6 +146,8 @@ export function LevelsTable({
               ),
               size: 68,
               enableSorting: false,
+              enableResizing: false,
+              enableHiding: false,
             } satisfies ColumnDef<LevelListRow>,
           ]
         : []),
@@ -150,10 +155,25 @@ export function LevelsTable({
     [canManage, onDelete, onEdit, t],
   );
 
+  const defaultColumnOrder = useMemo(
+    () =>
+      canManage && onEdit
+        ? ['name', 'subSystem', 'branch', 'classCount', 'actions']
+        : ['name', 'subSystem', 'branch', 'classCount'],
+    [canManage, onEdit],
+  );
+  const [columnOrder, setColumnOrder] = useState(defaultColumnOrder);
+
+  useEffect(() => {
+    setColumnOrder(defaultColumnOrder);
+  }, [defaultColumnOrder]);
+
   const table = useReactTable({
     data: filtered,
     columns,
-    state: { sorting, pagination },
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
@@ -186,37 +206,37 @@ export function LevelsTable({
         recordCount={recordCount}
         isLoading={isLoading}
         tableLayout={{
-          width: 'fixed',
+          ...ACADEMIC_STRUCTURE_TABLE_LAYOUT,
           dense: true,
-          columnsPinnable: false,
-          columnsMovable: false,
-          columnsVisibility: false,
         }}
         emptyMessage={t('academics.noLevelsMatch')}
       >
-        <CardTable className="overflow-hidden">
-          {isError ? (
-            <p className="p-5 text-sm text-destructive">
-              {error instanceof Error ? error.message : t('academics.loadLevelsFailed')}
-            </p>
-          ) : isLoading ? (
-            <Skeleton className="m-5 h-40 w-full" />
-          ) : recordCount === 0 ? (
-            <div className="flex flex-col items-start gap-3 p-5">
-              <p className="text-sm text-muted-foreground">
-                {data.length === 0
-                  ? t('academics.noLevelsYet')
-                  : t('academics.noLevelsMatch')}
+        <CardTable>
+          <ScrollArea>
+            {isError ? (
+              <p className="p-5 text-sm text-destructive">
+                {error instanceof Error ? error.message : t('academics.loadLevelsFailed')}
               </p>
-              {data.length === 0 && onCreate ? (
-                <Button type="button" size="sm" onClick={onCreate}>
-                  {t('academics.createFirstLevel')}
-                </Button>
-              ) : null}
-            </div>
-          ) : (
-            <DataGridTable />
-          )}
+            ) : isLoading ? (
+              <Skeleton className="m-5 h-40 w-full" />
+            ) : recordCount === 0 ? (
+              <div className="flex flex-col items-start gap-3 p-5">
+                <p className="text-sm text-muted-foreground">
+                  {data.length === 0
+                    ? t('academics.noLevelsYet')
+                    : t('academics.noLevelsMatch')}
+                </p>
+                {data.length === 0 && onCreate ? (
+                  <Button type="button" size="sm" onClick={onCreate}>
+                    {t('academics.createFirstLevel')}
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <DataGridTable />
+            )}
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </CardTable>
         {!isError && !isLoading && recordCount > 0 ? (
           <CardFooter className="border-t">

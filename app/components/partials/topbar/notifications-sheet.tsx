@@ -2,18 +2,9 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import { Calendar, Settings, Settings2, Shield, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sheet,
@@ -25,265 +16,184 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Item1 from './notifications/item-1';
-import Item2 from './notifications/item-2';
-import Item3 from './notifications/item-3';
-import Item4 from './notifications/item-4';
-import Item5 from './notifications/item-5';
-import Item6 from './notifications/item-6';
-import Item10 from './notifications/item-10';
-import Item11 from './notifications/item-11';
-import Item13 from './notifications/item-13';
-import Item14 from './notifications/item-14';
-import Item15 from './notifications/item-15';
-import Item16 from './notifications/item-16';
-import Item17 from './notifications/item-17';
-import Item18 from './notifications/item-18';
-import Item19 from './notifications/item-19';
-import Item20 from './notifications/item-20';
+import { AccountDataState } from '@/components/acadia/account/account-data-state';
+import { useCommunicationMutations } from '@/hooks/use-communication-mutations';
+import {
+  useAcadiaNotifications,
+  type AcadiaNotificationRow,
+} from '@/hooks/use-acadia-notifications';
+import { useTranslation } from '@/hooks/useTranslation';
+import { NotificationItem } from './notifications/notification-item';
+
+const ANNOUNCEMENT_EVENTS = new Set([
+  'announcement.broadcast',
+  'announcement.event',
+]);
+
+function filterNotifications(
+  items: AcadiaNotificationRow[],
+  tab: 'all' | 'inbox' | 'team' | 'following',
+): AcadiaNotificationRow[] {
+  if (tab === 'inbox') {
+    return items.filter((item) => !item.readAt);
+  }
+  if (tab === 'team') {
+    return items.filter((item) => ANNOUNCEMENT_EVENTS.has(item.event));
+  }
+  if (tab === 'following') {
+    return items.filter((item) => item.event === 'message.received');
+  }
+  return items;
+}
+
+function NotificationList({
+  items,
+  emptyMessage,
+  isLoading,
+  isError,
+  error,
+  onOpen,
+}: {
+  items: AcadiaNotificationRow[];
+  emptyMessage: string;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  onOpen: (item: AcadiaNotificationRow, href: string) => void;
+}) {
+  return (
+    <AccountDataState
+      isLoading={isLoading}
+      isError={isError}
+      error={error}
+      isEmpty={items.length === 0}
+      emptyMessage={emptyMessage}
+    >
+      <div className="flex flex-col gap-5">
+        {items.map((item, index) => (
+          <div key={item.id}>
+            {index > 0 ? <div className="border-b border-b-border mb-5" /> : null}
+            <NotificationItem item={item} onOpen={onOpen} />
+          </div>
+        ))}
+      </div>
+    </AccountDataState>
+  );
+}
 
 export function NotificationsSheet({ trigger }: { trigger: ReactNode }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { data = [], isLoading, isError, error } = useAcadiaNotifications(50);
+  const { markNotificationRead, markAllNotificationsRead } =
+    useCommunicationMutations();
+  const unreadCount = data.filter((item) => !item.readAt).length;
+
+  const openNotification = (item: AcadiaNotificationRow, href: string) => {
+    if (!item.readAt) {
+      markNotificationRead.mutate(item.id);
+    }
+    router.push(href);
+  };
+
   return (
-    <Sheet>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent className="p-0 gap-0 sm:w-[500px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
-        <SheetHeader className="mb-0">
-          <SheetTitle className="p-3">
-            Notifications
-          </SheetTitle>
-        </SheetHeader>
-        <SheetBody className="p-0">
-          <ScrollArea className="h-[calc(100vh-10.5rem)]">
-            <Tabs defaultValue="all" className="w-full relative">
-              <TabsList variant="line" className="w-full px-5 mb-5">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="inbox" className="relative">
-                  Inbox
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 absolute top-1 -end-1" />
-                </TabsTrigger>
-                <TabsTrigger value="team">Team</TabsTrigger>
-                <TabsTrigger value="following">Following</TabsTrigger>
-                <div className="grow flex items-center justify-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        mode="icon"
-                        className="mb-1"
-                      >
-                        <Settings className="size-4.5!" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="w-44"
-                      side="bottom"
-                      align="end"
+    <div className="relative">
+      <Sheet>
+        <SheetTrigger asChild>{trigger}</SheetTrigger>
+        <SheetContent className="p-0 gap-0 sm:w-[500px] sm:max-w-none inset-5 start-auto h-auto rounded-lg p-0 sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
+          <SheetHeader className="mb-0">
+            <SheetTitle className="p-3">{t('communication.sheetTitle')}</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="p-0">
+            <ScrollArea className="h-[calc(100vh-10.5rem)]">
+              <Tabs defaultValue="all" className="w-full relative">
+                <TabsList variant="line" className="w-full px-5 mb-5">
+                  <TabsTrigger value="all">{t('communication.tabAll')}</TabsTrigger>
+                  <TabsTrigger value="inbox" className="relative">
+                    {t('communication.tabInbox')}
+                    {unreadCount > 0 ? (
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 absolute top-1 -end-1" />
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="team">{t('communication.tabTeam')}</TabsTrigger>
+                  <TabsTrigger value="following">
+                    {t('communication.tabFollowing')}
+                  </TabsTrigger>
+                  <div className="grow flex items-center justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      mode="icon"
+                      className="mb-1"
+                      asChild
                     >
-                      <DropdownMenuItem asChild>
-                        <Link href="/account/members/teams">
-                          <Users /> Invite Users
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <Settings2 />
-                          <span>Team Settings</span>
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent className="w-44">
-                            <DropdownMenuItem asChild>
-                              <Link href="/account/members/import-members">
-                                <Shield />
-                                Find Members
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href="/account/members/import-members">
-                                <Calendar /> Meetings
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href="/account/members/import-members">
-                                <Shield /> Group Settings
-                              </Link>
-                            </DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
-                      <DropdownMenuItem asChild>
-                        <Link href="/account/security/privacy-settings">
-                          <Shield /> Group Settings
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </TabsList>
+                      <Link href="/account/notifications" aria-label={t('account.notifications')}>
+                        <Settings className="size-4.5!" />
+                      </Link>
+                    </Button>
+                  </div>
+                </TabsList>
 
-              {/* All Tab */}
-              <TabsContent value="all" className="mt-0">
-                <div className="flex flex-col gap-5">
-                  <Item1
-                    userName="Joe Lincoln"
-                    avatar="300-4.png"
-                    description="mentioned you in"
-                    link="Latest Trends"
-                    label="topic"
-                    time="18 mins ago"
-                    specialist="Web Design 2024"
-                    text="For an expert opinion, check out what Mike has to say on this topic!"
+                <TabsContent value="all" className="mt-0">
+                  <NotificationList
+                    items={filterNotifications(data, 'all')}
+                    emptyMessage={t('communication.noNotifications')}
+                    isLoading={isLoading}
+                    isError={isError}
+                    error={error}
+                    onOpen={openNotification}
                   />
-                  <div className="border-b border-b-border"></div>
-                  <Item2 />
-                  <div className="border-b border-b-border"></div>
-                  <Item3
-                    userName="Guy Hawkins"
-                    avatar="300-27.png"
-                    badgeColor="offline"
-                    description="requested access to"
-                    link="AirSpace"
-                    day="project"
-                    date="14 hours ago"
-                    info="Dev Team"
+                </TabsContent>
+                <TabsContent value="inbox" className="mt-0">
+                  <NotificationList
+                    items={filterNotifications(data, 'inbox')}
+                    emptyMessage={t('communication.noUnreadNotifications')}
+                    isLoading={isLoading}
+                    isError={isError}
+                    error={error}
+                    onOpen={openNotification}
                   />
-                  <div className="border-b border-b-border"></div>
-                  <Item4 />
-                  <div className="border-b border-b-border"></div>
-                  <Item5
-                    userName="Raymond Pawell"
-                    avatar="300-11.png"
-                    badgeColor="online"
-                    description="posted a new article"
-                    link="2024 Roadmap"
-                    day=""
-                    date="1 hour ago"
-                    info="Roadmap"
+                </TabsContent>
+                <TabsContent value="team" className="mt-0">
+                  <NotificationList
+                    items={filterNotifications(data, 'team')}
+                    emptyMessage={t('communication.noAnnouncementNotifications')}
+                    isLoading={isLoading}
+                    isError={isError}
+                    error={error}
+                    onOpen={openNotification}
                   />
-                  <div className="border-b border-b-border"></div>
-                  <Item6 />
-                </div>
-              </TabsContent>
-
-              {/* Inbox Tab */}
-              <TabsContent value="inbox" className="mt-0">
-                <div className="flex flex-col gap-5">
-                  <Item13 />
-                  <div className="border-b border-b-border"></div>
-                  <Item14 />
-                  <div className="border-b border-b-border"></div>
-                  <Item15 />
-                  <div className="border-b border-b-border"></div>
-                  <Item16 />
-                  <div className="border-b border-b-border"></div>
-                  <Item3
-                    userName="Benjamin Harris"
-                    avatar="300-30.png"
-                    badgeColor="offline"
-                    description="requested to upgrade plan"
-                    link=""
-                    day=""
-                    date="4 days ago"
-                    info="Marketing"
+                </TabsContent>
+                <TabsContent value="following" className="mt-0">
+                  <NotificationList
+                    items={filterNotifications(data, 'following')}
+                    emptyMessage={t('communication.noMessageNotifications')}
+                    isLoading={isLoading}
+                    isError={isError}
+                    error={error}
+                    onOpen={openNotification}
                   />
-                  <div className="border-b border-b-border"></div>
-                  <Item5
-                    userName="Isaac Morgan"
-                    avatar="300-24.png"
-                    badgeColor="online"
-                    description="mentioned you in"
-                    link="Data Transmission"
-                    day="topic"
-                    date="6 days ago"
-                    info="Dev Team"
-                  />
-                </div>
-              </TabsContent>
-
-              {/* Team Tab */}
-              <TabsContent value="team" className="mt-0">
-                <div className="flex flex-col gap-5">
-                  <Item10 />
-                  <div className="border-b border-b-border"></div>
-                  <Item5
-                    userName="Adrian Vale"
-                    avatar="300-6.png"
-                    badgeColor="offline"
-                    description="posted a new article"
-                    link="Marketing"
-                    day="to 13 May"
-                    date="2 days ago"
-                    info="Marketing"
-                  />
-                  <div className="border-b border-b-border"></div>
-                  <Item11 />
-                  <div className="border-b border-b-border"></div>
-                  <Item1
-                    userName="Selene Silverleaf"
-                    avatar="300-21.png"
-                    description="commented on"
-                    link="SiteSculpt"
-                    label=""
-                    time="4 days ago"
-                    specialist="Manager"
-                    text="This design is simply stunning! From layout to color, it's a work of art!"
-                  />
-                  <div className="border-b border-b-border"></div>
-                  <Item3
-                    userName="Thalia Fox"
-                    avatar="300-13.png"
-                    badgeColor="online"
-                    description="has invited you to join"
-                    link="Design Research"
-                    day=""
-                    date="4 days ago"
-                    info="Dev Team"
-                  />
-                </div>
-              </TabsContent>
-
-              {/* Following Tab */}
-              <TabsContent value="following" className="mt-0">
-                <div className="flex flex-col gap-5">
-                  <Item18 />
-                  <div className="border-b border-b-border"></div>
-                  <Item17 />
-                  <div className="border-b border-b-border"></div>
-                  <Item19 />
-                  <div className="border-b border-b-border"></div>
-                  <Item5
-                    userName="Chloe Morgan"
-                    avatar="300-34.png"
-                    badgeColor="online"
-                    description="posted a new article"
-                    link="User Experience"
-                    day=""
-                    date="1 day ago"
-                    info="Nexus"
-                  />
-                  <div className="border-b border-b-border"></div>
-                  <Item20 />
-                  <div className="border-b border-b-border"></div>
-                  <Item3
-                    userName="Thalia Fox"
-                    avatar="300-13.png"
-                    badgeColor="offline"
-                    description="has invited you to join"
-                    link="Design Research"
-                    day=""
-                    date="4 days ago"
-                    info="Dev Team"
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </ScrollArea>
-        </SheetBody>
-        <SheetFooter className="border-t border-border p-5 grid grid-cols-2 gap-2.5">
-          <Button variant="outline">Archive all</Button>
-          <Button variant="outline">Mark all as read</Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+                </TabsContent>
+              </Tabs>
+            </ScrollArea>
+          </SheetBody>
+          <SheetFooter className="border-t border-border p-5">
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={unreadCount === 0 || markAllNotificationsRead.isPending}
+              onClick={() => markAllNotificationsRead.mutate()}
+            >
+              {t('communication.markAllRead')}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      {unreadCount > 0 ? (
+        <span className="absolute top-0 end-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-destructive text-[10px] font-semibold text-white pointer-events-none">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      ) : null}
+    </div>
   );
 }

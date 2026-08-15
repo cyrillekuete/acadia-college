@@ -29,6 +29,7 @@ export type ExamSessionFormValues = z.infer<typeof examSessionSchema>;
 
 export const subjectMarkEntrySchema = z.object({
   studentProfileId: z.string().min(1),
+  subjectSubBranchId: z.string().nullable().optional(),
   caScore: scoreField,
   examScore: scoreField,
   isResitEligible: z.boolean().optional(),

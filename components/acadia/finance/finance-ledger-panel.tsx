@@ -1,11 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
+import {
+  ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  PaginationState,
+  SortingState,
+  useReactTable,
+} from '@tanstack/react-table';
 import { LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardTable } from '@/components/ui/card';
+import { DataGrid } from '@/components/ui/data-grid';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { DataGridPagination } from '@/components/ui/data-grid-pagination';
+import { DataGridTable } from '@/components/ui/data-grid-table';
 import {
   Form,
   FormControl,
@@ -15,6 +30,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -22,15 +38,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import {
   financeLedgerEntrySchema,
   type FinanceLedgerEntryFormValues,
@@ -119,7 +130,7 @@ export function FinanceLedgerPanel() {
 
   return (
     <div className="space-y-6">
-      <CurrentAcademicYearBadge />
+      <CurrentAcademicYearBadge label="Year" />
 
       {canManage && activeYearId ? (
         <Form {...form}>
@@ -188,7 +199,10 @@ export function FinanceLedgerPanel() {
                 <FormItem>
                   <FormLabel>{t('common.labels.date')}</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <DatePickerInput
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -225,44 +239,170 @@ export function FinanceLedgerPanel() {
         </p>
       ) : null}
 
-      {activeYearId && query.data ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('common.labels.date')}</TableHead>
-              <TableHead>{t('common.labels.type')}</TableHead>
-              <TableHead>{t('finance.category')}</TableHead>
-              <TableHead>{t('common.labels.description')}</TableHead>
-              <TableHead className="text-right">{t('finance.amount')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.data.map((row) => (
-              <TableRow key={row.id as string}>
-                <TableCell>{String(row.occurredOn)}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={row.entryType === 'INCOME' ? 'success' : 'destructive'}
-                    appearance="light"
-                  >
-                    {t(`finance.entryType.${String(row.entryType)}`, {
-                      defaultValue: financeLedgerTypeLabel(String(row.entryType)),
-                    })}
-                  </Badge>
-                </TableCell>
-                <TableCell>{String(row.category)}</TableCell>
-                <TableCell>{String(row.description ?? '—')}</TableCell>
-                <TableCell className="text-right">
-                  {formatMoneyMinor(
-                    Number(row.amountMinor),
-                    String(row.currency ?? 'XAF'),
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      {activeYearId ? (
+        <LedgerEntriesTable data={query.data ?? []} isLoading={query.isLoading} />
       ) : null}
     </div>
+  );
+}
+
+type LedgerRow = {
+  id: unknown;
+  entryType: unknown;
+  category: unknown;
+  description: unknown;
+  amountMinor: unknown;
+  currency: unknown;
+  occurredOn: unknown;
+};
+
+function LedgerEntriesTable({
+  data,
+  isLoading,
+}: {
+  data: LedgerRow[];
+  isLoading: boolean;
+}) {
+  const { t } = useTranslation();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    'occurredOn',
+    'entryType',
+    'category',
+    'description',
+    'amountMinor',
+  ]);
+
+  const columns = useMemo<ColumnDef<LedgerRow>[]>(
+    () => [
+      {
+        accessorKey: 'occurredOn',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.date')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => String(row.original.occurredOn),
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'entryType',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.type')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <Badge
+            variant={row.original.entryType === 'INCOME' ? 'success' : 'destructive'}
+            appearance="light"
+          >
+            {t(`finance.entryType.${String(row.original.entryType)}`, {
+              defaultValue: financeLedgerTypeLabel(String(row.original.entryType)),
+            })}
+          </Badge>
+        ),
+        size: 130,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'category',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('finance.category')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => String(row.original.category),
+        size: 160,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'description',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('common.labels.description')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => String(row.original.description ?? '—'),
+        size: 260,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'amountMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('finance.amount')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <div className="text-right">
+            {formatMoneyMinor(
+              Number(row.original.amountMinor),
+              String(row.original.currency ?? 'XAF'),
+            )}
+          </div>
+        ),
+        size: 140,
+        enableSorting: true,
+      },
+    ],
+    [t],
+  );
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination, columnOrder },
+    columnResizeMode: 'onChange',
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  return (
+    <DataGrid
+      table={table}
+      recordCount={data.length}
+      isLoading={isLoading}
+      tableLayout={METRONIC_RESIZABLE_TABLE_LAYOUT}
+      tableClassNames={{
+        edgeCell: 'px-5',
+      }}
+    >
+      <Card>
+        <CardTable>
+          {isLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <ScrollArea>
+              <DataGridTable />
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          )}
+        </CardTable>
+        <CardFooter>
+          <DataGridPagination />
+        </CardFooter>
+      </Card>
+    </DataGrid>
   );
 }

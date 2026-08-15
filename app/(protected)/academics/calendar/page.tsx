@@ -4,13 +4,14 @@ import { useMemo, useState } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { AcademicCalendarMonthView } from '@/components/acadia/academics/academic-calendar-month-view';
+import { ACADEMIC_STRUCTURE_TABLE_LAYOUT } from '@/components/acadia/academics/academic-structure-table-layout';
 import { AdminToolbar } from '@/components/acadia/academics/admin-toolbar';
 import { CalendarMilestoneFormDialog } from '@/components/acadia/academics/calendar-milestone-form-dialog';
 import { RegistryRowActions } from '@/components/acadia/academics/row-actions';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
-import { nestedFieldColumn } from '@/lib/acadia/list-columns';
-import { formatRecordValue, termLabel } from '@/lib/acadia/record-display';
+import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
+import { formatRecordValue, termLabel, unwrapRelation } from '@/lib/acadia/record-display';
 import { useAcademicCalendarMutations } from '@/hooks/use-academic-calendar-mutations';
 import { useAcademicCalendarMilestones } from '@/hooks/use-academic-calendar-milestones';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -47,15 +48,47 @@ export default function AcademicCalendarPage() {
     () => [
       {
         accessorKey: 'kind',
-        header: 'Kind',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Kind" visibility column={column} />
+        ),
         cell: ({ row }) => kindLabel(row.original.kind),
+        size: 160,
       },
-      { accessorKey: 'onDate', header: 'Date' },
-      { accessorKey: 'labelEn', header: 'Label (EN)' },
-      nestedFieldColumn<Row>('year', 'Academic year', 'AcademicYear', 'label'),
+      {
+        accessorKey: 'onDate',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Date" visibility column={column} />
+        ),
+        size: 140,
+      },
+      {
+        accessorKey: 'labelEn',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Label (EN)" visibility column={column} />
+        ),
+        size: 180,
+      },
+      {
+        id: 'year',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Academic year" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const rel = unwrapRelation<Record<string, unknown>>(
+            row.original.AcademicYear,
+          );
+          if (!rel) {
+            return '—';
+          }
+          return formatRecordValue(rel.label);
+        },
+        size: 160,
+      },
       {
         id: 'term',
-        header: 'Term',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Term" visibility column={column} />
+        ),
         cell: ({ row }) => {
           const rel = row.original.Term;
           const term = Array.isArray(rel) ? rel[0] : rel;
@@ -64,10 +97,15 @@ export default function AcademicCalendarPage() {
           }
           return formatRecordValue(null);
         },
+        size: 100,
       },
       {
         id: 'actions',
         header: '',
+        size: 80,
+        enableResizing: false,
+        enableSorting: false,
+        enableHiding: false,
         cell: ({ row }) => (
           <RegistryRowActions
             onEdit={() => {
@@ -90,15 +128,17 @@ export default function AcademicCalendarPage() {
     <AcadiaPageShell
       title={t('academics.calendarTitle')}
       description={t('academics.calendarDescription')}
+      actions={
+        <AdminToolbar
+          addLabel="New milestone"
+          onAdd={() => {
+            setEditing(null);
+            setDialogOpen(true);
+          }}
+          className="mb-0"
+        />
+      }
     >
-      <AdminToolbar
-        addLabel="New milestone"
-        onAdd={() => {
-          setEditing(null);
-          setDialogOpen(true);
-        }}
-      />
-
       <AcademicCalendarMonthView
         milestones={calendarContext?.milestones ?? []}
         className="mb-6"
@@ -111,6 +151,7 @@ export default function AcademicCalendarPage() {
         select="id, kind, onDate, labelEn, labelFr, academicYearId, termId, AcademicYear!AcademicCalendarMilestone_academicYearId_tenantId_fkey ( label ), Term!AcademicCalendarMilestone_semesterId_tenantId_fkey ( number )"
         columns={columns}
         searchKeys={['labelEn', 'kind']}
+        tableLayout={ACADEMIC_STRUCTURE_TABLE_LAYOUT}
       />
       <CalendarMilestoneFormDialog
         open={dialogOpen}

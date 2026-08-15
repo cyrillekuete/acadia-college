@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Select,
   SelectContent,
@@ -37,12 +38,22 @@ export type AttendanceSessionFormRecord = AttendanceSessionFormValues & {
   id: string;
 };
 
+export const ATTENDANCE_SESSION_FORM_ID = 'attendance-session-form';
+
 export function AttendanceSessionForm({
   record,
   onCancelHref,
+  onCancel,
+  hideActions = false,
+  formId = ATTENDANCE_SESSION_FORM_ID,
+  onPendingChange,
 }: {
   record?: AttendanceSessionFormRecord | null;
-  onCancelHref: string;
+  onCancelHref?: string;
+  onCancel?: () => void;
+  hideActions?: boolean;
+  formId?: string;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { t } = useTranslation();
   const isEdit = !!record;
@@ -94,16 +105,24 @@ export function AttendanceSessionForm({
   const pending =
     createAttendanceSession.isPending || updateAttendanceSession.isPending;
 
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-6 max-w-lg">
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        className={hideActions ? 'space-y-4' : 'space-y-6 max-w-lg'}
+      >
         <FormField
           control={form.control}
           name="academicYearId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t('students.academicYear')}</FormLabel>
-              <CurrentAcademicYearBadge className="mb-2" />
+              <CurrentAcademicYearBadge />
               <FormControl>
                 <Input type="hidden" {...field} />
               </FormControl>
@@ -148,7 +167,10 @@ export function AttendanceSessionForm({
             <FormItem>
               <FormLabel>{t('attendance.sessionDate')}</FormLabel>
               <FormControl>
-                <Input type="date" {...field} />
+                <DatePickerInput
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -169,20 +191,28 @@ export function AttendanceSessionForm({
           )}
         />
 
-        <div className="flex gap-2">
-          <Button type="submit" disabled={pending}>
-            {pending ? (
-              <LoaderCircleIcon className="size-4 animate-spin" />
-            ) : isEdit ? (
-              t('attendance.saveSession')
-            ) : (
-              t('attendance.createSession')
-            )}
-          </Button>
-          <Button type="button" variant="outline" asChild>
-            <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
-          </Button>
-        </div>
+        {hideActions ? null : (
+          <div className="flex gap-2">
+            <Button type="submit" disabled={pending}>
+              {pending ? (
+                <LoaderCircleIcon className="size-4 animate-spin" />
+              ) : isEdit ? (
+                t('attendance.saveSession')
+              ) : (
+                t('attendance.createSession')
+              )}
+            </Button>
+            {onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                {t('common.buttons.cancel')}
+              </Button>
+            ) : onCancelHref ? (
+              <Button type="button" variant="outline" asChild>
+                <Link href={onCancelHref}>{t('common.buttons.cancel')}</Link>
+              </Button>
+            ) : null}
+          </div>
+        )}
       </form>
     </Form>
   );
