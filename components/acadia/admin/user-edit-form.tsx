@@ -204,7 +204,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
               {updateUser.isPending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />
               ) : (
-                {t('admin.saveChanges')}
+                t('admin.saveChanges')
               )}
             </Button>
             <Button type="button" variant="outline" asChild>
