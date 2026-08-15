@@ -9,6 +9,10 @@ import {
   rankStudents,
   weightedAverage,
 } from '@/lib/acadia/assessment';
+import {
+  aggregateDiscipline,
+  type ClassDisciplineRow,
+} from '@/lib/acadia/class-discipline';
 import { branchLabel } from '@/lib/acadia/education-system';
 import {
   calculateGrade,
@@ -71,6 +75,7 @@ export type ReportCardBundle = {
   subjects: ReportCardSubjectDef[];
   marks: ReportCardMarkRow[];
   branding: ReportCardBranding;
+  disciplineByTerm?: ClassDisciplineRow[];
 };
 
 export function subjectTypeToCategory(subjectType: string | null | undefined): ReportCardCategory {
@@ -284,7 +289,7 @@ function toSubjectGrade(
   };
 }
 
-function studentPeriodAverage(
+export function studentPeriodAverage(
   subjects: ReportCardSubjectDef[],
   marks: ReportCardMarkRow[],
   studentProfileId: string,
@@ -299,6 +304,25 @@ function studentPeriodAverage(
         { termAverages: scores.termAverages, annualAverage: scores.annualAverage ?? undefined },
         term,
       ),
+      plannedCoefficient: subject.coefficient > 0 ? subject.coefficient : 1,
+    };
+  });
+  const totals = computeWeightedTotals(rows);
+  return totals.coefficient > 0 ? totals.average : null;
+}
+
+export function studentSequenceAverage(
+  subjects: ReportCardSubjectDef[],
+  marks: ReportCardMarkRow[],
+  studentProfileId: string,
+  sequenceNumber: number,
+  structure: AcademicYearStructure,
+): number | null {
+  const studentMarks = marks.filter((mark) => mark.studentProfileId === studentProfileId);
+  const rows = subjects.map((subject) => {
+    const scores = buildSubjectSequenceScores(studentMarks, subject, structure);
+    return {
+      average: scores.sequences[sequenceKey(sequenceNumber)] ?? null,
       plannedCoefficient: subject.coefficient > 0 ? subject.coefficient : 1,
     };
   });
@@ -448,7 +472,7 @@ export function buildReportCardData(
       classAvg: averageScores(values) ?? 0,
       ...gce,
     },
-    discipline: { absences: 0, suspensions: 0, warnings: 0 },
+    discipline: aggregateDiscipline(bundle.disciplineByTerm, term),
     branding: bundle.branding,
     watermarkUrl: bundle.branding.logoUrl ?? undefined,
     sequenceSlots,

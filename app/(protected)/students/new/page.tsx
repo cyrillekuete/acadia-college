@@ -37,7 +37,7 @@ export default function NewStudentPage() {
         <ToolbarHeading>
           <ToolbarPageTitle>Add student</ToolbarPageTitle>
           <ToolbarDescription>
-            Creates the student account, sends a password-setup email, and links a parent or guardian.
+            Creates the student and parent/guardian accounts, then downloads a file with login credentials for both.
           </ToolbarDescription>
         </ToolbarHeading>
         <ToolbarActions>

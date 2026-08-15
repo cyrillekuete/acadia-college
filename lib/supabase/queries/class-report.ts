@@ -3,35 +3,21 @@ import {
   DEFAULT_ACADEMIC_STRUCTURE,
   type AcademicYearStructure,
 } from '@/lib/acadia/academic-calendar';
-import { branchLabel } from '@/lib/acadia/education-system';
+import type { ClassReportBundle, ClassReportStudent } from '@/lib/acadia/class-report';
+import { uniqueIds } from '@/lib/acadia/staff-class-assignments';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
-import {
-  buildReportCardData,
-  type ReportCardBundle,
-  type ReportCardMarkRow,
-  type ReportCardSubjectDef,
-} from '@/lib/acadia/report-card';
-import type { ReportCardData, ReportCardTerm } from '@/lib/acadia/report-card-types';
-import { embed, FK } from '@/lib/supabase/embed-selects';
-import { fetchStudentTermDiscipline } from '@/lib/supabase/queries/class-discipline';
+import type { ReportCardMarkRow, ReportCardSubjectDef } from '@/lib/acadia/report-card';
 import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 import { fetchAcadiaTenant } from '@/lib/supabase/queries/tenant';
+import { embed, FK } from '@/lib/supabase/embed-selects';
 import { getTenantAssetPublicUrl } from '@/lib/supabase/storage';
 
 const STUDENT_PROFILE_SELECT = `
   id,
-  userId,
   matriculeNumber,
   registrationNumber,
-  branch,
-  ${embed('User', FK.StudentProfile_user, 'id, name, avatar')}
-`;
-
-const ENROLLMENT_SELECT = `
-  classId,
-  branch,
-  ${embed('Class', FK.StudentEnrollment_class, 'id, name, staffProfileId, branch')}
+  ${embed('User', FK.StudentProfile_user, 'id, name')}
 `;
 
 const CLASS_SUBJECT_SELECT = `
@@ -53,24 +39,6 @@ const MARK_SELECT = `
 
 const STAFF_SELECT = `id, ${embed('User', FK.StaffProfile_user, 'name')}`;
 
-function formatDob(value: string | null | undefined): string {
-  if (!value) {
-    return '—';
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleDateString('en-GB');
-}
-
-function formatSex(value: string | null | undefined): string {
-  const normalized = (value ?? '').trim().toLowerCase();
-  if (normalized === 'm' || normalized === 'male') return 'M';
-  if (normalized === 'f' || normalized === 'female') return 'F';
-  return value?.trim() || '—';
-}
-
 function chunkIds<T>(ids: T[], size = 200): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < ids.length; i += size) {
@@ -79,81 +47,67 @@ function chunkIds<T>(ids: T[], size = 200): T[][] {
   return chunks;
 }
 
-export async function fetchReportCardBundle(
+export async function fetchClassMasterAccessibleClassIds(
   supabase: SupabaseClient,
   tenantId: string,
-  studentProfileId: string,
   academicYearId: string,
-  classId?: string | null,
-): Promise<ReportCardBundle> {
-  const { data: profileRow, error: profileError } = await supabase
-    .from('StudentProfile')
-    .select(STUDENT_PROFILE_SELECT)
-    .eq('tenantId', tenantId)
-    .eq('id', studentProfileId)
-    .maybeSingle();
-  const profile = profileRow as {
-    id: string;
-    userId: string;
-    matriculeNumber: string | null;
-    registrationNumber: string;
-    branch: string | null;
-    User?: unknown;
-  } | null;
+  staffProfileId: string,
+): Promise<string[]> {
+  const [classResult, assignmentResult] = await Promise.all([
+    supabase
+      .from('Class')
+      .select('id')
+      .eq('tenantId', tenantId)
+      .eq('staffProfileId', staffProfileId),
+    supabase
+      .from('StaffClassAssignment')
+      .select('classId')
+      .eq('tenantId', tenantId)
+      .eq('academicYearId', academicYearId)
+      .eq('staffProfileId', staffProfileId),
+  ]);
 
-  if (profileError) {
-    throw new Error(getQueryErrorMessage(profileError));
+  if (classResult.error) {
+    throw classResult.error;
   }
-  if (!profile) {
-    throw new Error('Student not found.');
-  }
-
-  let enrollmentQuery = supabase
-    .from('StudentEnrollment')
-    .select(ENROLLMENT_SELECT)
-    .eq('tenantId', tenantId)
-    .eq('studentProfileId', studentProfileId)
-    .eq('academicYearId', academicYearId)
-    .eq('status', 'ENROLLED');
-
-  if (classId) {
-    enrollmentQuery = enrollmentQuery.eq('classId', classId);
+  if (assignmentResult.error) {
+    throw assignmentResult.error;
   }
 
-  const { data: enrollmentRow, error: enrollmentError } = await enrollmentQuery
-    .order('createdAt', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const enrollment = enrollmentRow as {
-    classId: string | null;
-    branch: string | null;
-    Class?: unknown;
-  } | null;
+  return uniqueIds([
+    ...((classResult.data ?? []) as Array<{ id?: string | null }>).map((row) => row.id ?? ''),
+    ...((assignmentResult.data ?? []) as Array<{ classId?: string | null }>).map(
+      (row) => row.classId ?? '',
+    ),
+  ]);
+}
 
-  if (enrollmentError) {
-    throw new Error(getQueryErrorMessage(enrollmentError));
-  }
-
-  const classRow = unwrapRelation<{
-    id?: string;
-    name?: string;
-    staffProfileId?: string | null;
-    branch?: string | null;
-  }>(enrollment?.Class);
-  const resolvedClassId = (enrollment?.classId as string | null) ?? classRow?.id ?? null;
-  if (!resolvedClassId) {
-    throw new Error('Student is not assigned to a class for this academic year.');
+export async function fetchClassReportBundle(
+  supabase: SupabaseClient,
+  tenantId: string,
+  classId: string,
+  academicYearId: string,
+): Promise<ClassReportBundle> {
+  const trimmedClassId = classId.trim();
+  if (!trimmedClassId) {
+    throw new Error('Class is required.');
   }
 
   const [
+    classResult,
     yearResult,
     sequenceResult,
     classSubjectResult,
     subBranchResult,
     cohortResult,
     tenant,
-    disciplineByTerm,
   ] = await Promise.all([
+    supabase
+      .from('Class')
+      .select('id, name, staffProfileId, branch')
+      .eq('tenantId', tenantId)
+      .eq('id', trimmedClassId)
+      .maybeSingle(),
     supabase
       .from('AcademicYear')
       .select('id, label, termsPerYear, sequencesPerTerm, sequencesPerYear')
@@ -169,63 +123,28 @@ export async function fetchReportCardBundle(
       .from('ClassSubject')
       .select(CLASS_SUBJECT_SELECT)
       .eq('tenantId', tenantId)
-      .eq('classId', resolvedClassId),
+      .eq('classId', trimmedClassId),
     supabase
       .from('ClassSubjectSubBranch')
       .select('subjectId, subjectSubBranchId')
       .eq('tenantId', tenantId)
-      .eq('classId', resolvedClassId),
+      .eq('classId', trimmedClassId),
     supabase
       .from('StudentEnrollment')
       .select('studentProfileId')
       .eq('tenantId', tenantId)
       .eq('academicYearId', academicYearId)
-      .eq('classId', resolvedClassId)
+      .eq('classId', trimmedClassId)
       .eq('status', 'ENROLLED'),
     fetchAcadiaTenant(supabase, tenantId),
-    fetchStudentTermDiscipline(
-      supabase,
-      tenantId,
-      studentProfileId,
-      academicYearId,
-      resolvedClassId,
-    ),
   ]);
 
-  let applicationResult: {
-    dateOfBirth: string | null;
-    firstNameEn: string;
-    lastNameEn: string;
-  } | null = null;
-  let legacyUserResult: {
-    gender: string | null;
-    date_of_birth: string | null;
-    avatar_url: string | null;
-  } | null = null;
-  try {
-    const { data } = await supabase
-      .from('EnrollmentApplication')
-      .select('dateOfBirth, firstNameEn, lastNameEn')
-      .eq('tenantId', tenantId)
-      .eq('studentProfileId', studentProfileId)
-      .order('createdAt', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    applicationResult = data;
-  } catch {
-    applicationResult = null;
+  if (classResult.error) {
+    throw new Error(getQueryErrorMessage(classResult.error));
   }
-  try {
-    const { data } = await supabase
-      .from('users')
-      .select('gender, date_of_birth, avatar_url')
-      .eq('id', profile.userId)
-      .maybeSingle();
-    legacyUserResult = data;
-  } catch {
-    legacyUserResult = null;
+  if (!classResult.data) {
+    throw new Error('Class not found.');
   }
-
   if (yearResult.error) {
     throw new Error(getQueryErrorMessage(yearResult.error));
   }
@@ -244,6 +163,13 @@ export async function fetchReportCardBundle(
   if (cohortResult.error) {
     throw new Error(getQueryErrorMessage(cohortResult.error));
   }
+
+  const classRow = classResult.data as {
+    id: string;
+    name: string | null;
+    staffProfileId: string | null;
+    branch: string | null;
+  };
 
   const structure: AcademicYearStructure = {
     termsPerYear: yearResult.data.termsPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.termsPerYear,
@@ -294,7 +220,6 @@ export async function fetchReportCardBundle(
     ];
   });
 
-  const subjectIds = subjects.map((subject) => subject.subjectId);
   const cohortIds = [
     ...new Set(
       (cohortResult.data ?? [])
@@ -302,12 +227,52 @@ export async function fetchReportCardBundle(
         .filter(Boolean),
     ),
   ];
-  if (!cohortIds.includes(studentProfileId)) {
-    cohortIds.push(studentProfileId);
+
+  const profileById = new Map<
+    string,
+    { name: string; matricule: string }
+  >();
+  for (const chunk of chunkIds(cohortIds)) {
+    if (chunk.length === 0) {
+      continue;
+    }
+    const { data: profileRows, error: profileError } = await supabase
+      .from('StudentProfile')
+      .select(STUDENT_PROFILE_SELECT)
+      .eq('tenantId', tenantId)
+      .in('id', chunk);
+    if (profileError) {
+      throw new Error(getQueryErrorMessage(profileError));
+    }
+    for (const row of (profileRows ?? []) as Array<{
+      id: string;
+      matriculeNumber: string | null;
+      registrationNumber: string;
+      User?: unknown;
+    }>) {
+      const user = unwrapRelation<{ name?: string | null }>(row.User);
+      const { first, last } = splitStudentName(user?.name);
+      profileById.set(row.id, {
+        name: user?.name?.trim() || `${first} ${last}`.trim() || 'Student',
+        matricule:
+          row.matriculeNumber?.trim() || row.registrationNumber || '',
+      });
+    }
   }
 
+  const students: ClassReportStudent[] = cohortIds
+    .map((studentProfileId) => {
+      const profile = profileById.get(studentProfileId);
+      return {
+        studentProfileId,
+        name: profile?.name ?? 'Student',
+        matricule: profile?.matricule ?? '',
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   let classMaster = '';
-  if (classRow?.staffProfileId) {
+  if (classRow.staffProfileId) {
     const { data: staffRow, error: staffError } = await supabase
       .from('StaffProfile')
       .select(STAFF_SELECT)
@@ -329,6 +294,7 @@ export async function fetchReportCardBundle(
     ]),
   );
 
+  const subjectIds = subjects.map((subject) => subject.subjectId);
   const marks: ReportCardMarkRow[] = [];
   if (subjectIds.length > 0 && cohortIds.length > 0) {
     const { data: sessions, error: sessionError } = await supabase
@@ -380,7 +346,7 @@ export async function fetchReportCardBundle(
         }>;
 
         for (const mark of typedMarks) {
-          const meta = sessionMeta.get(mark.examSessionId as string);
+          const meta = sessionMeta.get(mark.examSessionId);
           if (!meta) {
             continue;
           }
@@ -389,11 +355,10 @@ export async function fetchReportCardBundle(
             mark.SubjectSubBranch,
           );
           marks.push({
-            studentProfileId: mark.studentProfileId as string,
-            subjectId: mark.subjectId as string,
-            subjectSubBranchId: (mark.subjectSubBranchId as string | null) ?? null,
-            totalScore:
-              mark.totalScore != null ? Number(mark.totalScore) : null,
+            studentProfileId: mark.studentProfileId,
+            subjectId: mark.subjectId,
+            subjectSubBranchId: mark.subjectSubBranchId ?? null,
+            totalScore: mark.totalScore != null ? Number(mark.totalScore) : null,
             sequenceNumber: meta.sequenceNumber,
             subjectCoefficient:
               subject?.coefficient != null ? Number(subject.coefficient) : 1,
@@ -405,18 +370,6 @@ export async function fetchReportCardBundle(
     }
   }
 
-  const user = unwrapRelation<{ id?: string; name?: string | null; avatar?: string | null }>(
-    profile.User,
-  );
-  const { first, last } = splitStudentName(user?.name);
-  const application = applicationResult;
-  const legacy = legacyUserResult;
-  const dob = formatDob(
-    (application?.dateOfBirth as string | null) ??
-      (legacy?.date_of_birth as string | null) ??
-      null,
-  );
-  const sex = formatSex(legacy?.gender as string | null);
   const logoUrl = getTenantAssetPublicUrl(tenant?.logoStorageKey);
   const addressParts = [
     tenant?.addressLine1,
@@ -433,35 +386,14 @@ export async function fetchReportCardBundle(
   const region = tenant?.region?.trim() || 'Littoral';
 
   return {
-    student: {
-      studentProfileId,
-      name: user?.name?.trim() || `${first} ${last}`.trim() || 'Student',
-      firstName: application?.firstNameEn?.trim() || first,
-      lastName: application?.lastNameEn?.trim() || last,
-      matricule:
-        (profile.matriculeNumber as string | null)?.trim() ||
-        (profile.registrationNumber as string) ||
-        '',
-      sex,
-      dob,
-      pob: '—',
-      photoUrl:
-        (user?.avatar as string | null) ??
-        (legacy?.avatar_url as string | null) ??
-        undefined,
-      speciality: branchLabel(
-        (classRow?.branch as string | null) ?? (enrollment?.branch as string | null),
-      ),
-    },
-    classId: resolvedClassId,
-    className: classRow?.name?.trim() || '—',
+    classId: classRow.id,
+    className: classRow.name?.trim() || '—',
     classMaster,
-    classSize: cohortIds.length,
     academicYearLabel: yearResult.data.label,
     structure,
     subjects,
     marks,
-    disciplineByTerm,
+    students,
     branding: {
       displayNameEn:
         tenant?.pdfIssuerDisplayNameEn?.trim() ||
@@ -479,22 +411,4 @@ export async function fetchReportCardBundle(
       principalName: tenant?.secondaryContactName?.trim() || '',
     },
   };
-}
-
-export async function loadStudentReportCard(
-  supabase: SupabaseClient,
-  tenantId: string,
-  studentProfileId: string,
-  academicYearId: string,
-  term: ReportCardTerm,
-  classId?: string | null,
-): Promise<ReportCardData> {
-  const bundle = await fetchReportCardBundle(
-    supabase,
-    tenantId,
-    studentProfileId,
-    academicYearId,
-    classId,
-  );
-  return buildReportCardData(bundle, term);
 }

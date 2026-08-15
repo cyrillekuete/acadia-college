@@ -47,6 +47,7 @@ import { RegionSelect } from '@/components/acadia/location/region-select';
 import { PhoneFieldGroup } from '@/components/acadia/phone/phone-field-group';
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
+import { downloadFamilyCredentials } from '@/lib/acadia/download-credentials';
 import { isCityValidForLocation } from '@/lib/acadia/locations';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -95,17 +96,45 @@ export function StudentCreateForm() {
   const form = useForm<StudentCreateFormValues, unknown, StudentCreateInput>({
     resolver: zodResolver(studentCreateSchema),
     defaultValues: {
-      is_new_student: true,
+      first_name: '',
+      last_name: '',
+      middle_name: '',
+      date_of_birth: '',
+      gender: undefined,
+      place_of_birth: '',
       nationality: 'Cameroonian',
+      religion: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      region: '',
+      is_new_student: true,
       country: DEFAULT_COUNTRY_NAME,
       phone_country: DEFAULT_COUNTRY_NAME,
       parent_phone_country: DEFAULT_COUNTRY_NAME,
       emergency_contact_phone_country: DEFAULT_COUNTRY_NAME,
+      parent_name: '',
+      parent_email: '',
+      parent_phone: '',
+      parent_address: '',
+      parent_occupation: '',
       parent_relationship: 'father',
       academic_year: '',
       academic_year_id: '',
       level_id: '',
       class_id: '',
+      class_name: '',
+      previous_school: '',
+      previous_class: '',
+      enrollment_date: '',
+      matricule_number: '',
+      emergency_contact_name: '',
+      emergency_contact_phone: '',
+      emergency_contact_relationship: '',
+      blood_group: '',
+      allergies: '',
+      medical_conditions: '',
     },
   });
 
@@ -149,12 +178,24 @@ export function StudentCreateForm() {
 
     if (!result) return;
 
+    const signInUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/signin`
+        : '/signin';
+
+    downloadFamilyCredentials({
+      studentId: result.studentId,
+      studentLoginEmail: result.studentLoginEmail,
+      studentTemporaryPassword: result.studentTemporaryPassword,
+      parentCode: result.parentCode,
+      parentLoginEmail: result.parentLoginEmail,
+      parentTemporaryPassword: result.parentTemporaryPassword,
+      signInUrl,
+    });
+
     toast.success(
       t('students.createdToast', {
         studentId: result.studentId,
-        parentSuffix: result.newParentAuthCreated
-          ? t('students.createdToastWithParent')
-          : t('students.createdToastStudentOnly'),
       }),
     );
     router.push(`/students/${result.studentProfileId}`);
@@ -223,7 +264,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.gender')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('students.selectGender')} />
@@ -394,7 +435,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('catalog.subSystemLabel')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('catalog.selectSubSystem')} />
@@ -414,7 +455,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('catalog.branchLabel')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('catalog.selectBranch')} />
@@ -449,7 +490,7 @@ export function StudentCreateForm() {
                 <StudentFieldControl>
                   <Select
                     onValueChange={field.onChange}
-                    value={field.value}
+                    value={field.value || undefined}
                     disabled={!catalogSubSystem || !catalogBranch}
                   >
                     <FormControl>
@@ -602,7 +643,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.relationship')} <span className="text-destructive">*</span></StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('students.selectRelationship')} />

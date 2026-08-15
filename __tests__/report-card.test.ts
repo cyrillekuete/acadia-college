@@ -230,6 +230,57 @@ describe('buildReportCardData', () => {
     expect(card.stats.classSize).toBe(2);
     expect(card.subjects).toHaveLength(2);
     expect(rankStudents([{ studentProfileId: 's1', average: 14 }])[0]?.rank).toBe(1);
+    expect(card.discipline).toEqual({ absences: 0, suspensions: 0, warnings: 0 });
+  });
+
+  it('maps stored term discipline and sums annual totals', () => {
+    const bundle: ReportCardBundle = {
+      student: {
+        studentProfileId: 's1',
+        name: 'Ada Lovelace',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        matricule: 'AC-001',
+        sex: 'F',
+        dob: '01/01/2010',
+        pob: '—',
+        speciality: 'Grammar',
+      },
+      classId: 'c1',
+      className: 'Form 5 A',
+      classMaster: 'Mr. Teacher',
+      classSize: 1,
+      academicYearLabel: '2025/2026',
+      structure: {
+        termsPerYear: 3,
+        sequencesPerTerm: 2,
+        sequencesPerYear: 6,
+      },
+      subjects: [math],
+      marks: [mark('s1', 'math', 1, 16), mark('s1', 'math', 2, 18)],
+      branding,
+      disciplineByTerm: [
+        { termNumber: 1, absenceHours: 4, suspensions: 1, warnings: 0 },
+        { termNumber: 2, absenceHours: 2, suspensions: 0, warnings: 1 },
+        { termNumber: 3, absenceHours: 1, suspensions: 0, warnings: 0 },
+      ],
+    };
+
+    expect(buildReportCardData(bundle, '1').discipline).toEqual({
+      absences: 4,
+      suspensions: 1,
+      warnings: 0,
+    });
+    expect(buildReportCardData(bundle, '2').discipline).toEqual({
+      absences: 2,
+      suspensions: 0,
+      warnings: 1,
+    });
+    expect(buildReportCardData(bundle, 'annual').discipline).toEqual({
+      absences: 7,
+      suspensions: 1,
+      warnings: 1,
+    });
   });
 });
 

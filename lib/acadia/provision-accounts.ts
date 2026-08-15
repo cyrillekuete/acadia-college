@@ -1,12 +1,13 @@
 /**
  * Server-only helpers for provisioning student and parent accounts.
  * Uses the Supabase Admin client (service-role key) to create auth users
- * and inserts rows into the new snake_case tables from database.sql.
+ * and to write snake_case `users` / `students` / `parents` rows. The
+ * authenticated session role is not granted on `public.users`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendPasswordRecoveryEmail } from '@/lib/auth/password-recovery';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizeMatriculeNumber } from '@/lib/acadia/enrollment';
+import { generateTemporaryPassword } from '@/lib/acadia/generate-temporary-password';
 import { generateStudentId, generateParentCode } from '@/lib/acadia/ids';
 import { normalizePhoneForLookup } from '@/lib/acadia/phone';
 import type { StudentCreateInput } from '@/lib/acadia/student-create-schemas';
@@ -16,7 +17,7 @@ import {
   type ProvisionStudentProfileInput,
 } from '@/lib/acadia/provision-student-profile';
 
-function buildParentSystemAuthEmail(
+export function buildParentSystemAuthEmail(
   tenantId: string,
   normalizedPhone: string,
 ): string {
@@ -30,8 +31,12 @@ export type ProvisionResult =
       studentUuid: string;
       studentProfileId: string;
       enrollmentId: string;
+      studentLoginEmail: string;
+      studentTemporaryPassword: string;
       parentCode: string;
       parentUuid: string;
+      parentLoginEmail: string;
+      parentTemporaryPassword: string | null;
       newParentAuthCreated: boolean;
     }
   | { ok: false; message: string; status: number };
@@ -39,17 +44,17 @@ export type ProvisionResult =
 /**
  * End-to-end student + parent provisioning:
  *
- * 1. Create auth user for student.
- * 2. Insert `users` row (role=student).
+ * 1. Create auth user for student with a temporary password.
+ * 2. Insert `users` row (role=student) via the service-role client.
  * 3. Insert `students` row.
  * 4. Insert `user_profiles` row linking users ↔ students.
  * 5. Insert optional emergency_contacts / medical_info.
  * 6. Create or link parent:
  *    6a. If parent email exists in `users` with role=parent → reuse auth id.
- *    6b. If not found → create auth user + `users` row for parent.
+ *    6b. If not found → create auth user + `users` row for parent with a
+ *        temporary password.
  *    6c. If email exists but role≠parent → error 400.
  *    In all success cases: insert new `parents` row with student_id.
- * 7. Send password-reset emails (so users set own passwords).
  * Rollback: delete rows in reverse on any failure.
  */
 export async function provisionStudentAndParent(
@@ -67,11 +72,13 @@ export async function provisionStudentAndParent(
     : '';
   const parentPhone = input.parent_phone.trim();
   const parentPhoneNormalized = normalizePhoneForLookup(parentPhone);
+  const studentTemporaryPassword = generateTemporaryPassword();
 
   // -- Step 1: Create student auth user --
   const { data: studentAuthData, error: studentAuthError } =
     await admin.auth.admin.createUser({
       email: studentEmail,
+      password: studentTemporaryPassword,
       email_confirm: true,
       user_metadata: {
         name: `${input.first_name.trim()} ${input.last_name.trim()}`,
@@ -90,7 +97,9 @@ export async function provisionStudentAndParent(
   const studentAuthId = studentAuthData.user.id;
 
   // -- Step 2: Insert users row for student --
-  const { error: studentUserError } = await supabase.from('users').insert({
+  // Service role is required: `public.users` is not granted to the authenticated
+  // session role, and `created_by` cannot reference PascalCase `User` ids.
+  const { error: studentUserError } = await admin.from('users').insert({
     id: studentAuthId,
     email: studentEmail,
     name: `${input.first_name.trim()} ${input.last_name.trim()}`,
@@ -103,7 +112,6 @@ export async function provisionStudentAndParent(
     tenant_id: tenantId,
     created_at: now,
     updated_at: now,
-    created_by: actorUserId,
   });
 
   if (studentUserError) {
@@ -119,7 +127,7 @@ export async function provisionStudentAndParent(
   const studentId = generateStudentId();
   const matriculeNumber = normalizeMatriculeNumber(input.matricule_number);
 
-  const { error: studentInsertError } = await supabase.from('students').insert({
+  const { error: studentInsertError } = await admin.from('students').insert({
     student_id: studentId,
     first_name: input.first_name.trim(),
     last_name: input.last_name.trim(),
@@ -153,7 +161,7 @@ export async function provisionStudentAndParent(
   });
 
   if (studentInsertError) {
-    await supabase.from('users').delete().eq('id', studentAuthId);
+    await admin.from('users').delete().eq('id', studentAuthId);
     await admin.auth.admin.deleteUser(studentAuthId);
     return {
       ok: false,
@@ -163,7 +171,7 @@ export async function provisionStudentAndParent(
   }
 
   // -- Step 4: user_profiles row --
-  const { error: userProfileError } = await supabase.from('user_profiles').insert({
+  const { error: userProfileError } = await admin.from('user_profiles').insert({
     user_id: studentAuthId,
     role_specific_id: studentId,
     subsystem: input.subsystem ?? null,
@@ -180,7 +188,7 @@ export async function provisionStudentAndParent(
   });
 
   if (userProfileError) {
-    await rollbackStudent(supabase, admin, studentAuthId, studentId);
+    await rollbackStudent(admin, studentAuthId, studentId);
     return {
       ok: false,
       message: userProfileError.message ?? 'Failed to create student profile.',
@@ -189,14 +197,14 @@ export async function provisionStudentAndParent(
   }
 
   // -- Step 5: optional emergency_contacts / medical_info --
-  const { data: studentRow, error: studentRowError } = await supabase
+  const { data: studentRow, error: studentRowError } = await admin
     .from('students')
     .select('id')
     .eq('student_id', studentId)
     .maybeSingle();
 
   if (studentRowError || !studentRow?.id) {
-    await rollbackStudent(supabase, admin, studentAuthId, studentId);
+    await rollbackStudent(admin, studentAuthId, studentId);
     return {
       ok: false,
       message:
@@ -209,7 +217,7 @@ export async function provisionStudentAndParent(
   const studentUuid = studentRow.id as string;
 
   if (input.emergency_contact_name && input.emergency_contact_phone) {
-    const { error: emergencyContactError } = await supabase
+    const { error: emergencyContactError } = await admin
       .from('emergency_contacts')
       .insert({
         student_id: studentUuid,
@@ -220,7 +228,7 @@ export async function provisionStudentAndParent(
       });
 
     if (emergencyContactError) {
-      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
       return {
         ok: false,
         message:
@@ -231,7 +239,7 @@ export async function provisionStudentAndParent(
   }
 
   if (input.blood_group || input.allergies || input.medical_conditions) {
-    const { error: medicalInfoError } = await supabase.from('medical_info').insert({
+    const { error: medicalInfoError } = await admin.from('medical_info').insert({
       student_id: studentUuid,
       blood_group: input.blood_group ?? null,
       allergies: input.allergies ?? null,
@@ -240,7 +248,7 @@ export async function provisionStudentAndParent(
     });
 
     if (medicalInfoError) {
-      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
       return {
         ok: false,
         message: medicalInfoError.message ?? 'Failed to save medical information.',
@@ -252,20 +260,23 @@ export async function provisionStudentAndParent(
   // -- Step 6: Create or link parent --
   const parentCode = generateParentCode();
   let parentAuthId: string;
+  let parentLoginEmail: string;
+  let parentTemporaryPassword: string | null = null;
   let newParentAuthCreated = false;
 
-  let existingParentUser: { id: string; role: string } | null = null;
+  let existingParentUser: { id: string; role: string; email: string } | null =
+    null;
 
   if (parentEmailRaw) {
-    const { data, error: existingParentUserError } = await supabase
+    const { data, error: existingParentUserError } = await admin
       .from('users')
-      .select('id, role')
+      .select('id, role, email')
       .eq('email', parentEmailRaw)
       .eq('tenant_id', tenantId)
       .maybeSingle();
 
     if (existingParentUserError) {
-      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
       return {
         ok: false,
         message:
@@ -275,18 +286,24 @@ export async function provisionStudentAndParent(
       };
     }
 
-    existingParentUser = data;
+    if (data) {
+      existingParentUser = {
+        id: data.id as string,
+        role: data.role as string,
+        email: (data.email as string | null)?.trim().toLowerCase() ?? '',
+      };
+    }
   } else {
     const { data: parentCandidates, error: parentPhoneLookupError } =
-      await supabase
+      await admin
         .from('users')
-        .select('id, role, phone')
+        .select('id, role, phone, email')
         .eq('role', 'parent')
         .eq('tenant_id', tenantId)
         .not('phone', 'is', null);
 
     if (parentPhoneLookupError) {
-      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
       return {
         ok: false,
         message:
@@ -302,13 +319,17 @@ export async function provisionStudentAndParent(
         normalizePhoneForLookup(row.phone) === parentPhoneNormalized,
     );
     if (match) {
-      existingParentUser = { id: match.id as string, role: match.role as string };
+      existingParentUser = {
+        id: match.id as string,
+        role: match.role as string,
+        email: (match.email as string | null)?.trim().toLowerCase() ?? '',
+      };
     }
   }
 
   if (existingParentUser) {
     if (existingParentUser.role !== 'parent') {
-      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
       return {
         ok: false,
         message:
@@ -317,20 +338,26 @@ export async function provisionStudentAndParent(
       };
     }
     parentAuthId = existingParentUser.id;
-  } else {
-    const parentAuthEmail =
+    parentLoginEmail =
+      existingParentUser.email ||
       parentEmailRaw ||
       buildParentSystemAuthEmail(tenantId, parentPhoneNormalized);
+  } else {
+    parentLoginEmail =
+      parentEmailRaw ||
+      buildParentSystemAuthEmail(tenantId, parentPhoneNormalized);
+    parentTemporaryPassword = generateTemporaryPassword();
 
     const { data: parentAuthData, error: parentAuthError } =
       await admin.auth.admin.createUser({
-        email: parentAuthEmail,
+        email: parentLoginEmail,
+        password: parentTemporaryPassword,
         email_confirm: true,
         user_metadata: { name: input.parent_name.trim() },
       });
 
     if (parentAuthError || !parentAuthData.user) {
-      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
       const msg =
         parentAuthError?.message?.includes('already been registered') ||
         parentAuthError?.message?.includes('already exists')
@@ -344,9 +371,9 @@ export async function provisionStudentAndParent(
     parentAuthId = parentAuthData.user.id;
     newParentAuthCreated = true;
 
-    const { error: parentUserError } = await supabase.from('users').insert({
+    const { error: parentUserError } = await admin.from('users').insert({
       id: parentAuthId,
-      email: parentAuthEmail,
+      email: parentLoginEmail,
       name: input.parent_name.trim(),
       role: 'parent',
       status: 'active',
@@ -355,12 +382,11 @@ export async function provisionStudentAndParent(
       tenant_id: tenantId,
       created_at: now,
       updated_at: now,
-      created_by: actorUserId,
     });
 
     if (parentUserError) {
       await admin.auth.admin.deleteUser(parentAuthId);
-      await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+      await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
       return {
         ok: false,
         message: parentUserError.message ?? 'Failed to create parent user row.',
@@ -370,7 +396,7 @@ export async function provisionStudentAndParent(
   }
 
   // Insert parents row (always new — links parent → this specific student)
-  const { error: parentInsertError } = await supabase.from('parents').insert({
+  const { error: parentInsertError } = await admin.from('parents').insert({
     parent_code: parentCode,
     name: input.parent_name.trim(),
     email: parentEmailRaw || null,
@@ -386,42 +412,15 @@ export async function provisionStudentAndParent(
 
   if (parentInsertError) {
     if (newParentAuthCreated) {
-      await supabase.from('users').delete().eq('id', parentAuthId);
+      await admin.from('users').delete().eq('id', parentAuthId);
       await admin.auth.admin.deleteUser(parentAuthId);
     }
-    await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+    await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
     return {
       ok: false,
       message: parentInsertError.message ?? 'Failed to insert parent record.',
       status: 400,
     };
-  }
-
-  // -- Step 7: Send password-reset (set-password) emails --
-  // Errors here are non-fatal: records are already committed. Log and continue
-  // so callers receive a success result and can resend the link separately.
-  const studentRecovery = await sendPasswordRecoveryEmail(
-    admin,
-    studentEmail,
-  );
-  if (!studentRecovery.ok) {
-    console.warn(
-      '[provisionStudentAndParent] Failed to send student recovery email:',
-      studentRecovery.message,
-    );
-  }
-
-  if (newParentAuthCreated && parentEmailRaw) {
-    const parentRecovery = await sendPasswordRecoveryEmail(
-      admin,
-      parentEmailRaw,
-    );
-    if (!parentRecovery.ok) {
-      console.warn(
-        '[provisionStudentAndParent] Failed to send parent recovery email:',
-        parentRecovery.message,
-      );
-    }
   }
 
   const profileInput: ProvisionStudentProfileInput = {
@@ -446,13 +445,13 @@ export async function provisionStudentAndParent(
   );
 
   if (!profileResult.ok) {
-    await rollbackStudent(supabase, admin, studentAuthId, studentId, studentUuid);
+    await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
     if (newParentAuthCreated) {
-      await supabase.from('parents').delete().eq('parent_code', parentCode);
-      await supabase.from('users').delete().eq('id', parentAuthId);
+      await admin.from('parents').delete().eq('parent_code', parentCode);
+      await admin.from('users').delete().eq('id', parentAuthId);
       await admin.auth.admin.deleteUser(parentAuthId);
     } else {
-      await supabase.from('parents').delete().eq('parent_code', parentCode);
+      await admin.from('parents').delete().eq('parent_code', parentCode);
     }
     return {
       ok: false,
@@ -467,26 +466,29 @@ export async function provisionStudentAndParent(
     studentUuid,
     studentProfileId: profileResult.studentProfileId,
     enrollmentId: profileResult.enrollmentId,
+    studentLoginEmail: studentEmail,
+    studentTemporaryPassword,
     parentCode,
     parentUuid: parentAuthId,
+    parentLoginEmail,
+    parentTemporaryPassword,
     newParentAuthCreated,
   };
 }
 
 async function rollbackStudent(
-  supabase: SupabaseClient,
   admin: SupabaseClient,
   studentAuthId: string,
   studentId: string,
   studentUuid?: string,
 ) {
   if (studentUuid) {
-    await supabase.from('emergency_contacts').delete().eq('student_id', studentUuid);
-    await supabase.from('medical_info').delete().eq('student_id', studentUuid);
-    await supabase.from('class_students').delete().eq('student_id', studentUuid);
+    await admin.from('emergency_contacts').delete().eq('student_id', studentUuid);
+    await admin.from('medical_info').delete().eq('student_id', studentUuid);
+    await admin.from('class_students').delete().eq('student_id', studentUuid);
   }
-  await supabase.from('user_profiles').delete().eq('user_id', studentAuthId);
-  await supabase.from('students').delete().eq('student_id', studentId);
-  await supabase.from('users').delete().eq('id', studentAuthId);
+  await admin.from('user_profiles').delete().eq('user_id', studentAuthId);
+  await admin.from('students').delete().eq('student_id', studentId);
+  await admin.from('users').delete().eq('id', studentAuthId);
   await admin.auth.admin.deleteUser(studentAuthId);
 }

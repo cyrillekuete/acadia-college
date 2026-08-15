@@ -10,9 +10,21 @@ type CreateStudentResult = {
   studentId: string;
   studentUuid: string;
   studentProfileId: string;
+  studentLoginEmail: string;
+  studentTemporaryPassword: string;
   parentCode: string;
+  parentLoginEmail: string;
+  parentTemporaryPassword: string | null;
   newParentAuthCreated: boolean;
 };
+
+function readRequiredString(
+  json: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = json[key];
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
 
 export function useStudentCreateMutation() {
   const queryClient = useQueryClient();
@@ -33,7 +45,48 @@ export function useStudentCreateMutation() {
         throw new Error((json.message as string | undefined) ?? 'Failed to create student.');
       }
 
-      return json as unknown as CreateStudentResult;
+      const studentId = readRequiredString(json, 'studentId');
+      const studentUuid = readRequiredString(json, 'studentUuid');
+      const studentProfileId = readRequiredString(json, 'studentProfileId');
+      const studentLoginEmail = readRequiredString(json, 'studentLoginEmail');
+      const studentTemporaryPassword = readRequiredString(
+        json,
+        'studentTemporaryPassword',
+      );
+      const parentCode = readRequiredString(json, 'parentCode');
+      const parentLoginEmail = readRequiredString(json, 'parentLoginEmail');
+      const parentTemporaryPasswordRaw = json.parentTemporaryPassword;
+      const parentTemporaryPassword =
+        parentTemporaryPasswordRaw === null
+          ? null
+          : readRequiredString(json, 'parentTemporaryPassword');
+      const newParentAuthCreated = json.newParentAuthCreated;
+
+      if (
+        !studentId ||
+        !studentUuid ||
+        !studentProfileId ||
+        !studentLoginEmail ||
+        !studentTemporaryPassword ||
+        !parentCode ||
+        !parentLoginEmail ||
+        typeof newParentAuthCreated !== 'boolean' ||
+        (newParentAuthCreated ? !parentTemporaryPassword : parentTemporaryPassword !== null)
+      ) {
+        throw new Error('Server returned an invalid student creation response.');
+      }
+
+      return {
+        studentId,
+        studentUuid,
+        studentProfileId,
+        studentLoginEmail,
+        studentTemporaryPassword,
+        parentCode,
+        parentLoginEmail,
+        parentTemporaryPassword,
+        newParentAuthCreated,
+      };
     },
     onSuccess: (_data, _vars, _ctx) => {
       void queryClient.invalidateQueries({ queryKey: ['students-list'] });

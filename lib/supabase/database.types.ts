@@ -3692,6 +3692,87 @@ export type Database = {
           },
         ]
       }
+      StudentTermDiscipline: {
+        Row: {
+          absenceHours: number
+          academicYearId: string
+          classId: string
+          createdAt: string
+          id: string
+          recordedByStaffProfileId: string | null
+          studentProfileId: string
+          suspensions: number
+          tenantId: string
+          termNumber: number
+          updatedAt: string
+          warnings: number
+        }
+        Insert: {
+          absenceHours?: number
+          academicYearId: string
+          classId: string
+          createdAt?: string
+          id: string
+          recordedByStaffProfileId?: string | null
+          studentProfileId: string
+          suspensions?: number
+          tenantId: string
+          termNumber: number
+          updatedAt?: string
+          warnings?: number
+        }
+        Update: {
+          absenceHours?: number
+          academicYearId?: string
+          classId?: string
+          createdAt?: string
+          id?: string
+          recordedByStaffProfileId?: string | null
+          studentProfileId?: string
+          suspensions?: number
+          tenantId?: string
+          termNumber?: number
+          updatedAt?: string
+          warnings?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "StudentTermDiscipline_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StudentTermDiscipline_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StudentTermDiscipline_recordedBy_tenantId_fkey"
+            columns: ["tenantId", "recordedByStaffProfileId"]
+            isOneToOne: false
+            referencedRelation: "StaffProfile"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StudentTermDiscipline_studentProfileId_tenantId_fkey"
+            columns: ["studentProfileId", "tenantId"]
+            isOneToOne: false
+            referencedRelation: "StudentProfile"
+            referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "StudentTermDiscipline_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       Subject: {
         Row: {
           academicYearId: string | null
@@ -5415,6 +5496,7 @@ export type Database = {
     Functions: {
       acadia_can_manage_users: { Args: never; Returns: boolean }
       acadia_current_role_slug: { Args: never; Returns: string }
+      acadia_current_staff_profile_id: { Args: never; Returns: string }
       acadia_current_student_profile_id: { Args: never; Returns: string }
       acadia_current_tenant_id: { Args: never; Returns: string }
       acadia_is_admin: { Args: never; Returns: boolean }

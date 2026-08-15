@@ -8,6 +8,7 @@ import type { SessionApiContext } from '@/lib/acadia/require-session-api';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { uniqueIds } from '@/lib/acadia/staff-class-assignments';
 import { fetchCurrentAcademicYear } from '@/lib/supabase/queries/academic-year';
+import { fetchClassMasterAccessibleClassIds } from '@/lib/supabase/queries/class-report';
 import {
   fetchStaffProfileIdForUser,
   fetchStudentProfileIdForUser,
@@ -241,4 +242,105 @@ export async function canAccessStudentReportCard(
   }
 
   return false;
+}
+
+export type ClassReportAccessDecision = {
+  roleSlug: string;
+  classId: string;
+  staffProfileId?: string | null;
+  classMasterStaffProfileId?: string | null;
+  yearAssignedClassIds?: readonly string[] | null;
+};
+
+export function decideClassReportAccess(input: ClassReportAccessDecision): boolean {
+  if (isAdmin(input.roleSlug)) {
+    return true;
+  }
+
+  if (!isStaffOrTeacher(input.roleSlug)) {
+    return false;
+  }
+
+  const classId = input.classId.trim();
+  if (!classId) {
+    return false;
+  }
+
+  const staffProfileId = input.staffProfileId?.trim() ?? '';
+  if (!staffProfileId) {
+    return false;
+  }
+
+  if (input.classMasterStaffProfileId?.trim() === staffProfileId) {
+    return true;
+  }
+
+  return (input.yearAssignedClassIds ?? []).some((id) => id.trim() === classId);
+}
+
+export async function canAccessClassReport(
+  supabase: SupabaseClient,
+  ctx: SessionApiContext,
+  classId: string,
+  academicYearId?: string | null,
+): Promise<boolean> {
+  if (isAdmin(ctx.roleSlug)) {
+    return true;
+  }
+
+  if (!isStaffOrTeacher(ctx.roleSlug)) {
+    return false;
+  }
+
+  const trimmedClassId = classId.trim();
+  if (!trimmedClassId) {
+    return false;
+  }
+
+  const staffProfileId = await fetchStaffProfileIdForUser(
+    supabase,
+    ctx.tenantId,
+    ctx.actorUserId,
+  );
+  if (!staffProfileId) {
+    return false;
+  }
+
+  let yearId = academicYearId?.trim() || '';
+  if (!yearId) {
+    const current = await fetchCurrentAcademicYear(supabase, ctx.tenantId);
+    yearId = current?.id ?? '';
+  }
+  if (!yearId) {
+    return false;
+  }
+
+  const { data: classRow, error: classError } = await supabase
+    .from('Class')
+    .select('id, staffProfileId')
+    .eq('tenantId', ctx.tenantId)
+    .eq('id', trimmedClassId)
+    .maybeSingle();
+
+  if (classError) {
+    throw classError;
+  }
+  if (!classRow?.id) {
+    return false;
+  }
+
+  const assignedClassIds = await fetchClassMasterAccessibleClassIds(
+    supabase,
+    ctx.tenantId,
+    yearId,
+    staffProfileId,
+  );
+
+  return decideClassReportAccess({
+    roleSlug: ctx.roleSlug,
+    classId: trimmedClassId,
+    staffProfileId,
+    classMasterStaffProfileId: classRow.staffProfileId?.trim() || null,
+    yearAssignedClassIds: assignedClassIds,
+  });
 }

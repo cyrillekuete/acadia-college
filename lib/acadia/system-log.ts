@@ -17,6 +17,7 @@ export type SystemLogEvent =
   | 'enrollment.application_rejected'
   | 'enrollment.password_reset_failed'
   | 'student.created'
+  | 'student.credentials_downloaded'
   | 'staff.created'
   | 'student.profile_updated'
   | 'student.class_migrated'
@@ -51,7 +52,8 @@ export type SystemLogEvent =
   | 'resource.usage_logged'
   | 'resource.request_submitted'
   | 'resource.request_reviewed'
-  | 'room.maintenance_scheduled';
+  | 'room.maintenance_scheduled'
+  | 'student_term_discipline.saved';
 
 /**
  * Best-effort audit log. Never throws — callers must not fail primary work when logging fails.

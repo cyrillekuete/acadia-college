@@ -105,6 +105,8 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     icon: 'file-sheet',
     children: [
       { title: 'Sequence results', titleKey: 'nav.sequenceResults', path: '/reports/sequence' },
+      { title: 'Class report', titleKey: 'nav.classReport', path: '/reports/class' },
+      { title: 'Class absences', titleKey: 'nav.classAbsences', path: '/reports/absences' },
       { title: 'Term report cards', titleKey: 'nav.termReportCards', path: '/reports/term' },
       { title: 'Annual summary', titleKey: 'nav.annualSummary', path: '/reports/annual' },
       { title: 'Promotion', titleKey: 'nav.promotion', path: '/reports/promotion' },
@@ -258,6 +260,8 @@ const STAFF_MENU: AcadiaMenuConfig = [
       { title: 'Enter marks', titleKey: 'nav.enterMarks', path: '/marks/entry' },
     ],
   },
+  { title: 'Class report', titleKey: 'nav.classReport', icon: 'file-sheet', path: '/reports/class' },
+  { title: 'Class absences', titleKey: 'nav.classAbsences', icon: 'calendar-tick', path: '/reports/absences' },
   { title: 'Coursework', titleKey: 'nav.coursework', icon: 'clipboard', path: '/coursework' },
   { title: 'Scheme of work', titleKey: 'nav.schemeOfWork', icon: 'book', path: '/scheme-of-work' },
   {

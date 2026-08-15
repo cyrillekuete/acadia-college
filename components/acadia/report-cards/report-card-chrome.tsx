@@ -340,9 +340,11 @@ export function ReportCardFooter({
 export function ReportCardSheet({
   variant,
   children,
+  className,
 }: {
   variant: 'default' | 'pdfRender';
   children: ReactNode;
+  className?: string;
 }) {
   return (
     <div
@@ -357,7 +359,7 @@ export function ReportCardSheet({
           variant === 'pdfRender'
             ? 'shadow-none print:min-h-[297mm] print:h-auto print:overflow-visible'
             : 'print:h-auto print:min-h-0 print:overflow-visible'
-        }`}
+        } ${className ?? ''}`}
       >
         <div
           className="px-8 print:px-3 pt-0 print:pt-6 pb-0 print:pb-2 flex flex-col gap-0 relative"
