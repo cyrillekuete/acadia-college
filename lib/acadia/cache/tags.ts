@@ -48,6 +48,11 @@ export function catalogTags(tenantId: string): string[] {
   return [catalogTag(tenantId), academicYearTag(tenantId)];
 }
 
+/** Class list includes per-class enrollment counts, so it is also student-tagged. */
+export function classListTags(tenantId: string): string[] {
+  return [catalogTag(tenantId), academicYearTag(tenantId), studentsTag(tenantId)];
+}
+
 export function studentListTags(tenantId: string, yearId?: string | null): string[] {
   return yearId
     ? [studentsTag(tenantId), studentsYearTag(tenantId, yearId), dashboardTag(tenantId)]

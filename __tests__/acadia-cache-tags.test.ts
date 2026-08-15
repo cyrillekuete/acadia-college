@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   academicYearTag,
   catalogTag,
+  classListTags,
   dashboardRoleTag,
   dashboardTag,
   dashboardTags,
@@ -28,6 +29,11 @@ const USER = 'user-1';
 describe('acadia cache tags', () => {
   it('scopes every tag to the tenant id', () => {
     expect(catalogTag(TENANT)).toBe(`catalog:${TENANT}`);
+    expect(classListTags(TENANT)).toEqual([
+      `catalog:${TENANT}`,
+      `academic-year:${TENANT}`,
+      `students:${TENANT}`,
+    ]);
     expect(academicYearTag(TENANT)).toBe(`academic-year:${TENANT}`);
     expect(studentsTag(TENANT)).toBe(`students:${TENANT}`);
     expect(studentsYearTag(TENANT, YEAR)).toBe(`students:${TENANT}:${YEAR}`);
@@ -55,6 +61,7 @@ describe('acadia cache tags', () => {
         'finance:anything',
         ...staffListTags(TENANT),
         ...dashboardTags(TENANT, YEAR),
+        ...classListTags(TENANT),
       ],
       TENANT,
     );
@@ -64,6 +71,8 @@ describe('acadia cache tags', () => {
       `staff:${TENANT}`,
       `dashboard:${TENANT}`,
       `dashboard:${TENANT}:${YEAR}`,
+      `catalog:${TENANT}`,
+      `academic-year:${TENANT}`,
     ]);
   });
 

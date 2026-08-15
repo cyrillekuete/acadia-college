@@ -12,6 +12,10 @@ import {
   type ReportCardSubjectDef,
 } from '@/lib/acadia/report-card';
 import {
+  decideReportCardAccess,
+  teacherCanAccessStudentClass,
+} from '@/lib/acadia/report-card-access';
+import {
   buildReportCardPdfFilename,
   calculateGrade,
   getGradeRemarks,
@@ -89,7 +93,7 @@ describe('report-card grading', () => {
         year: '2025/2026',
         term: '1',
       }),
-    ).toBe('ReportCard_Jean_Dupont_2025/2026_Term1.pdf');
+    ).toBe('ReportCard_Jean_Dupont_2025_2026_Term1.pdf');
     expect(
       buildReportCardPdfFilename({
         studentName: 'Jean',
@@ -226,5 +230,96 @@ describe('buildReportCardData', () => {
     expect(card.stats.classSize).toBe(2);
     expect(card.subjects).toHaveLength(2);
     expect(rankStudents([{ studentProfileId: 's1', average: 14 }])[0]?.rank).toBe(1);
+  });
+});
+
+describe('report-card access', () => {
+  it('lets admins through and keeps students and guardians scoped', () => {
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'admin',
+        studentProfileId: 'other-student',
+      }),
+    ).toBe(true);
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'student',
+        studentProfileId: 's1',
+        ownStudentProfileId: 's1',
+      }),
+    ).toBe(true);
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'student',
+        studentProfileId: 'other-student',
+        ownStudentProfileId: 's1',
+      }),
+    ).toBe(false);
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'parent',
+        studentProfileId: 's1',
+        guardianLinked: true,
+      }),
+    ).toBe(true);
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'parent',
+        studentProfileId: 's1',
+        guardianLinked: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('denies teachers who are not assigned to the student class', () => {
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'teacher',
+        studentProfileId: 's1',
+        teacherAssignedClassIds: ['class-a'],
+        studentClassId: 'class-b',
+      }),
+    ).toBe(false);
+    expect(
+      teacherCanAccessStudentClass({
+        assignedClassIds: ['class-a'],
+        studentClassId: 'class-b',
+      }),
+    ).toBe(false);
+  });
+
+  it('allows teachers assigned to the student class or acting as class master', () => {
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'teacher',
+        studentProfileId: 's1',
+        teacherAssignedClassIds: ['class-b', 'class-a'],
+        studentClassId: 'class-a',
+      }),
+    ).toBe(true);
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'lecturer',
+        studentProfileId: 's1',
+        teacherAssignedClassIds: [],
+        studentClassId: 'class-a',
+        isClassMaster: true,
+      }),
+    ).toBe(true);
+    expect(
+      decideReportCardAccess({
+        roleSlug: 'staff',
+        studentProfileId: 's1',
+        teacherAssignedClassIds: [],
+        studentClassId: 'class-a',
+      }),
+    ).toBe(false);
+    expect(
+      teacherCanAccessStudentClass({
+        assignedClassIds: [],
+        studentClassId: null,
+        isClassMaster: true,
+      }),
+    ).toBe(false);
   });
 });

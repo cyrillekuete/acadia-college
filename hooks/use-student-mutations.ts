@@ -11,7 +11,7 @@ import { generateAcadiaId } from '@/lib/acadia/ids';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
-import { studentListTags } from '@/lib/acadia/cache/tags';
+import { classListTags, studentListTags } from '@/lib/acadia/cache/tags';
 import { canWriteRegistry } from '@/lib/acadia/roles';
 
 function mutationErrorMessage(error: unknown): string {
@@ -165,7 +165,10 @@ export function useStudentMutations() {
         queryKey: ['student-academic-progress'],
       });
       if (tenantId) {
-        invalidateAcadiaCache(studentListTags(tenantId, variables.values.academicYearId));
+        invalidateAcadiaCache([
+          ...studentListTags(tenantId, variables.values.academicYearId),
+          ...classListTags(tenantId),
+        ]);
       }
       toast.success('Student class placement updated.');
     },

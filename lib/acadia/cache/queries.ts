@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   academicYearTag,
   catalogTag,
+  classListTags,
   dashboardRoleTag,
   dashboardTag,
   dashboardYearTag,
@@ -161,7 +162,7 @@ export async function getCachedClassList(
   yearId: string | null,
 ) {
   'use cache';
-  cacheTag(catalogTag(tenantId), academicYearTag(tenantId));
+  cacheTag(...classListTags(tenantId));
   cacheLife('hours');
   return fetchClassList(cachedClient(), tenantId, yearId);
 }

@@ -4,6 +4,7 @@ import { sanitizeReportCardFilenamePart } from '@/lib/acadia/report-card-grading
 import { parseReportCardTerm } from '@/lib/acadia/report-card-types';
 import { requireSessionApi } from '@/lib/acadia/require-session-api';
 import { canAccessStudentReportCard } from '@/lib/acadia/report-card-access';
+import { fetchCurrentAcademicYear } from '@/lib/supabase/queries/academic-year';
 import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -59,14 +60,22 @@ export async function GET(request: NextRequest) {
     const studentId = request.nextUrl.searchParams.get('studentId')?.trim();
     const term = parseReportCardTerm(request.nextUrl.searchParams.get('term'));
     const classId = request.nextUrl.searchParams.get('classId')?.trim() || '';
-    const academicYearId = request.nextUrl.searchParams.get('academicYearId')?.trim() || '';
+    let academicYearId = request.nextUrl.searchParams.get('academicYearId')?.trim() || '';
 
     if (!studentId) {
       return NextResponse.json({ error: 'Missing studentId' }, { status: 400 });
     }
 
     const supabase = await createClient();
-    const allowed = await canAccessStudentReportCard(supabase, session.ctx, studentId);
+    if (!academicYearId) {
+      const current = await fetchCurrentAcademicYear(supabase, session.ctx.tenantId);
+      academicYearId = current?.id ?? '';
+    }
+
+    const allowed = await canAccessStudentReportCard(supabase, session.ctx, studentId, {
+      academicYearId,
+      classId,
+    });
     if (!allowed) {
       return NextResponse.json({ error: 'Access denied.' }, { status: 403 });
     }

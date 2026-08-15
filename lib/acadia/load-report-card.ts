@@ -30,11 +30,6 @@ export async function loadAuthorizedReportCard(options: {
   }
 
   const supabase = await createClient();
-  const allowed = await canAccessStudentReportCard(supabase, session.ctx, studentId);
-  if (!allowed) {
-    return { ok: false, status: 403, error: 'Access denied.' };
-  }
-
   let yearId = options.academicYearId?.trim() || '';
   if (!yearId) {
     const current = await fetchCurrentAcademicYear(supabase, session.ctx.tenantId);
@@ -42,6 +37,14 @@ export async function loadAuthorizedReportCard(options: {
   }
   if (!yearId) {
     return { ok: false, status: 400, error: 'Academic year is required.' };
+  }
+
+  const allowed = await canAccessStudentReportCard(supabase, session.ctx, studentId, {
+    academicYearId: yearId,
+    classId: options.classId,
+  });
+  if (!allowed) {
+    return { ok: false, status: 403, error: 'Access denied.' };
   }
 
   const term: ReportCardTerm = parseReportCardTerm(options.term);

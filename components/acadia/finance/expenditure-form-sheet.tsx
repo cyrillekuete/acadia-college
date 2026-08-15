@@ -38,7 +38,6 @@ import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
 import {
   EXPENDITURE_CATEGORIES,
-  EXPENDITURE_STATUSES,
   FEE_BUDGET_CATEGORIES,
   FINANCE_PAYMENT_METHODS,
   parseMoneyToMinor,
@@ -404,32 +403,6 @@ export function ExpenditureFormSheet({
                       </FormItem>
                     )}
                   />
-                  {isEdit ? (
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('common.labels.status')}</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {EXPENDITURE_STATUSES.map((value) => (
-                                <SelectItem key={value} value={value}>
-                                  {t(`finance.expenditureStatus.${value}`)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ) : null}
                   <FormField
                     control={form.control}
                     name="notes"

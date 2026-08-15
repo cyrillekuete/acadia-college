@@ -58,10 +58,11 @@ export function buildReportCardPdfFilename(options: {
   term: string | number;
 }): string {
   const safe = sanitizeReportCardFilenamePart(options.studentName);
-  const y = String(options.year);
+  const y = sanitizeReportCardFilenamePart(String(options.year));
   const termStr = String(options.term);
   if (termStr === 'annual') {
     return `ReportCard_${safe}_${y}_Annual.pdf`;
   }
-  return `ReportCard_${safe}_${y}_Term${termStr}.pdf`;
+  const term = sanitizeReportCardFilenamePart(termStr);
+  return `ReportCard_${safe}_${y}_Term${term}.pdf`;
 }

@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { StudentCreateInput } from '@/lib/acadia/student-create-schemas';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
-import { studentListTags } from '@/lib/acadia/cache/tags';
+import { classListTags, studentListTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
 type CreateStudentResult = {
@@ -45,7 +45,10 @@ export function useStudentCreateMutation() {
       void queryClient.invalidateQueries({ queryKey: ['student-detail'] });
       void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
       if (tenantId) {
-        invalidateAcadiaCache(studentListTags(tenantId));
+        invalidateAcadiaCache([
+          ...studentListTags(tenantId),
+          ...classListTags(tenantId),
+        ]);
       }
     },
   });
