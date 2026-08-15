@@ -1,4 +1,4 @@
-@import './duotone/style.css';
-@import './outline/style.css';
+/* Acadia only uses Keenicons `filled` (DEFAULT_KEENICONS_STYLE). Shipping the
+   other three families added ~156KB of render-blocking CSS and extra font files
+   on every page. */
 @import './filled/style.css';
-@import './solid/style.css';
