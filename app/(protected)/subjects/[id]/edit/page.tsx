@@ -113,6 +113,7 @@ export default function EditSubjectPage({
           groupingId: data.groupingId,
           hasSubBranches: data.hasSubBranches,
           subBranches: subBranches.map((branch) => ({
+            id: branch.id,
             name: branch.name,
             hasCustomCoefficient: branch.coefficient != null,
             coefficient: branch.coefficient ?? undefined,

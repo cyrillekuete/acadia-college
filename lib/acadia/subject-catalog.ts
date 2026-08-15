@@ -25,6 +25,7 @@ export function subjectTypeLabel(type: SubjectType | string | null | undefined):
 
 export const subjectSubBranchFormSchema = z
   .object({
+    id: z.string().trim().optional().or(z.literal('')),
     name: z.string().trim().min(1, 'Sub-branch name is required.'),
     nameFr: z.string().trim().optional().or(z.literal('')),
     hasCustomCoefficient: z.boolean(),
@@ -45,6 +46,43 @@ export function resolveSubBranchCoefficient(
   subjectCoefficient: number,
 ): number {
   return branch.coefficient ?? subjectCoefficient;
+}
+
+export type SubjectSubBranchSyncDraft = {
+  id?: string | null;
+};
+
+export type SubjectSubBranchSyncPlan = {
+  toUpdate: { id: string; index: number }[];
+  toInsert: { index: number }[];
+  toDelete: string[];
+};
+
+/** Keep existing paper IDs so class assignments and marks stay attached. */
+export function planSubjectSubBranchSync(
+  existing: { id: string }[],
+  incoming: SubjectSubBranchSyncDraft[],
+): SubjectSubBranchSyncPlan {
+  const existingIds = new Set(existing.map((row) => row.id));
+  const keptIds = new Set<string>();
+  const toUpdate: { id: string; index: number }[] = [];
+  const toInsert: { index: number }[] = [];
+
+  incoming.forEach((draft, index) => {
+    const id = draft.id?.trim() ?? '';
+    if (id && existingIds.has(id) && !keptIds.has(id)) {
+      keptIds.add(id);
+      toUpdate.push({ id, index });
+      return;
+    }
+    toInsert.push({ index });
+  });
+
+  return {
+    toUpdate,
+    toInsert,
+    toDelete: existing.map((row) => row.id).filter((id) => !keptIds.has(id)),
+  };
 }
 
 export function formatSubBranchDisplayName(branch: {

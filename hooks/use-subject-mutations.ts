@@ -2,7 +2,11 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { subBranchNameFr, type SubjectType } from '@/lib/acadia/subject-catalog';
+import {
+  planSubjectSubBranchSync,
+  subBranchNameFr,
+  type SubjectType,
+} from '@/lib/acadia/subject-catalog';
 import { buildSubjectRow } from '@/lib/acadia/subject';
 import type {
   SubjectAssignmentFormValues,
@@ -49,34 +53,79 @@ async function replaceSubjectSubBranches(
   values: SubjectFormValues,
   now: string,
 ) {
-  const { error: deleteError } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('SubjectSubBranch')
-    .delete()
+    .select('id')
     .eq('tenantId', tenantId)
     .eq('subjectId', subjectId);
-  if (deleteError) {
-    throw deleteError;
+  if (existingError) {
+    throw existingError;
   }
 
-  if (!values.hasSubBranches || values.subBranches.length === 0) {
-    return;
+  const incoming = values.hasSubBranches ? values.subBranches : [];
+  const plan = planSubjectSubBranchSync(
+    (existing ?? []).map((row) => ({ id: row.id as string })),
+    incoming,
+  );
+
+  if (plan.toDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('SubjectSubBranch')
+      .delete()
+      .eq('tenantId', tenantId)
+      .eq('subjectId', subjectId)
+      .in('id', plan.toDelete);
+    if (deleteError) {
+      throw deleteError;
+    }
   }
 
-  const rows = values.subBranches.map((branch, index) => ({
-    id: generateAcadiaId('subbranch'),
-    tenantId,
-    subjectId,
-    name: branch.name.trim(),
-    nameFr: subBranchNameFr(branch),
-    coefficient: branch.hasCustomCoefficient ? branch.coefficient ?? null : null,
-    sortOrder: index,
-    createdAt: now,
-    updatedAt: now,
-  }));
+  for (const item of plan.toUpdate) {
+    const branch = incoming[item.index];
+    if (!branch) {
+      continue;
+    }
+    const { error: updateError } = await supabase
+      .from('SubjectSubBranch')
+      .update({
+        name: branch.name.trim(),
+        nameFr: subBranchNameFr(branch),
+        coefficient: branch.hasCustomCoefficient ? branch.coefficient ?? null : null,
+        sortOrder: item.index,
+        updatedAt: now,
+      })
+      .eq('tenantId', tenantId)
+      .eq('id', item.id);
+    if (updateError) {
+      throw updateError;
+    }
+  }
 
-  const { error: insertError } = await supabase.from('SubjectSubBranch').insert(rows);
-  if (insertError) {
-    throw insertError;
+  const toInsert = plan.toInsert.flatMap((item) => {
+    const branch = incoming[item.index];
+    if (!branch) {
+      return [];
+    }
+    return [
+      {
+        id: generateAcadiaId('subbranch'),
+        tenantId,
+        subjectId,
+        name: branch.name.trim(),
+        nameFr: subBranchNameFr(branch),
+        coefficient: branch.hasCustomCoefficient ? branch.coefficient ?? null : null,
+        sortOrder: item.index,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+  });
+
+  if (toInsert.length > 0) {
+    const { error: insertError } = await supabase.from('SubjectSubBranch').insert(toInsert);
+    if (insertError) {
+      throw insertError;
+    }
   }
 }
 

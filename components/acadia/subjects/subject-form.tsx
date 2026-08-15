@@ -43,6 +43,7 @@ import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 const NO_GROUPING = '__none__';
 
 export type SubjectFormSubBranch = {
+  id?: string;
   name: string;
   hasCustomCoefficient: boolean;
   coefficient?: number;
@@ -357,6 +358,13 @@ export function SubjectForm({
                   key={field.id}
                   className="grid grid-cols-1 gap-3 rounded-md border border-dashed p-3 md:grid-cols-[1fr_auto_auto_auto]"
                 >
+                  <FormField
+                    control={form.control}
+                    name={`subBranches.${index}.id`}
+                    render={({ field: idField }) => (
+                      <input type="hidden" {...idField} value={idField.value ?? ''} />
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name={`subBranches.${index}.name`}

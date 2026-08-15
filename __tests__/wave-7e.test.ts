@@ -3,7 +3,12 @@
  * Covers: subject schemas, subject helpers, timetable utilities
  */
 import { describe, it, expect } from 'vitest';
-import { subjectTypeLabel, subBranchNameFr, resolveSubBranchCoefficient } from '@/lib/acadia/subject-catalog';
+import {
+  subjectTypeLabel,
+  subBranchNameFr,
+  resolveSubBranchCoefficient,
+  planSubjectSubBranchSync,
+} from '@/lib/acadia/subject-catalog';
 import {
   buildSubjectRow,
   canEditSubject,
@@ -90,6 +95,61 @@ describe('subjectSchema', () => {
       subBranches: [{ name: 'Pure Maths', hasCustomCoefficient: true, coefficient: 2 }],
     });
     expect(result.success).toBe(true);
+  });
+
+  it('preserves existing paper ids on save', () => {
+    const result = subjectSchema.safeParse({
+      ...baseSubjectValues,
+      hasSubBranches: true,
+      subBranches: [
+        { id: 'org', name: 'Organic', hasCustomCoefficient: false },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.subBranches[0]?.id).toBe('org');
+    }
+  });
+});
+
+describe('planSubjectSubBranchSync', () => {
+  it('updates existing papers instead of recreating them', () => {
+    expect(
+      planSubjectSubBranchSync(
+        [{ id: 'org' }, { id: 'inorg' }],
+        [{ id: 'org' }, { id: 'inorg' }],
+      ),
+    ).toEqual({
+      toUpdate: [
+        { id: 'org', index: 0 },
+        { id: 'inorg', index: 1 },
+      ],
+      toInsert: [],
+      toDelete: [],
+    });
+  });
+
+  it('inserts new papers and deletes only removed ones', () => {
+    expect(
+      planSubjectSubBranchSync(
+        [{ id: 'org' }, { id: 'inorg' }],
+        [{ id: 'org' }, { name: 'Physical' }],
+      ),
+    ).toEqual({
+      toUpdate: [{ id: 'org', index: 0 }],
+      toInsert: [{ index: 1 }],
+      toDelete: ['inorg'],
+    });
+  });
+
+  it('treats missing ids as inserts so unknown ids cannot steal another paper', () => {
+    expect(
+      planSubjectSubBranchSync([{ id: 'org' }], [{ id: 'other' }, { id: 'org' }]),
+    ).toEqual({
+      toUpdate: [{ id: 'org', index: 1 }],
+      toInsert: [{ index: 0 }],
+      toDelete: [],
+    });
   });
 });
 
