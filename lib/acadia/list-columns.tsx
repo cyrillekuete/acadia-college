@@ -15,15 +15,17 @@ export function nestedFieldColumn<T extends Record<string, unknown>>(
 ): ColumnDef<T> {
   return {
     id,
-    header,
-    cell: ({ row }) => {
-      const rel = unwrapRelation<Record<string, unknown>>(
-        row.original[relationKey],
-      );
+    accessorFn: (row) => {
+      const rel = unwrapRelation<Record<string, unknown>>(row[relationKey]);
       if (!rel) {
-        return '—';
+        return '';
       }
       return formatRecordValue(rel[field]);
+    },
+    header,
+    cell: ({ getValue }) => {
+      const value = getValue();
+      return value === '' || value == null ? '—' : String(value);
     },
   };
 }
