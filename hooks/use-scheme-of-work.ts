@@ -180,13 +180,13 @@ export function useAdminSchemeCatalog() {
         subjectLevels.length > 0
           ? subjectLevels.map((row) => ({
               levelId: row.levelId,
-              levelName: levelLabel(row.Level),
+              levelName: levelLabel(row.Level ?? null),
             }))
           : subject.levelId
             ? [
                 {
                   levelId: subject.levelId,
-                  levelName: levelLabel(subject.Level),
+                  levelName: levelLabel(subject.Level ?? null),
                 },
               ]
             : [];

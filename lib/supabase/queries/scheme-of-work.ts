@@ -23,6 +23,29 @@ import { fetchTeacherTeachingScope } from '@/lib/supabase/queries/teacher-studen
 
 type Client = SupabaseClient<Database>;
 
+type SchemeRow = {
+  id: string;
+  tenantId: string;
+  academicYearId: string;
+  subjectId: string;
+  levelId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type EmbeddedLevelRow = {
+  levelId: string;
+  Level?: unknown;
+};
+
+type ClassWithLevelRow = {
+  id: string;
+  name: string;
+  levelId: string;
+  Level?: unknown;
+};
+
 export type SchemeOfWorkDetail = SchemeOfWorkRecord & {
   subjectCode: string;
   subjectName: string;
@@ -150,7 +173,7 @@ export async function fetchSchemeDetailById(
   );
 
   return {
-    ...mapSchemeRow(data),
+    ...mapSchemeRow(data as unknown as SchemeRow),
     subjectCode: subject?.code?.trim() || '',
     subjectName:
       localizedText(subject?.nameEn, subject?.nameFr) || subject?.nameEn || '',
@@ -496,15 +519,15 @@ export async function fetchSubjectLevelsForSchemePicker(
     throw error;
   }
 
-  const levels = (data ?? []).map((row) => {
+  const levels = ((data ?? []) as unknown as EmbeddedLevelRow[]).map((row) => {
     const level = unwrapRelation<{
       number?: number;
       name?: string;
       labelEn?: string | null;
       labelFr?: string | null;
-    }>((row as { Level?: unknown }).Level);
+    }>(row.Level);
     return {
-      levelId: row.levelId as string,
+      levelId: row.levelId,
       levelName: levelLabel(level),
     };
   });
@@ -528,7 +551,8 @@ export async function fetchSubjectLevelsForSchemePicker(
   if (subjectError) {
     throw subjectError;
   }
-  if (!subject?.levelId) {
+  const subjectRow = subject as unknown as EmbeddedLevelRow | null;
+  if (!subjectRow?.levelId) {
     return [];
   }
 
@@ -537,11 +561,11 @@ export async function fetchSubjectLevelsForSchemePicker(
     name?: string;
     labelEn?: string | null;
     labelFr?: string | null;
-  }>((subject as { Level?: unknown }).Level);
+  }>(subjectRow.Level);
 
   return [
     {
-      levelId: subject.levelId as string,
+      levelId: subjectRow.levelId,
       levelName: levelLabel(primaryLevel),
     },
   ];
@@ -583,16 +607,16 @@ export async function fetchTeacherSchemeListItems(
     string,
     { name: string; levelId: string; levelName: string }
   >();
-  for (const row of classRows ?? []) {
+  for (const row of (classRows ?? []) as unknown as ClassWithLevelRow[]) {
     const level = unwrapRelation<{
       number?: number;
       name?: string;
       labelEn?: string | null;
       labelFr?: string | null;
-    }>((row as { Level?: unknown }).Level);
-    classById.set(row.id as string, {
-      name: (row.name as string) || '',
-      levelId: row.levelId as string,
+    }>(row.Level);
+    classById.set(row.id, {
+      name: row.name || '',
+      levelId: row.levelId,
       levelName: levelLabel(level),
     });
   }
@@ -714,10 +738,11 @@ export async function fetchStudentSchemeListItems(
     name?: string;
     labelEn?: string | null;
     labelFr?: string | null;
-  }>((classRow as { Level?: unknown }).Level);
-  const levelId = classRow.levelId as string;
+  }>((classRow as unknown as ClassWithLevelRow).Level);
+  const classWithLevel = classRow as unknown as ClassWithLevelRow;
+  const levelId = classWithLevel.levelId;
   const levelName = levelLabel(level);
-  const className = (classRow.name as string) || '';
+  const className = classWithLevel.name || '';
 
   const subjects = await fetchClassSubjectDisplayRows(supabase, tenantId, classId);
   if (subjects.length === 0) {

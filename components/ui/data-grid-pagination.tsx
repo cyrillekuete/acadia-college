@@ -35,7 +35,7 @@ function DataGridPagination(props: DataGridPaginationProps) {
       from: '{from}',
       to: '{to}',
       count: '{count}',
-    }),
+    } as never) as unknown as string,
     infoSkeleton: <Skeleton className="h-8 w-60" />,
   };
 

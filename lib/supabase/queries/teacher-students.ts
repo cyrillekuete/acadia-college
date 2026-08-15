@@ -8,6 +8,13 @@ import { fetchStudentsFromEnrollmentsForClassIds } from '@/lib/supabase/queries/
 
 type Client = SupabaseClient<Database>;
 
+type TeachingScopeRow = {
+  classId: string;
+  subjectId: string;
+  Class?: unknown;
+  Subject?: unknown;
+};
+
 export type TeacherTeachingScopePair = {
   classId: string;
   subjectId: string;
@@ -50,9 +57,9 @@ export async function fetchTeacherTeachingScope(
     throw error;
   }
 
-  const rows = (data ?? []).map((row) => {
-    const classId = row.classId as string;
-    const subjectId = row.subjectId as string;
+  const rows = ((data ?? []) as unknown as TeachingScopeRow[]).map((row) => {
+    const classId = row.classId;
+    const subjectId = row.subjectId;
     const classRow = unwrapRelation<{ name?: string }>(row.Class);
     const subject = unwrapRelation<{ nameEn?: string; code?: string }>(row.Subject);
     return {

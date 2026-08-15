@@ -13,6 +13,19 @@ import type { Database } from '@/lib/supabase/database.types';
 
 type Client = SupabaseClient<Database>;
 
+type StaffSubjectAssignRow = {
+  staffProfileId: string;
+  classId?: string;
+  Subject?: unknown;
+};
+
+type StaffClassAssignRow = {
+  staffProfileId?: string;
+  classId?: string;
+  StaffProfile?: unknown;
+  Class?: unknown;
+};
+
 export type ClassTeacherSubjectOption = {
   id: string;
   code: string;
@@ -207,8 +220,8 @@ export async function fetchClassTeacherAssignments(
   }
 
   const subjectsByStaff = new Map<string, ClassTeacherSubjectOption[]>();
-  for (const row of subjectResult.data ?? []) {
-    const staffProfileId = row.staffProfileId as string;
+  for (const row of (subjectResult.data ?? []) as unknown as StaffSubjectAssignRow[]) {
+    const staffProfileId = row.staffProfileId;
     const subject = subjectOption(
       unwrapRelation<{ id?: string; code?: string; nameEn?: string }>(row.Subject),
     );
@@ -222,7 +235,7 @@ export async function fetchClassTeacherAssignments(
     subjectsByStaff.set(staffProfileId, list);
   }
 
-  return (classResult.data ?? []).map((row) => {
+  return ((classResult.data ?? []) as unknown as StaffClassAssignRow[]).map((row) => {
     const staffProfileId = row.staffProfileId as string;
     const staff = unwrapRelation<{ staffCode?: string | null; User?: unknown }>(
       row.StaffProfile,
@@ -281,7 +294,7 @@ export async function fetchStaffTeachingAssignments(
   }
 
   const subjectsByClass = new Map<string, ClassTeacherSubjectOption[]>();
-  for (const row of subjectResult.data ?? []) {
+  for (const row of (subjectResult.data ?? []) as unknown as StaffSubjectAssignRow[]) {
     const classId = row.classId as string;
     const subject = subjectOption(
       unwrapRelation<{ id?: string; code?: string; nameEn?: string }>(row.Subject),
@@ -296,7 +309,7 @@ export async function fetchStaffTeachingAssignments(
     subjectsByClass.set(classId, list);
   }
 
-  return (classResult.data ?? []).map((row) => {
+  return ((classResult.data ?? []) as unknown as StaffClassAssignRow[]).map((row) => {
     const classId = row.classId as string;
     const classRow = unwrapRelation<{ name?: string }>(row.Class);
     const subjects = (subjectsByClass.get(classId) ?? []).sort((a, b) =>

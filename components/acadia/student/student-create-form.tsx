@@ -314,7 +314,7 @@ export function StudentCreateForm() {
                 <StudentFieldControl>
                   <FormControl>
                     <PhoneFieldGroup
-                      country={form.watch('phone_country')}
+                      country={form.watch('phone_country') ?? ''}
                       onCountryChange={() => {}}
                       phone={field.value ?? ''}
                       onPhoneChange={field.onChange}
@@ -683,7 +683,7 @@ export function StudentCreateForm() {
                 <StudentFieldControl>
                   <FormControl>
                     <PhoneFieldGroup
-                      country={form.watch('parent_phone_country')}
+                      country={form.watch('parent_phone_country') ?? ''}
                       onCountryChange={() => {}}
                       phone={field.value ?? ''}
                       onPhoneChange={field.onChange}

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
 import type { Database } from '@/lib/supabase/database.types';
 import {
   findOverlappingVariant,
@@ -35,8 +36,8 @@ export async function assertNoOverlappingSubjectVariant(
     )
     .eq('tenantId', tenantId)
     .eq('academicYearId', next.academicYearId)
-    .eq('subSystem', next.subSystem)
-    .eq('branch', next.branch);
+    .eq('subSystem', next.subSystem as AcademicSubSystem)
+    .eq('branch', next.branch as AcademicBranch);
 
   if (error) {
     throw error;

@@ -133,7 +133,7 @@ describe('planSubjectSubBranchSync', () => {
     expect(
       planSubjectSubBranchSync(
         [{ id: 'org' }, { id: 'inorg' }],
-        [{ id: 'org' }, { name: 'Physical' }],
+        [{ id: 'org' }, {}],
       ),
     ).toEqual({
       toUpdate: [{ id: 'org', index: 0 }],
