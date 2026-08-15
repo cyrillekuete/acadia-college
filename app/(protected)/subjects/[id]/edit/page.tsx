@@ -36,7 +36,7 @@ const SUBJECT_EDIT_SELECT = `
   hasSubBranches,
   deactivatedAt,
   Term!Subject_semesterId_tenantId_fkey ( academicYearId ),
-  SubjectSubBranch ( name, nameFr, coefficient, sortOrder ),
+  SubjectSubBranch ( id, name, nameFr, coefficient, sortOrder ),
   SubjectLevel ( levelId )
 `;
 
@@ -60,6 +60,7 @@ type SubjectEditDetail = {
   deactivatedAt: string | null;
   Term: unknown;
   SubjectSubBranch?: {
+    id: string;
     name: string;
     nameFr: string | null;
     coefficient: number | null;

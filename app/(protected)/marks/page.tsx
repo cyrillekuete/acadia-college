@@ -23,11 +23,11 @@ const columns: ColumnDef<Row>[] = [
   {
     ...nestedFieldColumn<Row>('student', 'Student', 'StudentProfile', 'registrationNumber'),
     size: 180,
-  },
+  } as ColumnDef<Row>,
   {
     ...nestedFieldColumn<Row>('subject', 'Subject', 'Subject', 'code'),
     size: 140,
-  },
+  } as ColumnDef<Row>,
   { accessorKey: 'caScore', header: 'CA', size: 80 },
   { accessorKey: 'examScore', header: 'Exam', size: 80 },
   { accessorKey: 'totalScore', header: 'Total', size: 80 },
