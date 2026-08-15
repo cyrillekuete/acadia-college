@@ -93,7 +93,7 @@ export default function CourseworkPage() {
         },
         enableSorting: true,
         enableHiding: true,
-      },
+      } as ColumnDef<TaskRow>,
       {
         accessorKey: 'dueAt',
         id: 'dueAt',
@@ -214,7 +214,7 @@ export default function CourseworkPage() {
         },
         enableSorting: true,
         enableHiding: true,
-      },
+      } as ColumnDef<SubmissionRow>,
       {
         ...nestedFieldColumn<SubmissionRow>(
           'student',
@@ -236,7 +236,7 @@ export default function CourseworkPage() {
         },
         enableSorting: true,
         enableHiding: true,
-      },
+      } as ColumnDef<SubmissionRow>,
       {
         accessorKey: 'submittedAt',
         id: 'submittedAt',
