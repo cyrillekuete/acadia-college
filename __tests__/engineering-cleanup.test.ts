@@ -65,6 +65,31 @@ describe('ModulesProvider', () => {
   });
 });
 
+describe('Keenicons global stylesheet', () => {
+  const styles = readFileSync(
+    join(process.cwd(), 'components/keenicons/assets/styles.css'),
+    'utf8',
+  );
+  const filledFace = readFileSync(
+    join(process.cwd(), 'components/keenicons/assets/filled/style.css'),
+    'utf8',
+  ).slice(0, 400);
+
+  it('imports only the filled family used by DEFAULT_KEENICONS_STYLE', () => {
+    expect(styles).toMatch(/@import '\.\/filled\/style\.css'/);
+    expect(styles).not.toMatch(/duotone\/style\.css/);
+    expect(styles).not.toMatch(/outline\/style\.css/);
+    expect(styles).not.toMatch(/solid\/style\.css/);
+  });
+
+  it('loads the filled font with swap and a single woff source', () => {
+    expect(filledFace).toMatch(/font-display:\s*swap/);
+    expect(filledFace).toMatch(/keenicons-filled\.woff/);
+    expect(filledFace).not.toMatch(/keenicons-filled\.ttf/);
+    expect(filledFace).not.toMatch(/keenicons-filled\.svg/);
+  });
+});
+
 describe('deprecatedUserManagementResponse', () => {
   it('returns HTTP 410', async () => {
     const response = deprecatedUserManagementResponse();

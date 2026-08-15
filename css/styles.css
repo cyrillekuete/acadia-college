@@ -15,7 +15,7 @@
   }
 }
 
-/* Keenicons (duotone default for Acadia) */
+/* Keenicons (filled default for Acadia; unused families are not imported) */
 @import '../components/keenicons/assets/styles.css';
 
 /* Metronic Components  */
