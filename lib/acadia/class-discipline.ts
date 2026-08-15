@@ -72,25 +72,17 @@ export function aggregateDiscipline(
   term: ReportCardTerm,
 ): DisciplineInfo {
   const safeRows = rows ?? [];
-  if (term === 'annual') {
-    return safeRows.reduce(
-      (acc, row) => ({
-        absences: acc.absences + normalizeDisciplineCount(row.absenceHours, 999),
-        suspensions: acc.suspensions + normalizeDisciplineCount(row.suspensions, 99),
-        warnings: acc.warnings + normalizeDisciplineCount(row.warnings, 99),
-      }),
-      { ...EMPTY_DISCIPLINE },
-    );
-  }
+  const relevant =
+    term === 'annual'
+      ? safeRows
+      : safeRows.filter((entry) => entry.termNumber === Number(term));
 
-  const termNumber = Number(term);
-  const row = safeRows.find((entry) => entry.termNumber === termNumber);
-  if (!row) {
-    return { ...EMPTY_DISCIPLINE };
-  }
-  return {
-    absences: normalizeDisciplineCount(row.absenceHours, 999),
-    suspensions: normalizeDisciplineCount(row.suspensions, 99),
-    warnings: normalizeDisciplineCount(row.warnings, 99),
-  };
+  return relevant.reduce(
+    (acc, row) => ({
+      absences: acc.absences + normalizeDisciplineCount(row.absenceHours, 999),
+      suspensions: acc.suspensions + normalizeDisciplineCount(row.suspensions, 99),
+      warnings: acc.warnings + normalizeDisciplineCount(row.warnings, 99),
+    }),
+    { ...EMPTY_DISCIPLINE },
+  );
 }

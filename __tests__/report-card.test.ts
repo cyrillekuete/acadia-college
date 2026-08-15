@@ -282,6 +282,45 @@ describe('buildReportCardData', () => {
       warnings: 1,
     });
   });
+
+  it('sums discipline from more than one class in the same term', () => {
+    const bundle: ReportCardBundle = {
+      student: {
+        studentProfileId: 's1',
+        name: 'Ada Lovelace',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        matricule: 'AC-001',
+        sex: 'F',
+        dob: '01/01/2010',
+        pob: '—',
+        speciality: 'Grammar',
+      },
+      classId: 'c2',
+      className: 'Form 5 B',
+      classMaster: 'Ms. Teacher',
+      classSize: 1,
+      academicYearLabel: '2025/2026',
+      structure: {
+        termsPerYear: 3,
+        sequencesPerTerm: 2,
+        sequencesPerYear: 6,
+      },
+      subjects: [math],
+      marks: [mark('s1', 'math', 1, 16), mark('s1', 'math', 2, 18)],
+      branding,
+      disciplineByTerm: [
+        { termNumber: 1, absenceHours: 4, suspensions: 1, warnings: 0 },
+        { termNumber: 1, absenceHours: 2, suspensions: 0, warnings: 1 },
+      ],
+    };
+
+    expect(buildReportCardData(bundle, '1').discipline).toEqual({
+      absences: 6,
+      suspensions: 1,
+      warnings: 1,
+    });
+  });
 });
 
 describe('report-card access', () => {

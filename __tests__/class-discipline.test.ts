@@ -89,6 +89,24 @@ describe('aggregateDiscipline', () => {
       warnings: 3,
     });
   });
+
+  it('sums the same term across classes after a mid-year migration', () => {
+    const migrated = [
+      { termNumber: 1, absenceHours: 4, suspensions: 1, warnings: 2 },
+      { termNumber: 1, absenceHours: 3, suspensions: 0, warnings: 1 },
+      { termNumber: 2, absenceHours: 1, suspensions: 0, warnings: 0 },
+    ];
+    expect(aggregateDiscipline(migrated, '1')).toEqual({
+      absences: 7,
+      suspensions: 1,
+      warnings: 3,
+    });
+    expect(aggregateDiscipline(migrated, 'annual')).toEqual({
+      absences: 8,
+      suspensions: 1,
+      warnings: 3,
+    });
+  });
 });
 
 describe('class discipline helpers', () => {

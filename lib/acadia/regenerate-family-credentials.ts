@@ -222,19 +222,8 @@ export async function regenerateFamilyCredentials(
     }
   }
 
-  const studentTemporaryPassword = generateTemporaryPassword();
-  const { error: studentAuthError } = await admin.auth.admin.updateUserById(
-    studentAuthId,
-    { password: studentTemporaryPassword },
-  );
-  if (studentAuthError) {
-    return {
-      ok: false,
-      message: studentAuthError.message ?? 'Failed to reset the student password.',
-      status: 400,
-    };
-  }
-
+  // Reset the parent first so a parent Auth failure cannot leave the student
+  // password already changed with no credentials file returned.
   let parentTemporaryPassword: string | null = null;
   if (parentAuth) {
     parentTemporaryPassword = generateTemporaryPassword();
@@ -247,10 +236,27 @@ export async function regenerateFamilyCredentials(
         ok: false,
         message:
           parentAuthError.message ??
-          'Student password was reset, but the parent password could not be updated. Download credentials again.',
+          'Failed to reset the parent password. The student password was not changed.',
         status: 400,
       };
     }
+  }
+
+  const studentTemporaryPassword = generateTemporaryPassword();
+  const { error: studentAuthError } = await admin.auth.admin.updateUserById(
+    studentAuthId,
+    { password: studentTemporaryPassword },
+  );
+  if (studentAuthError) {
+    const studentMessage =
+      studentAuthError.message ?? 'Failed to reset the student password.';
+    return {
+      ok: false,
+      message: parentAuth
+        ? `${studentMessage} The parent password was already reset — download credentials again.`
+        : studentMessage,
+      status: 400,
+    };
   }
 
   return {

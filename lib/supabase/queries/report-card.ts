@@ -188,7 +188,6 @@ export async function fetchReportCardBundle(
       tenantId,
       studentProfileId,
       academicYearId,
-      resolvedClassId,
     ),
   ]);
 

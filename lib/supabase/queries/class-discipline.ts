@@ -118,15 +118,13 @@ export async function fetchStudentTermDiscipline(
   tenantId: string,
   studentProfileId: string,
   academicYearId: string,
-  classId: string,
 ): Promise<ClassDisciplineRow[]> {
   const { data, error } = await supabase
     .from('StudentTermDiscipline')
     .select('termNumber, absenceHours, suspensions, warnings')
     .eq('tenantId', tenantId)
     .eq('studentProfileId', studentProfileId)
-    .eq('academicYearId', academicYearId)
-    .eq('classId', classId);
+    .eq('academicYearId', academicYearId);
 
   if (error) {
     throw new Error(getQueryErrorMessage(error));
