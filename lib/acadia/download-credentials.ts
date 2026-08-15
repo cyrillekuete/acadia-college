@@ -15,14 +15,18 @@ export type FamilyCredentialsDownload = {
   signInUrl?: string;
 };
 
+export const CREDENTIALS_DOWNLOAD_NAVIGATION_DELAY_MS = 750;
+
 function downloadTextFile(filename: string, text: string): void {
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(url), 2_000);
 }
 
 export function buildStaffCredentialsText(credentials: StaffCredentialsDownload): string {

@@ -105,14 +105,30 @@ export async function GET(request: NextRequest) {
     }
     if (topN) pdfPage.searchParams.set('topN', topN);
 
-    const pdfBuffer = await generateReportCardPdfFromUrl({
-      targetUrl: pdfPage.toString(),
-      cookieHeader,
-    });
+    const [pdfBuffer, classResult, yearResult] = await Promise.all([
+      generateReportCardPdfFromUrl({
+        targetUrl: pdfPage.toString(),
+        cookieHeader,
+      }),
+      supabase
+        .from('Class')
+        .select('name')
+        .eq('tenantId', session.ctx.tenantId)
+        .eq('id', classId)
+        .maybeSingle(),
+      academicYearId
+        ? supabase
+            .from('AcademicYear')
+            .select('label')
+            .eq('tenantId', session.ctx.tenantId)
+            .eq('id', academicYearId)
+            .maybeSingle()
+        : Promise.resolve({ data: { label: 'year' } }),
+    ]);
 
     const filename = buildClassReportPdfFilename({
-      className: classId,
-      year: academicYearId || 'year',
+      className: classResult.data?.name?.trim() || classId,
+      year: yearResult.data?.label?.trim() || academicYearId || 'year',
       period: periodParam,
     });
 

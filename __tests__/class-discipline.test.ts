@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   aggregateDiscipline,
   canWriteClassDiscipline,
+  classDisciplineRosterQueryKey,
   normalizeDisciplineCount,
   parseClassDisciplineTerm,
+  unenrolledDisciplineStudentIds,
 } from '@/lib/acadia/class-discipline';
 
 describe('canWriteClassDiscipline', () => {
@@ -17,10 +19,21 @@ describe('canWriteClassDiscipline', () => {
     ).toBe(true);
     expect(
       canWriteClassDiscipline({
-        roleSlug: 'registrar',
+        roleSlug: 'financial-director',
+        staffProfileId: null,
         classMasterStaffProfileId: 'staff-1',
       }),
     ).toBe(true);
+  });
+
+  it('denies bursar even without a class-master match', () => {
+    expect(
+      canWriteClassDiscipline({
+        roleSlug: 'bursar',
+        staffProfileId: null,
+        classMasterStaffProfileId: 'staff-1',
+      }),
+    ).toBe(false);
   });
 
   it('allows the class master of that class', () => {
@@ -116,5 +129,24 @@ describe('class discipline helpers', () => {
     expect(normalizeDisciplineCount(12.9, 99)).toBe(12);
     expect(normalizeDisciplineCount(-4, 99)).toBe(0);
     expect(normalizeDisciplineCount(1000, 999)).toBe(999);
+  });
+
+  it('rejects students who are not on the class roster', () => {
+    const enrolled = new Set(['s1', 's2']);
+    expect(unenrolledDisciplineStudentIds(['s1', 's2'], enrolled)).toEqual([]);
+    expect(unenrolledDisciplineStudentIds(['s1', 's9', 's1'], enrolled)).toEqual(['s9']);
+  });
+
+  it('uses a string term so save invalidation matches the roster query', () => {
+    expect(classDisciplineRosterQueryKey('t', 'y', 'c', 2)).toEqual([
+      'class-discipline-roster',
+      't',
+      'y',
+      'c',
+      '2',
+    ]);
+    expect(classDisciplineRosterQueryKey('t', 'y', 'c', '2')).toEqual(
+      classDisciplineRosterQueryKey('t', 'y', 'c', 2),
+    );
   });
 });

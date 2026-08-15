@@ -55,7 +55,7 @@ export type ProvisionResult =
  *        temporary password.
  *    6c. If email exists but role≠parent → error 400.
  *    In all success cases: insert new `parents` row with student_id.
- * Rollback: delete rows in reverse on any failure.
+ * Rollback: delete PascalCase User/profile rows, then legacy rows, then auth.
  */
 export async function provisionStudentAndParent(
   supabase: SupabaseClient,
@@ -489,6 +489,20 @@ async function rollbackStudent(
   }
   await admin.from('user_profiles').delete().eq('user_id', studentAuthId);
   await admin.from('students').delete().eq('student_id', studentId);
+
+  const { data: profiles } = await admin
+    .from('StudentProfile')
+    .select('id')
+    .eq('userId', studentAuthId);
+  const profileIds = (profiles ?? [])
+    .map((row) => row.id)
+    .filter((id): id is string => Boolean(id));
+  if (profileIds.length > 0) {
+    await admin.from('StudentEnrollment').delete().in('studentProfileId', profileIds);
+    await admin.from('StudentProfile').delete().in('id', profileIds);
+  }
+  await admin.from('User').delete().eq('id', studentAuthId);
+
   await admin.from('users').delete().eq('id', studentAuthId);
   await admin.auth.admin.deleteUser(studentAuthId);
 }

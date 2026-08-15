@@ -73,6 +73,9 @@ export function ClassReportWrapper() {
 
   useEffect(() => {
     if (!selectedClass || !period || !activeYearId) {
+      setReportData(null);
+      setError(null);
+      setLoadingReport(false);
       return;
     }
 

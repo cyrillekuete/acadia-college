@@ -4,12 +4,13 @@ import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { ClassAbsencesGrid } from '@/components/acadia/report-cards/class-absences-grid';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useTranslation } from '@/hooks/useTranslation';
-import { canWriteOperations } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 
 export default function ClassAbsencesPage() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canEnter = canWriteOperations(session?.roleSlug);
+  const canEnter =
+    canWriteAcademicAdmin(session?.roleSlug) || isStaffOrTeacher(session?.roleSlug);
 
   return (
     <AcadiaPageShell

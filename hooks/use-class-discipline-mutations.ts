@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { classDisciplineRosterQueryKey } from '@/lib/acadia/class-discipline';
 import { classDisciplineSaveSchema } from '@/lib/acadia/class-discipline-schemas';
 import {
   ensureAcademicYearWriteAllowed,
@@ -76,13 +77,12 @@ export function useClassDisciplineMutations() {
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: [
-          'class-discipline-roster',
+        queryKey: classDisciplineRosterQueryKey(
           tenantId,
           variables.academicYearId,
           variables.classId,
           variables.termNumber,
-        ],
+        ),
       });
       toast.success('Absences saved.');
     },

@@ -34,6 +34,20 @@ export function canManageUsers(roleSlug: string | null | undefined): boolean {
   return slug === 'admin' || slug === 'super-admin' || slug === 'registrar';
 }
 
+/**
+ * Academic write access matching SQL `acadia_is_admin_or_registrar()`.
+ * Includes financial-director; excludes bursar.
+ */
+export function canWriteAcademicAdmin(roleSlug: string | null | undefined): boolean {
+  const slug = normalizeRole(roleSlug);
+  return (
+    slug === 'admin' ||
+    slug === 'super-admin' ||
+    slug === 'financial-director' ||
+    slug === 'registrar'
+  );
+}
+
 /** Guardian / parent roles — accepts both new-schema 'parent' and legacy 'guardian'. */
 export function isGuardian(roleSlug: string | null | undefined): boolean {
   const slug = normalizeRole(roleSlug);

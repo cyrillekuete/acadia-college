@@ -1,4 +1,4 @@
-import { isAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 import type { DisciplineInfo, ReportCardTerm } from '@/lib/acadia/report-card-types';
 
 export const CLASS_DISCIPLINE_TERMS = ['1', '2', '3'] as const;
@@ -41,6 +41,21 @@ export function parseClassDisciplineTerm(
   return '1';
 }
 
+export function classDisciplineRosterQueryKey(
+  tenantId: string | null,
+  academicYearId: string | null | undefined,
+  classId: string,
+  term: ClassDisciplineTerm | number,
+) {
+  return [
+    'class-discipline-roster',
+    tenantId,
+    academicYearId,
+    classId,
+    parseClassDisciplineTerm(String(term)),
+  ] as const;
+}
+
 export function normalizeDisciplineCount(
   value: number | null | undefined,
   max: number,
@@ -51,12 +66,20 @@ export function normalizeDisciplineCount(
   return Math.min(max, Math.max(0, Math.trunc(value ?? 0)));
 }
 
+export function unenrolledDisciplineStudentIds(
+  studentProfileIds: readonly string[],
+  enrolledStudentIds: ReadonlySet<string>,
+): string[] {
+  const unique = [...new Set(studentProfileIds.map((id) => id.trim()).filter(Boolean))];
+  return unique.filter((id) => !enrolledStudentIds.has(id));
+}
+
 export function canWriteClassDiscipline(input: {
   roleSlug: string;
   staffProfileId?: string | null;
   classMasterStaffProfileId?: string | null;
 }): boolean {
-  if (isAdmin(input.roleSlug)) {
+  if (canWriteAcademicAdmin(input.roleSlug)) {
     return true;
   }
   if (!isStaffOrTeacher(input.roleSlug)) {

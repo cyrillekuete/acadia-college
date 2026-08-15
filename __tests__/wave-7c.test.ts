@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   canManageUsers,
+  canWriteAcademicAdmin,
   isFinancialDirector,
   isAdmin,
 } from '@/lib/acadia/roles';
@@ -40,6 +41,17 @@ describe('isAdmin vs canManageUsers', () => {
   it('treats bursar as admin for institution ops but not user CRUD', () => {
     expect(isAdmin('financial-director')).toBe(true);
     expect(canManageUsers('financial-director')).toBe(false);
+  });
+});
+
+describe('canWriteAcademicAdmin', () => {
+  it('matches SQL admin-or-registrar and excludes bursar', () => {
+    expect(canWriteAcademicAdmin('admin')).toBe(true);
+    expect(canWriteAcademicAdmin('super-admin')).toBe(true);
+    expect(canWriteAcademicAdmin('registrar')).toBe(true);
+    expect(canWriteAcademicAdmin('financial-director')).toBe(true);
+    expect(canWriteAcademicAdmin('bursar')).toBe(false);
+    expect(canWriteAcademicAdmin('teacher')).toBe(false);
   });
 });
 

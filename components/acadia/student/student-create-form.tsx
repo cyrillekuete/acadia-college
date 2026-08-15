@@ -47,7 +47,10 @@ import { RegionSelect } from '@/components/acadia/location/region-select';
 import { PhoneFieldGroup } from '@/components/acadia/phone/phone-field-group';
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
-import { downloadFamilyCredentials } from '@/lib/acadia/download-credentials';
+import {
+  CREDENTIALS_DOWNLOAD_NAVIGATION_DELAY_MS,
+  downloadFamilyCredentials,
+} from '@/lib/acadia/download-credentials';
 import { isCityValidForLocation } from '@/lib/acadia/locations';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -198,6 +201,9 @@ export function StudentCreateForm() {
         studentId: result.studentId,
       }),
     );
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, CREDENTIALS_DOWNLOAD_NAVIGATION_DELAY_MS);
+    });
     router.push(`/students/${result.studentProfileId}`);
   }
 

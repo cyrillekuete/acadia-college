@@ -57,6 +57,7 @@ export async function provisionStudentProfileAndEnrollment(
     .eq('id', input.authUserId)
     .maybeSingle();
 
+  let createdUserRow = false;
   if (!existingUser?.id) {
     const { error: userInsertError } = await supabase.from('User').insert({
       id: input.authUserId,
@@ -80,6 +81,7 @@ export async function provisionStudentProfileAndEnrollment(
         status: 400,
       };
     }
+    createdUserRow = true;
   }
 
   const studentProfileId = generateAcadiaId('student');
@@ -99,7 +101,7 @@ export async function provisionStudentProfileAndEnrollment(
   });
 
   if (profileError) {
-    await rollbackPascalUser(supabase, input.authUserId, false);
+    await rollbackPascalUser(supabase, input.authUserId, createdUserRow);
     return {
       ok: false,
       message: profileError.message ?? 'Failed to create student profile.',
@@ -145,7 +147,7 @@ export async function provisionStudentProfileAndEnrollment(
       .delete()
       .eq('id', studentProfileId)
       .eq('tenantId', input.tenantId);
-    await rollbackPascalUser(supabase, input.authUserId, true);
+    await rollbackPascalUser(supabase, input.authUserId, createdUserRow);
     return {
       ok: false,
       message: enrollmentError.message ?? 'Failed to create student enrollment.',

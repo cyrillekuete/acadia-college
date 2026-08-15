@@ -30,6 +30,7 @@ import {
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   CLASS_DISCIPLINE_TERMS,
+  classDisciplineRosterQueryKey,
   normalizeDisciplineCount,
   parseClassDisciplineTerm,
   type ClassDisciplineDraft,
@@ -71,13 +72,12 @@ export function ClassAbsencesGrid() {
   }, [classes, selectedClass]);
 
   const rosterQuery = useQuery({
-    queryKey: [
-      'class-discipline-roster',
+    queryKey: classDisciplineRosterQueryKey(
       tenantId,
       activeYearId,
       selectedClass,
       selectedTerm,
-    ],
+    ),
     queryFn: async () => {
       const supabase = requireBrowserClient();
       return fetchClassDisciplineRoster(

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   normalizeDisciplineCount,
+  unenrolledDisciplineStudentIds,
   type ClassDisciplineDraft,
   type ClassDisciplineRow,
   type ClassDisciplineStudent,
@@ -153,6 +154,34 @@ export async function upsertClassDisciplineRows(
     return;
   }
 
+  const studentProfileIds = uniqueIds(input.rows.map((row) => row.studentProfileId));
+  if (studentProfileIds.length === 0) {
+    throw new Error(
+      'Discipline can only be saved for students enrolled in this class.',
+    );
+  }
+  const { data: enrolled, error: enrolledError } = await supabase
+    .from('StudentEnrollment')
+    .select('studentProfileId')
+    .eq('tenantId', input.tenantId)
+    .eq('academicYearId', input.academicYearId)
+    .eq('classId', input.classId)
+    .eq('status', 'ENROLLED')
+    .in('studentProfileId', studentProfileIds);
+
+  if (enrolledError) {
+    throw new Error(getQueryErrorMessage(enrolledError));
+  }
+
+  const enrolledIds = new Set(
+    (enrolled ?? []).map((row) => row.studentProfileId as string),
+  );
+  if (unenrolledDisciplineStudentIds(studentProfileIds, enrolledIds).length > 0) {
+    throw new Error(
+      'Discipline can only be saved for students enrolled in this class.',
+    );
+  }
+
   const { data: existing, error: existingError } = await supabase
     .from('StudentTermDiscipline')
     .select('id, studentProfileId')
@@ -160,10 +189,7 @@ export async function upsertClassDisciplineRows(
     .eq('academicYearId', input.academicYearId)
     .eq('classId', input.classId)
     .eq('termNumber', input.termNumber)
-    .in(
-      'studentProfileId',
-      input.rows.map((row) => row.studentProfileId),
-    );
+    .in('studentProfileId', studentProfileIds);
 
   if (existingError) {
     throw new Error(getQueryErrorMessage(existingError));

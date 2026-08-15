@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getMenuForRole } from '@/config/menu.acadia';
 import {
   buildClassReport,
+  buildClassReportPdfFilename,
   parseClassReportPeriod,
   parseClassReportTopN,
   type ClassReportBundle,
@@ -121,6 +122,16 @@ describe('class-report period parsing', () => {
     expect(parseClassReportTopN(undefined)).toBe(5);
     expect(parseClassReportTopN('10')).toBe(10);
     expect(parseClassReportTopN('3')).toBe(5);
+  });
+
+  it('builds a filename from class name and year label', () => {
+    expect(
+      buildClassReportPdfFilename({
+        className: 'Form 5 A',
+        year: '2025/2026',
+        period: { kind: 'term', term: '1' },
+      }),
+    ).toBe('ClassReport_Form_5_A_2025_2026_Term1.pdf');
   });
 });
 

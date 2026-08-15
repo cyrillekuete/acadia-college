@@ -7,7 +7,7 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
-import { isAdmin } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchClassList, type ClassListRow } from '@/lib/supabase/queries/class-list';
 import { fetchClassMasterClassIds } from '@/lib/supabase/queries/class-discipline';
@@ -16,7 +16,7 @@ export function useClassMasterClassList() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const roleSlug = session?.roleSlug ?? null;
-  const admin = isAdmin(roleSlug);
+  const admin = canWriteAcademicAdmin(roleSlug);
   const { activeYearId } = useActiveAcademicYear();
   const { data: linked, isSuccess: linkedReady } = useLinkedAcadiaProfile();
   const staffProfileId = linked?.staffProfileId ?? null;

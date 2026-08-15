@@ -222,8 +222,19 @@ export async function regenerateFamilyCredentials(
     }
   }
 
-  // Reset the parent first so a parent Auth failure cannot leave the student
-  // password already changed with no credentials file returned.
+  const studentTemporaryPassword = generateTemporaryPassword();
+  const { error: studentAuthError } = await admin.auth.admin.updateUserById(
+    studentAuthId,
+    { password: studentTemporaryPassword },
+  );
+  if (studentAuthError) {
+    return {
+      ok: false,
+      message: studentAuthError.message ?? 'Failed to reset the student password.',
+      status: 400,
+    };
+  }
+
   let parentTemporaryPassword: string | null = null;
   if (parentAuth) {
     parentTemporaryPassword = generateTemporaryPassword();
@@ -232,31 +243,14 @@ export async function regenerateFamilyCredentials(
       { password: parentTemporaryPassword },
     );
     if (parentAuthError) {
-      return {
-        ok: false,
-        message:
-          parentAuthError.message ??
-          'Failed to reset the parent password. The student password was not changed.',
-        status: 400,
-      };
+      console.warn(
+        '[regenerateFamilyCredentials] Parent password reset failed after student reset:',
+        parentAuthError.message,
+      );
+      // Student password was already changed. Return it so the admin can still
+      // download working student credentials. Parent keeps their existing password.
+      parentTemporaryPassword = null;
     }
-  }
-
-  const studentTemporaryPassword = generateTemporaryPassword();
-  const { error: studentAuthError } = await admin.auth.admin.updateUserById(
-    studentAuthId,
-    { password: studentTemporaryPassword },
-  );
-  if (studentAuthError) {
-    const studentMessage =
-      studentAuthError.message ?? 'Failed to reset the student password.';
-    return {
-      ok: false,
-      message: parentAuth
-        ? `${studentMessage} The parent password was already reset — download credentials again.`
-        : studentMessage,
-      status: 400,
-    };
   }
 
   return {
