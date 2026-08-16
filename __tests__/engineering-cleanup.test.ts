@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { createElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import {
+  ACADIA_DEMO_LAYOUT_REDIRECTS,
   ACADIA_DEMO_REDIRECTS,
   isAcadiaDemoRoute,
 } from '@/lib/acadia/demo-routes';
@@ -39,6 +40,21 @@ describe('ACADIA_DEMO_REDIRECTS', () => {
         entry.source.startsWith('/account/billing'),
       ),
     ).toBe(true);
+  });
+});
+
+describe('ACADIA_DEMO_LAYOUT_REDIRECTS', () => {
+  it('sends Metronic demo layout URLs to Acadia paths', () => {
+    expect(ACADIA_DEMO_LAYOUT_REDIRECTS).toContainEqual({
+      source: '/demo5/:path*',
+      destination: '/:path*',
+      permanent: false,
+    });
+    expect(ACADIA_DEMO_LAYOUT_REDIRECTS).toContainEqual({
+      source: '/demo5',
+      destination: '/',
+      permanent: false,
+    });
   });
 });
 

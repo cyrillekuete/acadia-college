@@ -73,6 +73,7 @@ export function CreateFeeAccountForm({
       subSystem: 'ENGLISH',
       branch: 'GRAMMAR',
       studentEnrollmentId: '',
+      classId: '',
       feeCurrency: 'XAF',
       useStreamPlan: true,
     },
@@ -92,6 +93,7 @@ export function CreateFeeAccountForm({
           studentProfileId,
           subSystem,
           branch,
+          classId,
           StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             registrationNumber,
             User!StudentProfile_userId_tenantId_fkey ( name )
@@ -113,6 +115,7 @@ export function CreateFeeAccountForm({
         return {
           enrollmentId: row.id as string,
           studentProfileId: row.studentProfileId as string,
+          classId: (row.classId as string | null) ?? '',
           subSystem: row.subSystem as CreateStudentFeeAccountValues['subSystem'],
           branch: row.branch as CreateStudentFeeAccountValues['branch'],
           label: `${profile?.registrationNumber ?? '—'} — ${user?.name ?? 'Student'}`,
@@ -180,6 +183,7 @@ export function CreateFeeAccountForm({
                   );
                   if (row) {
                     form.setValue('studentEnrollmentId', row.enrollmentId);
+                    form.setValue('classId', row.classId);
                     form.setValue('subSystem', row.subSystem);
                     form.setValue('branch', row.branch);
                   }

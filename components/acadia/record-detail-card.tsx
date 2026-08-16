@@ -17,7 +17,7 @@ export function RecordDetailCard({
   fields: RecordDetailField[];
 }) {
   return (
-    <Card className="min-w-full">
+    <Card className="min-w-full h-full">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>

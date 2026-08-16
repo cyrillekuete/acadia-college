@@ -65,3 +65,35 @@ export function buildEnrollmentApplicationRow(
 export function canEditEnrollmentApplication(status: string | undefined): boolean {
   return status === 'PENDING';
 }
+
+export const ENROLLMENT_APPLICATIONS_PATH = '/enrollment/applications';
+export const ENROLLMENT_APPLICATION_ID_PARAM = 'applicationId';
+export const ENROLLMENT_APPLICATION_VIEW_PARAM = 'view';
+
+export type EnrollmentApplicationView = 'review' | 'edit' | 'confirmation';
+
+export function parseEnrollmentApplicationView(
+  raw: string | null | undefined,
+): EnrollmentApplicationView {
+  if (raw === 'edit' || raw === 'confirmation') {
+    return raw;
+  }
+  return 'review';
+}
+
+export function enrollmentApplicationsHref(
+  applicationId?: string | null,
+  view?: EnrollmentApplicationView,
+): string {
+  const id = applicationId?.trim();
+  if (!id) {
+    return ENROLLMENT_APPLICATIONS_PATH;
+  }
+  const params = new URLSearchParams({
+    [ENROLLMENT_APPLICATION_ID_PARAM]: id,
+  });
+  if (view && view !== 'review') {
+    params.set(ENROLLMENT_APPLICATION_VIEW_PARAM, view);
+  }
+  return `${ENROLLMENT_APPLICATIONS_PATH}?${params.toString()}`;
+}

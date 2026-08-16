@@ -25,6 +25,7 @@ import {
 } from '@/lib/acadia/class-report-pdf-download';
 import {
   buildClassReportPdfFilename,
+  classReportMatchesSelection,
   type ClassReportData,
   type ClassReportPeriod,
   type ClassReportPeriodKind,
@@ -65,6 +66,34 @@ export function ClassReportWrapper() {
     return { kind: 'sequence', sequenceNumber };
   }, [periodKind, selectedTerm, selectedSequence]);
 
+  const selectionKey = [
+    selectedClass,
+    activeYearId ?? '',
+    period?.kind ?? '',
+    period?.kind === 'term' ? period.term : '',
+    period?.kind === 'sequence' ? String(period.sequenceNumber) : '',
+    String(topN),
+  ].join('|');
+
+  const [appliedSelectionKey, setAppliedSelectionKey] = useState(selectionKey);
+  if (appliedSelectionKey !== selectionKey) {
+    setAppliedSelectionKey(selectionKey);
+    setReportData(null);
+    setError(null);
+    setLoadingReport(Boolean(selectedClass && period && activeYearId));
+  }
+
+  const reportMatchesSelection = Boolean(
+    reportData &&
+      period &&
+      classReportMatchesSelection(reportData, {
+        classId: selectedClass,
+        period,
+        topN,
+      }),
+  );
+  const canDownloadPdf = reportMatchesSelection && !loadingReport;
+
   useEffect(() => {
     if (!selectedSequence && sequences[0]?.number) {
       setSelectedSequence(String(sequences[0].number));
@@ -82,6 +111,7 @@ export function ClassReportWrapper() {
     let cancelled = false;
     const load = async () => {
       setLoadingReport(true);
+      setReportData(null);
       setError(null);
       try {
         const qs = classReportQueryString({
@@ -123,23 +153,23 @@ export function ClassReportWrapper() {
   }, [selectedClass, period, topN, activeYearId, t]);
 
   const handleDownloadPdf = async () => {
-    if (!selectedClass || !period || !reportData) {
+    if (!selectedClass || !period || !reportData || !canDownloadPdf) {
       return;
     }
     setDownloadingPdf(true);
     try {
       const blob = await fetchClassReportPdfBlob({
-        classId: selectedClass,
+        classId: reportData.classId,
         academicYearId: activeYearId ?? undefined,
-        period,
-        topN,
+        period: reportData.period,
+        topN: reportData.topN,
       });
       savePdfBlobToDownloads(
         blob,
         buildClassReportPdfFilename({
           className: reportData.className,
           year: reportData.academicYearLabel,
-          period,
+          period: reportData.period,
         }),
       );
     } catch (err) {
@@ -241,7 +271,7 @@ export function ClassReportWrapper() {
           type="button"
           size="sm"
           onClick={() => void handleDownloadPdf()}
-          disabled={!reportData || downloadingPdf}
+          disabled={!canDownloadPdf || downloadingPdf}
         >
           <Download className="size-4" />
           {downloadingPdf ? t('reports.generatingPdf') : t('reports.downloadPdf')}
@@ -270,7 +300,9 @@ export function ClassReportWrapper() {
         <p className="text-sm text-muted-foreground">{t('reports.loadingClassReport')}</p>
       ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {reportData && !loadingReport ? <ClassReportDocument data={reportData} /> : null}
+      {reportData && reportMatchesSelection && !loadingReport ? (
+        <ClassReportDocument data={reportData} />
+      ) : null}
     </div>
   );
 }

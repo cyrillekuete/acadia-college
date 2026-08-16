@@ -10,6 +10,7 @@ import {
 } from '@/components/acadia/report-cards/report-card-chrome';
 import { StudentEvaluationResultsTable } from '@/components/acadia/report-cards/student-evaluation-results-table';
 import { ThirdTermYearSummaryGradesTable } from '@/components/acadia/report-cards/third-term-year-summary-table';
+import { REPORT_CARD_THEME } from '@/components/acadia/report-cards/report-card-theme';
 
 export function AnnualReportCard({
   data,
@@ -27,8 +28,8 @@ export function AnnualReportCard({
         <ReportCardHeader data={data} mode="annual" />
         <ReportCardStudentGrid data={data} />
 
-        <div className="border border-black mb-1 print:mb-0.5 overflow-hidden relative z-10 bg-white/90">
-          <table className="w-full text-left border-collapse" style={{ tableLayout: 'fixed' }}>
+        <div className="rc-grades-wrap rc-section mb-1 print:mb-0.5 overflow-hidden relative z-10 bg-white/90">
+          <table className="rc-grades-table w-full text-left border-collapse">
             <ThirdTermYearSummaryGradesTable
               subjects={data.subjects}
               totalCoefficient={data.totals.coefficient}

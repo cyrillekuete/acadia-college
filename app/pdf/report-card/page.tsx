@@ -3,8 +3,6 @@ import { parseReportCardTerm } from '@/lib/acadia/report-card-types';
 import { loadAuthorizedReportCard } from '@/lib/acadia/load-report-card';
 import ReportCardPdfClient from './report-card-pdf-client';
 
-export const dynamic = 'force-dynamic';
-
 async function ReportCardPdfPageInner({
   searchParams,
 }: {
@@ -54,7 +52,7 @@ export default function ReportCardPdfPage({
   }>;
 }) {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="p-4 text-sm">Loading report card…</div>}>
       <ReportCardPdfPageInner searchParams={searchParams} />
     </Suspense>
   );

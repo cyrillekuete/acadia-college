@@ -9,6 +9,7 @@ export const ACADEMIC_YEAR_SCOPED_TABLES = new Set([
   'ExamSession',
   'FinanceBudgetLine',
   'FinanceLedgerEntry',
+  'ReportCardTemplatePreference',
   'StudentEnrollment',
   'StudentFeeAccount',
   'SchemeOfWork',

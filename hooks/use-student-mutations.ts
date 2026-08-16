@@ -18,6 +18,14 @@ function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
+  if (
+    error !== null &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof (error as { message: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message;
+  }
   return 'Operation failed.';
 }
 
@@ -132,6 +140,36 @@ export function useStudentMutations() {
           values.subSystem,
           values.branch,
         );
+      }
+
+      const { data: existingEnrollment, error: lookupError } = await supabase
+        .from('StudentEnrollment')
+        .select('id')
+        .eq('tenantId', tenantId)
+        .eq('studentProfileId', profileId)
+        .eq('academicYearId', values.academicYearId)
+        .eq('status', 'ENROLLED')
+        .maybeSingle();
+      if (lookupError) {
+        throw lookupError;
+      }
+
+      if (existingEnrollment?.id) {
+        const { error: enrollmentError } = await supabase
+          .from('StudentEnrollment')
+          .update({
+            subSystem: values.subSystem,
+            branch: values.branch,
+            levelId: values.levelId,
+            classId,
+            updatedAt: now,
+          })
+          .eq('id', existingEnrollment.id)
+          .eq('tenantId', tenantId);
+        if (enrollmentError) {
+          throw enrollmentError;
+        }
+        return;
       }
 
       const { error: enrollmentError } = await supabase

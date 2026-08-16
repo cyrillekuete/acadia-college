@@ -2064,6 +2064,67 @@ export type Database = {
           },
         ]
       }
+      ReportCardTemplatePreference: {
+        Row: {
+          academicYearId: string
+          annualTemplate: string
+          createdAt: string
+          id: string
+          tenantId: string
+          term1Template: string
+          term2Template: string
+          term3Template: string
+          updatedAt: string
+          updatedByUserId: string | null
+        }
+        Insert: {
+          academicYearId: string
+          annualTemplate?: string
+          createdAt?: string
+          id: string
+          tenantId: string
+          term1Template?: string
+          term2Template?: string
+          term3Template?: string
+          updatedAt?: string
+          updatedByUserId?: string | null
+        }
+        Update: {
+          academicYearId?: string
+          annualTemplate?: string
+          createdAt?: string
+          id?: string
+          tenantId?: string
+          term1Template?: string
+          term2Template?: string
+          term3Template?: string
+          updatedAt?: string
+          updatedByUserId?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ReportCardTemplatePreference_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "ReportCardTemplatePreference_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ReportCardTemplatePreference_updatedByUserId_fkey"
+            columns: ["updatedByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ResourceAllocation: {
         Row: {
           allocatedOn: string
@@ -3031,6 +3092,7 @@ export type Database = {
       }
       StreamFeePlan: {
         Row: {
+          academicYearId: string | null
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           id: string
@@ -3040,6 +3102,7 @@ export type Database = {
           updatedAt: string
         }
         Insert: {
+          academicYearId?: string | null
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id: string
@@ -3049,6 +3112,7 @@ export type Database = {
           updatedAt: string
         }
         Update: {
+          academicYearId?: string | null
           branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id?: string
@@ -3059,7 +3123,70 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "StreamFeePlan_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
             foreignKeyName: "StreamFeePlan_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      StreamFeePlanClass: {
+        Row: {
+          academicYearId: string
+          classId: string
+          createdAt: string
+          id: string
+          streamFeePlanId: string
+          tenantId: string
+        }
+        Insert: {
+          academicYearId: string
+          classId: string
+          createdAt?: string
+          id: string
+          streamFeePlanId: string
+          tenantId: string
+        }
+        Update: {
+          academicYearId?: string
+          classId?: string
+          createdAt?: string
+          id?: string
+          streamFeePlanId?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "StreamFeePlanClass_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StreamFeePlanClass_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StreamFeePlanClass_streamFeePlanId_tenantId_fkey"
+            columns: ["tenantId", "streamFeePlanId"]
+            isOneToOne: false
+            referencedRelation: "StreamFeePlan"
+            referencedColumns: ["tenantId", "id"]
+          },
+          {
+            foreignKeyName: "StreamFeePlanClass_tenantId_fkey"
             columns: ["tenantId"]
             isOneToOne: false
             referencedRelation: "Tenant"

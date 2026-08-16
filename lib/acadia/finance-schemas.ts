@@ -27,12 +27,11 @@ export type FeeInstallmentTemplateValues = z.infer<
 >;
 
 export const streamFeePlanSchema = z.object({
-  subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
-    required_error: 'validation.required.subSystem',
-  }),
-  branch: z.enum(ACADEMIC_BRANCHES, {
-    required_error: 'validation.required.branch',
-  }),
+  id: z.string().optional(),
+  academicYearId: z.string().min(1, 'validation.required.academicYear'),
+  classIds: z
+    .array(z.string().min(1))
+    .min(1, 'validation.required.classes'),
   installments: z
     .array(feeInstallmentTemplateSchema)
     .min(1, 'validation.required.installment'),
@@ -50,6 +49,7 @@ export const createStudentFeeAccountSchema = z.object({
     required_error: 'validation.required.branch',
   }),
   studentEnrollmentId: z.string().optional().or(z.literal('')),
+  classId: z.string().optional().or(z.literal('')),
   feeCurrency: z.string().min(1),
   useStreamPlan: z.boolean().optional(),
 });

@@ -3,6 +3,7 @@ import { getMenuForRole } from '@/config/menu.acadia';
 import {
   buildClassReport,
   buildClassReportPdfFilename,
+  classReportMatchesSelection,
   parseClassReportPeriod,
   parseClassReportTopN,
   type ClassReportBundle,
@@ -132,6 +133,45 @@ describe('class-report period parsing', () => {
         period: { kind: 'term', term: '1' },
       }),
     ).toBe('ClassReport_Form_5_A_2025_2026_Term1.pdf');
+  });
+
+  it('rejects a loaded report that does not match the current filters', () => {
+    const report = buildClassReport(makeBundle(), { kind: 'term', term: '1' }, { topN: 5 });
+    expect(
+      classReportMatchesSelection(report, {
+        classId: 'c1',
+        period: { kind: 'term', term: '1' },
+        topN: 5,
+      }),
+    ).toBe(true);
+    expect(
+      classReportMatchesSelection(report, {
+        classId: 'c2',
+        period: { kind: 'term', term: '1' },
+        topN: 5,
+      }),
+    ).toBe(false);
+    expect(
+      classReportMatchesSelection(report, {
+        classId: 'c1',
+        period: { kind: 'term', term: '2' },
+        topN: 5,
+      }),
+    ).toBe(false);
+    expect(
+      classReportMatchesSelection(report, {
+        classId: 'c1',
+        period: { kind: 'annual' },
+        topN: 5,
+      }),
+    ).toBe(false);
+    expect(
+      classReportMatchesSelection(report, {
+        classId: 'c1',
+        period: { kind: 'term', term: '1' },
+        topN: 10,
+      }),
+    ).toBe(false);
   });
 });
 

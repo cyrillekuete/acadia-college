@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { LoaderCircleIcon, Plus, Trash2 } from '@/lib/icons';
@@ -17,20 +16,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  ACADEMIC_BRANCHES,
-  ACADEMIC_SUB_SYSTEMS,
-  branchLabel,
-  levelDisplayLabel,
-  subSystemLabel,
-} from '@/lib/acadia/education-system';
+import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { FeePlanClassMultiSelect } from '@/components/acadia/finance/fee-plan-class-multi-select';
 import {
   streamFeePlanSchema,
   type StreamFeePlanFormValues,
@@ -39,6 +27,7 @@ import {
   formatMoneyMinor,
   parseMoneyToMinor,
   sumInstallmentTemplates,
+  type FeePlanRow,
 } from '@/lib/acadia/finance';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import {
@@ -47,6 +36,10 @@ import {
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
+import { EMPTY_CATALOG_FILTERS, type CatalogFilters } from '@/lib/acadia/education-system';
+import { useTranslation } from '@/hooks/useTranslation';
+
+export const FEE_PLAN_FORM_ID = 'fee-plan-setup-form';
 
 const defaultInstallment = {
   installmentNumber: 1,
@@ -56,69 +49,88 @@ const defaultInstallment = {
   dueOn: '',
 };
 
-export function FeePlanSetupForm() {
+export function FeePlanSetupForm({
+  record,
+  hideActions = false,
+  formId = FEE_PLAN_FORM_ID,
+  onCancel,
+  onPendingChange,
+  onSaved,
+}: {
+  record?: FeePlanRow | null;
+  hideActions?: boolean;
+  formId?: string;
+  onCancel?: () => void;
+  onPendingChange?: (pending: boolean) => void;
+  onSaved?: () => void;
+}) {
+  const { t } = useTranslation();
   const { saveStreamFeePlan } = useFinanceMutations();
+  const { activeYearId } = useActiveAcademicYear();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const [catalogFilters, setCatalogFilters] =
+    useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
 
   const form = useForm<StreamFeePlanFormValues>({
     resolver: zodResolver(streamFeePlanSchema),
     defaultValues: {
-      subSystem: 'ENGLISH',
-      branch: 'GRAMMAR',
-      installments: [{ ...defaultInstallment }],
+      id: record?.id,
+      academicYearId: activeYearId ?? '',
+      classIds: record?.classes.map((row) => row.id) ?? [],
+      installments: record?.installments.length
+        ? record.installments
+        : [{ ...defaultInstallment }],
     },
   });
 
-  const subSystem = form.watch('subSystem');
-  const branch = form.watch('branch');
   const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: 'installments',
   });
 
-  const planQuery = useQuery({
-    queryKey: ['fee-plan', tenantId, subSystem, branch],
+  useEffect(() => {
+    form.reset({
+      id: record?.id,
+      academicYearId: activeYearId ?? '',
+      classIds: record?.classes.map((row) => row.id) ?? [],
+      installments: record?.installments.length
+        ? record.installments
+        : [{ ...defaultInstallment }],
+    });
+    replace(
+      record?.installments.length
+        ? record.installments
+        : [{ ...defaultInstallment }],
+    );
+    setCatalogFilters(EMPTY_CATALOG_FILTERS);
+  }, [record, activeYearId, form, replace]);
+
+  const assignmentsQuery = useQuery({
+    queryKey: ['fee-plan-class-assignments', tenantId, activeYearId],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
-        .from('StreamFeePlan')
-        .select('installments')
+        .from('StreamFeePlanClass')
+        .select('classId, streamFeePlanId')
         .eq('tenantId', tenantId!)
-        .eq('subSystem', subSystem)
-        .eq('branch', branch)
-        .maybeSingle();
+        .eq('academicYearId', activeYearId!);
       if (error) {
         throw error;
       }
-      return data;
+      return data ?? [];
     },
     enabled:
-      !!subSystem &&
-      !!branch &&
+      !!activeYearId &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
-  useEffect(() => {
-    if (!subSystem || !branch || planQuery.isLoading) {
-      return;
-    }
-    const rows = planQuery.data?.installments;
-    if (Array.isArray(rows) && rows.length > 0) {
-      replace(
-        rows.map((row, index) => ({
-          installmentNumber: Number(row.installmentNumber ?? index + 1),
-          labelEn: String(row.labelEn ?? ''),
-          labelFr: String(row.labelFr ?? ''),
-          amountMinor: Number(row.amountMinor ?? 0),
-          dueOn: String(row.dueOn ?? ''),
-        })),
-      );
-    } else {
-      replace([{ ...defaultInstallment, installmentNumber: 1 }]);
-    }
-  }, [subSystem, branch, planQuery.data, planQuery.isLoading, replace]);
+  const assignedElsewhere = new Set(
+    (assignmentsQuery.data ?? [])
+      .filter((row) => row.streamFeePlanId !== record?.id)
+      .map((row) => row.classId),
+  );
 
   const installments = form.watch('installments');
   const totalMinor = sumInstallmentTemplates(
@@ -128,75 +140,74 @@ export function FeePlanSetupForm() {
     })),
   );
 
+  const pending = saveStreamFeePlan.isPending;
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [pending, onPendingChange]);
+
   const onSubmit = form.handleSubmit(async (values) => {
-    await saveStreamFeePlan.mutateAsync(values);
+    if (!activeYearId) {
+      return;
+    }
+    await saveStreamFeePlan.mutateAsync({
+      ...values,
+      id: record?.id,
+      academicYearId: activeYearId,
+    });
+    onSaved?.();
   });
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-6 max-w-3xl">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="subSystem"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Sub-system</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select sub-system" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {ACADEMIC_SUB_SYSTEMS.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {subSystemLabel(value)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="branch"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Branch</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select branch" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {ACADEMIC_BRANCHES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {branchLabel(value)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        className={hideActions ? 'space-y-6' : 'space-y-6 max-w-3xl'}
+      >
+        <FormField
+          control={form.control}
+          name="academicYearId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('finance.year')}</FormLabel>
+              <CurrentAcademicYearBadge />
+              <FormControl>
+                <Input type="hidden" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        {planQuery.isError ? (
-          <p className="text-sm text-destructive">
-            {getQueryErrorMessage(planQuery.error)}
-          </p>
-        ) : null}
+        <FormField
+          control={form.control}
+          name="classIds"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('finance.selectClasses')}</FormLabel>
+              <FeePlanClassMultiSelect
+                value={field.value}
+                onChange={field.onChange}
+                assignedElsewhere={assignedElsewhere}
+                filters={catalogFilters}
+                onFiltersChange={setCatalogFilters}
+              />
+              {assignmentsQuery.isError ? (
+                <p className="text-sm text-destructive">
+                  {getQueryErrorMessage(assignmentsQuery.error)}
+                </p>
+              ) : null}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Installments</h3>
+            <h3 className="text-sm font-semibold">{t('finance.installments')}</h3>
             <p className="text-sm text-muted-foreground">
-              Total: {formatMoneyMinor(totalMinor)}
+              {t('finance.totalAmount')}: {formatMoneyMinor(totalMinor)}
             </p>
           </div>
 
@@ -210,7 +221,7 @@ export function FeePlanSetupForm() {
                 name={`installments.${index}.labelEn`}
                 render={({ field: f }) => (
                   <FormItem>
-                    <FormLabel>Label (EN)</FormLabel>
+                    <FormLabel>{t('finance.labelEn')}</FormLabel>
                     <FormControl>
                       <Input {...f} />
                     </FormControl>
@@ -223,7 +234,7 @@ export function FeePlanSetupForm() {
                 name={`installments.${index}.labelFr`}
                 render={({ field: f }) => (
                   <FormItem>
-                    <FormLabel>Label (FR)</FormLabel>
+                    <FormLabel>{t('finance.labelFr')}</FormLabel>
                     <FormControl>
                       <Input {...f} />
                     </FormControl>
@@ -236,7 +247,7 @@ export function FeePlanSetupForm() {
                 name={`installments.${index}.amountMinor`}
                 render={({ field: f }) => (
                   <FormItem>
-                    <FormLabel>Amount</FormLabel>
+                    <FormLabel>{t('finance.amount')}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -257,7 +268,7 @@ export function FeePlanSetupForm() {
                 name={`installments.${index}.dueOn`}
                 render={({ field: f }) => (
                   <FormItem>
-                    <FormLabel>Due date</FormLabel>
+                    <FormLabel>{t('finance.due')}</FormLabel>
                     <FormControl>
                       <DatePickerInput
                         value={f.value ?? ''}
@@ -277,7 +288,7 @@ export function FeePlanSetupForm() {
                   onClick={() => remove(index)}
                 >
                   <Trash2 className="size-4" />
-                  Remove
+                  {t('common.buttons.remove')}
                 </Button>
               </div>
             </div>
@@ -295,21 +306,23 @@ export function FeePlanSetupForm() {
             }
           >
             <Plus className="size-4" />
-            Add installment
+            {t('finance.addInstallment')}
           </Button>
         </div>
 
-        <div className="flex gap-2">
-          <Button type="submit" disabled={saveStreamFeePlan.isPending}>
-            {saveStreamFeePlan.isPending ? (
-              <LoaderCircleIcon className="size-4 animate-spin" />
+        {hideActions ? null : (
+          <div className="flex gap-2">
+            <Button type="submit" disabled={pending || !activeYearId}>
+              {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
+              {t('finance.saveFeePlan')}
+            </Button>
+            {onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                {t('common.buttons.cancel')}
+              </Button>
             ) : null}
-            Save fee plan
-          </Button>
-          <Button type="button" variant="outline" asChild>
-            <Link href="/finance/fees">Cancel</Link>
-          </Button>
-        </div>
+          </div>
+        )}
       </form>
     </Form>
   );

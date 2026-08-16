@@ -11,6 +11,7 @@ export type SystemLogEvent =
   | 'user.password_reset'
   | 'account.deleted'
   | 'tenant.session_settings_updated'
+  | 'tenant.profile_updated'
   | 'enrollment.application_created'
   | 'enrollment.application_updated'
   | 'enrollment.application_approved'
@@ -30,6 +31,7 @@ export type SystemLogEvent =
   | 'attendance_session.updated'
   | 'attendance_record.saved'
   | 'fee_plan.saved'
+  | 'fee_plan.deleted'
   | 'fee_account.created'
   | 'fee_payment.recorded'
   | 'finance_ledger.created'
@@ -53,7 +55,8 @@ export type SystemLogEvent =
   | 'resource.request_submitted'
   | 'resource.request_reviewed'
   | 'room.maintenance_scheduled'
-  | 'student_term_discipline.saved';
+  | 'student_term_discipline.saved'
+  | 'report_card_template.saved';
 
 /**
  * Best-effort audit log. Never throws — callers must not fail primary work when logging fails.

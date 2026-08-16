@@ -30,6 +30,12 @@ import {
   type SubjectGrade,
 } from '@/lib/acadia/report-card-types';
 
+export type ReportCardGroupingRef = {
+  id?: string | null;
+  nameEn?: string | null;
+  sortOrder?: number | null;
+};
+
 export type ReportCardSubjectDef = {
   subjectId: string;
   nameEn: string;
@@ -37,8 +43,18 @@ export type ReportCardSubjectDef = {
   code: string;
   coefficient: number;
   subjectType: string;
+  groupingId?: string | null;
   groupingLabel?: string | null;
+  groupingSortOrder?: number | null;
   requiredSubBranchIds: string[];
+};
+
+export type ReportCardSubjectGroup = {
+  key: string;
+  label: string;
+  shortLabel: string;
+  remarkName: string;
+  subjects: SubjectGrade[];
 };
 
 export type ReportCardMarkRow = {
@@ -269,7 +285,10 @@ function toSubjectGrade(
     hasMark,
     coefEligible: hasMark,
     category: subjectTypeToCategory(subject.subjectType),
+    groupingId: subject.groupingId?.trim() || undefined,
     groupingLabel: subject.groupingLabel?.trim() || undefined,
+    groupingSortOrder:
+      typeof subject.groupingSortOrder === 'number' ? subject.groupingSortOrder : undefined,
     sequences: scores.sequences,
     termAverages: scores.termAverages,
     seq1: scores.sequences.seq1,
@@ -406,12 +425,7 @@ export function buildReportCardData(
         subjectRanks.get(subject.subjectId),
       ),
     )
-    .sort((a, b) => {
-      const catA = REPORT_CARD_CATEGORIES.indexOf(a.category ?? 'others');
-      const catB = REPORT_CARD_CATEGORIES.indexOf(b.category ?? 'others');
-      if (catA !== catB) return catA - catB;
-      return (a.subjectName ?? '').localeCompare(b.subjectName ?? '');
-    });
+    .sort(compareReportCardSubjects);
 
   const totals = computeWeightedTotals(
     subjects.map((subject) => ({
@@ -423,11 +437,15 @@ export function buildReportCardData(
   const periodAvgs = averagesByPeriod.get(term) ?? new Map();
   const values = Array.from(periodAvgs.values());
   const passedCount = values.filter((avg) => avg >= 10).length;
+  const evaluatedCount = values.length;
+  const failedCount = evaluatedCount - passedCount;
   const gce = countGcePasses(subjects, term);
   const studentId = bundle.student.studentProfileId;
   const academicTerm = term === 'annual' ? 'annual' : reportCardTermNumber(term);
   const sequenceSlots =
-    term === 'annual' ? [] : getSequenceSlotsForTerm(reportCardTermNumber(term), structure);
+    term === 'annual'
+      ? Array.from({ length: structure.sequencesPerYear }, (_, index) => index + 1)
+      : getSequenceSlotsForTerm(reportCardTermNumber(term), structure);
 
   return {
     student: {
@@ -465,10 +483,12 @@ export function buildReportCardData(
     },
     stats: {
       classSize: bundle.classSize,
-      maxAvg: values.length ? Math.max(...values) : 0,
-      minAvg: values.length ? Math.min(...values) : 0,
+      maxAvg: evaluatedCount ? Math.max(...values) : 0,
+      minAvg: evaluatedCount ? Math.min(...values) : 0,
       passed: passedCount,
-      passPercent: values.length ? round2((passedCount / values.length) * 100) : 0,
+      failed: failedCount,
+      passPercent: evaluatedCount ? round2((passedCount / evaluatedCount) * 100) : 0,
+      failPercent: evaluatedCount ? round2((failedCount / evaluatedCount) * 100) : 0,
       classAvg: averageScores(values) ?? 0,
       ...gce,
     },
@@ -521,6 +541,117 @@ export function categoryRemarkName(category: string | undefined): string {
     default:
       return 'other subjects';
   }
+}
+
+export function resolveReportCardGrouping(
+  classGrouping?: ReportCardGroupingRef | null,
+  subjectGrouping?: ReportCardGroupingRef | null,
+): {
+  groupingId: string | null;
+  groupingLabel: string | null;
+  groupingSortOrder: number | null;
+} {
+  const grouping = classGrouping ?? subjectGrouping;
+  const groupingLabel = grouping?.nameEn?.trim() || null;
+  const groupingId = grouping?.id?.trim() || null;
+  return {
+    groupingId,
+    groupingLabel,
+    groupingSortOrder: typeof grouping?.sortOrder === 'number' ? grouping.sortOrder : null,
+  };
+}
+
+function hasConfiguredGrouping(subject: Pick<SubjectGrade, 'groupingId' | 'groupingLabel'>): boolean {
+  return Boolean(subject.groupingId || subject.groupingLabel?.trim());
+}
+
+export function reportCardSubjectGroupKey(subject: SubjectGrade): string {
+  if (subject.groupingId) {
+    return `g:${subject.groupingId}`;
+  }
+  const label = subject.groupingLabel?.trim();
+  if (label) {
+    return `l:${label.toLowerCase()}`;
+  }
+  return `c:${subject.category ?? 'others'}`;
+}
+
+function groupingSortMeta(subject: SubjectGrade): {
+  configuredRank: number;
+  sortOrder: number;
+  label: string;
+} {
+  const configured = hasConfiguredGrouping(subject);
+  const label = configured
+    ? subject.groupingLabel?.trim() || categoryFullLabel(subject.category)
+    : categoryFullLabel(subject.category);
+  const categoryIndex = REPORT_CARD_CATEGORIES.indexOf(subject.category ?? 'others');
+  return {
+    configuredRank: configured ? 0 : 1,
+    sortOrder: configured
+      ? (subject.groupingSortOrder ?? 0)
+      : categoryIndex < 0
+        ? REPORT_CARD_CATEGORIES.length
+        : categoryIndex,
+    label,
+  };
+}
+
+export function compareReportCardSubjects(a: SubjectGrade, b: SubjectGrade): number {
+  const groupA = groupingSortMeta(a);
+  const groupB = groupingSortMeta(b);
+  if (groupA.configuredRank !== groupB.configuredRank) {
+    return groupA.configuredRank - groupB.configuredRank;
+  }
+  if (groupA.sortOrder !== groupB.sortOrder) {
+    return groupA.sortOrder - groupB.sortOrder;
+  }
+  const labelCompare = groupA.label.localeCompare(groupB.label);
+  if (labelCompare !== 0) {
+    return labelCompare;
+  }
+  return (a.subjectName ?? '').localeCompare(b.subjectName ?? '');
+}
+
+export function groupSubjectsForReportCard(subjects: SubjectGrade[]): ReportCardSubjectGroup[] {
+  const groups = new Map<string, ReportCardSubjectGroup>();
+
+  for (const subject of subjects) {
+    const key = reportCardSubjectGroupKey(subject);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.subjects.push(subject);
+      continue;
+    }
+
+    const configured = hasConfiguredGrouping(subject);
+    const label = configured
+      ? subject.groupingLabel?.trim() || categoryFullLabel(subject.category)
+      : categoryFullLabel(subject.category);
+    const shortLabel = configured
+      ? subject.groupingLabel?.trim() || categoryShortLabel(subject.category)
+      : categoryShortLabel(subject.category);
+    const remarkSource = configured
+      ? subject.groupingLabel?.trim() || categoryRemarkName(subject.category)
+      : categoryRemarkName(subject.category);
+
+    groups.set(key, {
+      key,
+      label,
+      shortLabel,
+      remarkName: remarkSource.toLowerCase(),
+      subjects: [subject],
+    });
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    const firstA = a.subjects[0];
+    const firstB = b.subjects[0];
+    if (!firstA || !firstB) {
+      return a.label.localeCompare(b.label);
+    }
+    return compareReportCardSubjects(firstA, firstB);
+  });
 }
 
 export { branchLabel };

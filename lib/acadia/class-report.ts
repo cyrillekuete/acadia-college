@@ -109,6 +109,33 @@ export function parseClassReportPeriod(input: {
   return { error: 'Period must be sequence, term, or annual.' };
 }
 
+export function classReportPeriodsEqual(
+  a: ClassReportPeriod,
+  b: ClassReportPeriod,
+): boolean {
+  if (a.kind !== b.kind) {
+    return false;
+  }
+  if (a.kind === 'term' && b.kind === 'term') {
+    return a.term === b.term;
+  }
+  if (a.kind === 'sequence' && b.kind === 'sequence') {
+    return a.sequenceNumber === b.sequenceNumber;
+  }
+  return true;
+}
+
+export function classReportMatchesSelection(
+  data: Pick<ClassReportData, 'classId' | 'period' | 'topN'>,
+  selection: { classId: string; period: ClassReportPeriod; topN: number },
+): boolean {
+  return (
+    data.classId === selection.classId &&
+    data.topN === selection.topN &&
+    classReportPeriodsEqual(data.period, selection.period)
+  );
+}
+
 export function classReportPeriodLabel(period: ClassReportPeriod): {
   en: string;
   fr: string;

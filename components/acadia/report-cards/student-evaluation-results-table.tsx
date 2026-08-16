@@ -1,6 +1,12 @@
 'use client';
 
 import type { CSSProperties } from 'react';
+import {
+  REPORT_CARD_THEME,
+  reportCardStatusColor,
+} from '@/components/acadia/report-cards/report-card-theme';
+
+const { navy, border } = REPORT_CARD_THEME;
 
 export type StudentEvaluationResultsProps = {
   term1?: number;
@@ -45,11 +51,11 @@ function averageColorClass(value: number | undefined): string {
 function averageColorStyle(value: number | undefined): CSSProperties | undefined {
   const passed = averagePassed(value);
   if (passed === null) return undefined;
-  return { color: passed ? '#15803d' : '#dc2626' };
+  return { color: reportCardStatusColor(passed) };
 }
 
 function annualTermCellClass(highlightTerm: 1 | 2 | 3 | undefined, term: 1 | 2 | 3): string {
-  const base = 'px-0.5 py-1 print:px-0.5 print:py-0.5 border-r border-gray-300 text-center';
+  const base = 'px-0.5 py-1 print:px-0.5 print:py-0.5 text-center';
   return highlightTerm === term ? `${base} font-bold` : base;
 }
 
@@ -73,41 +79,73 @@ export function StudentEvaluationResultsTable(props: StudentEvaluationResultsPro
 
   if (!useAnnualSummary) {
     return (
-      <div className="border border-black bg-white/90">
-        <div className="bg-gray-100 p-0.5 print:p-0.5 text-left text-[0.55rem] print:text-[6pt] font-bold uppercase border-b border-black">
+      <div className="rc-section border bg-white/90" style={{ borderColor: navy }}>
+        <div
+          className="rc-navy p-0.5 print:p-0.5 text-left text-[11px] print:text-[8pt] font-bold uppercase border-b text-white"
+          style={{ backgroundColor: navy, borderColor: navy }}
+        >
           Student&apos;s Evaluation Results
         </div>
-        <table className="w-full text-[0.6rem] print:text-[7pt]">
+        <table className="w-full text-[12px] print:text-[9pt]">
           <thead>
-            <tr className="border-b border-gray-300">
-              <th className="p-0.5 print:p-0.5 border-r border-gray-300 text-left">TERM</th>
-              <th className="p-0.5 print:p-0.5 border-r border-gray-300 text-left">1</th>
-              <th className="p-0.5 print:p-0.5 border-r border-gray-300 text-left">2</th>
-              <th className="p-0.5 print:p-0.5 text-left">3</th>
+            <tr>
+              <th className="p-0.5 print:p-0.5 text-left" style={{ borderColor: border }}>
+                TERM
+              </th>
+              <th className="p-0.5 print:p-0.5 text-left" style={{ borderColor: border }}>
+                1
+              </th>
+              <th className="p-0.5 print:p-0.5 text-left" style={{ borderColor: border }}>
+                2
+              </th>
+              <th className="p-0.5 print:p-0.5 text-left" style={{ borderColor: border }}>
+                3
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-300 font-mono">
-              <td className="p-0.5 print:p-0.5 font-bold border-r border-gray-300 text-left pl-1">
+            <tr className="font-mono">
+              <td
+                className="p-0.5 print:p-0.5 font-bold text-left pl-1"
+                style={{ borderColor: border }}
+              >
                 AVERAGE
               </td>
-              <td className={`p-0.5 print:p-0.5 text-center ${averageColorClass(term1)}`} style={averageColorStyle(term1)}>
+              <td
+                className={`p-0.5 print:p-0.5 text-center ${averageColorClass(term1)}`}
+                style={{ ...averageColorStyle(term1), borderColor: border }}
+              >
                 {formatAverage(term1)}
               </td>
-              <td className={`p-0.5 print:p-0.5 text-center ${averageColorClass(term2)}`} style={averageColorStyle(term2)}>
+              <td
+                className={`p-0.5 print:p-0.5 text-center ${averageColorClass(term2)}`}
+                style={{ ...averageColorStyle(term2), borderColor: border }}
+              >
                 {formatAverage(term2)}
               </td>
-              <td className={`p-0.5 print:p-0.5 text-center ${averageColorClass(term3)}`} style={averageColorStyle(term3)}>
+              <td
+                className={`p-0.5 print:p-0.5 text-center ${averageColorClass(term3)}`}
+                style={{ ...averageColorStyle(term3), borderColor: border }}
+              >
                 {formatAverage(term3)}
               </td>
             </tr>
             <tr className="font-mono">
-              <td className="p-0.5 print:p-0.5 font-bold border-r border-gray-300 text-left pl-1">
+              <td
+                className="p-0.5 print:p-0.5 font-bold text-left pl-1"
+                style={{ borderColor: border }}
+              >
                 RANK
               </td>
-              <td className="p-0.5 print:p-0.5 text-center">{formatRank(rank1)}</td>
-              <td className="p-0.5 print:p-0.5 text-center">{formatRank(rank2)}</td>
-              <td className="p-0.5 print:p-0.5 text-center">{formatRank(rank3)}</td>
+              <td className="p-0.5 print:p-0.5 text-center" style={{ borderColor: border }}>
+                {formatRank(rank1)}
+              </td>
+              <td className="p-0.5 print:p-0.5 text-center" style={{ borderColor: border }}>
+                {formatRank(rank2)}
+              </td>
+              <td className="p-0.5 print:p-0.5 text-center" style={{ borderColor: border }}>
+                {formatRank(rank3)}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -118,34 +156,55 @@ export function StudentEvaluationResultsTable(props: StudentEvaluationResultsPro
   const isPassed = passed ?? (annualAvg != null && annualAvg >= 10);
 
   return (
-    <div className="border border-black bg-white/90 h-full min-h-[4.5rem] print:min-h-[4.25rem] flex flex-col">
-      <div className="grid grid-cols-[3fr_1fr] border-b border-black">
-        <div className="bg-gray-100 p-0.5 print:p-0.5 text-left text-[0.55rem] print:text-[6pt] font-bold uppercase">
+    <div
+      className="rc-section border bg-white/90 h-full min-h-[4.5rem] print:min-h-[4.25rem] flex flex-col"
+      style={{ borderColor: navy }}
+    >
+      <div className="grid grid-cols-[3fr_1fr] border-b" style={{ borderColor: navy }}>
+        <div
+          className="rc-navy p-0.5 print:p-0.5 text-left text-[11px] print:text-[8pt] font-bold uppercase text-white"
+          style={{ backgroundColor: navy }}
+        >
           Student&apos;s Evaluation Results
         </div>
         <div
-          className={`p-0.5 print:p-0.5 text-center text-[0.55rem] print:text-[6pt] font-bold uppercase ${
-            isPassed ? 'text-green-700' : 'text-red-600'
-          }`}
-          style={{ backgroundColor: isPassed ? '#dcfce7' : '#fee2e2' }}
+          className="p-0.5 print:p-0.5 text-center text-[11px] print:text-[8pt] font-bold uppercase"
+          style={{
+            color: reportCardStatusColor(isPassed),
+            backgroundColor: isPassed ? '#E8F5EC' : '#FDECEC',
+          }}
         >
           {isPassed ? 'PASSED' : 'FAILED'}
         </div>
       </div>
-      <table className="w-full text-[0.6rem] print:text-[7pt] flex-1">
+      <table className="w-full text-[12px] print:text-[9pt] flex-1">
         <tbody>
-          <tr className="border-b border-gray-300">
-            <td className="px-0.5 py-1 print:px-0.5 print:py-0.5 font-bold border-r border-gray-300 text-left pl-1">
+          <tr>
+            <td
+              className="px-0.5 py-1 print:px-0.5 print:py-0.5 font-bold text-left pl-1"
+              style={{ borderColor: border }}
+            >
               TERM
             </td>
-            <td className={annualTermCellClass(highlightTerm, 1)}>1</td>
-            <td className={annualTermCellClass(highlightTerm, 2)}>2</td>
-            <td className={`${annualTermCellClass(highlightTerm, 3)} border-r border-gray-300`}>
+            <td className={annualTermCellClass(highlightTerm, 1)} style={{ borderColor: border }}>
+              1
+            </td>
+            <td className={annualTermCellClass(highlightTerm, 2)} style={{ borderColor: border }}>
+              2
+            </td>
+            <td
+              className={annualTermCellClass(highlightTerm, 3)}
+              style={{ borderColor: border }}
+            >
               3
             </td>
-            <td rowSpan={2} className="px-0.5 py-1 print:px-0.5 print:py-0.5 align-middle w-[28%]">
+            <td
+              rowSpan={2}
+              className="px-0.5 py-1 print:px-0.5 print:py-0.5 align-middle w-[28%]"
+              style={{ borderColor: border }}
+            >
               <div className="flex items-center justify-between gap-1 px-0.5">
-                <span className="flex flex-col leading-none text-[0.5rem] print:text-[6pt] font-bold uppercase">
+                <span className="flex flex-col leading-none text-[10px] print:text-[8pt] font-bold uppercase">
                   <span>Annual</span>
                   <span>Avg</span>
                 </span>
@@ -158,32 +217,57 @@ export function StudentEvaluationResultsTable(props: StudentEvaluationResultsPro
               </div>
             </td>
           </tr>
-          <tr className="border-b border-gray-300 font-mono">
-            <td className="px-0.5 py-1 print:px-0.5 print:py-0.5 font-bold border-r border-gray-300 text-left pl-1">
+          <tr className="font-mono">
+            <td
+              className="px-0.5 py-1 print:px-0.5 print:py-0.5 font-bold text-left pl-1"
+              style={{ borderColor: border }}
+            >
               AVERAGE
             </td>
-            <td className={`${annualTermCellClass(highlightTerm, 1)} ${averageColorClass(term1)}`} style={averageColorStyle(term1)}>
+            <td
+              className={`${annualTermCellClass(highlightTerm, 1)} ${averageColorClass(term1)}`}
+              style={{ ...averageColorStyle(term1), borderColor: border }}
+            >
               {formatAverage(term1)}
             </td>
-            <td className={`${annualTermCellClass(highlightTerm, 2)} ${averageColorClass(term2)}`} style={averageColorStyle(term2)}>
+            <td
+              className={`${annualTermCellClass(highlightTerm, 2)} ${averageColorClass(term2)}`}
+              style={{ ...averageColorStyle(term2), borderColor: border }}
+            >
               {formatAverage(term2)}
             </td>
-            <td className={`${annualTermCellClass(highlightTerm, 3)} border-r border-gray-300 ${averageColorClass(term3)}`} style={averageColorStyle(term3)}>
+            <td
+              className={`${annualTermCellClass(highlightTerm, 3)} ${averageColorClass(term3)}`}
+              style={{ ...averageColorStyle(term3), borderColor: border }}
+            >
               {formatAverage(term3)}
             </td>
           </tr>
           <tr className="font-mono">
-            <td className="px-0.5 py-1 print:px-0.5 print:py-0.5 font-bold border-r border-gray-300 text-left pl-1">
+            <td
+              className="px-0.5 py-1 print:px-0.5 print:py-0.5 font-bold text-left pl-1"
+              style={{ borderColor: border }}
+            >
               RANK
             </td>
-            <td className={annualTermCellClass(highlightTerm, 1)}>{formatRank(rank1)}</td>
-            <td className={annualTermCellClass(highlightTerm, 2)}>{formatRank(rank2)}</td>
-            <td className={`${annualTermCellClass(highlightTerm, 3)} border-r border-gray-300`}>
+            <td className={annualTermCellClass(highlightTerm, 1)} style={{ borderColor: border }}>
+              {formatRank(rank1)}
+            </td>
+            <td className={annualTermCellClass(highlightTerm, 2)} style={{ borderColor: border }}>
+              {formatRank(rank2)}
+            </td>
+            <td
+              className={annualTermCellClass(highlightTerm, 3)}
+              style={{ borderColor: border }}
+            >
               {formatRank(rank3)}
             </td>
-            <td className="px-0.5 py-1 print:px-0.5 print:py-0.5 align-middle">
+            <td
+              className="px-0.5 py-1 print:px-0.5 print:py-0.5 align-middle"
+              style={{ borderColor: border }}
+            >
               <div className="flex items-center justify-between gap-1 px-0.5">
-                <span className="text-[0.5rem] print:text-[6pt] font-bold uppercase">Rank</span>
+                <span className="text-[10px] print:text-[8pt] font-bold uppercase">Rank</span>
                 <span className="text-xl print:text-lg font-black">{formatRank(annualRank)}</span>
               </div>
             </td>

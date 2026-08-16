@@ -7,7 +7,6 @@ import { canAccessStudentReportCard } from '@/lib/acadia/report-card-access';
 import { fetchCurrentAcademicYear } from '@/lib/supabase/queries/academic-year';
 import { createClient } from '@/lib/supabase/server';
 
-export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 function isLoopbackHost(host: string): boolean {

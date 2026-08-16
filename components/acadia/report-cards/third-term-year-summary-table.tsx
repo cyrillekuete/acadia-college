@@ -1,21 +1,21 @@
 'use client';
 
 import { Fragment, useMemo } from 'react';
-import {
-  categoryFullLabel,
-  categoryRemarkName,
-  categoryShortLabel,
-} from '@/lib/acadia/report-card';
+import { groupSubjectsForReportCard } from '@/lib/acadia/report-card';
 import {
   calculateGrade,
   formatReportMark,
   getGradeRemarks,
   isNegativeRemark,
 } from '@/lib/acadia/report-card-grading';
+import type { SubjectGrade } from '@/lib/acadia/report-card-types';
+import { ReportCardGroupingCell } from '@/components/acadia/report-cards/report-card-grouping-cell';
 import {
-  REPORT_CARD_CATEGORIES,
-  type SubjectGrade,
-} from '@/lib/acadia/report-card-types';
+  REPORT_CARD_THEME,
+  reportCardStatusColor,
+} from '@/components/acadia/report-cards/report-card-theme';
+
+const { navy, stripe, summary, border, white } = REPORT_CARD_THEME;
 
 function coefficientCellDisplay(subject: SubjectGrade): string | number {
   if (subject.coefficient > 0) return subject.coefficient;
@@ -36,46 +36,56 @@ export function ThirdTermYearSummaryGradesTable({
   totalScore: number;
   tableAnnualAvg: number;
 }) {
-  const groupedSubjects = useMemo(() => {
-    const groups: Record<string, SubjectGrade[]> = Object.fromEntries(
-      REPORT_CARD_CATEGORIES.map((c) => [c, [] as SubjectGrade[]]),
-    );
-    subjects.forEach((subject) => {
-      const category =
-        subject.category && groups[subject.category] ? subject.category : 'others';
-      groups[category].push(subject);
-    });
-    return REPORT_CARD_CATEGORIES.map((category) => ({
-      category,
-      subjects: groups[category] || [],
-    })).filter((group) => group.subjects.length > 0);
-  }, [subjects]);
+  const groupedSubjects = useMemo(
+    () => groupSubjectsForReportCard(subjects),
+    [subjects],
+  );
 
   return (
     <>
       <thead
-        className="bg-gray-100 text-[0.55rem] print:text-[7pt] uppercase font-bold border-b border-black"
-        style={{ backgroundColor: '#E0E0E0' }}
+        className="rc-navy text-[0.55rem] print:text-[7pt] uppercase font-bold"
+        style={{ backgroundColor: navy, color: white }}
       >
         <tr>
-          <th className="p-1 print:p-0.5 border-r border-black" style={{ width: '8%' }} />
-          <th className="p-1 print:p-0.5 border-r border-black text-left" style={{ width: '25%' }}>
+          <th className="p-1 print:p-0.5" style={{ width: '1%', borderColor: navy }} />
+          <th
+            className="p-1 print:p-0.5 text-left"
+            style={{ width: '25%', borderColor: navy }}
+          >
             Subjects
           </th>
-          <th className="p-1 print:p-0.5 border-r border-black text-center" style={{ width: '6%' }}>
+          <th
+            className="p-1 print:p-0.5 text-center"
+            style={{ width: '6%', borderColor: navy }}
+          >
             Coef
           </th>
-          <th className="p-1 print:p-0.5 border-r border-black text-center">Term 1</th>
-          <th className="p-1 print:p-0.5 border-r border-black text-center">Term 2</th>
-          <th className="p-1 print:p-0.5 border-r border-black text-center">Term 3</th>
-          <th className="p-1 print:p-0.5 border-r border-black text-center">Annual Avg</th>
-          <th className="p-1 print:p-0.5 border-r border-black text-center">TOTAL</th>
-          <th className="p-1 print:p-0.5 border-r border-black text-center">Grade</th>
-          <th className="p-1 print:p-0.5 text-left">Remarks</th>
+          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
+            Term 1
+          </th>
+          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
+            Term 2
+          </th>
+          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
+            Term 3
+          </th>
+          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
+            Annual Avg
+          </th>
+          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
+            TOTAL
+          </th>
+          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
+            Grade
+          </th>
+          <th className="p-1 print:p-0.5 text-left" style={{ borderColor: navy }}>
+            Remarks
+          </th>
         </tr>
       </thead>
       <tbody className="text-[0.6rem] print:text-[7pt] font-mono">
-        {groupedSubjects.map((group) => {
+        {groupedSubjects.map((group, groupIndex) => {
           const eligible = group.subjects.filter((s) => (s.coefficient ?? 0) > 0);
           const coef = eligible.reduce((sum, s) => sum + s.coefficient, 0);
           const sectionTotal = eligible.reduce((sum, s) => {
@@ -85,10 +95,11 @@ export function ThirdTermYearSummaryGradesTable({
           const avg = coef > 0 ? sectionTotal / coef : 0;
           const rank =
             group.subjects.map((s) => s.rank ?? 0).filter((r) => r > 0)[0] ?? 0;
-          const remark = `${avg >= 10 ? 'Pass' : 'Fail'} in ${categoryRemarkName(group.category)}`;
+          const remark = `${avg >= 10 ? 'Pass' : 'Fail'} in ${group.remarkName}`;
+          const groupPassed = avg >= 10;
 
           return (
-            <Fragment key={group.category}>
+            <Fragment key={group.key}>
               {group.subjects.map((subject, idx) => {
                 const annual = subject.annualAverage;
                 const hasMark = annual != null;
@@ -96,48 +107,65 @@ export function ThirdTermYearSummaryGradesTable({
                 const remarks = hasMark ? getGradeRemarks(grade) : '-';
                 const rowTotal =
                   hasMark && subject.coefficient > 0 ? annual * subject.coefficient : undefined;
+                const rowBg = idx % 2 === 1 ? stripe : white;
 
                 return (
-                  <tr key={`${group.category}-${subject.subjectId ?? idx}`}>
+                  <tr key={`${group.key}-${subject.subjectId ?? idx}`}>
                     {idx === 0 ? (
-                      <td
+                      <ReportCardGroupingCell
+                        label={group.label}
                         rowSpan={group.subjects.length + 1}
-                        className="border-r border-black bg-gray-200 text-center font-bold text-[0.55rem] print:text-[6pt] p-0 uppercase relative"
-                        style={{ backgroundColor: '#E0E0E0', width: '30px' }}
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span style={{ transform: 'rotate(-90deg)', whiteSpace: 'nowrap' }}>
-                            {subject.groupingLabel?.toUpperCase() ||
-                              categoryShortLabel(group.category)}
-                          </span>
-                        </div>
-                      </td>
+                        showBottomBorder={groupIndex < groupedSubjects.length - 1}
+                      />
                     ) : null}
-                    <td className="p-1 print:p-0.5 border-r border-gray-300 font-medium">
+                    <td
+                      className="p-1 print:p-0.5 font-medium"
+                      style={{ borderColor: border, backgroundColor: rowBg }}
+                    >
                       {subject.subjectName}
                     </td>
-                    <td className="p-1 print:p-0.5 border-r border-gray-300 text-center">
+                    <td
+                      className="p-1 print:p-0.5 text-center"
+                      style={{ borderColor: border, backgroundColor: rowBg }}
+                    >
                       {coefficientCellDisplay(subject)}
                     </td>
-                    <td className="p-1 print:p-0.5 border-r border-gray-300 text-center">
+                    <td
+                      className="p-1 print:p-0.5 text-center"
+                      style={{ borderColor: border, backgroundColor: rowBg }}
+                    >
                       {formatReportMark(subject.term1)}
                     </td>
-                    <td className="p-1 print:p-0.5 border-r border-gray-300 text-center">
+                    <td
+                      className="p-1 print:p-0.5 text-center"
+                      style={{ borderColor: border, backgroundColor: rowBg }}
+                    >
                       {formatReportMark(subject.term2)}
                     </td>
-                    <td className="p-1 print:p-0.5 border-r border-gray-300 text-center">
+                    <td
+                      className="p-1 print:p-0.5 text-center"
+                      style={{ borderColor: border, backgroundColor: rowBg }}
+                    >
                       {formatReportMark(subject.term3)}
                     </td>
-                    <td className="p-1 print:p-0.5 border-r border-gray-300 text-center">
+                    <td
+                      className="p-1 print:p-0.5 text-center"
+                      style={{ borderColor: border, backgroundColor: rowBg }}
+                    >
                       {formatReportMark(annual)}
                     </td>
-                    <td className="p-1 print:p-0.5 border-r border-gray-300 text-center">
+                    <td
+                      className="p-1 print:p-0.5 text-center"
+                      style={{ borderColor: border, backgroundColor: rowBg }}
+                    >
                       {rowTotal != null ? rowTotal.toFixed(0) : '-'}
                     </td>
                     <td
-                      className="p-1 print:p-0.5 border-r border-gray-300 text-center font-bold"
+                      className="p-1 print:p-0.5 text-center font-bold"
                       style={{
-                        color: grade === 'U' || grade === 'D' ? '#dc2626' : 'inherit',
+                        borderColor: border,
+                        backgroundColor: rowBg,
+                        color: grade === 'U' || grade === 'D' ? REPORT_CARD_THEME.red : 'inherit',
                       }}
                     >
                       {grade}
@@ -145,7 +173,14 @@ export function ThirdTermYearSummaryGradesTable({
                     <td
                       className="p-1 print:p-0.5"
                       style={{
-                        color: isNegativeRemark(remarks) ? '#dc2626' : '#15803d',
+                        borderColor: border,
+                        backgroundColor: rowBg,
+                        color:
+                          remarks !== '-'
+                            ? isNegativeRemark(remarks)
+                              ? REPORT_CARD_THEME.red
+                              : REPORT_CARD_THEME.green
+                            : 'inherit',
                       }}
                     >
                       {remarks}
@@ -153,29 +188,62 @@ export function ThirdTermYearSummaryGradesTable({
                   </tr>
                 );
               })}
-              <tr className="bg-gray-300 font-bold" style={{ backgroundColor: '#CCCCCC' }}>
-                <td className="p-1 print:p-0.5 border-r border-black uppercase text-[0.55rem] print:text-[6pt]">
-                  {categoryFullLabel(group.category)} Summary
+              <tr className="font-bold">
+                <td
+                  className="p-1 print:p-0.5 uppercase text-[0.55rem] print:text-[6pt]"
+                  style={{ borderColor: navy, backgroundColor: summary }}
+                >
+                  {group.label} Summary
                 </td>
-                <td className="p-1 print:p-0.5 border-r border-black text-center">{coef}</td>
-                <td colSpan={3} className="p-1 print:p-0.5 border-r border-black text-center text-gray-400">
+                <td
+                  className="p-1 print:p-0.5 text-center"
+                  style={{ borderColor: navy, backgroundColor: summary }}
+                >
+                  {coef}
+                </td>
+                <td
+                  colSpan={3}
+                  className="p-1 print:p-0.5 text-center text-gray-400"
+                  style={{ borderColor: navy, backgroundColor: summary }}
+                >
                   /
                 </td>
-                <td className="p-1 print:p-0.5 border-r border-black text-center text-[0.55rem]">
+                <td
+                  className="p-1 print:p-0.5 text-center text-[0.55rem]"
+                  style={{ borderColor: navy, backgroundColor: summary }}
+                >
                   AV: {avg.toFixed(2)}
                 </td>
-                <td className="p-1 print:p-0.5 border-r border-black text-center">
+                <td
+                  className="p-1 print:p-0.5 text-center"
+                  style={{ borderColor: navy, backgroundColor: summary }}
+                >
                   {sectionTotal.toFixed(0)}
                 </td>
-                <td className="p-1 print:p-0.5 border-r border-black text-center">
+                <td
+                  className="p-1 print:p-0.5 text-center"
+                  style={{ borderColor: navy, backgroundColor: summary }}
+                >
                   {rank > 0 ? rank : '-'}
                 </td>
-                <td className="p-1 print:p-0.5 uppercase text-[0.55rem]">{remark}</td>
+                <td
+                  className="p-1 print:p-0.5 uppercase text-[0.55rem]"
+                  style={{
+                    borderColor: navy,
+                    backgroundColor: summary,
+                    color: reportCardStatusColor(groupPassed),
+                  }}
+                >
+                  {remark}
+                </td>
               </tr>
             </Fragment>
           );
         })}
-        <tr className="bg-black text-white font-bold text-[0.65rem] print:text-[7pt]" style={{ backgroundColor: '#000', color: '#fff' }}>
+        <tr
+          className="rc-navy font-bold text-[0.65rem] print:text-[7pt]"
+          style={{ backgroundColor: navy, color: white }}
+        >
           <td colSpan={2} className="p-1 print:p-0.5 text-left uppercase">
             Total Summary / Bilan Totale
           </td>
@@ -183,7 +251,7 @@ export function ThirdTermYearSummaryGradesTable({
           <td colSpan={3} />
           <td className="p-1 print:p-0.5 text-center">{tableAnnualAvg.toFixed(2)}</td>
           <td className="p-1 print:p-0.5 text-center">{totalScore.toFixed(0)}</td>
-          <td colSpan={2} style={{ backgroundColor: '#CCCCCC' }} />
+          <td colSpan={2} />
         </tr>
       </tbody>
     </>

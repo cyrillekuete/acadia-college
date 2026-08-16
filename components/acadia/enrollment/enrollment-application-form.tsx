@@ -75,6 +75,7 @@ export function EnrollmentApplicationForm({
   record,
   onCancelHref,
   onCancel,
+  onSaved,
   hideActions = false,
   formId = ENROLLMENT_APPLICATION_FORM_ID,
   onPendingChange,
@@ -82,6 +83,7 @@ export function EnrollmentApplicationForm({
   record?: EnrollmentApplicationRecord | null;
   onCancelHref?: string;
   onCancel?: () => void;
+  onSaved?: () => void;
   hideActions?: boolean;
   formId?: string;
   onPendingChange?: (pending: boolean) => void;
@@ -185,11 +187,14 @@ export function EnrollmentApplicationForm({
 
   const onSubmit = (values: EnrollmentApplicationInput) => {
     if (isEdit && record) {
-      updateApplication.mutate({
-        id: record.id,
-        values,
-        currentStatus: record.status,
-      });
+      updateApplication.mutate(
+        {
+          id: record.id,
+          values,
+          currentStatus: record.status,
+        },
+        { onSuccess: () => onSaved?.() },
+      );
     } else {
       createApplication.mutate(values);
     }

@@ -27,6 +27,7 @@ export function buildParentSystemAuthEmail(
 export type ProvisionResult =
   | {
       ok: true;
+      /** Public registration number (AC-YYYY-######), not the legacy STU- id. */
       studentId: string;
       studentUuid: string;
       studentProfileId: string;
@@ -462,7 +463,7 @@ export async function provisionStudentAndParent(
 
   return {
     ok: true,
-    studentId,
+    studentId: registrationNumber,
     studentUuid,
     studentProfileId: profileResult.studentProfileId,
     enrollmentId: profileResult.enrollmentId,

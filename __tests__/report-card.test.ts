@@ -6,6 +6,8 @@ import {
   computeWeightedTotals,
   countGcePasses,
   getSequenceSlotsForTerm,
+  groupSubjectsForReportCard,
+  resolveReportCardGrouping,
   subjectTypeToCategory,
   type ReportCardBundle,
   type ReportCardMarkRow,
@@ -121,6 +123,81 @@ describe('sequence slots and categories', () => {
   });
 });
 
+describe('report-card subject groupings', () => {
+  it('prefers the class grouping over the subject default', () => {
+    expect(
+      resolveReportCardGrouping(
+        { id: 'class-g', nameEn: 'Other Subjects', sortOrder: 2 },
+        { id: 'subj-g', nameEn: 'Core', sortOrder: 1 },
+      ),
+    ).toEqual({
+      groupingId: 'class-g',
+      groupingLabel: 'Other Subjects',
+      groupingSortOrder: 2,
+    });
+  });
+
+  it('falls back to the subject grouping when the class has none', () => {
+    expect(
+      resolveReportCardGrouping(null, {
+        id: 'subj-g',
+        nameEn: 'Languages',
+        sortOrder: 0,
+      }),
+    ).toEqual({
+      groupingId: 'subj-g',
+      groupingLabel: 'Languages',
+      groupingSortOrder: 0,
+    });
+  });
+
+  it('groups subjects by configured grouping instead of subject type', () => {
+    const groups = groupSubjectsForReportCard([
+      {
+        subjectName: 'Chemistry',
+        coefficient: 3,
+        category: 'others',
+        groupingId: 'other',
+        groupingLabel: 'Other Subjects',
+        groupingSortOrder: 2,
+      },
+      {
+        subjectName: 'English',
+        coefficient: 3,
+        category: 'languages',
+        groupingId: 'lang',
+        groupingLabel: 'Languages',
+        groupingSortOrder: 1,
+      },
+      {
+        subjectName: 'Literature',
+        coefficient: 2,
+        category: 'languages',
+        groupingId: 'other',
+        groupingLabel: 'Other Subjects',
+        groupingSortOrder: 2,
+      },
+    ]);
+
+    expect(groups.map((group) => group.label)).toEqual(['Languages', 'Other Subjects']);
+    expect(groups[0]?.shortLabel).toBe('Languages');
+    expect(groups[0]?.subjects.map((subject) => subject.subjectName)).toEqual(['English']);
+    expect(groups[1]?.subjects.map((subject) => subject.subjectName)).toEqual([
+      'Chemistry',
+      'Literature',
+    ]);
+    expect(groups[1]?.remarkName).toBe('other subjects');
+  });
+
+  it('falls back to subject-type categories when no grouping is configured', () => {
+    const groups = groupSubjectsForReportCard([
+      { subjectName: 'Math', coefficient: 4, category: 'others' },
+      { subjectName: 'English', coefficient: 3, category: 'languages' },
+    ]);
+    expect(groups.map((group) => group.shortLabel)).toEqual(['LANGUAGES', 'OTHER SUBJECTS']);
+  });
+});
+
 describe('subject sequence scores', () => {
   it('averages sequences into terms and a partial annual average', () => {
     const scores = buildSubjectSequenceScores(
@@ -228,9 +305,54 @@ describe('buildReportCardData', () => {
     expect(card.history.rank).toBe(1);
     expect(card.totals.average).toBeGreaterThan(10);
     expect(card.stats.classSize).toBe(2);
+    expect(card.stats.passed).toBe(1);
+    expect(card.stats.failed).toBe(1);
+    expect(card.stats.failPercent).toBe(50);
     expect(card.subjects).toHaveLength(2);
     expect(rankStudents([{ studentProfileId: 's1', average: 14 }])[0]?.rank).toBe(1);
     expect(card.discipline).toEqual({ absences: 0, suspensions: 0, warnings: 0 });
+  });
+
+  it('carries configured grouping onto subject grades in sort order', () => {
+    const bundle: ReportCardBundle = {
+      student: {
+        studentProfileId: 's1',
+        name: 'Ada Lovelace',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        matricule: 'AC-001',
+        sex: 'F',
+        dob: '01/01/2010',
+        pob: '—',
+        speciality: 'Grammar',
+      },
+      classId: 'c1',
+      className: 'Form 5 A',
+      classMaster: 'Mr. Teacher',
+      classSize: 1,
+      academicYearLabel: '2025/2026',
+      structure: {
+        termsPerYear: 3,
+        sequencesPerTerm: 2,
+        sequencesPerYear: 6,
+      },
+      subjects: [
+        { ...math, groupingId: 'other', groupingLabel: 'Other Subjects', groupingSortOrder: 2 },
+        { ...english, groupingId: 'lang', groupingLabel: 'Languages', groupingSortOrder: 1 },
+      ],
+      marks: [mark('s1', 'math', 1, 16), mark('s1', 'eng', 1, 12)],
+      branding,
+    };
+
+    const card = buildReportCardData(bundle, '1');
+    expect(card.subjects.map((subject) => subject.groupingLabel)).toEqual([
+      'Languages',
+      'Other Subjects',
+    ]);
+    expect(groupSubjectsForReportCard(card.subjects).map((group) => group.label)).toEqual([
+      'Languages',
+      'Other Subjects',
+    ]);
   });
 
   it('maps stored term discipline and sums annual totals', () => {

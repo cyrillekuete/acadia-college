@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { GraduationCap } from '@/lib/icons';
-import { formatMarkScore, isPassingScore } from '@/lib/acadia/assessment';
+import { formatMarkScore } from '@/lib/acadia/assessment';
 import type {
   ClassReportData,
   ClassReportRankedStudent,
@@ -11,6 +11,12 @@ import {
   ReportCardPdfStyleTag,
   ReportCardSheet,
 } from '@/components/acadia/report-cards/report-card-chrome';
+import {
+  REPORT_CARD_THEME,
+  reportCardStatusColor,
+} from '@/components/acadia/report-cards/report-card-theme';
+
+const { navy, gold, stripe, white } = REPORT_CARD_THEME;
 
 function formatPercent(value: number): string {
   return `${value.toFixed(2)}%`;
@@ -56,7 +62,7 @@ function RankTable({
   return (
     <table className="text-[0.65rem] print:text-[8pt]">
       <thead>
-        <tr className="bg-gray-200 font-semibold uppercase">
+        <tr className="rc-navy font-semibold uppercase" style={{ backgroundColor: navy, color: white }}>
           <th className="w-[12%] text-center">Rank</th>
           <th className="w-[38%] text-left">Name</th>
           <th className="w-[22%] text-left">Matricule</th>
@@ -72,9 +78,8 @@ function RankTable({
             <td>{row.matricule || '—'}</td>
             <td className="text-center">{formatMarkScore(row.average)}</td>
             <td
-              className={`text-center font-semibold ${
-                isPassingScore(row.average) ? 'text-green-700' : 'text-red-600'
-              }`}
+              className="text-center font-semibold"
+              style={{ color: reportCardStatusColor(row.passed) }}
             >
               {row.passed ? 'Pass' : 'Fail'}
             </td>
@@ -112,7 +117,10 @@ export function ClassReportDocument({
         ) : null}
       </div>
 
-      <header className="grid grid-cols-1 md:grid-cols-3 md:items-stretch gap-3 print:gap-2 mb-2 print:mb-1 border-b-2 border-black pb-2 print:pb-1 relative z-10">
+      <header
+        className="grid grid-cols-1 md:grid-cols-3 md:items-stretch gap-3 print:gap-2 mb-2 print:mb-1 border-b-2 pb-2 print:pb-1 relative z-10"
+        style={{ borderColor: navy }}
+      >
         <div className="flex flex-col justify-center text-center md:text-left text-[0.55rem] print:text-[7pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem] w-full">
           <p>République du Cameroun</p>
           <p>Paix - Travail - Patrie</p>
@@ -150,7 +158,10 @@ export function ClassReportDocument({
       </header>
 
       <div className="relative z-10 space-y-3 print:space-y-2 pb-4">
-        <div className="flex flex-col md:flex-row items-center justify-between bg-black text-white p-0.5">
+        <div
+          className="rc-navy flex flex-col md:flex-row items-center justify-between text-white p-0.5"
+          style={{ backgroundColor: navy }}
+        >
           <span className="font-mono text-[0.5rem] print:text-[6pt] uppercase tracking-widest px-1">
             Academic Year {data.academicYearLabel}
           </span>
@@ -160,11 +171,17 @@ export function ClassReportDocument({
           </span>
         </div>
 
-        <div className="border-2 print:border border-black text-center py-1.5 print:py-1">
-          <h1 className="text-sm print:text-[11pt] font-bold uppercase tracking-wide">
+        <div
+          className="rc-section border-2 print:border text-center py-1.5 print:py-1"
+          style={{ borderColor: navy }}
+        >
+          <h1
+            className="text-sm print:text-[11pt] font-bold uppercase tracking-wide"
+            style={{ color: navy }}
+          >
             Class report / Rapport de classe
           </h1>
-          <p className="text-[0.65rem] print:text-[8pt] uppercase">
+          <p className="text-[0.65rem] print:text-[8pt] uppercase" style={{ color: gold }}>
             {data.periodLabelEn} / {data.periodLabelFr}
           </p>
         </div>
@@ -172,13 +189,13 @@ export function ClassReportDocument({
         <table className="text-[0.65rem] print:text-[8pt]">
           <tbody>
             <tr>
-              <td className="w-[22%] bg-gray-100 font-semibold">Class</td>
+              <td className="w-[22%] font-semibold" style={{ backgroundColor: stripe }}>Class</td>
               <td className="w-[28%]">{data.className}</td>
-              <td className="w-[22%] bg-gray-100 font-semibold">Class master</td>
+              <td className="w-[22%] font-semibold" style={{ backgroundColor: stripe }}>Class master</td>
               <td className="w-[28%]">{data.classMaster || '—'}</td>
             </tr>
             <tr>
-              <td className="bg-gray-100 font-semibold">Generated</td>
+              <td className="font-semibold" style={{ backgroundColor: stripe }}>Generated</td>
               <td colSpan={3}>{formatWhen(data.generatedAt)}</td>
             </tr>
           </tbody>
@@ -186,7 +203,7 @@ export function ClassReportDocument({
 
         <table className="text-[0.65rem] print:text-[8pt] text-center">
           <thead>
-            <tr className="bg-gray-200 font-semibold uppercase">
+            <tr className="rc-navy font-semibold uppercase" style={{ backgroundColor: navy, color: white }}>
               <th>Enrolled</th>
               <th>Evaluated</th>
               <th>Class avg</th>
@@ -207,7 +224,7 @@ export function ClassReportDocument({
 
         <table className="text-[0.65rem] print:text-[8pt] text-center">
           <thead>
-            <tr className="bg-gray-200 font-semibold uppercase">
+            <tr className="rc-navy font-semibold uppercase" style={{ backgroundColor: navy, color: white }}>
               <th>Passed</th>
               <th>Pass %</th>
               <th>Failed</th>
@@ -216,12 +233,12 @@ export function ClassReportDocument({
           </thead>
           <tbody>
             <tr>
-              <td className="text-green-700 font-semibold">{stats.passed}</td>
-              <td className="text-green-700 font-semibold">
+              <td className="font-semibold" style={{ color: REPORT_CARD_THEME.green }}>{stats.passed}</td>
+              <td className="font-semibold" style={{ color: REPORT_CARD_THEME.green }}>
                 {formatPercent(stats.passPercent)}
               </td>
-              <td className="text-red-600 font-semibold">{stats.failed}</td>
-              <td className="text-red-600 font-semibold">
+              <td className="font-semibold" style={{ color: REPORT_CARD_THEME.red }}>{stats.failed}</td>
+              <td className="font-semibold" style={{ color: REPORT_CARD_THEME.red }}>
                 {formatPercent(stats.failPercent)}
               </td>
             </tr>
@@ -231,13 +248,13 @@ export function ClassReportDocument({
         <table className="text-[0.65rem] print:text-[8pt]">
           <tbody>
             <tr>
-              <td className="w-[22%] bg-gray-100 font-semibold">Best student(s)</td>
+              <td className="w-[22%] font-semibold" style={{ backgroundColor: stripe }}>Best student(s)</td>
               <td>
                 <StudentLines students={data.best} />
               </td>
             </tr>
             <tr>
-              <td className="bg-gray-100 font-semibold">Worst student(s)</td>
+              <td className="font-semibold" style={{ backgroundColor: stripe }}>Worst student(s)</td>
               <td>
                 <StudentLines students={data.worst} />
               </td>
@@ -246,21 +263,30 @@ export function ClassReportDocument({
         </table>
 
         <section>
-          <h2 className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b border-black mb-1">
+          <h2
+            className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b mb-1"
+            style={{ color: navy, borderColor: navy }}
+          >
             Top {data.topN}
           </h2>
           <RankTable rows={data.top} emptyLabel="No evaluated students." />
         </section>
 
         <section>
-          <h2 className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b border-black mb-1">
+          <h2
+            className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b mb-1"
+            style={{ color: navy, borderColor: navy }}
+          >
             Bottom {data.topN}
           </h2>
           <RankTable rows={data.bottom} emptyLabel="No evaluated students." />
         </section>
 
         <section>
-          <h2 className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b border-black mb-1">
+          <h2
+            className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b mb-1"
+            style={{ color: navy, borderColor: navy }}
+          >
             Full class ranking
           </h2>
           <RankTable rows={data.ranked} emptyLabel="No evaluated students." />
@@ -268,7 +294,10 @@ export function ClassReportDocument({
 
         {data.unevaluated.length > 0 ? (
           <section>
-            <h2 className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b border-black mb-1">
+            <h2
+            className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b mb-1"
+            style={{ color: navy, borderColor: navy }}
+          >
               Unevaluated ({data.unevaluated.length})
             </h2>
             <p className="text-[0.65rem] print:text-[8pt]">

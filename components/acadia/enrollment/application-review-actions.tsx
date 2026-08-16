@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
+import { enrollmentApplicationsHref } from '@/lib/acadia/enrollment';
 import { useEnrollmentMutations } from '@/hooks/use-enrollment-mutations';
 import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
 
@@ -66,7 +67,10 @@ export function ApplicationReviewActions({
     if (status === 'APPROVED') {
       return (
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/enrollment/applications/${applicationId}/confirmation`}>
+          <Link
+            href={enrollmentApplicationsHref(applicationId, 'confirmation')}
+            scroll={false}
+          >
             <FileText className="size-4" />
             View confirmation
           </Link>

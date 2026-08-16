@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { FeePlanSetupForm } from '@/components/acadia/finance/fee-plan-setup-form';
+import { FeePlansPanel } from '@/components/acadia/finance/fee-plans-panel';
 import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteFinance } from '@/lib/acadia/roles';
@@ -20,7 +20,7 @@ export default function FeePlanSetupPage() {
         description={t('common.messages.accessDenied')}
       >
         <Button variant="outline" size="sm" asChild>
-          <Link href="/finance/fees">Back to fees</Link>
+          <Link href="/finance/fees">{t('finance.backToFees')}</Link>
         </Button>
       </AcadiaPageShell>
     );
@@ -33,10 +33,10 @@ export default function FeePlanSetupPage() {
     >
       <div className="mb-4">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/finance/fees">Back to fees</Link>
+          <Link href="/finance/fees">{t('finance.backToFees')}</Link>
         </Button>
       </div>
-      <FeePlanSetupForm />
+      <FeePlansPanel />
     </AcadiaPageShell>
   );
 }

@@ -7,7 +7,12 @@ import type { ClassReportBundle, ClassReportStudent } from '@/lib/acadia/class-r
 import { uniqueIds } from '@/lib/acadia/staff-class-assignments';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
-import type { ReportCardMarkRow, ReportCardSubjectDef } from '@/lib/acadia/report-card';
+import {
+  resolveReportCardGrouping,
+  type ReportCardGroupingRef,
+  type ReportCardMarkRow,
+  type ReportCardSubjectDef,
+} from '@/lib/acadia/report-card';
 import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 import { fetchAcadiaTenant } from '@/lib/supabase/queries/tenant';
 import { embed, FK } from '@/lib/supabase/embed-selects';
@@ -23,8 +28,15 @@ const STUDENT_PROFILE_SELECT = `
 const CLASS_SUBJECT_SELECT = `
   subjectId,
   groupingId,
-  ${embed('Subject', FK.ClassSubject_subject, 'id, nameEn, nameFr, code, coefficient, subjectType, hasSubBranches')},
-  ${embed('SubjectGrouping', FK.ClassSubject_grouping, 'nameEn')}
+  ${embed(
+    'Subject',
+    FK.ClassSubject_subject,
+    [
+      'id, nameEn, nameFr, code, coefficient, subjectType, hasSubBranches',
+      embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn, sortOrder'),
+    ].join(', '),
+  )},
+  ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn, sortOrder')}
 `;
 
 const MARK_SELECT = `
@@ -191,7 +203,7 @@ export async function fetchClassReportBundle(
     subjectId: string;
     groupingId: string | null;
     Subject?: unknown;
-    SubjectGrouping?: unknown;
+    ClassGrouping?: unknown;
   }>;
   const subjects: ReportCardSubjectDef[] = classSubjectRows.flatMap((row) => {
     const subject = unwrapRelation<{
@@ -201,11 +213,15 @@ export async function fetchClassReportBundle(
       code?: string;
       coefficient?: number;
       subjectType?: string;
+      SubjectGrouping?: unknown;
     }>(row.Subject);
     if (!subject?.id) {
       return [];
     }
-    const grouping = unwrapRelation<{ nameEn?: string }>(row.SubjectGrouping);
+    const grouping = resolveReportCardGrouping(
+      unwrapRelation<ReportCardGroupingRef>(row.ClassGrouping),
+      unwrapRelation<ReportCardGroupingRef>(subject.SubjectGrouping),
+    );
     return [
       {
         subjectId: subject.id,
@@ -214,7 +230,9 @@ export async function fetchClassReportBundle(
         code: subject.code ?? '',
         coefficient: Number(subject.coefficient ?? 1),
         subjectType: subject.subjectType ?? 'OTHERS',
-        groupingLabel: grouping?.nameEn ?? null,
+        groupingId: grouping.groupingId,
+        groupingLabel: grouping.groupingLabel,
+        groupingSortOrder: grouping.groupingSortOrder,
         requiredSubBranchIds: requiredBySubject.get(subject.id) ?? [],
       },
     ];

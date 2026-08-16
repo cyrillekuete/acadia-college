@@ -175,9 +175,11 @@ export async function regenerateFamilyCredentials(
     };
   }
 
+  const registrationNumber =
+    (profile.registrationNumber as string | null)?.trim() || '';
   const legacyStudentId =
     (profileLink?.role_specific_id as string | null)?.trim() ||
-    (profile.registrationNumber as string);
+    registrationNumber;
 
   const { data: parentRows, error: parentError } = legacyStudentId
     ? await admin
@@ -255,7 +257,7 @@ export async function regenerateFamilyCredentials(
 
   return {
     ok: true,
-    studentId: legacyStudentId,
+    studentId: registrationNumber || legacyStudentId,
     studentLoginEmail,
     studentTemporaryPassword,
     parentCode: (parentRow?.parent_code as string | undefined) ?? '—',

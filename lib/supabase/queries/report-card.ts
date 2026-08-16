@@ -8,13 +8,17 @@ import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import {
   buildReportCardData,
+  resolveReportCardGrouping,
   type ReportCardBundle,
+  type ReportCardGroupingRef,
   type ReportCardMarkRow,
   type ReportCardSubjectDef,
 } from '@/lib/acadia/report-card';
 import type { ReportCardData, ReportCardTerm } from '@/lib/acadia/report-card-types';
+import { resolveReportCardTemplate } from '@/lib/acadia/report-card-templates';
 import { embed, FK } from '@/lib/supabase/embed-selects';
 import { fetchStudentTermDiscipline } from '@/lib/supabase/queries/class-discipline';
+import { fetchReportCardTemplatePreference } from '@/lib/supabase/queries/report-card-templates';
 import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 import { fetchAcadiaTenant } from '@/lib/supabase/queries/tenant';
 import { getTenantAssetPublicUrl } from '@/lib/supabase/storage';
@@ -37,8 +41,15 @@ const ENROLLMENT_SELECT = `
 const CLASS_SUBJECT_SELECT = `
   subjectId,
   groupingId,
-  ${embed('Subject', FK.ClassSubject_subject, 'id, nameEn, nameFr, code, coefficient, subjectType, hasSubBranches')},
-  ${embed('SubjectGrouping', FK.ClassSubject_grouping, 'nameEn')}
+  ${embed(
+    'Subject',
+    FK.ClassSubject_subject,
+    [
+      'id, nameEn, nameFr, code, coefficient, subjectType, hasSubBranches',
+      embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn, sortOrder'),
+    ].join(', '),
+  )},
+  ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn, sortOrder')}
 `;
 
 const MARK_SELECT = `
@@ -264,7 +275,7 @@ export async function fetchReportCardBundle(
     subjectId: string;
     groupingId: string | null;
     Subject?: unknown;
-    SubjectGrouping?: unknown;
+    ClassGrouping?: unknown;
   }>;
   const subjects: ReportCardSubjectDef[] = classSubjectRows.flatMap((row) => {
     const subject = unwrapRelation<{
@@ -274,11 +285,15 @@ export async function fetchReportCardBundle(
       code?: string;
       coefficient?: number;
       subjectType?: string;
+      SubjectGrouping?: unknown;
     }>(row.Subject);
     if (!subject?.id) {
       return [];
     }
-    const grouping = unwrapRelation<{ nameEn?: string }>(row.SubjectGrouping);
+    const grouping = resolveReportCardGrouping(
+      unwrapRelation<ReportCardGroupingRef>(row.ClassGrouping),
+      unwrapRelation<ReportCardGroupingRef>(subject.SubjectGrouping),
+    );
     return [
       {
         subjectId: subject.id,
@@ -287,7 +302,9 @@ export async function fetchReportCardBundle(
         code: subject.code ?? '',
         coefficient: Number(subject.coefficient ?? 1),
         subjectType: subject.subjectType ?? 'OTHERS',
-        groupingLabel: grouping?.nameEn ?? null,
+        groupingId: grouping.groupingId,
+        groupingLabel: grouping.groupingLabel,
+        groupingSortOrder: grouping.groupingSortOrder,
         requiredSubBranchIds: requiredBySubject.get(subject.id) ?? [],
       },
     ];
@@ -488,12 +505,18 @@ export async function loadStudentReportCard(
   term: ReportCardTerm,
   classId?: string | null,
 ): Promise<ReportCardData> {
-  const bundle = await fetchReportCardBundle(
-    supabase,
-    tenantId,
-    studentProfileId,
-    academicYearId,
-    classId,
-  );
-  return buildReportCardData(bundle, term);
+  const [bundle, preference] = await Promise.all([
+    fetchReportCardBundle(
+      supabase,
+      tenantId,
+      studentProfileId,
+      academicYearId,
+      classId,
+    ),
+    fetchReportCardTemplatePreference(supabase, tenantId, academicYearId),
+  ]);
+  return {
+    ...buildReportCardData(bundle, term),
+    templateId: resolveReportCardTemplate(preference, term),
+  };
 }

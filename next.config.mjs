@@ -3,7 +3,7 @@ import {
   resolveSupabaseKey,
   resolveSupabaseUrl,
 } from './lib/supabase/project.ts';
-import { ACADIA_DEMO_REDIRECTS } from './lib/acadia/demo-routes.ts';
+import { ACADIA_DEMO_LAYOUT_REDIRECTS, ACADIA_DEMO_REDIRECTS } from './lib/acadia/demo-routes.ts';
 
 const { loadEnvConfig } = nextEnv;
 
@@ -55,6 +55,7 @@ const nextConfig = {
         permanent: true,
       },
       ...ACADIA_DEMO_REDIRECTS,
+      ...(basePath ? [] : ACADIA_DEMO_LAYOUT_REDIRECTS),
     ];
   },
   env: {

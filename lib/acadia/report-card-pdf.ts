@@ -1,4 +1,6 @@
-import type { Browser, LaunchOptions, PuppeteerNode } from 'puppeteer-core';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import type { Browser, LaunchOptions, Page, PuppeteerNode } from 'puppeteer-core';
 
 const DEFAULT_LAUNCH_ARGS = [
   '--no-sandbox',
@@ -9,6 +11,38 @@ const DEFAULT_LAUNCH_ARGS = [
   '--no-zygote',
   '--disable-gpu',
 ] as const;
+
+function resolveLocalBrowserExecutable(): string | undefined {
+  const candidates: string[] = [];
+
+  if (process.platform === 'win32') {
+    const programFiles = process.env.PROGRAMFILES || 'C:\\Program Files';
+    const programFilesX86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)';
+    const localAppData = process.env.LOCALAPPDATA || '';
+    candidates.push(
+      join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      join(programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+      join(programFilesX86, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    );
+  } else if (process.platform === 'darwin') {
+    candidates.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+    );
+  } else {
+    candidates.push(
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/usr/bin/microsoft-edge',
+    );
+  }
+
+  return candidates.find((candidate) => candidate.length > 0 && existsSync(candidate));
+}
 
 function resolveChromiumLaunchArgs(chromium: unknown): string[] {
   const chromiumRecord = chromium as Record<string, unknown>;
@@ -55,10 +89,12 @@ async function getPuppeteerLaunchConfig(): Promise<{
   }
 
   const { default: puppeteer } = await import('puppeteer');
+  const localExecutablePath = resolveLocalBrowserExecutable();
   return {
     puppeteer: puppeteer as unknown as PuppeteerNode,
     launchOptions: {
       headless: true,
+      ...(localExecutablePath ? { executablePath: localExecutablePath } : {}),
       args: [...DEFAULT_LAUNCH_ARGS],
     },
   };
@@ -80,6 +116,80 @@ function parseCookieHeader(cookieHeader: string): Array<{ name: string; value: s
   return out;
 }
 
+async function applySessionCookies(
+  page: Page,
+  targetUrl: string,
+  cookieHeader: string,
+): Promise<void> {
+  const cookies = parseCookieHeader(cookieHeader);
+  if (cookies.length === 0) return;
+
+  const origin = new URL(targetUrl).origin;
+  await page.setCookie(
+    ...cookies.map((cookie) => ({
+      name: cookie.name,
+      value: cookie.value,
+      url: origin,
+      path: '/',
+    })),
+  );
+}
+
+async function describePage(page: Page): Promise<string> {
+  try {
+    const info = await page.evaluate(() => ({
+      url: location.href,
+      title: document.title,
+      text: (document.body?.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 240),
+    }));
+    const text = info.text ? ` ${info.text}` : '';
+    return ` Last page: ${info.url} (${info.title}).${text}`;
+  } catch {
+    return '';
+  }
+}
+
+async function waitForPdfDocument(page: Page): Promise<void> {
+  try {
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-pdf-ready="true"]') !== null ||
+        document.querySelector('.pdf-report-card') !== null ||
+        document.querySelector('#report-card-pdf-error') !== null,
+      { timeout: 60_000, polling: 100 },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('Waiting failed') || message.includes('exceeded')) {
+      throw new Error(
+        `Report card PDF page did not finish rendering.${await describePage(page)}`,
+      );
+    }
+    throw error;
+  }
+
+  const redirectedToSignIn = await page.evaluate(() => {
+    const path = location.pathname;
+    return path === '/signin' || path.startsWith('/signin/');
+  });
+  if (redirectedToSignIn) {
+    throw new Error(
+      'Authentication required to generate the PDF. Sign in again and retry.',
+    );
+  }
+
+  await page.evaluate(
+    () =>
+      Promise.race([
+        document.fonts.ready.then(() => undefined),
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 3000);
+        }),
+      ]),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 200));
+}
+
 export async function generateReportCardPdfFromUrl(options: {
   targetUrl: string;
   cookieHeader: string;
@@ -88,45 +198,31 @@ export async function generateReportCardPdfFromUrl(options: {
 
   let browser: Browser | null = null;
   try {
-    browser = await puppeteer.launch(launchOptions);
+    try {
+      browser = await puppeteer.launch(launchOptions);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Could not find Chrome') || message.includes('Could not find browser')) {
+        throw new Error(
+          'PDF generation needs Google Chrome or Microsoft Edge installed. Install one of those browsers, or set PUPPETEER_EXECUTABLE_PATH to a Chromium binary.',
+        );
+      }
+      throw error;
+    }
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 1600, deviceScaleFactor: 1 });
     page.setDefaultNavigationTimeout(90_000);
-    page.setDefaultTimeout(100_000);
+    page.setDefaultTimeout(60_000);
 
-    const cookies = parseCookieHeader(options.cookieHeader);
-    if (cookies.length > 0) {
-      await page.setCookie(
-        ...cookies.map((cookie) => ({
-          name: cookie.name,
-          value: cookie.value,
-          url: options.targetUrl,
-        })),
-      );
-    }
-
-    await page.setExtraHTTPHeaders({
-      Cookie: options.cookieHeader,
-    });
-
-    for (let i = 0; i < 3; i++) {
-      await new Promise<void>((resolve) => setImmediate(resolve));
-    }
+    await applySessionCookies(page, options.targetUrl, options.cookieHeader);
 
     await page.goto(options.targetUrl, {
       waitUntil: 'domcontentloaded',
       timeout: 90_000,
     });
 
-    await new Promise((r) => setTimeout(r, 300));
-
-    await page.waitForFunction(
-      () =>
-        document.querySelector('[data-pdf-ready="true"]') !== null ||
-        document.querySelector('#report-card-pdf-error') !== null,
-      { timeout: 100_000, polling: 100 },
-    );
+    await waitForPdfDocument(page);
 
     const errorEl = await page.$('#report-card-pdf-error');
     if (errorEl) {

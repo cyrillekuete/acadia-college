@@ -87,6 +87,72 @@ export function sumInstallmentTemplates(
   return installments.reduce((sum, row) => sum + row.amountMinor, 0);
 }
 
+export type FeePlanClassRef = {
+  id: string;
+  name: string;
+};
+
+export type FeePlanRow = {
+  id: string;
+  academicYearId: string | null;
+  subSystem: string;
+  branch: string;
+  installments: FeeInstallmentTemplateValues[];
+  classes: FeePlanClassRef[];
+  totalMinor: number;
+  firstDueOn: string | null;
+};
+
+export function parseFeePlanInstallments(
+  value: unknown,
+): FeeInstallmentTemplateValues[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((row, index) => {
+    const item =
+      row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
+    return {
+      installmentNumber: Number(item.installmentNumber ?? index + 1),
+      labelEn: String(item.labelEn ?? ''),
+      labelFr: String(item.labelFr ?? ''),
+      amountMinor: Number(item.amountMinor ?? 0),
+      dueOn: String(item.dueOn ?? ''),
+    };
+  });
+}
+
+export function feePlanFirstDueOn(
+  installments: FeeInstallmentTemplateValues[],
+): string | null {
+  const dates = installments
+    .map((row) => row.dueOn)
+    .filter((value) => value.trim().length > 0)
+    .sort();
+  return dates[0] ?? null;
+}
+
+export function toFeePlanRow(input: {
+  id: string;
+  academicYearId: string | null;
+  subSystem: string;
+  branch: string;
+  installments: unknown;
+  classes: FeePlanClassRef[];
+}): FeePlanRow {
+  const installments = parseFeePlanInstallments(input.installments);
+  return {
+    id: input.id,
+    academicYearId: input.academicYearId,
+    subSystem: input.subSystem,
+    branch: input.branch,
+    installments,
+    classes: input.classes,
+    totalMinor: sumInstallmentTemplates(installments),
+    firstDueOn: feePlanFirstDueOn(installments),
+  };
+}
+
 export function computeFeeAccountTotals(input: {
   totalAmountMinor: number;
   scholarshipMinor?: number;

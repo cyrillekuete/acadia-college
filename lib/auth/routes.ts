@@ -22,6 +22,11 @@ export function requiresSupabaseSession(pathname: string): boolean {
   if (pathname.startsWith('/api/')) {
     return false;
   }
+  // PDF render pages enforce auth themselves. Redirecting to /signin leaves
+  // headless Chrome on a form with no ready/error marker, so PDF generation hangs.
+  if (pathname === '/pdf' || pathname.startsWith('/pdf/')) {
+    return false;
+  }
   if (isPublicAuthPath(pathname)) {
     return false;
   }

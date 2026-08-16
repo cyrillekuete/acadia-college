@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   buildEnrollmentApplicationRow,
   canEditEnrollmentApplication,
+  enrollmentApplicationsHref,
 } from '@/lib/acadia/enrollment';
 import type { EnrollmentApplicationInput } from '@/lib/acadia/enrollment-schemas';
 import type { ReviewApplicationInput } from '@/lib/acadia/enrollment-schemas';
@@ -75,7 +76,7 @@ export function useEnrollmentMutations() {
     onSuccess: (id) => {
       invalidateEnrollmentQueries(queryClient);
       toast.success('Enrollment application created.');
-      router.push(`/enrollment/applications/${id}`);
+      router.push(enrollmentApplicationsHref(id));
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });

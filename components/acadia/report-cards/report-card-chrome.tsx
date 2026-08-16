@@ -2,10 +2,16 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import QRCode from 'react-qr-code';
-import { BookOpen, GraduationCap, Star } from '@/lib/icons';
+import { GraduationCap, Star } from '@/lib/icons';
 import { formatGceCount } from '@/lib/acadia/report-card';
 import type { ReportCardData } from '@/lib/acadia/report-card-types';
 import { REPORT_CARD_PDF_STYLES } from '@/components/acadia/report-cards/report-card-pdf-styles';
+import {
+  REPORT_CARD_THEME,
+  reportCardPeriodLabel,
+} from '@/components/acadia/report-cards/report-card-theme';
+
+const { navy, gold, green, red, border } = REPORT_CARD_THEME;
 
 const TERM_NAMES: Record<number, { en: string; fr: string; ordinal: string }> = {
   1: { en: 'FIRST TERM', fr: 'Premier Trimestre', ordinal: 'FIRST' },
@@ -67,8 +73,11 @@ export function ReportCardHeader({
         ) : null}
       </div>
 
-      <header className="grid grid-cols-1 md:grid-cols-3 md:items-stretch gap-3 print:gap-2 mb-2 print:mb-1 border-b-2 border-black pb-2 print:pb-1 relative z-10">
-        <div className="flex flex-col justify-center text-center md:text-left text-[0.55rem] print:text-[7pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem] w-full">
+      <header
+        className="grid grid-cols-1 md:grid-cols-3 md:items-stretch gap-3 print:gap-2 mb-2 print:mb-1 border-b-2 pb-2 print:pb-1 relative z-10"
+        style={{ borderColor: navy }}
+      >
+        <div className="flex flex-col justify-center text-center md:text-left text-[10px] print:text-[8pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem] w-full">
           <p>République du Cameroun</p>
           <p>Paix - Travail - Patrie</p>
           <p>Ministère des Enseignements Secondaires</p>
@@ -97,7 +106,7 @@ export function ReportCardHeader({
           </div>
         </div>
 
-        <div className="flex flex-col justify-center text-right text-[0.55rem] print:text-[7pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem]">
+        <div className="flex flex-col justify-center text-right text-[10px] print:text-[8pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem]">
           <p>Republic of Cameroon</p>
           <p>Peace - Work - Fatherland</p>
           <p>Ministry of Secondary Education</p>
@@ -106,8 +115,11 @@ export function ReportCardHeader({
         </div>
       </header>
 
-      <div className="mb-1 print:mb-0.5 relative z-10">
-        <div className="flex flex-col md:flex-row items-center justify-between bg-black text-white p-0.5 print:p-0.5 mb-0.5">
+      <div className="mb-0.5 print:mb-0 relative z-10">
+        <div
+          className="rc-navy flex flex-col md:flex-row items-center justify-between text-white p-0.5 print:p-0.5 mb-0.5"
+          style={{ backgroundColor: navy }}
+        >
           <span className="font-mono text-[0.5rem] print:text-[6pt] uppercase tracking-widest px-1">
             Academic Year {data.academic.year}
           </span>
@@ -117,54 +129,71 @@ export function ReportCardHeader({
           </span>
         </div>
 
-        <div className="border-2 print:border border-black p-2 print:p-1 relative overflow-hidden">
-          <div className="relative z-10 flex flex-row items-center gap-3 print:gap-2">
-            <div className="flex-shrink-0 flex flex-col items-center opacity-80">
-              <div className="bg-white p-0.5 border border-black shadow-sm">
+        <div
+          className="rc-section border-2 print:border px-1.5 py-0.5 print:px-1 print:py-0 relative overflow-hidden"
+          style={{ borderColor: navy }}
+        >
+          <div className="relative z-10 flex flex-row items-center gap-2 print:gap-1.5">
+            <div className="size-10 shrink-0 opacity-80">
+              <div className="bg-white p-px border" style={{ borderColor: navy }}>
                 <QRCode
                   value={qrCodeData}
-                  size={64}
-                  style={{ height: 'auto', maxWidth: '100%', width: '100%' }}
-                  viewBox="0 0 64 64"
+                  size={40}
+                  style={{ width: 38, height: 38 }}
                 />
               </div>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center min-w-0 mx-auto max-w-[60%]">
+            <div className="flex-1 flex flex-col items-center justify-center min-w-0">
               {mode === 'annual' ? (
                 <>
-                  <h2 className="font-black text-xl print:text-2xl uppercase tracking-tighter leading-none mb-0.5">
+                  <h2
+                    className="font-black text-xl print:text-2xl uppercase tracking-tighter leading-none mb-0.5"
+                    style={{ color: navy }}
+                  >
                     ANNUAL REPORT CARD
                   </h2>
                   <div className="flex items-center gap-1 w-full justify-center">
-                    <div className="h-0.5 w-6 bg-black/30" />
-                    <p className="text-[0.5rem] print:text-[6pt] font-bold tracking-widest text-black/60 uppercase whitespace-nowrap flex items-center gap-0.5">
-                      <Star className="size-2 text-black/60" /> Bulletin Annuel{' '}
-                      <Star className="size-2 text-black/60" />
+                    <div className="h-0.5 w-6" style={{ backgroundColor: gold }} />
+                    <p
+                      className="text-[0.5rem] print:text-[6pt] font-bold tracking-widest uppercase whitespace-nowrap flex items-center gap-0.5"
+                      style={{ color: gold }}
+                    >
+                      <Star className="size-2" style={{ color: gold }} /> Bulletin Annuel{' '}
+                      <Star className="size-2" style={{ color: gold }} />
                     </p>
-                    <div className="h-0.5 w-6 bg-black/30" />
+                    <div className="h-0.5 w-6" style={{ backgroundColor: gold }} />
                   </div>
                 </>
               ) : (
                 <>
-                  <h2 className="font-black text-xl print:text-2xl uppercase tracking-tighter leading-none mb-0.5">
-                    <span className="text-black/80">{termName.ordinal}</span> TERM
+                  <h2
+                    className="font-black text-xl print:text-2xl uppercase tracking-tighter leading-none mb-0.5"
+                    style={{ color: navy }}
+                  >
+                    {termName.ordinal} TERM
                   </h2>
-                  <p className="font-black text-base print:text-lg uppercase tracking-[0.2em] leading-none mb-1">
+                  <p
+                    className="font-black text-base print:text-lg uppercase tracking-[0.2em] leading-none mb-0.5"
+                    style={{ color: gold }}
+                  >
                     REPORT CARD
                   </p>
                   <div className="flex items-center gap-1 w-full justify-center">
-                    <div className="h-0.5 w-6 bg-black/30" />
-                    <p className="text-[0.5rem] print:text-[6pt] font-bold tracking-widest text-black/60 uppercase whitespace-nowrap flex items-center gap-0.5">
-                      <Star className="size-2 text-black/60" /> Bulletin du {termName.fr}{' '}
-                      <Star className="size-2 text-black/60" />
+                    <div className="h-0.5 w-6" style={{ backgroundColor: gold }} />
+                    <p
+                      className="text-[0.5rem] print:text-[6pt] font-bold tracking-widest uppercase whitespace-nowrap flex items-center gap-0.5"
+                      style={{ color: gold }}
+                    >
+                      <Star className="size-2" style={{ color: gold }} /> Bulletin du {termName.fr}{' '}
+                      <Star className="size-2" style={{ color: gold }} />
                     </p>
-                    <div className="h-0.5 w-6 bg-black/30" />
+                    <div className="h-0.5 w-6" style={{ backgroundColor: gold }} />
                   </div>
                 </>
               )}
             </div>
+            <div className="size-10 shrink-0" aria-hidden />
           </div>
-          <BookOpen className="absolute -left-8 -bottom-8 size-20 text-black/5 -rotate-12 pointer-events-none print:hidden" />
         </div>
       </div>
     </>
@@ -173,7 +202,10 @@ export function ReportCardHeader({
 
 export function ReportCardStudentGrid({ data }: { data: ReportCardData }) {
   return (
-    <div className="rc-student-grid border border-black grid grid-cols-12 mb-1 print:mb-0.5 font-mono text-[0.65rem] print:text-[7pt] relative z-10 bg-white/90">
+    <div
+      className="rc-student-grid border grid grid-cols-12 mb-1 print:mb-0.5 font-mono text-[0.65rem] print:text-[7pt] relative z-10 bg-white/90"
+      style={{ borderColor: navy }}
+    >
       <div className="col-span-4 border-b border-r border-black">
         <span className="block text-[0.5rem] print:text-[6pt] text-gray-500 uppercase leading-tight">
           First Name / Prénom
@@ -248,6 +280,105 @@ export function ReportCardStudentGrid({ data }: { data: ReportCardData }) {
   );
 }
 
+function ClassPerformanceStatCell({
+  value,
+  label,
+  color,
+  lastCol,
+  lastRow,
+}: {
+  value: string;
+  label: string;
+  color: string;
+  lastCol?: boolean;
+  lastRow?: boolean;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center px-1 py-2 text-center"
+      style={{
+        borderRight: lastCol ? undefined : `1px solid ${border}`,
+        borderBottom: lastRow ? undefined : `1px solid ${border}`,
+      }}
+    >
+      <span className="text-base print:text-sm font-black font-mono leading-none" style={{ color }}>
+        {value}
+      </span>
+      <span className="mt-1 text-[0.45rem] print:text-[5.5pt] font-semibold uppercase tracking-wide text-gray-500 leading-tight">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ClassPerformanceStatistics({ data }: { data: ReportCardData }) {
+  const period = reportCardPeriodLabel(data.academic.term);
+  const rank =
+    data.history.rank != null && data.history.rank > 0 ? String(data.history.rank) : '—';
+
+  return (
+    <div className="relative z-10 mb-2 print:mb-1">
+      <div
+        className="rc-gold px-2 py-1 print:py-0.5 text-center text-[10px] print:text-[8pt] font-bold uppercase tracking-wide"
+        style={{ backgroundColor: gold, color: navy }}
+      >
+        Class Performance Statistics — {data.student.className}, {period}
+      </div>
+      <div
+        className="grid grid-cols-4 bg-white"
+        style={{ border: `1px solid ${border}`, borderTop: 'none' }}
+      >
+        <ClassPerformanceStatCell
+          value={String(data.stats.classSize)}
+          label="Class Enrollment"
+          color={navy}
+        />
+        <ClassPerformanceStatCell
+          value={data.stats.classAvg.toFixed(2)}
+          label="Class Average"
+          color={navy}
+        />
+        <ClassPerformanceStatCell
+          value={String(data.stats.passed)}
+          label="Number Passed"
+          color={green}
+        />
+        <ClassPerformanceStatCell
+          value={String(data.stats.failed)}
+          label="Number Failed"
+          color={red}
+          lastCol
+        />
+        <ClassPerformanceStatCell
+          value={String(data.discipline.absences)}
+          label="Number of Absences"
+          color={navy}
+          lastRow
+        />
+        <ClassPerformanceStatCell
+          value={`${data.stats.passPercent.toFixed(0)}%`}
+          label="Percentage Passed"
+          color={green}
+          lastRow
+        />
+        <ClassPerformanceStatCell
+          value={`${data.stats.failPercent.toFixed(0)}%`}
+          label="Percentage Failed"
+          color={red}
+          lastRow
+        />
+        <ClassPerformanceStatCell
+          value={rank}
+          label="Student's Rank in Class"
+          color={navy}
+          lastCol
+          lastRow
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ReportCardFooter({
   data,
   evaluation,
@@ -267,12 +398,21 @@ export function ReportCardFooter({
     <>
       <div className="grid grid-cols-3 print:grid-cols-3 gap-2 print:gap-1 mb-2 print:mb-1 relative z-10 items-stretch">
         {evaluation}
-        <div className="border border-black bg-white/90 h-full flex flex-col">
-          <div className="bg-gray-100 p-0.5 print:p-0.5 text-left text-[0.55rem] print:text-[6pt] font-bold uppercase border-b border-black">
+        <div
+          className="rc-section border bg-white/90 h-full flex flex-col"
+          style={{ borderColor: navy }}
+        >
+          <div
+            className="rc-navy p-0.5 print:p-0.5 text-left text-[10px] print:text-[8pt] font-bold uppercase border-b text-white"
+            style={{ backgroundColor: navy, borderColor: navy }}
+          >
             Discipline & Conduct
           </div>
-          <div className="text-[0.6rem] print:text-[7pt] p-1.5 print:p-1 space-y-1 flex-1">
-            <div className="flex justify-between border-b border-gray-200 pb-0.5">
+          <div className="text-[11px] print:text-[8pt] p-1.5 print:p-1 space-y-1 flex-1">
+            <div
+              className="flex justify-between pb-0.5"
+              style={{ borderBottom: `1px solid ${border}` }}
+            >
               <span>Unjustified Absences</span>
               <span className="font-mono font-bold">{data.discipline.absences}hrs</span>
             </div>
@@ -284,13 +424,19 @@ export function ReportCardFooter({
             </div>
           </div>
         </div>
-        <div className="border border-black bg-white/90 h-full flex flex-col">
-          <div className="border-b border-gray-300 p-1 print:p-0.5 bg-gray-100">
-            <h4 className="font-bold text-[0.6rem] print:text-[7pt] text-left uppercase">
+        <div
+          className="rc-section border bg-white/90 h-full flex flex-col"
+          style={{ borderColor: navy }}
+        >
+          <div
+            className="rc-navy border-b p-1 print:p-0.5"
+            style={{ backgroundColor: navy, borderColor: navy }}
+          >
+            <h4 className="font-bold text-[11px] print:text-[8pt] text-left uppercase text-white">
               GCE SECTION
             </h4>
           </div>
-          <div className="space-y-0.5 font-mono text-[0.6rem] print:text-[7pt] p-1.5 print:p-1 flex-1">
+          <div className="space-y-0.5 font-mono text-[11px] print:text-[8pt] p-1.5 print:p-1 flex-1">
             <div className="flex justify-between">
               <span>Trade Subjects:</span> <span>{formatGceCount(gce.tradeSubjects)}</span>
             </div>
@@ -300,19 +446,26 @@ export function ReportCardFooter({
             <div className="flex justify-between">
               <span>Other Subjects:</span> <span>{formatGceCount(gce.otherSubjects)}</span>
             </div>
-            <div className="flex justify-between font-bold pt-1 border-t border-gray-300 mt-1">
+            <div
+              className="flex justify-between font-bold pt-1 mt-1"
+              style={{ borderTop: `1px solid ${border}` }}
+            >
               <span>GCE SUBJECTS PASSED:</span> <span>{formatGceCount(gce.passed)}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-center items-start gap-2 print:gap-1 mt-auto relative z-10 w-full">
+      <ClassPerformanceStatistics data={data} />
+
+      <div className="flex justify-center items-start gap-2 print:gap-1 mt-auto mb-2 print:mb-3 relative z-10 w-full">
         <div
-          className="border border-black p-1.5 print:p-1 text-[0.6rem] print:text-[7pt] flex flex-col justify-between bg-white/90 flex-1"
-          style={{ height: '60px' }}
+          className="rc-section border p-1.5 print:p-1 text-[0.6rem] print:text-[7pt] flex flex-col justify-between bg-white/90 flex-1"
+          style={{ height: '60px', borderColor: navy }}
         >
-          <h4 className="font-bold text-left underline">The Class Master</h4>
+          <h4 className="font-bold text-left underline" style={{ color: navy }}>
+            The Class Master
+          </h4>
           <div className="text-left text-sm print:text-xs opacity-70">
             {data.student.classMaster || ''}
           </div>
@@ -321,10 +474,12 @@ export function ReportCardFooter({
           </div>
         </div>
         <div
-          className="border border-black p-1.5 print:p-1 text-[0.6rem] print:text-[7pt] flex flex-col justify-between bg-white/90 flex-1"
-          style={{ height: '60px' }}
+          className="rc-section border p-1.5 print:p-1 text-[0.6rem] print:text-[7pt] flex flex-col justify-between bg-white/90 flex-1"
+          style={{ height: '60px', borderColor: navy }}
         >
-          <h4 className="font-bold text-left underline">The Principal</h4>
+          <h4 className="font-bold text-left underline" style={{ color: navy }}>
+            The Principal
+          </h4>
           <div className="text-left text-sm print:text-xs opacity-70">
             {data.branding.principalName}
           </div>
@@ -355,14 +510,14 @@ export function ReportCardSheet({
       }
     >
       <div
-        className={`pdf-report-card max-w-[210mm] mx-auto bg-white shadow-xl print:shadow-none print:w-full print:max-w-full text-xs print:text-[8pt] relative overflow-hidden ${
+        className={`pdf-report-card max-w-[210mm] mx-auto bg-white shadow-xl print:shadow-none print:w-full print:max-w-full text-[13px] print:text-[9pt] relative isolate overflow-hidden ${
           variant === 'pdfRender'
             ? 'shadow-none print:min-h-[297mm] print:h-auto print:overflow-visible'
             : 'print:h-auto print:min-h-0 print:overflow-visible'
         } ${className ?? ''}`}
       >
         <div
-          className="px-8 print:px-3 pt-0 print:pt-6 pb-0 print:pb-2 flex flex-col gap-0 relative"
+          className="px-8 print:px-3 pt-0 print:pt-6 pb-8 print:pb-8 flex flex-col gap-0 relative min-h-[297mm]"
           style={{ color: 'rgba(26, 26, 26, 1)' }}
         >
           {children}

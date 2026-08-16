@@ -25,6 +25,26 @@ export const ACADIA_DEMO_REDIRECTS: AcadiaDemoRedirect[] = [
   { source: '/user-management/settings/:path*', destination: '/account/home/settings-sidebar', permanent: false },
 ];
 
+const METRONIC_DEMO_LAYOUTS = [
+  'demo1',
+  'demo2',
+  'demo3',
+  'demo4',
+  'demo5',
+  'demo6',
+  'demo7',
+  'demo8',
+  'demo9',
+  'demo10',
+] as const;
+
+/** Metronic layout prefixes (`/demo5/reports/term` → `/reports/term`). */
+export const ACADIA_DEMO_LAYOUT_REDIRECTS: AcadiaDemoRedirect[] =
+  METRONIC_DEMO_LAYOUTS.flatMap((demo) => [
+    { source: `/${demo}`, destination: '/', permanent: false },
+    { source: `/${demo}/:path*`, destination: '/:path*', permanent: false },
+  ]);
+
 /** Prefixes blocked from Acadia navigation (documentation / tests). */
 export const ACADIA_DEMO_ROUTE_PREFIXES = [
   '/store-client',

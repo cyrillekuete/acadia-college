@@ -1,5 +1,7 @@
 export type ReportCardTerm = '1' | '2' | '3' | 'annual';
 
+export type ReportCardTemplateId = 'sequence' | 'yearSummary';
+
 export type ReportCardCategory =
   | 'languages'
   | 'related_trade_subjects'
@@ -22,7 +24,9 @@ export type SubjectGrade = {
   hasMark?: boolean;
   coefEligible?: boolean;
   category?: ReportCardCategory;
+  groupingId?: string;
   groupingLabel?: string;
+  groupingSortOrder?: number;
   sequences?: {
     seq1?: number;
     seq2?: number;
@@ -80,7 +84,9 @@ export type StatsInfo = {
   maxAvg: number;
   minAvg: number;
   passed: number;
+  failed: number;
   passPercent: number;
+  failPercent: number;
   classAvg: number;
   gceTradeSubjects?: number;
   gceRelatedTrade?: number;
@@ -131,6 +137,7 @@ export type ReportCardData = {
   branding: ReportCardBranding;
   watermarkUrl?: string;
   sequenceSlots?: number[];
+  templateId?: ReportCardTemplateId;
 };
 
 export function parseReportCardTerm(raw: string | null | undefined): ReportCardTerm {

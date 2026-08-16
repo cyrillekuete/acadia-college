@@ -20,7 +20,7 @@ import {
   attendanceSessionSchema,
 } from '@/lib/acadia/attendance-schemas';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
-import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
+import { getQueryErrorMessage, isMissingRelationError } from '@/lib/acadia/query-errors';
 
 describe('getQueryErrorMessage', () => {
   it('extracts message from Error and PostgREST-like objects', () => {
@@ -31,6 +31,18 @@ describe('getQueryErrorMessage', () => {
       'Invalid course',
     );
     expect(getQueryErrorMessage(null)).toBe('Failed to load data.');
+  });
+
+  it('detects a missing PostgREST table', () => {
+    expect(
+      isMissingRelationError({
+        code: 'PGRST205',
+        message: "Could not find the table 'public.ReportCardTemplatePreference' in the schema cache",
+      }),
+    ).toBe(true);
+    expect(isMissingRelationError({ code: '42501', message: 'permission denied' })).toBe(
+      false,
+    );
   });
 });
 

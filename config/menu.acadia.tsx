@@ -107,6 +107,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
       { title: 'Sequence results', titleKey: 'nav.sequenceResults', path: '/reports/sequence' },
       { title: 'Class report', titleKey: 'nav.classReport', path: '/reports/class' },
       { title: 'Class absences', titleKey: 'nav.classAbsences', path: '/reports/absences' },
+      { title: 'Report card templates', titleKey: 'nav.reportCardTemplates', path: '/reports/templates' },
       { title: 'Term report cards', titleKey: 'nav.termReportCards', path: '/reports/term' },
       { title: 'Annual summary', titleKey: 'nav.annualSummary', path: '/reports/annual' },
       { title: 'Promotion', titleKey: 'nav.promotion', path: '/reports/promotion' },

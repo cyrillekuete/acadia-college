@@ -50,6 +50,22 @@ function friendlyPostgresMessage(code: string, rawMessage: string): string | nul
   return null;
 }
 
+export function isMissingRelationError(error: unknown): boolean {
+  const code = readErrorCode(error);
+  if (code === 'PGRST205' || code === '42P01') {
+    return true;
+  }
+  const message = readErrorMessage(error);
+  if (!message) {
+    return false;
+  }
+  return (
+    /could not find the table/i.test(message) ||
+    /schema cache/i.test(message) ||
+    /relation .* does not exist/i.test(message)
+  );
+}
+
 export function getQueryErrorMessage(error: unknown): string {
   const code = readErrorCode(error);
   const message = readErrorMessage(error);

@@ -104,11 +104,11 @@ export async function POST(request: Request) {
   void appendSystemLog(supabase, {
     userId: auth.ctx.actorUserId,
     event: 'student.created',
-    description: `Provisioned student ${result.studentId} and parent ${result.parentCode}`,
+    description: `Provisioned student ${studentId} and parent ${result.parentCode}`,
     entityId: result.studentProfileId,
     entityType: 'StudentProfile',
     meta: {
-      studentId: result.studentId,
+      studentId,
       parentCode: result.parentCode,
       newParentAuthCreated: result.newParentAuthCreated,
       enrollmentId: result.enrollmentId,
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     {
-      studentId: result.studentId,
+      studentId,
       studentUuid: result.studentUuid,
       studentProfileId: result.studentProfileId,
       studentLoginEmail: result.studentLoginEmail,

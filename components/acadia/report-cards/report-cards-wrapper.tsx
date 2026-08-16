@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
-import { AnnualReportCard } from '@/components/acadia/report-cards/annual-report-card';
-import { TermReportCard } from '@/components/acadia/report-cards/term-report-card';
+import { ReportCardView } from '@/components/acadia/report-cards/report-card-view';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -192,12 +191,7 @@ export function ReportCardsWrapper({
           <p className="text-sm text-muted-foreground">{t('reports.loadingBulletin')}</p>
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {reportData && !loadingReport && selectedTerm === 'annual' ? (
-          <AnnualReportCard data={reportData} />
-        ) : null}
-        {reportData && !loadingReport && selectedTerm !== 'annual' ? (
-          <TermReportCard data={reportData} />
-        ) : null}
+        {reportData && !loadingReport ? <ReportCardView data={reportData} /> : null}
       </div>
     );
   }

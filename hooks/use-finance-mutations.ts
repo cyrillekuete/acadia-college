@@ -26,6 +26,7 @@ import { generateAcadiaId } from '@/lib/acadia/ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { dashboardTags, studentListTags } from '@/lib/acadia/cache/tags';
+import { unwrapRelation } from '@/lib/acadia/record-display';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -50,6 +51,9 @@ function invalidateFinanceQueries(
   void queryClient.invalidateQueries({ queryKey: ['finance-annual'] });
   void queryClient.invalidateQueries({ queryKey: ['finance-sales'] });
   void queryClient.invalidateQueries({ queryKey: ['finance-expenditures'] });
+  void queryClient.invalidateQueries({ queryKey: ['fee-plan'] });
+  void queryClient.invalidateQueries({ queryKey: ['fee-plans'] });
+  void queryClient.invalidateQueries({ queryKey: ['fee-plan-class-assignments'] });
   if (tenantId) {
     invalidateAcadiaCache([...dashboardTags(tenantId), ...studentListTags(tenantId)]);
   }
@@ -70,66 +74,169 @@ export function useFinanceMutations() {
       const supabase = requireBrowserClient();
       const nowIso = new Date().toISOString();
       const totalMinor = sumInstallmentTemplates(values.installments);
+      const classIds = Array.from(new Set(values.classIds.filter((id) => id.trim())));
+      if (classIds.length === 0) {
+        throw new Error('Select at least one class.');
+      }
 
-      const { data: existing, error: findError } = await supabase
-        .from('StreamFeePlan')
-        .select('id')
+      const { data: classes, error: classError } = await supabase
+        .from('Class')
+        .select('id, subSystem, branch')
         .eq('tenantId', tenantId)
-        .eq('subSystem', values.subSystem)
-        .eq('branch', values.branch)
-        .maybeSingle();
-      if (findError) {
-        throw findError;
+        .in('id', classIds);
+      if (classError) {
+        throw classError;
+      }
+      if ((classes ?? []).length !== classIds.length) {
+        throw new Error('One or more selected classes were not found.');
+      }
+      const firstClass =
+        (classes ?? []).find((row) => row.id === classIds[0]) ?? (classes ?? [])[0];
+      if (!firstClass) {
+        throw new Error('Select at least one class.');
+      }
+
+      const { data: taken, error: takenError } = await supabase
+        .from('StreamFeePlanClass')
+        .select('classId, streamFeePlanId')
+        .eq('tenantId', tenantId)
+        .eq('academicYearId', values.academicYearId)
+        .in('classId', classIds);
+      if (takenError) {
+        throw takenError;
+      }
+      const conflicts = (taken ?? []).filter(
+        (row) => row.streamFeePlanId !== values.id,
+      );
+      if (conflicts.length > 0) {
+        throw new Error('One or more classes already have a fee plan this year.');
       }
 
       const payload = {
-        subSystem: values.subSystem,
-        branch: values.branch,
+        academicYearId: values.academicYearId,
+        subSystem: firstClass.subSystem,
+        branch: firstClass.branch,
         installments: values.installments,
         updatedAt: nowIso,
       };
 
-      if (existing?.id) {
+      let planId = values.id?.trim() || '';
+      if (planId) {
         const { error } = await supabase
           .from('StreamFeePlan')
           .update(payload)
           .eq('tenantId', tenantId)
-          .eq('id', existing.id as string);
+          .eq('id', planId);
         if (error) {
           throw error;
         }
         await appendSystemLog(supabase, {
           userId,
           event: 'fee_plan.saved',
-          entityId: existing.id as string,
+          entityId: planId,
           entityType: 'StreamFeePlan',
           description: `Updated fee plan (${formatMinor(totalMinor)})`,
         });
-        return existing.id as string;
+      } else {
+        planId = generateAcadiaId('fee-plan');
+        const { error } = await supabase.from('StreamFeePlan').insert({
+          id: planId,
+          tenantId,
+          ...payload,
+          createdAt: nowIso,
+        });
+        if (error) {
+          throw error;
+        }
+        await appendSystemLog(supabase, {
+          userId,
+          event: 'fee_plan.saved',
+          entityId: planId,
+          entityType: 'StreamFeePlan',
+          description: `Created fee plan (${formatMinor(totalMinor)})`,
+        });
       }
 
-      const id = generateAcadiaId('fee-plan');
-      const { error } = await supabase.from('StreamFeePlan').insert({
-        id,
-        tenantId,
-        ...payload,
-        createdAt: nowIso,
-      });
+      const { data: existingAssign, error: assignError } = await supabase
+        .from('StreamFeePlanClass')
+        .select('id, classId')
+        .eq('tenantId', tenantId)
+        .eq('streamFeePlanId', planId);
+      if (assignError) {
+        throw assignError;
+      }
+
+      const existingClassIds = new Set(
+        (existingAssign ?? []).map((row) => row.classId as string),
+      );
+      const nextClassIds = new Set(classIds);
+      const toDelete = (existingAssign ?? []).filter(
+        (row) => !nextClassIds.has(row.classId as string),
+      );
+      const toInsert = classIds.filter((classId) => !existingClassIds.has(classId));
+
+      if (toDelete.length > 0) {
+        const { error } = await supabase
+          .from('StreamFeePlanClass')
+          .delete()
+          .eq('tenantId', tenantId)
+          .in(
+            'id',
+            toDelete.map((row) => row.id as string),
+          );
+        if (error) {
+          throw error;
+        }
+      }
+
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from('StreamFeePlanClass').insert(
+          toInsert.map((classId) => ({
+            id: generateAcadiaId('fee-plan-class'),
+            tenantId,
+            streamFeePlanId: planId,
+            classId,
+            academicYearId: values.academicYearId,
+          })),
+        );
+        if (error) {
+          throw error;
+        }
+      }
+
+      return planId;
+    },
+    onSuccess: () => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      toast.success('Fee plan saved.');
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const deleteStreamFeePlan = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase
+        .from('StreamFeePlan')
+        .delete()
+        .eq('tenantId', tenantId)
+        .eq('id', id);
       if (error) {
         throw error;
       }
       await appendSystemLog(supabase, {
         userId,
-        event: 'fee_plan.saved',
+        event: 'fee_plan.deleted',
         entityId: id,
         entityType: 'StreamFeePlan',
-        description: `Created fee plan (${formatMinor(totalMinor)})`,
       });
-      return id;
     },
     onSuccess: () => {
       invalidateFinanceQueries(queryClient, tenantId);
-      toast.success('Fee plan saved.');
+      toast.success('Fee plan deleted.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -145,18 +252,32 @@ export function useFinanceMutations() {
       let totalAmountMinor = 0;
 
       if (values.useStreamPlan !== false) {
-        const { data: plan, error: planError } = await supabase
-          .from('StreamFeePlan')
-          .select('installments')
+        const classId = values.classId?.trim();
+        if (!classId) {
+          throw new Error('Student is not assigned to a class.');
+        }
+        const { data: assignment, error: planError } = await supabase
+          .from('StreamFeePlanClass')
+          .select(
+            `
+            streamFeePlanId,
+            StreamFeePlan!StreamFeePlanClass_streamFeePlanId_tenantId_fkey (
+              installments
+            )
+          `,
+          )
           .eq('tenantId', tenantId)
-          .eq('subSystem', values.subSystem)
-          .eq('branch', values.branch)
+          .eq('academicYearId', values.academicYearId)
+          .eq('classId', classId)
           .maybeSingle();
         if (planError) {
           throw planError;
         }
+        const plan = unwrapRelation<{ installments?: unknown }>(
+          assignment?.StreamFeePlan,
+        );
         if (!plan?.installments || !Array.isArray(plan.installments)) {
-          throw new Error('No fee plan for this stream. Set up a plan first.');
+          throw new Error('No fee plan for this class. Set up a plan first.');
         }
         installments = plan.installments as Parameters<
           typeof sumInstallmentTemplates
@@ -756,6 +877,7 @@ export function useFinanceMutations() {
 
   return {
     saveStreamFeePlan,
+    deleteStreamFeePlan,
     createStudentFeeAccount,
     recordFeePayment,
     createLedgerEntry,

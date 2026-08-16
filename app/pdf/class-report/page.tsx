@@ -2,8 +2,6 @@ import { Suspense } from 'react';
 import { loadAuthorizedClassReport } from '@/lib/acadia/load-class-report';
 import ClassReportPdfClient from './class-report-pdf-client';
 
-export const dynamic = 'force-dynamic';
-
 async function ClassReportPdfPageInner({
   searchParams,
 }: {

@@ -9,7 +9,6 @@ import { requireSessionApi } from '@/lib/acadia/require-session-api';
 import { fetchCurrentAcademicYear } from '@/lib/supabase/queries/academic-year';
 import { createClient } from '@/lib/supabase/server';
 
-export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 function isLoopbackHost(host: string): boolean {

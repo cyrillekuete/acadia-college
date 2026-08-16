@@ -13,7 +13,7 @@ export function TenantLogoPreview() {
   const logoUrl = getTenantAssetPublicUrl(tenant?.logoStorageKey);
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>Institution logo</CardTitle>
       </CardHeader>

@@ -20,6 +20,7 @@ import {
   parseMoneyToMinor,
   paymentProgressPercent,
   sumInstallmentTemplates,
+  toFeePlanRow,
 } from '@/lib/acadia/finance';
 import {
   expenditureSchema,
@@ -236,22 +237,63 @@ describe('aggregateExpenditureStats', () => {
 });
 
 describe('streamFeePlanSchema', () => {
-  it('requires sub-system, branch, and installments', () => {
+  const installment = {
+    installmentNumber: 1,
+    labelEn: 'First',
+    labelFr: 'Première',
+    amountMinor: 50000,
+    dueOn: '2026-09-15',
+  };
+
+  it('requires classes, academic year, and installments', () => {
     expect(
       streamFeePlanSchema.safeParse({
-        subSystem: 'ENGLISH',
-        branch: 'GRAMMAR',
-        installments: [
-          {
-            installmentNumber: 1,
-            labelEn: 'First',
-            labelFr: 'Première',
-            amountMinor: 50000,
-            dueOn: '2026-09-15',
-          },
-        ],
+        academicYearId: 'year-1',
+        classIds: ['class-1', 'class-2'],
+        installments: [installment],
       }).success,
     ).toBe(true);
+  });
+
+  it('rejects an empty class list', () => {
+    expect(
+      streamFeePlanSchema.safeParse({
+        academicYearId: 'year-1',
+        classIds: [],
+        installments: [installment],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('toFeePlanRow', () => {
+  it('maps installments, total, and first due date', () => {
+    const row = toFeePlanRow({
+      id: 'plan-1',
+      academicYearId: 'year-1',
+      subSystem: 'ENGLISH',
+      branch: 'GRAMMAR',
+      installments: [
+        {
+          installmentNumber: 2,
+          labelEn: 'Second',
+          labelFr: 'Deuxième',
+          amountMinor: 40000,
+          dueOn: '2026-12-01',
+        },
+        {
+          installmentNumber: 1,
+          labelEn: 'First',
+          labelFr: 'Première',
+          amountMinor: 40000,
+          dueOn: '2026-09-15',
+        },
+      ],
+      classes: [{ id: 'c1', name: 'Form 1 A' }],
+    });
+    expect(row.totalMinor).toBe(80000);
+    expect(row.firstDueOn).toBe('2026-09-15');
+    expect(row.classes).toHaveLength(1);
   });
 });
 

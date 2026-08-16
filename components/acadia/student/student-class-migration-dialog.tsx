@@ -5,14 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { ArrowRightLeft, LoaderCircleIcon } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
@@ -50,6 +52,11 @@ import {
   useLevelsForStream,
 } from '@/hooks/use-enrollment-catalog-options';
 import { useStudentMutations } from '@/hooks/use-student-mutations';
+
+const SHEET_CONTENT_CLASS =
+  'p-0 gap-0 sm:w-[540px] sm:max-w-none inset-5 start-auto h-auto rounded-lg [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5';
+
+const FORM_ID = 'class-migration-form';
 
 export function StudentClassMigrationDialog({
   profileId,
@@ -122,172 +129,184 @@ export function StudentClassMigrationDialog({
         Migrate class
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Class migration</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <Form {...form}>
-              <form
-                id="class-migration-form"
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={form.control}
-                  name="academicYearId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Academic year</FormLabel>
-                      <CurrentAcademicYearBadge />
-                      <FormControl>
-                        <Input type="hidden" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="subSystem"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sub-system</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={(v) => {
-                          field.onChange(v);
-                          form.setValue('levelId', '');
-                          form.setValue('classId', '');
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {ACADEMIC_SUB_SYSTEMS.map((value) => (
-                            <SelectItem key={value} value={value}>
-                              {subSystemLabel(value)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="branch"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Branch</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={(v) => {
-                          field.onChange(v);
-                          form.setValue('levelId', '');
-                          form.setValue('classId', '');
-                        }}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {ACADEMIC_BRANCHES.map((value) => (
-                            <SelectItem key={value} value={value}>
-                              {branchLabel(value)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="levelId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Level</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={(v) => {
-                          field.onChange(v);
-                          form.setValue('classId', '');
-                        }}
-                        disabled={!subSystem || !branch || levels.length === 0}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select level" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {levels.map((level) => (
-                            <SelectItem key={level.id} value={level.id}>
-                              {levelDisplayLabel(level)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="classId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Class (optional)</FormLabel>
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Auto-match if unique" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {classOptions.map((cls) => (
-                            <SelectItem key={cls.id} value={cls.id}>
-                              {cls.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="note"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Note (optional)</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} rows={2} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </form>
-            </Form>
-          </DialogBody>
-          <DialogFooter>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent className={SHEET_CONTENT_CLASS}>
+          <SheetHeader className="mb-0 border-b border-border">
+            <div className="space-y-1 p-3 pe-12">
+              <SheetTitle>Class migration</SheetTitle>
+              <SheetDescription>
+                Move this student to another level or class for the current academic year.
+              </SheetDescription>
+            </div>
+          </SheetHeader>
+          <SheetBody className="p-0">
+            <ScrollArea className="h-[calc(100vh-12.5rem)]">
+              <div className="px-5 py-2.5">
+                <Form {...form}>
+                  <form
+                    id={FORM_ID}
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="academicYearId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Academic year</FormLabel>
+                          <CurrentAcademicYearBadge />
+                          <FormControl>
+                            <Input type="hidden" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="subSystem"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sub-system</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(v) => {
+                              field.onChange(v);
+                              form.setValue('levelId', '');
+                              form.setValue('classId', '');
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {ACADEMIC_SUB_SYSTEMS.map((value) => (
+                                <SelectItem key={value} value={value}>
+                                  {subSystemLabel(value)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="branch"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Branch</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(v) => {
+                              field.onChange(v);
+                              form.setValue('levelId', '');
+                              form.setValue('classId', '');
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {ACADEMIC_BRANCHES.map((value) => (
+                                <SelectItem key={value} value={value}>
+                                  {branchLabel(value)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="levelId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Level</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={(v) => {
+                              field.onChange(v);
+                              form.setValue('classId', '');
+                            }}
+                            disabled={!subSystem || !branch || levels.length === 0}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select level" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {levels.map((level) => (
+                                <SelectItem key={level.id} value={level.id}>
+                                  {levelDisplayLabel(level)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="classId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Class (optional)</FormLabel>
+                          <Select
+                            value={field.value ?? ''}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Auto-match if unique" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {classOptions.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="note"
+                      render={({ field }) => (
+                        <FormItem className="sm:col-span-2">
+                          <FormLabel>Note (optional)</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} rows={3} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </form>
+                </Form>
+              </div>
+            </ScrollArea>
+          </SheetBody>
+          <SheetFooter className="border-t border-border p-5">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
             <Button
               type="submit"
-              form="class-migration-form"
+              form={FORM_ID}
               disabled={migrateStudentClass.isPending}
             >
               {migrateStudentClass.isPending ? (
@@ -295,9 +314,9 @@ export function StudentClassMigrationDialog({
               ) : null}
               Apply migration
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
