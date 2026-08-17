@@ -198,6 +198,30 @@ export function normalizePhoneForLookup(phone: string): string {
   return digits;
 }
 
+/**
+ * Convert a stored E.164 (or loosely formatted) phone into WhatsApp Cloud API
+ * `to` format: digits only, no leading plus.
+ */
+export function toWhatsAppRecipient(
+  phone: string | null | undefined,
+): string | null {
+  const trimmed = phone?.trim() ?? '';
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = parsePhoneNumberFromString(trimmed);
+  if (parsed?.isValid()) {
+    return parsed.number.replace(/^\+/, '');
+  }
+
+  const digits = stripToNationalDigits(trimmed);
+  if (digits.length < 8) {
+    return null;
+  }
+  return digits.replace(/^0+/, '') || null;
+}
+
 /** Format stored phone for display, e.g. "+237 677 123 456". */
 export function formatPhoneForDisplay(
   phone: string | null | undefined,

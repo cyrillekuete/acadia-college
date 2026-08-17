@@ -34,12 +34,14 @@ export const NOTIFICATION_EVENTS = [
   'message.received',
   'marks.published',
   'fees.overdue',
+  'alert.sent',
 ] as const;
 export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
 
 export const ANNOUNCEMENT_BROADCAST_EVENT = 'announcement.broadcast' as const;
 export const ANNOUNCEMENT_EVENT_NOTIFICATION = 'announcement.event' as const;
 export const MESSAGE_RECEIVED_EVENT = 'message.received' as const;
+export const ALERT_SENT_NOTIFICATION = 'alert.sent' as const;
 
 const GROUP_SCOPE_LABELS: Record<MessageGroupScope, string> = {
   DEPARTMENT: 'Department',
@@ -160,7 +162,7 @@ export function filterUsersByAnnouncementAudience<
       return slug === 'student';
     }
     if (audience === 'GUARDIANS') {
-      return slug === 'guardian';
+      return slug === 'guardian' || slug === 'parent';
     }
     return true;
   });
@@ -227,6 +229,10 @@ const NOTIFICATION_EVENT_LABELS: Record<
     en: 'Overdue fees',
     fr: 'Frais en retard',
   },
+  'alert.sent': {
+    en: 'Guardian alerts',
+    fr: 'Alertes aux tuteurs',
+  },
 };
 
 export type NotificationChannel = 'email' | 'inApp';
@@ -271,6 +277,9 @@ export function notificationHref(
   }
   if (event === 'fees.overdue') {
     return '/finance/fees';
+  }
+  if (event === ALERT_SENT_NOTIFICATION) {
+    return '/announcements';
   }
   return '/account/notifications';
 }

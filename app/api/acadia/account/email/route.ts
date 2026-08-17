@@ -35,30 +35,29 @@ export async function PATCH(request: Request) {
   }
 
   const email = parsed.data.email.trim().toLowerCase();
-  if (email === auth.ctx.email.toLowerCase()) {
+  const previousEmail = auth.ctx.email;
+  if (email === previousEmail.toLowerCase()) {
     return NextResponse.json({ message: 'Email updated.' });
   }
 
   const admin = createAdminClient();
-  const { error: authError } = await admin.auth.admin.updateUserById(
-    auth.ctx.actorUserId,
-    {
-      email,
-      email_confirm: true,
-    },
-  );
-
-  if (authError) {
-    const message =
-      authError.message?.includes('already been registered') ||
-      authError.message?.includes('already exists')
-        ? 'A user with this email already exists.'
-        : authError.message ?? 'Failed to update email.';
-    return NextResponse.json({ message }, { status: 400 });
-  }
-
   const supabase = await createClient();
   const now = acadiaEmailVerifiedAt();
+  const userId = auth.ctx.actorUserId;
+  const tenantId = auth.ctx.tenantId;
+
+  const revertProfileEmail = async () => {
+    await supabase
+      .from('User')
+      .update({ email: previousEmail, updatedAt: now })
+      .eq('id', userId)
+      .eq('tenantId', tenantId);
+    await supabase
+      .from('users')
+      .update({ email: previousEmail, updated_at: now })
+      .eq('id', userId)
+      .eq('tenant_id', tenantId);
+  };
 
   const { error: userError } = await supabase
     .from('User')
@@ -67,8 +66,8 @@ export async function PATCH(request: Request) {
       emailVerifiedAt: now,
       updatedAt: now,
     })
-    .eq('id', auth.ctx.actorUserId)
-    .eq('tenantId', auth.ctx.tenantId);
+    .eq('id', userId)
+    .eq('tenantId', tenantId);
 
   if (userError) {
     return NextResponse.json(
@@ -77,17 +76,40 @@ export async function PATCH(request: Request) {
     );
   }
 
-  await supabase
+  const { error: usersError } = await supabase
     .from('users')
     .update({ email, updated_at: now })
-    .eq('id', auth.ctx.actorUserId)
-    .eq('tenant_id', auth.ctx.tenantId);
+    .eq('id', userId)
+    .eq('tenant_id', tenantId);
+
+  if (usersError) {
+    await revertProfileEmail();
+    return NextResponse.json(
+      { message: usersError.message ?? 'Failed to update profile email.' },
+      { status: 400 },
+    );
+  }
+
+  const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+    email,
+    email_confirm: true,
+  });
+
+  if (authError) {
+    await revertProfileEmail();
+    const message =
+      authError.message?.includes('already been registered') ||
+      authError.message?.includes('already exists')
+        ? 'A user with this email already exists.'
+        : authError.message ?? 'Failed to update email.';
+    return NextResponse.json({ message }, { status: 400 });
+  }
 
   await appendSystemLog(supabase, {
-    userId: auth.ctx.actorUserId,
+    userId,
     event: 'user.updated',
     entityType: 'User',
-    entityId: auth.ctx.actorUserId,
+    entityId: userId,
     description: `Email updated to ${email}.`,
   });
 

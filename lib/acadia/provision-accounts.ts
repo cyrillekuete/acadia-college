@@ -16,6 +16,7 @@ import {
   provisionStudentProfileAndEnrollment,
   type ProvisionStudentProfileInput,
 } from '@/lib/acadia/provision-student-profile';
+import { provisionGuardianProfileAndLink } from '@/lib/acadia/provision-guardian';
 
 export function buildParentSystemAuthEmail(
   tenantId: string,
@@ -56,6 +57,7 @@ export type ProvisionResult =
  *        temporary password.
  *    6c. If email exists but role≠parent → error 400.
  *    In all success cases: insert new `parents` row with student_id.
+ * 7. Create PascalCase User for the parent (if missing) and GuardianStudentLink.
  * Rollback: delete PascalCase User/profile rows, then legacy rows, then auth.
  */
 export async function provisionStudentAndParent(
@@ -447,17 +449,41 @@ export async function provisionStudentAndParent(
 
   if (!profileResult.ok) {
     await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
-    if (newParentAuthCreated) {
-      await admin.from('parents').delete().eq('parent_code', parentCode);
-      await admin.from('users').delete().eq('id', parentAuthId);
-      await admin.auth.admin.deleteUser(parentAuthId);
-    } else {
-      await admin.from('parents').delete().eq('parent_code', parentCode);
-    }
+    await rollbackParentLink(admin, {
+      parentAuthId,
+      parentCode,
+      newParentAuthCreated,
+    });
     return {
       ok: false,
       message: profileResult.message,
       status: profileResult.status,
+    };
+  }
+
+  const guardianResult = await provisionGuardianProfileAndLink(admin, {
+    tenantId,
+    actorUserId,
+    parentAuthId,
+    parentEmail: parentLoginEmail,
+    parentName: input.parent_name.trim(),
+    studentProfileId: profileResult.studentProfileId,
+    relationshipLabel: input.parent_relationship,
+  });
+
+  if (!guardianResult.ok) {
+    await rollbackStudent(admin, studentAuthId, studentId, studentUuid);
+    await rollbackParentLink(admin, {
+      parentAuthId,
+      parentCode,
+      newParentAuthCreated,
+      studentProfileId: profileResult.studentProfileId,
+      createdParentUser: guardianResult.createdUser,
+    });
+    return {
+      ok: false,
+      message: guardianResult.message,
+      status: guardianResult.status,
     };
   }
 
@@ -499,6 +525,7 @@ async function rollbackStudent(
     .map((row) => row.id)
     .filter((id): id is string => Boolean(id));
   if (profileIds.length > 0) {
+    await admin.from('GuardianStudentLink').delete().in('studentProfileId', profileIds);
     await admin.from('StudentEnrollment').delete().in('studentProfileId', profileIds);
     await admin.from('StudentProfile').delete().in('id', profileIds);
   }
@@ -506,4 +533,33 @@ async function rollbackStudent(
 
   await admin.from('users').delete().eq('id', studentAuthId);
   await admin.auth.admin.deleteUser(studentAuthId);
+}
+
+async function rollbackParentLink(
+  admin: SupabaseClient,
+  input: {
+    parentAuthId: string;
+    parentCode: string;
+    newParentAuthCreated: boolean;
+    studentProfileId?: string;
+    createdParentUser?: boolean;
+  },
+) {
+  if (input.studentProfileId) {
+    await admin
+      .from('GuardianStudentLink')
+      .delete()
+      .eq('guardianUserId', input.parentAuthId)
+      .eq('studentProfileId', input.studentProfileId);
+  }
+  await admin.from('parents').delete().eq('parent_code', input.parentCode);
+  if (input.newParentAuthCreated) {
+    await admin.from('User').delete().eq('id', input.parentAuthId);
+    await admin.from('users').delete().eq('id', input.parentAuthId);
+    await admin.auth.admin.deleteUser(input.parentAuthId);
+    return;
+  }
+  if (input.createdParentUser) {
+    await admin.from('User').delete().eq('id', input.parentAuthId);
+  }
 }

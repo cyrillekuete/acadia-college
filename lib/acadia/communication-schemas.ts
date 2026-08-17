@@ -11,6 +11,7 @@ export const directMessageSchema = z.object({
   subjectEn: z.string().min(1, 'validation.required.subjectLine').max(200),
   subjectFr: z.string().max(200).optional(),
   body: z.string().min(1, 'validation.required.message').max(10000),
+  sendWhatsApp: z.boolean().optional(),
 });
 
 export type DirectMessageFormValues = z.infer<typeof directMessageSchema>;

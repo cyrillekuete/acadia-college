@@ -6,6 +6,7 @@ import {
   getPhonePlaceholder,
   normalizePhoneForLookup,
   splitPhoneE164,
+  toWhatsAppRecipient,
   validateNationalPhone,
 } from '@/lib/acadia/phone';
 
@@ -56,6 +57,14 @@ describe('phone utilities', () => {
   it('normalizes phones for lookup', () => {
     expect(normalizePhoneForLookup('+237 677 123 456')).toBe('677123456');
     expect(normalizePhoneForLookup('677123456')).toBe('677123456');
+  });
+
+  it('formats phones as WhatsApp Cloud API recipients', () => {
+    expect(toWhatsAppRecipient('+237677123456')).toBe('237677123456');
+    expect(toWhatsAppRecipient('+237 677 123 456')).toBe('237677123456');
+    expect(toWhatsAppRecipient(null)).toBeNull();
+    expect(toWhatsAppRecipient('')).toBeNull();
+    expect(toWhatsAppRecipient('12')).toBeNull();
   });
 
   it('formats phones for display', () => {

@@ -2,6 +2,7 @@
 
 import { CardNotification } from '@/partials/cards';
 import {
+  Bell,
   CalendarClock,
   ClipboardCheck,
   DollarSign,
@@ -30,6 +31,7 @@ const EVENT_ICONS: Record<NotificationEvent, LucideIcon> = {
   'message.received': MessageCircle,
   'marks.published': Users,
   'fees.overdue': DollarSign,
+  'alert.sent': Bell,
 };
 
 const OtherNotifications = () => {

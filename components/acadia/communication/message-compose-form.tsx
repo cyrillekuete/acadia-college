@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -22,20 +23,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   directMessageSchema,
   type DirectMessageFormValues,
 } from '@/lib/acadia/communication-schemas';
+import { isGuardian } from '@/lib/acadia/roles';
 import { useCommunicationMutations } from '@/hooks/use-communication-mutations';
 import { useTenantUserOptions } from '@/hooks/use-tenant-user-options';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { fetchWhatsAppConfigured } from '@/lib/acadia/whatsapp-request';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useQuery } from '@tanstack/react-query';
 
 export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
+  const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const { data: users = [], isLoading: usersLoading } = useTenantUserOptions(
     session?.profile?.id,
   );
   const { createDirectMessage } = useCommunicationMutations();
+  const whatsappQuery = useQuery({
+    queryKey: ['whatsapp-configured'],
+    queryFn: fetchWhatsAppConfigured,
+  });
+  const whatsappConfigured = whatsappQuery.data === true;
 
   const form = useForm<DirectMessageFormValues>({
     resolver: zodResolver(directMessageSchema),
@@ -44,11 +56,19 @@ export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
       subjectEn: '',
       subjectFr: '',
       body: '',
+      sendWhatsApp: false,
     },
   });
 
+  const recipientUserId = form.watch('recipientUserId');
+  const recipient = users.find((user) => user.id === recipientUserId);
+  const showWhatsApp = isGuardian(recipient?.roleSlug);
+
   const onSubmit = form.handleSubmit(async (values) => {
-    await createDirectMessage.mutateAsync(values);
+    await createDirectMessage.mutateAsync({
+      ...values,
+      sendWhatsApp: showWhatsApp && Boolean(values.sendWhatsApp),
+    });
   });
 
   return (
@@ -121,6 +141,34 @@ export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
             </FormItem>
           )}
         />
+
+        {showWhatsApp ? (
+          <FormField
+            control={form.control}
+            name="sendWhatsApp"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start gap-3 rounded-md border p-3">
+                <FormControl>
+                  <Checkbox
+                    checked={Boolean(field.value)}
+                    disabled={!whatsappConfigured}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                  />
+                </FormControl>
+                <div className="space-y-1">
+                  <FormLabel className="font-normal">
+                    {t('communication.sendWhatsApp')}
+                  </FormLabel>
+                  <FormDescription>
+                    {whatsappConfigured
+                      ? t('communication.sendWhatsAppDescription')
+                      : t('communication.whatsappNotConfigured')}
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        ) : null}
 
         <div className="flex gap-2">
           <Button type="submit" disabled={createDirectMessage.isPending}>

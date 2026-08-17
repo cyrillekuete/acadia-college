@@ -139,16 +139,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
       { title: 'Groups', titleKey: 'nav.groups', path: '/messages/groups' },
     ],
   },
-  {
-    title: 'Announcements',
-    titleKey: 'nav.announcements',
-    icon: 'notification',
-    children: [
-      { title: 'All announcements', titleKey: 'nav.allAnnouncements', path: '/announcements' },
-      { title: 'New announcement', titleKey: 'nav.newAnnouncement', path: '/announcements/new' },
-      { title: 'Events', titleKey: 'nav.events', path: '/announcements/events' },
-    ],
-  },
+  { title: 'Announcements', titleKey: 'nav.announcements', icon: 'notification', path: '/announcements' },
   {
     title: 'Resources',
     titleKey: 'nav.resources',
@@ -214,7 +205,6 @@ const STUDENT_MENU: AcadiaMenuConfig = [
       { title: 'New message', titleKey: 'nav.newMessage', path: '/messages/new' },
     ],
   },
-  { title: 'Announcements', titleKey: 'nav.announcements', icon: 'notification', path: '/announcements' },
   { title: 'Learning materials', titleKey: 'nav.learningMaterials', icon: 'folder', path: '/resources/materials' },
   { title: 'Resource requests', titleKey: 'nav.resourceRequests', icon: 'folder', path: '/resources/requests' },
   {

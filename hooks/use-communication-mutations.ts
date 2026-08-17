@@ -4,25 +4,25 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  announcementNotificationEvent,
   buildMessageReceivedNotification,
-  deriveAnnouncementStatusOnSave,
-  filterUsersByAnnouncementAudience,
   shouldDeliverInAppNotification,
 } from '@/lib/acadia/communication';
 import type {
-  AnnouncementFormValues,
   DirectMessageFormValues,
   GroupThreadFormValues,
   MessageReplyFormValues,
   NotificationPreferenceFormValues,
 } from '@/lib/acadia/communication-schemas';
-import { localDateTimeInputToIso } from '@/lib/acadia/dates';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { getUiLocale } from '@/lib/acadia/locale';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import {
+  fetchWhatsAppConfigured,
+  requestWhatsAppMessageSend,
+} from '@/lib/acadia/whatsapp-request';
+import { formatWhatsAppSendToast } from '@/lib/acadia/whatsapp-types';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import type { AnnouncementAudience } from '@/lib/acadia/communication';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -140,6 +140,12 @@ export function useCommunicationMutations() {
       if (!tenantId || !userId) {
         throw new Error('Session required.');
       }
+      if (values.sendWhatsApp) {
+        const configured = await fetchWhatsAppConfigured();
+        if (!configured) {
+          throw new Error('WhatsApp is not configured on this server.');
+        }
+      }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
       const threadId = generateAcadiaId('mth');
@@ -194,11 +200,21 @@ export function useCommunicationMutations() {
         description: 'Direct message thread created',
       });
 
-      return threadId;
+      let whatsappToast: string | null = null;
+      if (values.sendWhatsApp) {
+        const result = await requestWhatsAppMessageSend(
+          messageId,
+          values.recipientUserId,
+          getUiLocale(),
+        );
+        whatsappToast = formatWhatsAppSendToast(result);
+      }
+
+      return { threadId, whatsappToast };
     },
-    onSuccess: (threadId) => {
+    onSuccess: ({ threadId, whatsappToast }) => {
       invalidateCommunicationQueries(queryClient);
-      toast.success('Message sent.');
+      toast.success(whatsappToast ?? 'Message sent.');
       router.push(`/messages/${threadId}`);
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
@@ -525,159 +541,6 @@ export function useCommunicationMutations() {
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
 
-  const saveAnnouncement = useMutation({
-    mutationFn: async ({
-      values,
-      announcementId,
-    }: {
-      values: AnnouncementFormValues;
-      announcementId?: string;
-    }) => {
-      if (!tenantId || !userId) {
-        throw new Error('Session required.');
-      }
-      const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
-      const id = announcementId ?? generateAcadiaId('ann');
-      const status = deriveAnnouncementStatusOnSave(values, now);
-      const publishedAt =
-        status === 'PUBLISHED' ? now : null;
-      const publishAt = values.publishNow
-        ? now
-        : localDateTimeInputToIso(values.publishAt);
-
-      const row = {
-        kind: values.kind,
-        titleEn: values.titleEn.trim(),
-        titleFr: values.titleFr.trim(),
-        bodyEn: values.bodyEn?.trim() || null,
-        bodyFr: values.bodyFr?.trim() || null,
-        audience: values.audience,
-        status,
-        eventStartsAt: localDateTimeInputToIso(values.eventStartsAt),
-        eventEndsAt: localDateTimeInputToIso(values.eventEndsAt),
-        eventLocation: values.eventLocation?.trim() || null,
-        publishAt,
-        publishedAt,
-        updatedAt: now,
-      };
-
-      if (announcementId) {
-        const { error } = await supabase
-          .from('SchoolAnnouncement')
-          .update(row)
-          .eq('id', announcementId)
-          .eq('tenantId', tenantId);
-        if (error) {
-          throw error;
-        }
-      } else {
-        const { error } = await supabase.from('SchoolAnnouncement').insert({
-          id,
-          tenantId,
-          ...row,
-          createdByUserId: userId,
-          createdAt: now,
-        });
-        if (error) {
-          throw error;
-        }
-      }
-
-      if (status === 'PUBLISHED') {
-        await deliverAnnouncementNotifications(supabase, {
-          tenantId,
-          announcementId: id,
-          kind: values.kind,
-          titleEn: row.titleEn,
-          titleFr: row.titleFr,
-          bodyEn: row.bodyEn,
-          bodyFr: row.bodyFr,
-          audience: values.audience,
-          eventStartsAt: row.eventStartsAt,
-          eventLocation: row.eventLocation,
-        });
-      }
-
-      await appendSystemLog(supabase, {
-        userId,
-        event: status === 'PUBLISHED' ? 'announcement.published' : 'announcement.created',
-        entityId: id,
-        entityType: 'SchoolAnnouncement',
-      });
-
-      return id;
-    },
-    onSuccess: () => {
-      invalidateCommunicationQueries(queryClient);
-      toast.success('Announcement saved.');
-      router.push('/announcements');
-    },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
-  });
-
-  const publishAnnouncementNow = useMutation({
-    mutationFn: async (announcementId: string) => {
-      if (!tenantId || !userId) {
-        throw new Error('Session required.');
-      }
-      const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
-
-      const { data: row, error: fetchError } = await supabase
-        .from('SchoolAnnouncement')
-        .select(
-          'id, kind, titleEn, titleFr, bodyEn, bodyFr, audience, eventStartsAt, eventLocation',
-        )
-        .eq('id', announcementId)
-        .eq('tenantId', tenantId)
-        .single();
-
-      if (fetchError || !row) {
-        throw fetchError ?? new Error('Announcement not found.');
-      }
-
-      const { error } = await supabase
-        .from('SchoolAnnouncement')
-        .update({
-          status: 'PUBLISHED',
-          publishedAt: now,
-          publishAt: now,
-          updatedAt: now,
-        })
-        .eq('id', announcementId)
-        .eq('tenantId', tenantId);
-      if (error) {
-        throw error;
-      }
-
-      await deliverAnnouncementNotifications(supabase, {
-        tenantId,
-        announcementId,
-        kind: row.kind as 'BROADCAST' | 'EVENT',
-        titleEn: row.titleEn as string,
-        titleFr: row.titleFr as string,
-        bodyEn: row.bodyEn as string | null,
-        bodyFr: row.bodyFr as string | null,
-        audience: row.audience as AnnouncementAudience,
-        eventStartsAt: row.eventStartsAt as string | null,
-        eventLocation: row.eventLocation as string | null,
-      });
-
-      await appendSystemLog(supabase, {
-        userId,
-        event: 'announcement.published',
-        entityId: announcementId,
-        entityType: 'SchoolAnnouncement',
-      });
-    },
-    onSuccess: () => {
-      invalidateCommunicationQueries(queryClient);
-      toast.success('Announcement published.');
-    },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
-  });
-
   return {
     createDirectMessage,
     createGroupThread,
@@ -686,105 +549,5 @@ export function useCommunicationMutations() {
     upsertNotificationPreferences,
     markNotificationRead,
     markAllNotificationsRead,
-    saveAnnouncement,
-    publishAnnouncementNow,
   };
-}
-
-async function deliverAnnouncementNotifications(
-  supabase: ReturnType<typeof requireBrowserClient>,
-  input: {
-    tenantId: string;
-    announcementId: string;
-    kind: 'BROADCAST' | 'EVENT';
-    titleEn: string;
-    titleFr: string;
-    bodyEn: string | null;
-    bodyFr: string | null;
-    audience: AnnouncementAudience;
-    eventStartsAt: string | null;
-    eventLocation: string | null;
-  },
-): Promise<number> {
-  const { data: users, error: userError } = await supabase
-    .from('User')
-    .select(
-      `
-      id,
-      UserRole:roleId ( slug )
-    `,
-    )
-    .eq('tenantId', input.tenantId)
-    .eq('status', 'ACTIVE')
-    .eq('isTrashed', false);
-
-  if (userError) {
-    console.error('[deliverAnnouncement]', userError.message);
-    return 0;
-  }
-
-  const recipients = filterUsersByAnnouncementAudience(
-    (users ?? []).map((user) => {
-      const role = user.UserRole as { slug?: string } | null;
-      return {
-        id: user.id as string,
-        roleSlug: role?.slug ?? null,
-      };
-    }),
-    input.audience,
-  );
-
-  if (recipients.length === 0) {
-    return 0;
-  }
-
-  const event = announcementNotificationEvent(input.kind);
-  const recipientIds = recipients.map((r) => r.id);
-
-  const { data: preferences, error: prefError } = await supabase
-    .from('NotificationPreference')
-    .select('userId, inApp')
-    .eq('tenantId', input.tenantId)
-    .eq('event', event)
-    .in('userId', recipientIds);
-
-  if (prefError) {
-    console.error('[deliverAnnouncement] preferences', prefError.message);
-  }
-
-  const prefByUser = new Map(
-    (preferences ?? []).map((p) => [p.userId as string, { inApp: p.inApp as boolean }]),
-  );
-
-  const now = new Date().toISOString();
-  const eventSuffix =
-    input.kind === 'EVENT' && input.eventStartsAt
-      ? ` Event on ${input.eventStartsAt.slice(0, 10)}${input.eventLocation ? ` at ${input.eventLocation}` : ''}.`
-      : '';
-
-  const rows = recipientIds
-    .filter((userId) => shouldDeliverInAppNotification(prefByUser, userId, event))
-    .map((userId) => ({
-      id: generateAcadiaId('notif'),
-      tenantId: input.tenantId,
-      userId,
-      event,
-      titleEn: input.titleEn,
-      titleFr: input.titleFr,
-      bodyEn: input.bodyEn ?? eventSuffix.trim(),
-      bodyFr: input.bodyFr ?? eventSuffix.trim(),
-      data: { announcementId: input.announcementId, kind: input.kind },
-      createdAt: now,
-    }));
-
-  if (rows.length === 0) {
-    return 0;
-  }
-
-  const { error: insertError } = await supabase.from('Notification').insert(rows);
-  if (insertError) {
-    console.error('[deliverAnnouncement] insert', insertError.message);
-    return 0;
-  }
-  return rows.length;
 }

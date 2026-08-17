@@ -77,6 +77,11 @@ export function canManageAnnouncements(roleSlug: string | null | undefined): boo
   return canWriteOperations(roleSlug);
 }
 
+/** Guardian alerts compose, groups, and history (staff and administrators). */
+export function canManageAlerts(roleSlug: string | null | undefined): boolean {
+  return canWriteOperations(roleSlug);
+}
+
 /** All signed-in tenant users may participate in messaging. */
 export function canComposeMessages(_roleSlug: string | null | undefined): boolean {
   return true;

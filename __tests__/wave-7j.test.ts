@@ -223,6 +223,8 @@ describe('notificationHref', () => {
     expect(notificationHref('attendance.absence')).toBe('/attendance');
     expect(notificationHref('marks.published')).toBe('/marks');
     expect(notificationHref('fees.overdue')).toBe('/finance/fees');
+    expect(notificationHref('alert.sent', { alertId: 'alrt-1' })).toBe('/announcements');
+    expect(notificationHref('alert.sent')).toBe('/announcements');
     expect(notificationHref('unknown.event')).toBe('/account/notifications');
   });
 });
@@ -253,6 +255,7 @@ describe('preference helpers', () => {
       { event: 'message.received', inApp: false, email: true },
       { event: 'marks.published', inApp: false, email: true },
       { event: 'fees.overdue', inApp: false, email: true },
+      { event: 'alert.sent', inApp: false, email: true },
     ];
     expect(areAllInAppNotificationsPaused(prefs)).toBe(true);
   });

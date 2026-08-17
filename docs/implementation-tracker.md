@@ -247,6 +247,10 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | F-116 | School announcements broadcast | FR-7.2.1 | `done` | `/announcements` | — | `SchoolAnnouncement` + `AnnouncementsPanel` |
 | F-117 | Event notifications | FR-7.2.2 | `done` | `/announcements/events` | — | Event kind filter |
 | F-118 | Announcement scheduling | FR-7.2.3 | `done` | `/announcements`, `/announcements/new` | — | `AnnouncementForm` publish/schedule |
+| F-118a | Guardian alert compose and send | FR-7.1.3 | `done` | `/alerts`, `/alerts/new` | — | Priority, class/group targeting, in-app `alert.sent` |
+| F-118b | Custom alert groups | FR-7.1.3 | `done` | `/alerts/groups` | — | `SchoolAlertGroup` + member picker |
+| F-118c | Guardian alert inbox | FR-7.1.3 | `done` | `/alerts`, `/alerts/[id]` | — | Read/unread + header bell |
+| F-118d | Alert history and recipient stats | FR-7.1.3 | `done` | `/alerts` | — | Real recipient read counts |
 
 ### 7K — Resource management
 
@@ -318,7 +322,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | FR-6.2.4 | F-107 | — |
 | FR-7.1.1 | F-112 | F-033 (list) |
 | FR-7.1.2 | F-113 | — |
-| FR-7.1.3 | F-114 | F-043b |
+| FR-7.1.3 | F-114, F-118a–F-118d | F-043b |
 | FR-7.1.4 | F-115 | F-043b |
 | FR-7.2.1 | F-116 | — |
 | FR-7.2.2 | F-117 | — |
@@ -379,6 +383,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-08-17 | — | Student fee accounts auto-provisioned from enrollment + class fee plans; class-change rebill carries paid amounts; bulk generate missing accounts |
 | 2026-05-19 | — | Phase 7I: automatic promotion, manual overrides, year rollover, data retention (F-108–F-111) |
 | 2026-05-19 | — | Phase 7J: messaging, group threads, notifications, preferences, announcements (F-112–F-118) |
+| 2026-08-17 | — | Phase 7J alerts: Pison-style guardian compose, groups, inbox, history (F-118a–F-118d) |
 | 2026-05-19 | — | Phase 7K: learning materials, resource inventory/requests, room usage & maintenance (F-119–F-125) |
 | 2026-05-23 | — | Phase 9 backlog added; F-013e marked `na` (specialty removed); role dashboard KPI gaps documented; post-Phase-8 shipped work retro-tracked (P9-01–P9-08) |
 | 2026-05-31 | — | P9-30 account security (Supabase email/password/sessions/delete); P9-31 profile recent uploads from `LearningMaterial` |

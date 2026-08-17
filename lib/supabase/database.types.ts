@@ -2560,6 +2560,240 @@ export type Database = {
           },
         ]
       }
+      SchoolAlert: {
+        Row: {
+          bodyEn: string | null
+          bodyFr: string | null
+          channel: Database["public"]["Enums"]["SchoolAlertChannel"]
+          createdAt: string
+          createdByUserId: string
+          id: string
+          priority: Database["public"]["Enums"]["SchoolAlertPriority"]
+          scheduledAt: string | null
+          sentAt: string | null
+          status: Database["public"]["Enums"]["SchoolAlertStatus"]
+          tenantId: string
+          titleEn: string
+          titleFr: string
+          updatedAt: string
+        }
+        Insert: {
+          bodyEn?: string | null
+          bodyFr?: string | null
+          channel?: Database["public"]["Enums"]["SchoolAlertChannel"]
+          createdAt?: string
+          createdByUserId: string
+          id: string
+          priority?: Database["public"]["Enums"]["SchoolAlertPriority"]
+          scheduledAt?: string | null
+          sentAt?: string | null
+          status?: Database["public"]["Enums"]["SchoolAlertStatus"]
+          tenantId: string
+          titleEn: string
+          titleFr: string
+          updatedAt: string
+        }
+        Update: {
+          bodyEn?: string | null
+          bodyFr?: string | null
+          channel?: Database["public"]["Enums"]["SchoolAlertChannel"]
+          createdAt?: string
+          createdByUserId?: string
+          id?: string
+          priority?: Database["public"]["Enums"]["SchoolAlertPriority"]
+          scheduledAt?: string | null
+          sentAt?: string | null
+          status?: Database["public"]["Enums"]["SchoolAlertStatus"]
+          tenantId?: string
+          titleEn?: string
+          titleFr?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SchoolAlert_createdByUserId_fkey"
+            columns: ["createdByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchoolAlert_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SchoolAlertGroup: {
+        Row: {
+          createdAt: string
+          createdByUserId: string
+          description: string | null
+          groupType: Database["public"]["Enums"]["SchoolAlertGroupType"]
+          id: string
+          name: string
+          tenantId: string
+          updatedAt: string
+        }
+        Insert: {
+          createdAt?: string
+          createdByUserId: string
+          description?: string | null
+          groupType?: Database["public"]["Enums"]["SchoolAlertGroupType"]
+          id: string
+          name: string
+          tenantId: string
+          updatedAt: string
+        }
+        Update: {
+          createdAt?: string
+          createdByUserId?: string
+          description?: string | null
+          groupType?: Database["public"]["Enums"]["SchoolAlertGroupType"]
+          id?: string
+          name?: string
+          tenantId?: string
+          updatedAt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SchoolAlertGroup_createdByUserId_fkey"
+            columns: ["createdByUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchoolAlertGroup_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SchoolAlertGroupMember: {
+        Row: {
+          createdAt: string
+          groupId: string
+          guardianUserId: string
+          id: string
+          tenantId: string
+        }
+        Insert: {
+          createdAt?: string
+          groupId: string
+          guardianUserId: string
+          id: string
+          tenantId: string
+        }
+        Update: {
+          createdAt?: string
+          groupId?: string
+          guardianUserId?: string
+          id?: string
+          tenantId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SchoolAlertGroupMember_groupId_fkey"
+            columns: ["groupId"]
+            isOneToOne: false
+            referencedRelation: "SchoolAlertGroup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchoolAlertGroupMember_guardianUserId_fkey"
+            columns: ["guardianUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchoolAlertGroupMember_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      SchoolAlertRecipient: {
+        Row: {
+          alertId: string
+          createdAt: string
+          guardianUserId: string
+          id: string
+          notificationId: string | null
+          readAt: string | null
+          studentProfileIds: string[]
+          tenantId: string
+          whatsappError: string | null
+          whatsappMessageId: string | null
+          whatsappPhone: string | null
+          whatsappStatus: Database["public"]["Enums"]["WhatsAppOutboundStatus"] | null
+        }
+        Insert: {
+          alertId: string
+          createdAt?: string
+          guardianUserId: string
+          id: string
+          notificationId?: string | null
+          readAt?: string | null
+          studentProfileIds?: string[]
+          tenantId: string
+          whatsappError?: string | null
+          whatsappMessageId?: string | null
+          whatsappPhone?: string | null
+          whatsappStatus?: Database["public"]["Enums"]["WhatsAppOutboundStatus"] | null
+        }
+        Update: {
+          alertId?: string
+          createdAt?: string
+          guardianUserId?: string
+          id?: string
+          notificationId?: string | null
+          readAt?: string | null
+          studentProfileIds?: string[]
+          tenantId?: string
+          whatsappError?: string | null
+          whatsappMessageId?: string | null
+          whatsappPhone?: string | null
+          whatsappStatus?: Database["public"]["Enums"]["WhatsAppOutboundStatus"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "SchoolAlertRecipient_alertId_fkey"
+            columns: ["alertId"]
+            isOneToOne: false
+            referencedRelation: "SchoolAlert"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchoolAlertRecipient_guardianUserId_fkey"
+            columns: ["guardianUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchoolAlertRecipient_notificationId_fkey"
+            columns: ["notificationId"]
+            isOneToOne: false
+            referencedRelation: "Notification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "SchoolAlertRecipient_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       SchoolAnnouncement: {
         Row: {
           audience: Database["public"]["Enums"]["AnnouncementAudience"]
@@ -5403,6 +5637,67 @@ export type Database = {
           },
         ]
       }
+      WhatsAppOutbound: {
+        Row: {
+          createdAt: string
+          id: string
+          messageId: string
+          recipientUserId: string
+          tenantId: string
+          updatedAt: string
+          whatsappError: string | null
+          whatsappMessageId: string | null
+          whatsappPhone: string | null
+          whatsappStatus: Database["public"]["Enums"]["WhatsAppOutboundStatus"]
+        }
+        Insert: {
+          createdAt?: string
+          id: string
+          messageId: string
+          recipientUserId: string
+          tenantId: string
+          updatedAt: string
+          whatsappError?: string | null
+          whatsappMessageId?: string | null
+          whatsappPhone?: string | null
+          whatsappStatus?: Database["public"]["Enums"]["WhatsAppOutboundStatus"]
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          messageId?: string
+          recipientUserId?: string
+          tenantId?: string
+          updatedAt?: string
+          whatsappError?: string | null
+          whatsappMessageId?: string | null
+          whatsappPhone?: string | null
+          whatsappStatus?: Database["public"]["Enums"]["WhatsAppOutboundStatus"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "WhatsAppOutbound_messageId_fkey"
+            columns: ["messageId"]
+            isOneToOne: false
+            referencedRelation: "Message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "WhatsAppOutbound_recipientUserId_fkey"
+            columns: ["recipientUserId"]
+            isOneToOne: false
+            referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "WhatsAppOutbound_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           address: string | null
@@ -5590,6 +5885,10 @@ export type Database = {
         | "CANCELLED"
       SchemeOfWorkStatus: "DRAFT" | "PUBLISHED"
       ScholarshipDiscountKind: "PERCENT_BPS" | "FIXED_MINOR"
+      SchoolAlertChannel: "in_app" | "email" | "sms" | "both" | "whatsapp"
+      SchoolAlertGroupType: "custom"
+      SchoolAlertPriority: "low" | "normal" | "high" | "urgent"
+      SchoolAlertStatus: "DRAFT" | "SCHEDULED" | "SENT" | "CANCELLED"
       SchoolAnnouncementKind: "BROADCAST" | "EVENT"
       SchoolAnnouncementStatus:
         | "DRAFT"
@@ -5608,6 +5907,13 @@ export type Database = {
       TranscriptCopyRequestStatus: "PENDING" | "FULFILLED" | "REJECTED"
       TranscriptVersionStatus: "PENDING" | "READY" | "FAILED"
       UserStatus: "INACTIVE" | "ACTIVE" | "BLOCKED"
+      WhatsAppOutboundStatus:
+        | "queued"
+        | "sent"
+        | "delivered"
+        | "read"
+        | "failed"
+        | "skipped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5805,6 +6111,10 @@ export const Constants = {
       ],
       SchemeOfWorkStatus: ["DRAFT", "PUBLISHED"],
       ScholarshipDiscountKind: ["PERCENT_BPS", "FIXED_MINOR"],
+      SchoolAlertChannel: ["in_app", "email", "sms", "both", "whatsapp"],
+      SchoolAlertGroupType: ["custom"],
+      SchoolAlertPriority: ["low", "normal", "high", "urgent"],
+      SchoolAlertStatus: ["DRAFT", "SCHEDULED", "SENT", "CANCELLED"],
       SchoolAnnouncementKind: ["BROADCAST", "EVENT"],
       SchoolAnnouncementStatus: [
         "DRAFT",
@@ -5825,6 +6135,14 @@ export const Constants = {
       TranscriptCopyRequestStatus: ["PENDING", "FULFILLED", "REJECTED"],
       TranscriptVersionStatus: ["PENDING", "READY", "FAILED"],
       UserStatus: ["INACTIVE", "ACTIVE", "BLOCKED"],
+      WhatsAppOutboundStatus: [
+        "queued",
+        "sent",
+        "delivered",
+        "read",
+        "failed",
+        "skipped",
+      ],
     },
   },
 } as const
