@@ -19,7 +19,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useSchemeDetail,
-  useSchemeTerms,
   useSchemeTopics,
 } from '@/hooks/use-scheme-of-work';
 import { useSchemeOfWorkMutations } from '@/hooks/use-scheme-of-work-mutations';
@@ -73,11 +72,9 @@ export function SchemeCreateSheet({
 
   const detailQuery = useSchemeDetail(open ? schemeId : null);
   const topicsQuery = useSchemeTopics(open ? schemeId : null);
-  const termsQuery = useSchemeTerms(detailQuery.data?.academicYearId ?? null);
 
   const scheme = detailQuery.data;
   const topics = topicsQuery.data ?? [];
-  const terms = termsQuery.data ?? [];
   const published = scheme?.status === 'PUBLISHED';
   const title = [subjectName || scheme?.subjectName, levelName || scheme?.levelName]
     .filter(Boolean)
@@ -129,7 +126,6 @@ export function SchemeCreateSheet({
               ) : scheme ? (
                 <SchemeTopicBoard
                   topics={topics}
-                  terms={terms}
                   canEdit
                   canMark={false}
                   pending={

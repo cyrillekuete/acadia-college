@@ -32,7 +32,6 @@ describe('categorizeActivity', () => {
   it('maps academic events', () => {
     expect(categorizeActivity('student.created')).toBe('academic');
     expect(categorizeActivity('exam_session.finalized')).toBe('academic');
-    expect(categorizeActivity('enrollment.application_approved')).toBe('academic');
     expect(categorizeActivity('academic_year.rollover')).toBe('academic');
   });
 

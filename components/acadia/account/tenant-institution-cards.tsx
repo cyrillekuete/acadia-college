@@ -137,6 +137,13 @@ export function TenantInstitutionCards() {
                 field: 'addressLine1',
               },
               {
+                key: 'addressLine2',
+                label: t('account.addressLine2', { defaultValue: 'Address line 2' }),
+                display: formatRecordValue(tenant.addressLine2),
+                rawValue: tenant.addressLine2,
+                field: 'addressLine2',
+              },
+              {
                 key: 'city',
                 label: t('account.city', { defaultValue: 'City' }),
                 display: formatRecordValue(tenant.city),
@@ -156,6 +163,21 @@ export function TenantInstitutionCards() {
                 display: formatRecordValue(tenant.country),
                 rawValue: tenant.country,
                 field: 'country',
+              },
+              {
+                key: 'secondaryContactName',
+                label: t('account.secondaryContact', { defaultValue: 'Secondary contact' }),
+                display: formatRecordValue(tenant.secondaryContactName),
+                rawValue: tenant.secondaryContactName,
+                field: 'secondaryContactName',
+              },
+              {
+                key: 'secondaryContactEmail',
+                label: t('account.secondaryEmail', { defaultValue: 'Secondary email' }),
+                display: formatRecordValue(tenant.secondaryContactEmail),
+                rawValue: tenant.secondaryContactEmail,
+                field: 'secondaryContactEmail',
+                inputType: 'email',
               },
             ]}
           />
@@ -189,18 +211,13 @@ export function TenantInstitutionCards() {
                 copyable: true,
               },
               {
-                key: 'pdfIssuerDisplayNameEn',
-                label: t('account.pdfIssuerEn', { defaultValue: 'PDF issuer (EN)' }),
-                display: formatRecordValue(tenant.pdfIssuerDisplayNameEn),
-                rawValue: tenant.pdfIssuerDisplayNameEn,
-                field: 'pdfIssuerDisplayNameEn',
-              },
-              {
-                key: 'pdfIssuerDisplayNameFr',
-                label: t('account.pdfIssuerFr', { defaultValue: 'PDF issuer (FR)' }),
-                display: formatRecordValue(tenant.pdfIssuerDisplayNameFr),
-                rawValue: tenant.pdfIssuerDisplayNameFr,
-                field: 'pdfIssuerDisplayNameFr',
+                key: 'reportCardLogoStorageKey',
+                label: t('account.reportCardLogoStorageKey', {
+                  defaultValue: 'Report card logo storage key',
+                }),
+                display: formatRecordValue(tenant.reportCardLogoStorageKey),
+                rawValue: tenant.reportCardLogoStorageKey,
+                copyable: true,
               },
               {
                 key: 'customDomain',

@@ -48,7 +48,7 @@ export function AcadiaUserProfileCards() {
               },
               {
                 label: 'Email confirmed',
-                value: formatRecordValue(!!authUser?.email_confirmed_at),
+                value: formatRecordValue(true),
               },
               {
                 label: 'User ID',

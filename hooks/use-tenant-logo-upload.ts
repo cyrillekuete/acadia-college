@@ -13,6 +13,21 @@ const ALLOWED_TYPES = new Set([
   'image/svg+xml',
 ]);
 
+export type TenantLogoKind = 'institution' | 'reportCard';
+
+const LOGO_UPLOAD_CONFIG = {
+  institution: {
+    fileStem: 'logo',
+    field: 'logoStorageKey',
+    successMessage: 'Institution logo updated.',
+  },
+  reportCard: {
+    fileStem: 'report-card-logo',
+    field: 'reportCardLogoStorageKey',
+    successMessage: 'Report card logo updated.',
+  },
+} as const;
+
 function extensionForFile(file: File): string {
   const map: Record<string, string> = {
     'image/png': 'png',
@@ -23,10 +38,11 @@ function extensionForFile(file: File): string {
   return map[file.type] ?? 'png';
 }
 
-export function useTenantLogoUpload() {
+export function useTenantLogoUpload(kind: TenantLogoKind = 'institution') {
   const queryClient = useQueryClient();
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const config = LOGO_UPLOAD_CONFIG[kind];
 
   return useMutation({
     mutationFn: async (file: File) => {
@@ -42,7 +58,7 @@ export function useTenantLogoUpload() {
 
       const supabase = requireBrowserClient();
       const ext = extensionForFile(file);
-      const storageKey = `${tenantId}/logo.${ext}`;
+      const storageKey = `${tenantId}/${config.fileStem}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from(TENANT_ASSETS_BUCKET)
@@ -54,7 +70,7 @@ export function useTenantLogoUpload() {
 
       const { error: updateError } = await supabase
         .from('Tenant')
-        .update({ logoStorageKey: storageKey, updatedAt: new Date().toISOString() })
+        .update({ [config.field]: storageKey, updatedAt: new Date().toISOString() })
         .eq('id', tenantId);
 
       if (updateError) {
@@ -65,7 +81,7 @@ export function useTenantLogoUpload() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['acadia-tenant'] });
-      toast.success('Institution logo updated.');
+      toast.success(config.successMessage);
     },
     onError: (error: unknown) => {
       const message =

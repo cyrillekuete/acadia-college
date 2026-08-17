@@ -29,8 +29,7 @@ export default function StudentEditPage() {
   if (!student.userId) {
     return (
       <p className="text-sm text-muted-foreground">
-        This student record cannot be edited here. Complete enrollment via the
-        applications workflow or contact an administrator.
+        This student record cannot be edited here. Contact an administrator.
       </p>
     );
   }

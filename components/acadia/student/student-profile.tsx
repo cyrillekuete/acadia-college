@@ -62,15 +62,9 @@ export function StudentProfile({
             <dt>Email address:</dt>
             <dd className="flex items-center gap-2.5">
               <span>{student.email}</span>
-              {student.email_verified ? (
-                <Badge variant="secondary" appearance="light">
-                  Verified
-                </Badge>
-              ) : (
-                <Badge variant="warning" appearance="light">
-                  Not verified
-                </Badge>
-              )}
+              <Badge variant="secondary" appearance="light">
+                Verified
+              </Badge>
             </dd>
           </div>
           <div className="col-span-2 grid grid-cols-subgrid items-baseline">

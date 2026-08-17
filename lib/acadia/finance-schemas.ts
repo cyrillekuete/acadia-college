@@ -26,16 +26,40 @@ export type FeeInstallmentTemplateValues = z.infer<
   typeof feeInstallmentTemplateSchema
 >;
 
-export const streamFeePlanSchema = z.object({
-  id: z.string().optional(),
-  academicYearId: z.string().min(1, 'validation.required.academicYear'),
-  classIds: z
-    .array(z.string().min(1))
-    .min(1, 'validation.required.classes'),
-  installments: z
-    .array(feeInstallmentTemplateSchema)
-    .min(1, 'validation.required.installment'),
-});
+export const streamFeePlanSchema = z
+  .object({
+    id: z.string().optional(),
+    academicYearId: z.string().min(1, 'validation.required.academicYear'),
+    classIds: z
+      .array(z.string().min(1))
+      .min(1, 'validation.required.classes'),
+    totalAmountMinor: z.coerce
+      .number()
+      .int()
+      .min(1, 'validation.amountPositive'),
+    installments: z
+      .array(feeInstallmentTemplateSchema)
+      .min(1, 'validation.required.installment'),
+  })
+  .superRefine((value, ctx) => {
+    const sum = value.installments.reduce(
+      (total, row) => total + (Number(row.amountMinor) || 0),
+      0,
+    );
+    if (sum === value.totalAmountMinor) {
+      return;
+    }
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'validation.installmentsMustMatchTotal',
+      path: ['totalAmountMinor'],
+    });
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'validation.installmentsMustMatchTotal',
+      path: ['installments'],
+    });
+  });
 
 export type StreamFeePlanFormValues = z.infer<typeof streamFeePlanSchema>;
 

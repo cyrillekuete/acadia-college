@@ -3,6 +3,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveClassForEnrollment } from '@/lib/acadia/class-assignment';
+import { ensureStudentFeeAccount } from '@/lib/acadia/fee-account-provision';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { UserStatus } from '@/app/models/user';
 
@@ -68,6 +69,7 @@ export async function provisionStudentProfileAndEnrollment(
       status: UserStatus.ACTIVE,
       country: input.country?.trim() || null,
       invitedByUserId: input.actorUserId,
+      emailVerifiedAt: now,
       createdAt: now,
       updatedAt: now,
       isTrashed: false,
@@ -136,7 +138,6 @@ export async function provisionStudentProfileAndEnrollment(
       levelId: input.levelId,
       classId,
       status: 'ENROLLED',
-      applicationId: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -153,6 +154,22 @@ export async function provisionStudentProfileAndEnrollment(
       message: enrollmentError.message ?? 'Failed to create student enrollment.',
       status: 400,
     };
+  }
+
+  if (classId) {
+    const feeResult = await ensureStudentFeeAccount(supabase, {
+      tenantId: input.tenantId,
+      studentProfileId,
+      academicYearId: input.academicYearId,
+      subSystem: input.subSystem,
+      branch: input.branch,
+      studentEnrollmentId: enrollmentId,
+      classId,
+      actorUserId: input.actorUserId,
+    });
+    if (!feeResult.ok && feeResult.reason === 'error') {
+      console.error('[ensureStudentFeeAccount]', feeResult.message);
+    }
   }
 
   return {

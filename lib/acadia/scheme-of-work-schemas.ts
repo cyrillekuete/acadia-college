@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  SCHEME_OF_WORK_STATUSES,
-  SCHEME_OF_WORK_WEEK_MAX,
-  SCHEME_OF_WORK_WEEK_MIN,
-} from '@/lib/acadia/scheme-of-work';
+import { SCHEME_OF_WORK_STATUSES } from '@/lib/acadia/scheme-of-work';
 
 export const schemeOfWorkCreateSchema = z.object({
   academicYearId: z.string().min(1, 'validation.required.academicYear'),
@@ -20,12 +16,7 @@ export const schemeOfWorkStatusSchema = z.object({
 export type SchemeOfWorkStatusValues = z.infer<typeof schemeOfWorkStatusSchema>;
 
 export const schemeOfWorkTopicSchema = z.object({
-  termId: z.string().min(1, 'validation.required.term'),
-  weekNumber: z.coerce
-    .number()
-    .int()
-    .min(SCHEME_OF_WORK_WEEK_MIN, 'schemeOfWork.validation.week')
-    .max(SCHEME_OF_WORK_WEEK_MAX, 'schemeOfWork.validation.week'),
+  parentTopicId: z.string().trim().optional().or(z.literal('')),
   titleEn: z.string().trim().min(1, 'validation.required.titleEn'),
   titleFr: z.string().trim().optional().or(z.literal('')),
   descriptionEn: z.string().optional().or(z.literal('')),

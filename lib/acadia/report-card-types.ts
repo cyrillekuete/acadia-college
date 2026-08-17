@@ -122,6 +122,39 @@ export type ReportCardBranding = {
   principalName: string;
 };
 
+const FALLBACK_INSTITUTION_NAME = 'Acadia College';
+
+/** Bulletin header names come from Institution Name (EN) / Name (FR), not PDF issuer. */
+export function resolveReportCardInstitutionNames(tenant: {
+  displayNameEn?: string | null;
+  displayNameFr?: string | null;
+} | null | undefined): Pick<ReportCardBranding, 'displayNameEn' | 'displayNameFr'> {
+  const displayNameEn = tenant?.displayNameEn?.trim() || FALLBACK_INSTITUTION_NAME;
+  const displayNameFr = tenant?.displayNameFr?.trim() || displayNameEn;
+  return { displayNameEn, displayNameFr };
+}
+
+export type ReportCardQrInput = {
+  studentProfileId: string;
+  matricule: string;
+  academicYear: string;
+  term: AcademicInfo['term'];
+};
+
+/** Stable, system-generated bulletin QR unique to each student (and period). */
+export function buildReportCardQrValue(input: ReportCardQrInput): string {
+  const student = input.studentProfileId.trim() || input.matricule.trim();
+  const matricule = input.matricule.trim() || student;
+  const term = input.term === 'annual' ? 'annual' : Number(input.term);
+  return JSON.stringify({
+    kind: 'acadia-bulletin',
+    student,
+    matricule,
+    year: input.academicYear.trim(),
+    term,
+  });
+}
+
 export type ReportCardData = {
   student: StudentInfo;
   academic: AcademicInfo;

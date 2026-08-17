@@ -57,7 +57,7 @@ const SELECT = `
   userId,
   entityType,
   entityId,
-  User:userId ( email, name )
+  User:userId ( email, name, tenantId )
 `;
 
 type SystemLogRow = {
@@ -155,7 +155,12 @@ export function SystemLogDataGrid({
   const [selectedSeverities, setSelectedSeverities] = useState<string[]>([]);
 
   const { data: logs = [], isLoading, isError, error } =
-    useSupabaseTableList<SystemLogRow>('SystemLog', SELECT);
+    useSupabaseTableList<SystemLogRow>(
+      'SystemLog',
+      SELECT,
+      // SystemLog has no tenantId column; tenant isolation is via the actor User.
+      'User.tenantId',
+    );
 
   const displayRows = useMemo(() => {
     let rows = logs.map(mapLogRow);
@@ -362,11 +367,16 @@ export function SystemLogDataGrid({
   };
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive">
-        {error instanceof Error ? error.message : 'Failed to load logs.'}
-      </p>
-    );
+    const message =
+      error instanceof Error
+        ? error.message
+        : error &&
+            typeof error === 'object' &&
+            'message' in error &&
+            typeof error.message === 'string'
+          ? error.message
+          : 'Failed to load logs.';
+    return <p className="text-sm text-destructive">{message}</p>;
   }
 
   return (

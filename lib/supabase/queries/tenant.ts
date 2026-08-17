@@ -12,6 +12,7 @@ export type AcadiaTenant = {
   timezone: string;
   country: string | null;
   logoStorageKey: string | null;
+  reportCardLogoStorageKey: string | null;
   primaryColor: string | null;
   accentColor: string | null;
   institutionEmail: string | null;
@@ -50,6 +51,7 @@ export const ACADIA_TENANT_SELECT = `
   timezone,
   country,
   logoStorageKey,
+  reportCardLogoStorageKey,
   primaryColor,
   accentColor,
   institutionEmail,

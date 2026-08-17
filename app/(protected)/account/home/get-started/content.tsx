@@ -3,7 +3,6 @@
 import {
   Book,
   CalendarCheck,
-  FileText,
   Settings,
   Users,
   Wallet,
@@ -29,12 +28,6 @@ export function AccountGetStartedContent() {
       title: 'Subjects',
       desc: 'Subject catalog and assignments.',
       path: '/subjects',
-    },
-    {
-      icon: FileText,
-      title: 'Enrollment',
-      desc: 'Applications and student enrollments.',
-      path: '/enrollment/applications',
     },
     {
       icon: CalendarCheck,

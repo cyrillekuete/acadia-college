@@ -414,6 +414,9 @@ function DataGridTableRowSelectAll({ size }: { size?: 'sm' | 'md' | 'lg' }) {
 function DataGridTable<TData>() {
   const { table, isLoading, props } = useDataGrid();
   const pagination = table.getState().pagination;
+  const hasExpandedContent = table
+    .getAllColumns()
+    .some((column) => column.columnDef.meta?.expandedContent);
 
   return (
     <DataGridTableBase>
@@ -466,7 +469,9 @@ function DataGridTable<TData>() {
                     );
                   })}
                 </DataGridTableBodyRow>
-                {row.getIsExpanded() && <DataGridTableBodyRowExpandded row={row} />}
+                {row.getIsExpanded() && hasExpandedContent ? (
+                  <DataGridTableBodyRowExpandded row={row} />
+                ) : null}
               </Fragment>
             );
           })

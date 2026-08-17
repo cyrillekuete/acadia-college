@@ -25,7 +25,12 @@ import {
   isNegativeRemark,
   sanitizeReportCardFilenamePart,
 } from '@/lib/acadia/report-card-grading';
-import type { ReportCardBranding, SubjectGrade } from '@/lib/acadia/report-card-types';
+import {
+  buildReportCardQrValue,
+  resolveReportCardInstitutionNames,
+  type ReportCardBranding,
+  type SubjectGrade,
+} from '@/lib/acadia/report-card-types';
 
 const branding: ReportCardBranding = {
   displayNameEn: 'Acadia College',
@@ -36,6 +41,53 @@ const branding: ReportCardBranding = {
   regionFr: 'Délégation Régionale de Littoral',
   principalName: 'Principal',
 };
+
+describe('buildReportCardQrValue', () => {
+  it('is unique per student and stable across renders', () => {
+    const ada = {
+      studentProfileId: 's1',
+      matricule: 'AC-001',
+      academicYear: '2025/2026',
+      term: 1 as const,
+    };
+    const alan = { ...ada, studentProfileId: 's2', matricule: 'AC-002' };
+    expect(buildReportCardQrValue(ada)).toBe(buildReportCardQrValue(ada));
+    expect(buildReportCardQrValue(ada)).not.toBe(buildReportCardQrValue(alan));
+    expect(JSON.parse(buildReportCardQrValue(ada))).toMatchObject({
+      kind: 'acadia-bulletin',
+      student: 's1',
+      matricule: 'AC-001',
+      year: '2025/2026',
+      term: 1,
+    });
+  });
+});
+
+describe('resolveReportCardInstitutionNames', () => {
+  it('uses institution Name (EN) and Name (FR)', () => {
+    expect(
+      resolveReportCardInstitutionNames({
+        displayNameEn: 'Acadia College',
+        displayNameFr: 'Collège Acadia',
+      }),
+    ).toEqual({
+      displayNameEn: 'Acadia College',
+      displayNameFr: 'Collège Acadia',
+    });
+  });
+
+  it('falls back French name to Name (EN) when Name (FR) is blank', () => {
+    expect(
+      resolveReportCardInstitutionNames({
+        displayNameEn: '  Acadia College  ',
+        displayNameFr: '  ',
+      }),
+    ).toEqual({
+      displayNameEn: 'Acadia College',
+      displayNameFr: 'Acadia College',
+    });
+  });
+});
 
 const math: ReportCardSubjectDef = {
   subjectId: 'math',

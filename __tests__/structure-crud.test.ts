@@ -110,7 +110,6 @@ const emptyBlockers: LevelDeleteBlockers = {
   classEnrollments: 0,
   promotionClassRefs: 0,
   enrollments: 0,
-  applications: 0,
   subjects: 0,
   subjectLevels: 0,
   subjectOfferings: 0,

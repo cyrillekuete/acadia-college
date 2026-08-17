@@ -202,8 +202,11 @@ describe('normalizeSignInError', () => {
     );
   });
 
-  it('maps unconfirmed email', () => {
+  it('maps unconfirmed email without asking the user to verify', () => {
     expect(normalizeSignInError(new Error('Email not confirmed'))).toContain(
+      'Contact an administrator',
+    );
+    expect(normalizeSignInError(new Error('Email not confirmed'))).not.toContain(
       'confirm your email',
     );
   });

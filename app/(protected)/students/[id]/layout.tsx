@@ -3,8 +3,11 @@
 import React, { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, MoveLeft, UserPen } from '@/lib/icons';
+import { Activity, MoveLeft, UserPen, Wallet } from '@/lib/icons';
 import { useStudentDetailQuery } from '@/hooks/use-student-detail-query';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canWriteFinance } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 import { ViewingAcademicYearBanner } from '@/components/acadia/academics/viewing-academic-year-banner';
 import {
   Breadcrumb,
@@ -45,6 +48,9 @@ export default function StudentDetailLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
+  const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
+  const showFees = canWriteFinance(session?.roleSlug);
 
   const { data: student, isLoading, isFetched, isError } =
     useStudentDetailQuery(id);
@@ -55,21 +61,28 @@ export default function StudentDetailLayout({
     }
   }, [isFetched, student, isError, router]);
 
-  const navRoutes = useMemo<NavRoutes>(
-    () => ({
+  const navRoutes = useMemo<NavRoutes>(() => {
+    const routes: NavRoutes = {
       profile: {
-        title: 'Profile',
+        title: t('students.tabProfile'),
         icon: UserPen,
         path: `/students/${id}`,
       },
-      logs: {
-        title: 'Activity Logs',
-        icon: Activity,
-        path: `/students/${id}/logs`,
-      },
-    }),
-    [id],
-  );
+    };
+    if (showFees) {
+      routes.fees = {
+        title: t('students.fees'),
+        icon: Wallet,
+        path: `/students/${id}/fees`,
+      };
+    }
+    routes.logs = {
+      title: t('students.activityLogs'),
+      icon: Activity,
+      path: `/students/${id}/logs`,
+    };
+    return routes;
+  }, [id, showFees, t]);
 
   useEffect(() => {
     const found = Object.keys(navRoutes).find(

@@ -24,8 +24,11 @@ import {
   type StreamFeePlanFormValues,
 } from '@/lib/acadia/finance-schemas';
 import {
+  applyDefaultFeeInstallmentSplit,
+  defaultFeeInstallmentTemplates,
   formatMoneyMinor,
   parseMoneyToMinor,
+  splitTuitionIntoDefaultInstallments,
   sumInstallmentTemplates,
   type FeePlanRow,
 } from '@/lib/acadia/finance';
@@ -41,13 +44,23 @@ import { useTranslation } from '@/hooks/useTranslation';
 
 export const FEE_PLAN_FORM_ID = 'fee-plan-setup-form';
 
-const defaultInstallment = {
-  installmentNumber: 1,
-  labelEn: 'First installment',
-  labelFr: 'Première tranche',
-  amountMinor: 0,
-  dueOn: '',
-};
+function valuesFromRecord(
+  record: FeePlanRow | null | undefined,
+  academicYearId: string,
+): StreamFeePlanFormValues {
+  const installments = record?.installments.length
+    ? record.installments
+    : defaultFeeInstallmentTemplates();
+  return {
+    id: record?.id,
+    academicYearId,
+    classIds: record?.classes.map((row) => row.id) ?? [],
+    totalAmountMinor: record?.installments.length
+      ? sumInstallmentTemplates(record.installments)
+      : 0,
+    installments,
+  };
+}
 
 export function FeePlanSetupForm({
   record,
@@ -75,14 +88,7 @@ export function FeePlanSetupForm({
 
   const form = useForm<StreamFeePlanFormValues>({
     resolver: zodResolver(streamFeePlanSchema),
-    defaultValues: {
-      id: record?.id,
-      academicYearId: activeYearId ?? '',
-      classIds: record?.classes.map((row) => row.id) ?? [],
-      installments: record?.installments.length
-        ? record.installments
-        : [{ ...defaultInstallment }],
-    },
+    defaultValues: valuesFromRecord(record, activeYearId ?? ''),
   });
 
   const { fields, append, remove, replace } = useFieldArray({
@@ -91,19 +97,9 @@ export function FeePlanSetupForm({
   });
 
   useEffect(() => {
-    form.reset({
-      id: record?.id,
-      academicYearId: activeYearId ?? '',
-      classIds: record?.classes.map((row) => row.id) ?? [],
-      installments: record?.installments.length
-        ? record.installments
-        : [{ ...defaultInstallment }],
-    });
-    replace(
-      record?.installments.length
-        ? record.installments
-        : [{ ...defaultInstallment }],
-    );
+    const next = valuesFromRecord(record, activeYearId ?? '');
+    form.reset(next);
+    replace(next.installments);
     setCatalogFilters(EMPTY_CATALOG_FILTERS);
   }, [record, activeYearId, form, replace]);
 
@@ -133,12 +129,17 @@ export function FeePlanSetupForm({
   );
 
   const installments = form.watch('installments');
-  const totalMinor = sumInstallmentTemplates(
+  const fullAmountMinor = Number(form.watch('totalAmountMinor')) || 0;
+  const installmentSumMinor = sumInstallmentTemplates(
     installments.map((row) => ({
       ...row,
       amountMinor: Number(row.amountMinor) || 0,
     })),
   );
+  const differenceMinor = fullAmountMinor - installmentSumMinor;
+  const installmentArrayError =
+    form.formState.errors.installments?.message ??
+    form.formState.errors.installments?.root?.message;
 
   const pending = saveStreamFeePlan.isPending;
 
@@ -203,13 +204,66 @@ export function FeePlanSetupForm({
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="totalAmountMinor"
+          render={({ field: f }) => (
+            <FormItem>
+              <FormLabel>{t('finance.fullAmount')}</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={f.value ? f.value / 100 : ''}
+                  onChange={(e) => {
+                    const nextTotal = parseMoneyToMinor(e.target.value);
+                    f.onChange(nextTotal);
+                    if (nextTotal <= 0) {
+                      return;
+                    }
+                    replace(
+                      applyDefaultFeeInstallmentSplit(
+                        form.getValues('installments'),
+                        splitTuitionIntoDefaultInstallments(nextTotal),
+                      ),
+                    );
+                    form.clearErrors(['totalAmountMinor', 'installments']);
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">{t('finance.installments')}</h3>
-            <p className="text-sm text-muted-foreground">
-              {t('finance.totalAmount')}: {formatMoneyMinor(totalMinor)}
-            </p>
+            {differenceMinor !== 0 && fullAmountMinor > 0 ? (
+              <p
+                className={
+                  differenceMinor < 0
+                    ? 'text-sm text-destructive'
+                    : 'text-sm text-muted-foreground'
+                }
+              >
+                {t(
+                  differenceMinor < 0
+                    ? 'finance.installmentSumOverage'
+                    : 'finance.installmentSumRemaining',
+                  { amount: formatMoneyMinor(Math.abs(differenceMinor)) },
+                )}
+              </p>
+            ) : null}
           </div>
+          {installmentArrayError ? (
+            <p className="text-xs text-destructive">
+              {t(String(installmentArrayError), {
+                defaultValue: String(installmentArrayError),
+              })}
+            </p>
+          ) : null}
 
           {fields.map((field, index) => (
             <div
@@ -300,8 +354,11 @@ export function FeePlanSetupForm({
             size="sm"
             onClick={() =>
               append({
-                ...defaultInstallment,
                 installmentNumber: fields.length + 1,
+                labelEn: 'Installment',
+                labelFr: 'Échéance',
+                amountMinor: 0,
+                dueOn: '',
               })
             }
           >

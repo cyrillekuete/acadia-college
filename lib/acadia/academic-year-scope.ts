@@ -5,7 +5,6 @@ export const ACADEMIC_YEAR_SCOPED_TABLES = new Set([
   'AttendanceSession',
   'ClassPromotionPolicy',
   'CourseworkTask',
-  'EnrollmentApplication',
   'ExamSession',
   'FinanceBudgetLine',
   'FinanceLedgerEntry',

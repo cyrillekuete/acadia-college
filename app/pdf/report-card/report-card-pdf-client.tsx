@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { ReportCardView } from '@/components/acadia/report-cards/report-card-view';
+import {
+  PdfDocumentReadyMarker,
+  usePdfDocumentReady,
+} from '@/hooks/use-pdf-document-ready';
 import type { ReportCardData } from '@/lib/acadia/report-card-types';
 
 export default function ReportCardPdfClient({
@@ -17,6 +21,7 @@ export default function ReportCardPdfClient({
 }) {
   const [data] = useState<ReportCardData | null>(initialData);
   const [error] = useState<string | null>(initialError);
+  const ready = usePdfDocumentReady(Boolean(data) && !error);
 
   if (!studentId) {
     return (
@@ -54,12 +59,7 @@ export default function ReportCardPdfClient({
   return (
     <>
       <ReportCardView data={viewData} variant="pdfRender" />
-      <div
-        id="report-card-pdf-ready"
-        data-pdf-ready="true"
-        aria-hidden
-        style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
-      />
+      <PdfDocumentReadyMarker ready={ready} />
     </>
   );
 }

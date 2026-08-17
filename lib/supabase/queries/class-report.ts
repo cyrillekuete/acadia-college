@@ -13,10 +13,11 @@ import {
   type ReportCardMarkRow,
   type ReportCardSubjectDef,
 } from '@/lib/acadia/report-card';
+import { resolveReportCardInstitutionNames } from '@/lib/acadia/report-card-types';
 import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 import { fetchAcadiaTenant } from '@/lib/supabase/queries/tenant';
 import { embed, FK } from '@/lib/supabase/embed-selects';
-import { getTenantAssetPublicUrl } from '@/lib/supabase/storage';
+import { resolveReportCardLogoUrl } from '@/lib/supabase/storage';
 
 const STUDENT_PROFILE_SELECT = `
   id,
@@ -388,7 +389,7 @@ export async function fetchClassReportBundle(
     }
   }
 
-  const logoUrl = getTenantAssetPublicUrl(tenant?.logoStorageKey);
+  const logoUrl = resolveReportCardLogoUrl(tenant);
   const addressParts = [
     tenant?.addressLine1,
     tenant?.addressLine2,
@@ -413,15 +414,7 @@ export async function fetchClassReportBundle(
     marks,
     students,
     branding: {
-      displayNameEn:
-        tenant?.pdfIssuerDisplayNameEn?.trim() ||
-        tenant?.displayNameEn?.trim() ||
-        'Acadia College',
-      displayNameFr:
-        tenant?.pdfIssuerDisplayNameFr?.trim() ||
-        tenant?.displayNameFr?.trim() ||
-        tenant?.displayNameEn?.trim() ||
-        'Acadia College',
+      ...resolveReportCardInstitutionNames(tenant),
       logoUrl,
       contactLine: contactLine || '—',
       regionEn: `Regional Delegation of ${region}`,

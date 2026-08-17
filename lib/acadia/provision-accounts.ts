@@ -6,7 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { normalizeMatriculeNumber } from '@/lib/acadia/enrollment';
+import { normalizeMatriculeNumber } from '@/lib/acadia/student-ids';
 import { generateTemporaryPassword } from '@/lib/acadia/generate-temporary-password';
 import { generateStudentId, generateParentCode } from '@/lib/acadia/ids';
 import { normalizePhoneForLookup } from '@/lib/acadia/phone';

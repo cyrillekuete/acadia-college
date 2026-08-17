@@ -12,7 +12,10 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     title: 'Students',
     titleKey: 'nav.students',
     icon: 'users',
-    path: '/students',
+    children: [
+      { title: 'Students', titleKey: 'nav.students', path: '/students' },
+      { title: 'Class rosters', titleKey: 'nav.classRosters', path: '/classes' },
+    ],
   },
   {
     title: 'Staff',
@@ -52,16 +55,6 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     path: '/timetable',
   },
   { heading: 'Operations', headingKey: 'nav.operations' },
-  {
-    title: 'Enrollment',
-    titleKey: 'nav.enrollment',
-    icon: 'file-sheet',
-    children: [
-      { title: 'Applications', titleKey: 'nav.applications', path: '/enrollment/applications' },
-      { title: 'Enrollments', titleKey: 'nav.enrollments', path: '/enrollment/enrollments' },
-      { title: 'Class rosters', titleKey: 'nav.classRosters', path: '/classes' },
-    ],
-  },
   {
     title: 'Attendance',
     titleKey: 'nav.attendance',
@@ -124,8 +117,6 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
       { title: 'Expenditures', titleKey: 'nav.expenditures', path: '/finance/expenditures' },
       { title: 'Fee plan setup', titleKey: 'nav.feePlanSetup', path: '/finance/fees/setup' },
       { title: 'Financial reports', titleKey: 'nav.financialReports', path: '/finance/reports' },
-      { title: 'Ledger', titleKey: 'nav.ledger', path: '/finance/ledger' },
-      { title: 'Budget', titleKey: 'nav.budget', path: '/finance/budget' },
       { title: 'Scholarships', titleKey: 'nav.scholarships', path: '/finance/scholarships' },
     ],
   },
@@ -319,8 +310,6 @@ const BURSAR_MENU: AcadiaMenuConfig = [
       { title: 'Expenditures', titleKey: 'nav.expenditures', path: '/finance/expenditures' },
       { title: 'Fee plan setup', titleKey: 'nav.feePlanSetup', path: '/finance/fees/setup' },
       { title: 'Financial reports', titleKey: 'nav.financialReports', path: '/finance/reports' },
-      { title: 'Ledger', titleKey: 'nav.ledger', path: '/finance/ledger' },
-      { title: 'Budget', titleKey: 'nav.budget', path: '/finance/budget' },
       { title: 'Scholarships', titleKey: 'nav.scholarships', path: '/finance/scholarships' },
     ],
   },
@@ -395,7 +384,7 @@ type NavbarRoleKey =
 const NAVBAR_QUICK_LINK_KEYS: Record<NavbarRoleKey, string[]> = {
   default: [
     'nav.academicStructure',
-    'nav.enrollment',
+    'nav.students',
     'nav.finance',
     'nav.userManagement',
   ],

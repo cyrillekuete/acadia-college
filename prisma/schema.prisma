@@ -27,7 +27,7 @@ model User {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   lastSignInAt    DateTime?
-  emailVerifiedAt DateTime?
+  emailVerifiedAt DateTime? @default(now())
   isTrashed       Boolean     @default(false)
   avatar          String?
   invitedByUserId String?

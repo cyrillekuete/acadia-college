@@ -108,7 +108,7 @@ export default function ClassRostersPage() {
 
   return (
     <AcadiaPageShell
-      title={t('enrollment.classRosters')}
+      title={t('nav.classRosters')}
       description="Students enrolled by academic year, sub-system, branch, and level."
     >
       <div className="mb-4 flex flex-wrap items-end gap-3">

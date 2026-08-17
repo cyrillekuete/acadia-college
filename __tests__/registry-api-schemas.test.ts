@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { studentCreateSchema } from '@/lib/acadia/student-create-schemas';
-import { reviewApplicationSchema } from '@/lib/acadia/enrollment-schemas';
 
 describe('registry API input schemas', () => {
   it('student create requires catalog placement fields', () => {
@@ -14,14 +13,5 @@ describe('registry API input schemas', () => {
       parent_relationship: 'father',
     });
     expect(result.success).toBe(false);
-  });
-
-  it('approve review accepts optional classId', () => {
-    expect(
-      reviewApplicationSchema.safeParse({
-        decision: 'approve',
-        classId: 'class-1',
-      }).success,
-    ).toBe(true);
   });
 });

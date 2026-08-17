@@ -12,7 +12,7 @@ export function normalizeSignInError(error: AuthError | Error): string {
   }
 
   if (message.includes('email not confirmed')) {
-    return 'Please confirm your email before signing in.';
+    return 'This account is not ready to sign in. Contact an administrator.';
   }
 
   if (message.includes('too many requests') || message.includes('rate limit')) {

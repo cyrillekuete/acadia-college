@@ -10,8 +10,9 @@ import {
   REPORT_CARD_THEME,
   reportCardPeriodLabel,
 } from '@/components/acadia/report-cards/report-card-theme';
+import { buildReportCardQrValue } from '@/lib/acadia/report-card-types';
 
-const { navy, gold, green, red, border } = REPORT_CARD_THEME;
+const { navy, gold, grouping, green, red, border } = REPORT_CARD_THEME;
 
 const TERM_NAMES: Record<number, { en: string; fr: string; ordinal: string }> = {
   1: { en: 'FIRST TERM', fr: 'Premier Trimestre', ordinal: 'FIRST' },
@@ -44,19 +45,13 @@ export function ReportCardHeader({
 
   const qrCodeData = useMemo(
     () =>
-      JSON.stringify({
-        recordId: data.student.id,
-        studentId: data.student.studentId,
-        studentName: data.student.name,
-        orderNo: data.academic.orderNo,
+      buildReportCardQrValue({
+        studentProfileId: data.student.id,
+        matricule: data.student.studentId,
         academicYear: data.academic.year,
         term: mode === 'annual' ? 'annual' : term,
-        className: data.student.className,
-        termAvg: data.totals.average,
-        rank: data.history.rank ?? 0,
-        generatedAt: new Date().toISOString(),
       }),
-    [data, mode, term],
+    [data.student.id, data.student.studentId, data.academic.year, mode, term],
   );
 
   return (
@@ -140,6 +135,7 @@ export function ReportCardHeader({
                   value={qrCodeData}
                   size={40}
                   style={{ width: 38, height: 38 }}
+                  title={`Report card ${data.student.studentId || data.student.id}`}
                 />
               </div>
             </div>
@@ -319,8 +315,8 @@ function ClassPerformanceStatistics({ data }: { data: ReportCardData }) {
   return (
     <div className="relative z-10 mb-2 print:mb-1">
       <div
-        className="rc-gold px-2 py-1 print:py-0.5 text-center text-[10px] print:text-[8pt] font-bold uppercase tracking-wide"
-        style={{ backgroundColor: gold, color: navy }}
+        className="rc-grouping px-2 py-1 print:py-0.5 text-center text-[10px] print:text-[8pt] font-bold uppercase tracking-wide"
+        style={{ backgroundColor: grouping, color: navy }}
       >
         Class Performance Statistics — {data.student.className}, {period}
       </div>

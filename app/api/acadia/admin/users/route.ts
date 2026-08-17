@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createUserSchema } from '@/lib/acadia/user-schemas';
 import { requireAdminApi } from '@/lib/acadia/require-admin-api';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import { acadiaEmailVerifiedAt } from '@/lib/acadia/email-verified';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { UserStatus } from '@/app/models/user';
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
     country: values.country?.trim() || null,
     timezone: values.timezone?.trim() || null,
     invitedByUserId: auth.ctx.actorUserId,
+    emailVerifiedAt: acadiaEmailVerifiedAt(now),
     createdAt: now,
     updatedAt: now,
     isTrashed: false,

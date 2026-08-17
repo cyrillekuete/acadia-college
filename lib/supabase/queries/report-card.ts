@@ -14,14 +14,18 @@ import {
   type ReportCardMarkRow,
   type ReportCardSubjectDef,
 } from '@/lib/acadia/report-card';
-import type { ReportCardData, ReportCardTerm } from '@/lib/acadia/report-card-types';
+import {
+  resolveReportCardInstitutionNames,
+  type ReportCardData,
+  type ReportCardTerm,
+} from '@/lib/acadia/report-card-types';
 import { resolveReportCardTemplate } from '@/lib/acadia/report-card-templates';
 import { embed, FK } from '@/lib/supabase/embed-selects';
 import { fetchStudentTermDiscipline } from '@/lib/supabase/queries/class-discipline';
 import { fetchReportCardTemplatePreference } from '@/lib/supabase/queries/report-card-templates';
 import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 import { fetchAcadiaTenant } from '@/lib/supabase/queries/tenant';
-import { getTenantAssetPublicUrl } from '@/lib/supabase/storage';
+import { resolveReportCardLogoUrl } from '@/lib/supabase/storage';
 
 const STUDENT_PROFILE_SELECT = `
   id,
@@ -202,29 +206,11 @@ export async function fetchReportCardBundle(
     ),
   ]);
 
-  let applicationResult: {
-    dateOfBirth: string | null;
-    firstNameEn: string;
-    lastNameEn: string;
-  } | null = null;
   let legacyUserResult: {
     gender: string | null;
     date_of_birth: string | null;
     avatar_url: string | null;
   } | null = null;
-  try {
-    const { data } = await supabase
-      .from('EnrollmentApplication')
-      .select('dateOfBirth, firstNameEn, lastNameEn')
-      .eq('tenantId', tenantId)
-      .eq('studentProfileId', studentProfileId)
-      .order('createdAt', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    applicationResult = data;
-  } catch {
-    applicationResult = null;
-  }
   try {
     const { data } = await supabase
       .from('users')
@@ -425,15 +411,10 @@ export async function fetchReportCardBundle(
     profile.User,
   );
   const { first, last } = splitStudentName(user?.name);
-  const application = applicationResult;
   const legacy = legacyUserResult;
-  const dob = formatDob(
-    (application?.dateOfBirth as string | null) ??
-      (legacy?.date_of_birth as string | null) ??
-      null,
-  );
+  const dob = formatDob((legacy?.date_of_birth as string | null) ?? null);
   const sex = formatSex(legacy?.gender as string | null);
-  const logoUrl = getTenantAssetPublicUrl(tenant?.logoStorageKey);
+  const logoUrl = resolveReportCardLogoUrl(tenant);
   const addressParts = [
     tenant?.addressLine1,
     tenant?.addressLine2,
@@ -452,8 +433,8 @@ export async function fetchReportCardBundle(
     student: {
       studentProfileId,
       name: user?.name?.trim() || `${first} ${last}`.trim() || 'Student',
-      firstName: application?.firstNameEn?.trim() || first,
-      lastName: application?.lastNameEn?.trim() || last,
+      firstName: first,
+      lastName: last,
       matricule:
         (profile.matriculeNumber as string | null)?.trim() ||
         (profile.registrationNumber as string) ||
@@ -479,15 +460,7 @@ export async function fetchReportCardBundle(
     marks,
     disciplineByTerm,
     branding: {
-      displayNameEn:
-        tenant?.pdfIssuerDisplayNameEn?.trim() ||
-        tenant?.displayNameEn?.trim() ||
-        'Acadia College',
-      displayNameFr:
-        tenant?.pdfIssuerDisplayNameFr?.trim() ||
-        tenant?.displayNameFr?.trim() ||
-        tenant?.displayNameEn?.trim() ||
-        'Acadia College',
+      ...resolveReportCardInstitutionNames(tenant),
       logoUrl,
       contactLine: contactLine || '—',
       regionEn: `Regional Delegation of ${region}`,

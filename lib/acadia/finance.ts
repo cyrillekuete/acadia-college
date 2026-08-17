@@ -79,6 +79,7 @@ export type FeeAccountTotals = {
   totalPaidMinor: number;
   scholarshipMinor: number;
   balanceMinor: number;
+  creditMinor?: number;
 };
 
 export function sumInstallmentTemplates(
@@ -87,10 +88,129 @@ export function sumInstallmentTemplates(
   return installments.reduce((sum, row) => sum + row.amountMinor, 0);
 }
 
+export const DEFAULT_FEE_INSTALLMENT_SPLIT_RATIOS = [0.5, 0.25, 0.25] as const;
+
+export const DEFAULT_FEE_INSTALLMENT_LABELS = [
+  { labelEn: 'First installment', labelFr: 'Première tranche' },
+  { labelEn: 'Second installment', labelFr: 'Deuxième tranche' },
+  { labelEn: 'Third installment', labelFr: 'Troisième tranche' },
+] as const;
+
+export function splitTuitionIntoDefaultInstallments(
+  totalMinor: number,
+): [number, number, number] {
+  const total = Number.isFinite(totalMinor) ? Math.max(0, Math.trunc(totalMinor)) : 0;
+  const first = Math.floor(total * DEFAULT_FEE_INSTALLMENT_SPLIT_RATIOS[0]);
+  const second = Math.floor(total * DEFAULT_FEE_INSTALLMENT_SPLIT_RATIOS[1]);
+  const third = total - first - second;
+  return [first, second, third];
+}
+
+export function defaultFeeInstallmentTemplates(): FeeInstallmentTemplateValues[] {
+  return DEFAULT_FEE_INSTALLMENT_LABELS.map((labels, index) => ({
+    installmentNumber: index + 1,
+    labelEn: labels.labelEn,
+    labelFr: labels.labelFr,
+    amountMinor: 0,
+    dueOn: '',
+  }));
+}
+
+export function applyDefaultFeeInstallmentSplit(
+  current: Array<Pick<FeeInstallmentTemplateValues, 'labelEn' | 'labelFr' | 'dueOn'>>,
+  amounts: readonly [number, number, number],
+): FeeInstallmentTemplateValues[] {
+  const keepLabels = current.length === amounts.length;
+  return amounts.map((amountMinor, index) => {
+    const labels =
+      DEFAULT_FEE_INSTALLMENT_LABELS[index] ?? DEFAULT_FEE_INSTALLMENT_LABELS[0];
+    const existing = current[index];
+    return {
+      installmentNumber: index + 1,
+      labelEn:
+        keepLabels && existing?.labelEn ? existing.labelEn : labels.labelEn,
+      labelFr:
+        keepLabels && existing?.labelFr ? existing.labelFr : labels.labelFr,
+      amountMinor,
+      dueOn: existing?.dueOn ?? '',
+    };
+  });
+}
+
 export type FeePlanClassRef = {
   id: string;
   name: string;
 };
+
+export type FeePlanClassStream = {
+  id: string;
+  subSystem: string;
+  branch: string;
+};
+
+export function resolveFeePlanStream(
+  classes: FeePlanClassStream[],
+): { subSystem: string; branch: string } {
+  const first = classes[0];
+  if (!first) {
+    throw new Error('Select at least one class.');
+  }
+  const mixed = classes.some(
+    (row) => row.subSystem !== first.subSystem || row.branch !== first.branch,
+  );
+  if (mixed) {
+    throw new Error('Select classes from a single stream.');
+  }
+  return { subSystem: first.subSystem, branch: first.branch };
+}
+
+export function pruneFeePlanClassSelection(
+  selectedIds: string[],
+  visibleClassIds: readonly string[],
+  filters: { subSystem?: string | null; branch?: string | null },
+): string[] {
+  if (!filters.subSystem && !filters.branch) {
+    return selectedIds;
+  }
+  const visible = new Set(visibleClassIds);
+  return selectedIds.filter((id) => visible.has(id));
+}
+
+export function mergeFeePlanClassSelection(
+  selectedIds: string[],
+  addingIds: string[],
+  classes: FeePlanClassStream[],
+): string[] {
+  const byId = new Map(classes.map((row) => [row.id, row]));
+  const streamKey = (id: string) => {
+    const row = byId.get(id);
+    return row ? `${row.subSystem}:${row.branch}` : null;
+  };
+
+  const selectedStream =
+    selectedIds.map(streamKey).find((key) => key !== null) ?? null;
+  const addingStream =
+    addingIds.map(streamKey).find((key) => key !== null) ?? null;
+  const switchingStream =
+    selectedStream !== null &&
+    addingStream !== null &&
+    selectedStream !== addingStream;
+  const stream = switchingStream
+    ? addingStream
+    : (selectedStream ?? addingStream);
+
+  const merged = switchingStream
+    ? [...addingIds]
+    : Array.from(new Set([...selectedIds, ...addingIds]));
+
+  if (!stream) {
+    return merged;
+  }
+  return merged.filter((id) => {
+    const key = streamKey(id);
+    return key === null || key === stream;
+  });
+}
 
 export type FeePlanRow = {
   id: string;
@@ -156,6 +276,7 @@ export function toFeePlanRow(input: {
 export function computeFeeAccountTotals(input: {
   totalAmountMinor: number;
   scholarshipMinor?: number;
+  creditMinor?: number;
   installments: Array<{
     amountMinor: number;
     status: string;
@@ -163,6 +284,7 @@ export function computeFeeAccountTotals(input: {
   }>;
 }): FeeAccountTotals {
   const scholarshipMinor = input.scholarshipMinor ?? 0;
+  const creditMinor = Math.max(0, input.creditMinor ?? 0);
   const totalDueMinor = Math.max(0, input.totalAmountMinor - scholarshipMinor);
   let totalPaidMinor = 0;
   for (const inst of input.installments) {
@@ -178,7 +300,8 @@ export function computeFeeAccountTotals(input: {
     totalDueMinor,
     totalPaidMinor,
     scholarshipMinor,
-    balanceMinor: Math.max(0, totalDueMinor - totalPaidMinor),
+    creditMinor,
+    balanceMinor: Math.max(0, totalDueMinor - totalPaidMinor - creditMinor),
   };
 }
 
@@ -210,6 +333,117 @@ export function effectiveInstallmentStatus(
     return 'OVERDUE';
   }
   return status as FeeInstallmentStatus;
+}
+
+export function remainingInstallmentMinor(input: {
+  amountMinor: number;
+  paidAmountMinor?: number | null;
+  status: string;
+}): number {
+  if (input.status === 'PAID' || input.status === 'WAIVED') {
+    return 0;
+  }
+  return Math.max(0, input.amountMinor - (input.paidAmountMinor ?? 0));
+}
+
+/** Caps this payment so the installment never exceeds its due amount. */
+export function cumulativePaidAmountMinor(
+  previousPaidMinor: number | null | undefined,
+  thisPaymentMinor: number,
+  amountMinor: number,
+): number {
+  const previous = Math.max(0, previousPaidMinor ?? 0);
+  const payment = Math.max(0, thisPaymentMinor);
+  return Math.min(amountMinor, previous + payment);
+}
+
+export type FeePaymentAllocationInstallment = {
+  id: string;
+  installmentNumber: number;
+  amountMinor: number;
+  paidAmountMinor?: number | null;
+  status: string;
+};
+
+export type FeePaymentAllocationUpdate = {
+  id: string;
+  paidAmountMinor: number;
+  status: 'PAID' | 'PENDING';
+};
+
+export type FeePaymentAllocation = {
+  updates: FeePaymentAllocationUpdate[];
+  appliedMinor: number;
+  unappliedMinor: number;
+};
+
+/**
+ * Applies a payment to the selected installment first, then waterfalls leftover
+ * onto other unpaid installments in installment-number order. Caps at the
+ * account remaining so scholarships are respected.
+ */
+export function allocateFeePayment(input: {
+  selectedInstallmentId: string;
+  paymentMinor: number;
+  installments: FeePaymentAllocationInstallment[];
+  accountRemainingMinor: number;
+}): FeePaymentAllocation {
+  const payment = Math.max(0, Math.round(input.paymentMinor));
+  const accountRemaining = Math.max(0, Math.round(input.accountRemainingMinor));
+  const cappedPayment = Math.min(payment, accountRemaining);
+  const selected = input.installments.find(
+    (row) => row.id === input.selectedInstallmentId,
+  );
+
+  if (!selected || cappedPayment <= 0) {
+    return {
+      updates: [],
+      appliedMinor: 0,
+      unappliedMinor: payment,
+    };
+  }
+
+  let leftover = cappedPayment;
+  const updates: FeePaymentAllocationUpdate[] = [];
+
+  const applyTo = (row: FeePaymentAllocationInstallment) => {
+    if (leftover <= 0) {
+      return;
+    }
+    const remaining = remainingInstallmentMinor(row);
+    if (remaining <= 0) {
+      return;
+    }
+    const applied = Math.min(leftover, remaining);
+    leftover -= applied;
+    const paidAmountMinor = cumulativePaidAmountMinor(
+      row.paidAmountMinor,
+      applied,
+      row.amountMinor,
+    );
+    updates.push({
+      id: row.id,
+      paidAmountMinor,
+      status: paidAmountMinor >= row.amountMinor ? 'PAID' : 'PENDING',
+    });
+  };
+
+  applyTo(selected);
+
+  const others = input.installments
+    .filter((row) => row.id !== selected.id)
+    .slice()
+    .sort((a, b) => a.installmentNumber - b.installmentNumber);
+  for (const row of others) {
+    applyTo(row);
+  }
+
+  const appliedMinor = cappedPayment - leftover;
+  return {
+    updates,
+    appliedMinor,
+    unappliedMinor: payment - appliedMinor,
+  };
 }
 
 export function paymentProgressPercent(totals: FeeAccountTotals): number | null {

@@ -16,13 +16,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Sheet,
   SheetBody,
   SheetContent,
@@ -36,12 +29,10 @@ import {
   type SchemeOfWorkTopicFormValues,
 } from '@/lib/acadia/scheme-of-work-schemas';
 import { normalizeRichText } from '@/lib/acadia/sanitize-html';
-import type { SchemeTermOption } from '@/lib/acadia/scheme-of-work';
 import { useTranslation } from '@/hooks/useTranslation';
 
 const EMPTY_VALUES: SchemeOfWorkTopicFormValues = {
-  termId: '',
-  weekNumber: 1,
+  parentTopicId: '',
   titleEn: '',
   titleFr: '',
   descriptionEn: '',
@@ -51,14 +42,12 @@ const EMPTY_VALUES: SchemeOfWorkTopicFormValues = {
 export function SchemeTopicFormSheet({
   open,
   onOpenChange,
-  terms,
   defaultValues,
   pending,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  terms: SchemeTermOption[];
   defaultValues?: Partial<SchemeOfWorkTopicFormValues>;
   pending?: boolean;
   onSubmit: (values: SchemeOfWorkTopicFormValues) => void;
@@ -69,6 +58,7 @@ export function SchemeTopicFormSheet({
     defaultValues: { ...EMPTY_VALUES, ...defaultValues },
   });
   const isEdit = Boolean(defaultValues?.titleEn);
+  const isSubTopic = Boolean(defaultValues?.parentTopicId);
 
   useEffect(() => {
     if (open) {
@@ -76,13 +66,17 @@ export function SchemeTopicFormSheet({
     }
   }, [open, defaultValues, form]);
 
+  const title = isEdit
+    ? t('schemeOfWork.editTopic')
+    : isSubTopic
+      ? t('schemeOfWork.addSubTopic')
+      : t('schemeOfWork.addTopic');
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="z-[60] inset-5 start-auto h-auto gap-0 rounded-lg p-0 sm:w-[720px] sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
         <SheetHeader className="mb-0">
-          <SheetTitle className="p-3">
-            {isEdit ? t('schemeOfWork.editTopic') : t('schemeOfWork.addTopic')}
-          </SheetTitle>
+          <SheetTitle className="p-3">{title}</SheetTitle>
           <SheetDescription className="sr-only">
             {t('schemeOfWork.createSheetDescription')}
           </SheetDescription>
@@ -98,48 +92,13 @@ export function SchemeTopicFormSheet({
                     onSubmit={form.handleSubmit((values) =>
                       onSubmit({
                         ...values,
+                        parentTopicId: values.parentTopicId ?? defaultValues?.parentTopicId ?? '',
                         descriptionEn: normalizeRichText(values.descriptionEn),
                         descriptionFr: normalizeRichText(values.descriptionFr),
                       }),
                     )}
                   >
-                    <FormField
-                      control={form.control}
-                      name="termId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('schemeOfWork.term')}</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder={t('schemeOfWork.selectTerm')} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {terms.map((term) => (
-                                <SelectItem key={term.id} value={term.id}>
-                                  {t('schemeOfWork.termN', { number: term.number })}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="weekNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('schemeOfWork.week')}</FormLabel>
-                          <FormControl>
-                            <Input type="number" min={1} max={20} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <input type="hidden" {...form.register('parentTopicId')} />
                     <FormField
                       control={form.control}
                       name="titleEn"

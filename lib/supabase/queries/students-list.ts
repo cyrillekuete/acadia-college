@@ -4,6 +4,7 @@ import type {
   StudentListItem,
 } from '@/lib/acadia/student-list-item';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { isAcadiaEmailVerified } from '@/lib/acadia/email-verified';
 import {
   loadFeeSummariesForProfiles,
   splitStudentName,
@@ -63,7 +64,7 @@ function mapEnrollmentRowsToStudents(
       enrollment_status: enrollmentStatus,
       status: profile?.isActive === false ? 'inactive' : 'active',
       enrollment_date: new Date(row.createdAt as string).toISOString(),
-      email_verified: false,
+      email_verified: isAcadiaEmailVerified(),
       total_fees: fees?.total ?? 0,
       paid_fees: fees?.paid ?? 0,
       fees_status: fees?.status ?? null,

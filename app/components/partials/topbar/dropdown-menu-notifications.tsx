@@ -117,7 +117,7 @@ export function SheetNotifications({ trigger }: { trigger: ReactNode }) {
                       </DropdownMenuPortal>
                     </DropdownMenuSub>
                     <DropdownMenuItem asChild>
-                      <Link href="/account/security/privacy-settings">
+                      <Link href="/user-management/account/security">
                         <Shield /> Group Settings
                       </Link>
                     </DropdownMenuItem>

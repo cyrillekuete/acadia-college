@@ -9,7 +9,6 @@ export type LevelDeleteBlockers = {
   classEnrollments: number;
   promotionClassRefs: number;
   enrollments: number;
-  applications: number;
   subjects: number;
   subjectLevels: number;
   subjectOfferings: number;
@@ -22,7 +21,6 @@ export type LevelDeleteBlockers = {
 
 type LevelBlockerCountTable =
   | 'StudentEnrollment'
-  | 'EnrollmentApplication'
   | 'Subject'
   | 'SubjectLevel'
   | 'SubjectStreamOffering'
@@ -102,7 +100,6 @@ export async function fetchLevelDeleteBlockers(
 
   const [
     enrollments,
-    applications,
     subjects,
     subjectLevels,
     subjectOfferings,
@@ -113,7 +110,6 @@ export async function fetchLevelDeleteBlockers(
     schemesOfWork,
   ] = await Promise.all([
     countRows(supabase, 'StudentEnrollment', tenantId, 'levelId', levelId),
-    countRows(supabase, 'EnrollmentApplication', tenantId, 'levelId', levelId),
     countRows(supabase, 'Subject', tenantId, 'levelId', levelId),
     countRows(supabase, 'SubjectLevel', tenantId, 'levelId', levelId),
     countRows(supabase, 'SubjectStreamOffering', tenantId, 'levelId', levelId),
@@ -129,7 +125,6 @@ export async function fetchLevelDeleteBlockers(
     classEnrollments,
     promotionClassRefs,
     enrollments,
-    applications,
     subjects,
     subjectLevels,
     subjectOfferings,
@@ -157,9 +152,6 @@ export function formatLevelDeleteBlockers(blockers: LevelDeleteBlockers): string
   }
   if (blockers.enrollments > 0) {
     lines.push(`${blockers.enrollments} student enrollment(s) at this level`);
-  }
-  if (blockers.applications > 0) {
-    lines.push(`${blockers.applications} enrollment application(s)`);
   }
   const subjectRefs = blockers.subjects + blockers.subjectLevels;
   if (subjectRefs > 0) {
@@ -191,7 +183,6 @@ export function canCascadeDeleteClasses(blockers: LevelDeleteBlockers): boolean 
     blockers.classEnrollments === 0 &&
     blockers.promotionClassRefs === 0 &&
     blockers.enrollments === 0 &&
-    blockers.applications === 0 &&
     blockers.subjects === 0 &&
     blockers.subjectLevels === 0 &&
     blockers.subjectOfferings === 0 &&
@@ -206,7 +197,6 @@ export function canCascadeDeleteClasses(blockers: LevelDeleteBlockers): boolean 
 export function hasNonClassBlockers(blockers: LevelDeleteBlockers): boolean {
   return (
     blockers.enrollments > 0 ||
-    blockers.applications > 0 ||
     blockers.subjects > 0 ||
     blockers.subjectLevels > 0 ||
     blockers.subjectOfferings > 0 ||

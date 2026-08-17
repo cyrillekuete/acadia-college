@@ -22,6 +22,7 @@ import type {
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import { provisionMissingFeeAccounts } from '@/lib/acadia/fee-account-provision';
 import {
   fetchClassPromotionPolicy,
   fetchClassSubjectSelections,
@@ -824,7 +825,6 @@ export function usePromotionMutations() {
               levelId: item.targetLevelId,
               classId,
               status: 'ENROLLED',
-              applicationId: null,
               createdAt: now,
               updatedAt: now,
             });
@@ -856,6 +856,14 @@ export function usePromotionMutations() {
       }
 
       await setCurrentAcademicYear(supabase, tenantId, targetYearId);
+
+      try {
+        await provisionMissingFeeAccounts(supabase, {
+          academicYearId: targetYearId,
+        });
+      } catch (error) {
+        console.error('[provisionMissingFeeAccounts]', error);
+      }
 
       await appendSystemLog(supabase, {
         userId,

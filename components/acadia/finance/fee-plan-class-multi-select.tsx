@@ -1,10 +1,15 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CatalogFilterBar } from '@/components/acadia/catalog/catalog-filter-bar';
 import { useClassList } from '@/hooks/use-class-list';
 import { useTranslation } from '@/hooks/useTranslation';
+import {
+  mergeFeePlanClassSelection,
+  pruneFeePlanClassSelection,
+} from '@/lib/acadia/finance';
 import {
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
@@ -32,6 +37,20 @@ export function FeePlanClassMultiSelect({
     .filter((row) => !assignedElsewhere.has(row.id) || value.includes(row.id))
     .map((row) => row.id);
 
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    const next = pruneFeePlanClassSelection(
+      value,
+      classes.map((row) => row.id),
+      filters,
+    );
+    if (next.length !== value.length) {
+      onChange(next);
+    }
+  }, [isLoading, classes, filters, value, onChange]);
+
   return (
     <div className="space-y-3">
       <CatalogFilterBar
@@ -48,7 +67,9 @@ export function FeePlanClassMultiSelect({
               variant="ghost"
               size="sm"
               className="h-auto px-2 py-1 text-xs"
-              onClick={() => onChange(Array.from(new Set([...value, ...availableIds])))}
+              onClick={() =>
+                onChange(mergeFeePlanClassSelection(value, availableIds, classes))
+              }
             >
               {t('academics.selectAll')}
             </Button>
@@ -83,7 +104,7 @@ export function FeePlanClassMultiSelect({
                   disabled={taken}
                   onCheckedChange={(next) => {
                     if (next === true) {
-                      onChange([...value, row.id]);
+                      onChange(mergeFeePlanClassSelection(value, [row.id], classes));
                     } else {
                       onChange(value.filter((id) => id !== row.id));
                     }

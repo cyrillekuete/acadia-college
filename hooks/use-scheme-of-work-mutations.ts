@@ -126,11 +126,8 @@ export function useSchemeOfWorkMutations() {
       }
 
       const topics = await fetchSchemeTopics(supabase, tenantId, scheme.id);
-      const sortOrder = nextTopicSortOrder(
-        topics,
-        input.values.termId,
-        input.values.weekNumber,
-      );
+      const parentTopicId = input.values.parentTopicId?.trim() || null;
+      const sortOrder = nextTopicSortOrder(topics, parentTopicId);
       await insertSchemeTopic(supabase, tenantId, scheme, input.values, sortOrder);
     },
     onSuccess: (_, input) => {

@@ -13,6 +13,7 @@ import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { classListTags, studentListTags } from '@/lib/acadia/cache/tags';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import { syncStudentFeeAccountAfterClassChange } from '@/lib/acadia/fee-account-provision';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -33,6 +34,7 @@ export function useStudentMutations() {
   const queryClient = useQueryClient();
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const actorUserId = session?.profile?.id ?? null;
   const canWrite = canWriteRegistry(session?.roleSlug);
 
   const updateStudentProfile = useMutation({
@@ -144,7 +146,7 @@ export function useStudentMutations() {
 
       const { data: existingEnrollment, error: lookupError } = await supabase
         .from('StudentEnrollment')
-        .select('id')
+        .select('id, classId')
         .eq('tenantId', tenantId)
         .eq('studentProfileId', profileId)
         .eq('academicYearId', values.academicYearId)
@@ -153,6 +155,9 @@ export function useStudentMutations() {
       if (lookupError) {
         throw lookupError;
       }
+
+      const previousClassId = existingEnrollment?.classId?.trim() || null;
+      let enrollmentId = existingEnrollment?.id as string | undefined;
 
       if (existingEnrollment?.id) {
         const { error: enrollmentError } = await supabase
@@ -169,27 +174,43 @@ export function useStudentMutations() {
         if (enrollmentError) {
           throw enrollmentError;
         }
-        return;
+      } else {
+        enrollmentId = generateAcadiaId('enr');
+        const { error: enrollmentError } = await supabase
+          .from('StudentEnrollment')
+          .insert({
+            id: enrollmentId,
+            tenantId,
+            studentProfileId: profileId,
+            academicYearId: values.academicYearId,
+            subSystem: values.subSystem,
+            branch: values.branch,
+            levelId: values.levelId,
+            classId,
+            status: 'ENROLLED',
+            createdAt: now,
+            updatedAt: now,
+          });
+        if (enrollmentError) {
+          throw enrollmentError;
+        }
       }
 
-      const { error: enrollmentError } = await supabase
-        .from('StudentEnrollment')
-        .insert({
-          id: generateAcadiaId('enr'),
+      if (enrollmentId && classId) {
+        const feeResult = await syncStudentFeeAccountAfterClassChange(supabase, {
           tenantId,
           studentProfileId: profileId,
           academicYearId: values.academicYearId,
           subSystem: values.subSystem,
           branch: values.branch,
-          levelId: values.levelId,
+          studentEnrollmentId: enrollmentId,
           classId,
-          status: 'ENROLLED',
-          applicationId: null,
-          createdAt: now,
-          updatedAt: now,
+          previousClassId,
+          actorUserId,
         });
-      if (enrollmentError) {
-        throw enrollmentError;
+        if (!feeResult.ok && feeResult.reason !== 'no_class') {
+          toast.warning(feeResult.message);
+        }
       }
     },
     onSuccess: (_data, variables) => {
@@ -202,6 +223,10 @@ export function useStudentMutations() {
       void queryClient.invalidateQueries({
         queryKey: ['student-academic-progress'],
       });
+      void queryClient.invalidateQueries({ queryKey: ['fee-accounts'] });
+      void queryClient.invalidateQueries({ queryKey: ['student-fee-account'] });
+      void queryClient.invalidateQueries({ queryKey: ['fee-outstanding'] });
+      void queryClient.invalidateQueries({ queryKey: ['missing-fee-accounts'] });
       if (tenantId) {
         invalidateAcadiaCache([
           ...studentListTags(tenantId, variables.values.academicYearId),

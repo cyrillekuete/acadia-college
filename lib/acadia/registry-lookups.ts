@@ -5,14 +5,13 @@ export type RegistryEmailConflict =
   | { ok: false; message: string };
 
 /**
- * Block registry create/approve when email exists in auth-linked User,
- * legacy students table, or a pending enrollment application (other id).
+ * Block registry create when email exists in auth-linked User
+ * or the legacy students table.
  */
 export async function checkRegistryStudentEmail(
   supabase: SupabaseClient,
   tenantId: string,
   email: string,
-  options?: { excludeApplicationId?: string },
 ): Promise<RegistryEmailConflict> {
   const normalized = email.trim().toLowerCase();
 
@@ -41,27 +40,6 @@ export async function checkRegistryStudentEmail(
     return {
       ok: false,
       message: 'A student with this email already exists in the registry.',
-    };
-  }
-
-  let pendingQuery = supabase
-    .from('EnrollmentApplication')
-    .select('id')
-    .eq('tenantId', tenantId)
-    .eq('status', 'PENDING')
-    .ilike('email', normalized);
-
-  if (options?.excludeApplicationId) {
-    pendingQuery = pendingQuery.neq('id', options.excludeApplicationId);
-  }
-
-  const { data: pendingApp } = await pendingQuery.maybeSingle();
-
-  if (pendingApp?.id) {
-    return {
-      ok: false,
-      message:
-        'A pending enrollment application already exists for this email.',
     };
   }
 

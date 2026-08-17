@@ -41,6 +41,24 @@ describe('ACADIA_DEMO_REDIRECTS', () => {
       ),
     ).toBe(true);
   });
+
+  it('sends leftover Metronic security and user URLs to Acadia pages', () => {
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/account/security',
+      destination: '/user-management/account/security',
+      permanent: false,
+    });
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/account/security/:path*',
+      destination: '/user-management/account/security',
+      permanent: false,
+    });
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/user/users',
+      destination: '/admin/users',
+      permanent: false,
+    });
+  });
 });
 
 describe('ACADIA_DEMO_LAYOUT_REDIRECTS', () => {

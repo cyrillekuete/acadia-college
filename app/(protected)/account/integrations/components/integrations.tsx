@@ -48,7 +48,7 @@ const Integrations = () => {
     },
     {
       logo: 'google-webdev.svg',
-      path: '/account/security/get-started',
+      path: '/user-management/account/security',
       name: 'Google webdev',
       description:
         'Tools for building quality web experiences, focusing on performance.',
@@ -56,7 +56,7 @@ const Integrations = () => {
     },
     {
       logo: 'invision.svg',
-      path: '/account/security/overview',
+      path: '/user-management/account/security',
       name: 'Invision',
       description:
         'Digital design platform for prototyping and design workflow.',
@@ -64,7 +64,7 @@ const Integrations = () => {
     },
     {
       logo: 'duolingo.svg',
-      path: '/account/security/allowed-ip-addresses',
+      path: '/user-management/account/security',
       name: 'Duolingo',
       description:
         'Interactive exercises for fun, effective language learning.',
@@ -72,7 +72,7 @@ const Integrations = () => {
     },
     {
       logo: 'google-analytics-2.svg',
-      path: '/account/security/privacy-settings',
+      path: '/user-management/account/security',
       name: 'Google Analytics',
       description: 'Insights into website traffic and marketing effectiveness.',
       actions: <Switch id="size-sm" size="sm" />,

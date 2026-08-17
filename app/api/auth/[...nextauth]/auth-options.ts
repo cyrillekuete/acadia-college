@@ -56,7 +56,7 @@ const authOptions: NextAuthOptions = {
           throw new Error(
             JSON.stringify({
               code: 403,
-              message: 'Account not activated. Please verify your email.',
+              message: 'Account not activated. Contact an administrator.',
             }),
           );
         }

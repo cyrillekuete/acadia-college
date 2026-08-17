@@ -1022,120 +1022,6 @@ export type Database = {
           },
         ]
       }
-      EnrollmentApplication: {
-        Row: {
-          academicYearId: string
-          branch: Database["public"]["Enums"]["AcademicBranch"]
-          createdAt: string
-          dateOfBirth: string | null
-          documentStorageKeys: string[] | null
-          email: string
-          firstNameEn: string
-          firstNameFr: string | null
-          id: string
-          kind: Database["public"]["Enums"]["EnrollmentApplicationKind"]
-          lastNameEn: string
-          lastNameFr: string | null
-          levelId: string
-          phone: string | null
-          preferredLocale: string
-          rejectionReason: string | null
-          reviewedAt: string | null
-          reviewedByUserId: string | null
-          status: Database["public"]["Enums"]["EnrollmentApplicationStatus"]
-          studentProfileId: string | null
-          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
-          tenantId: string
-          updatedAt: string
-        }
-        Insert: {
-          academicYearId: string
-          branch: Database["public"]["Enums"]["AcademicBranch"]
-          createdAt?: string
-          dateOfBirth?: string | null
-          documentStorageKeys?: string[] | null
-          email: string
-          firstNameEn: string
-          firstNameFr?: string | null
-          id: string
-          kind?: Database["public"]["Enums"]["EnrollmentApplicationKind"]
-          lastNameEn: string
-          lastNameFr?: string | null
-          levelId: string
-          phone?: string | null
-          preferredLocale?: string
-          rejectionReason?: string | null
-          reviewedAt?: string | null
-          reviewedByUserId?: string | null
-          status?: Database["public"]["Enums"]["EnrollmentApplicationStatus"]
-          studentProfileId?: string | null
-          subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
-          tenantId: string
-          updatedAt: string
-        }
-        Update: {
-          academicYearId?: string
-          branch?: Database["public"]["Enums"]["AcademicBranch"]
-          createdAt?: string
-          dateOfBirth?: string | null
-          documentStorageKeys?: string[] | null
-          email?: string
-          firstNameEn?: string
-          firstNameFr?: string | null
-          id?: string
-          kind?: Database["public"]["Enums"]["EnrollmentApplicationKind"]
-          lastNameEn?: string
-          lastNameFr?: string | null
-          levelId?: string
-          phone?: string | null
-          preferredLocale?: string
-          rejectionReason?: string | null
-          reviewedAt?: string | null
-          reviewedByUserId?: string | null
-          status?: Database["public"]["Enums"]["EnrollmentApplicationStatus"]
-          studentProfileId?: string | null
-          subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
-          tenantId?: string
-          updatedAt?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "EnrollmentApplication_academicYearId_tenantId_fkey"
-            columns: ["academicYearId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "AcademicYear"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "EnrollmentApplication_levelId_tenantId_fkey"
-            columns: ["levelId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Level"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "EnrollmentApplication_reviewedByUserId_fkey"
-            columns: ["reviewedByUserId"]
-            isOneToOne: false
-            referencedRelation: "User"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "EnrollmentApplication_studentProfileId_tenantId_fkey"
-            columns: ["studentProfileId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "StudentProfile"
-            referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "EnrollmentApplication_tenantId_fkey"
-            columns: ["tenantId"]
-            isOneToOne: false
-            referencedRelation: "Tenant"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       Expenditure: {
         Row: {
           academicYearId: string
@@ -2510,44 +2396,48 @@ export type Database = {
           descriptionEn: string | null
           descriptionFr: string | null
           id: string
+          parentTopicId: string | null
           schemeOfWorkId: string
           sortOrder: number
           tenantId: string
-          termId: string
           titleEn: string
           titleFr: string
           updatedAt: string
-          weekNumber: number
         }
         Insert: {
           createdAt?: string
           descriptionEn?: string | null
           descriptionFr?: string | null
           id: string
+          parentTopicId?: string | null
           schemeOfWorkId: string
           sortOrder?: number
           tenantId: string
-          termId: string
           titleEn: string
           titleFr: string
           updatedAt?: string
-          weekNumber: number
         }
         Update: {
           createdAt?: string
           descriptionEn?: string | null
           descriptionFr?: string | null
           id?: string
+          parentTopicId?: string | null
           schemeOfWorkId?: string
           sortOrder?: number
           tenantId?: string
-          termId?: string
           titleEn?: string
           titleFr?: string
           updatedAt?: string
-          weekNumber?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "SchemeOfWorkTopic_parentTopicId_tenantId_fkey"
+            columns: ["tenantId", "parentTopicId"]
+            isOneToOne: false
+            referencedRelation: "SchemeOfWorkTopic"
+            referencedColumns: ["tenantId", "id"]
+          },
           {
             foreignKeyName: "SchemeOfWorkTopic_schemeOfWorkId_tenantId_fkey"
             columns: ["tenantId", "schemeOfWorkId"]
@@ -2561,13 +2451,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "Tenant"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "SchemeOfWorkTopic_termId_tenantId_fkey"
-            columns: ["termId", "tenantId"]
-            isOneToOne: false
-            referencedRelation: "Term"
-            referencedColumns: ["id", "tenantId"]
           },
         ]
       }
@@ -3197,7 +3080,6 @@ export type Database = {
       StudentEnrollment: {
         Row: {
           academicYearId: string
-          applicationId: string | null
           branch: Database["public"]["Enums"]["AcademicBranch"]
           classId: string | null
           createdAt: string
@@ -3211,7 +3093,6 @@ export type Database = {
         }
         Insert: {
           academicYearId: string
-          applicationId?: string | null
           branch: Database["public"]["Enums"]["AcademicBranch"]
           classId?: string | null
           createdAt?: string
@@ -3225,7 +3106,6 @@ export type Database = {
         }
         Update: {
           academicYearId?: string
-          applicationId?: string | null
           branch?: Database["public"]["Enums"]["AcademicBranch"]
           classId?: string | null
           createdAt?: string
@@ -3244,13 +3124,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "AcademicYear"
             referencedColumns: ["id", "tenantId"]
-          },
-          {
-            foreignKeyName: "StudentEnrollment_applicationId_fkey"
-            columns: ["applicationId"]
-            isOneToOne: false
-            referencedRelation: "EnrollmentApplication"
-            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "StudentEnrollment_classId_tenantId_fkey"
@@ -3287,8 +3160,10 @@ export type Database = {
           academicYearId: string
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
+          creditMinor: number
           feeCurrency: string
           id: string
+          streamFeePlanId: string | null
           studentEnrollmentId: string | null
           studentProfileId: string
           subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -3300,8 +3175,10 @@ export type Database = {
           academicYearId: string
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
+          creditMinor?: number
           feeCurrency: string
           id: string
+          streamFeePlanId?: string | null
           studentEnrollmentId?: string | null
           studentProfileId: string
           subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -3313,8 +3190,10 @@ export type Database = {
           academicYearId?: string
           branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
+          creditMinor?: number
           feeCurrency?: string
           id?: string
+          streamFeePlanId?: string | null
           studentEnrollmentId?: string | null
           studentProfileId?: string
           subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -3329,6 +3208,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "AcademicYear"
             referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "StudentFeeAccount_streamFeePlanId_tenantId_fkey"
+            columns: ["tenantId", "streamFeePlanId"]
+            isOneToOne: false
+            referencedRelation: "StreamFeePlan"
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "StudentFeeAccount_studentEnrollmentId_fkey"
@@ -4702,6 +4588,7 @@ export type Database = {
           institutionPhone: string | null
           locale: string
           logoStorageKey: string | null
+          reportCardLogoStorageKey: string | null
           markEntryCalendarPolicy: Database["public"]["Enums"]["MarkEntryCalendarPolicy"]
           minimumAttendancePercent: number
           onboardingCompletedAt: string | null
@@ -4750,6 +4637,7 @@ export type Database = {
           institutionPhone?: string | null
           locale?: string
           logoStorageKey?: string | null
+          reportCardLogoStorageKey?: string | null
           markEntryCalendarPolicy?: Database["public"]["Enums"]["MarkEntryCalendarPolicy"]
           minimumAttendancePercent?: number
           onboardingCompletedAt?: string | null
@@ -4798,6 +4686,7 @@ export type Database = {
           institutionPhone?: string | null
           locale?: string
           logoStorageKey?: string | null
+          reportCardLogoStorageKey?: string | null
           markEntryCalendarPolicy?: Database["public"]["Enums"]["MarkEntryCalendarPolicy"]
           minimumAttendancePercent?: number
           onboardingCompletedAt?: string | null
@@ -5622,6 +5511,10 @@ export type Database = {
     }
     Functions: {
       acadia_can_manage_users: { Args: never; Returns: boolean }
+      acadia_count_missing_fee_accounts: {
+        Args: { p_academic_year_id: string; p_class_id?: string | null }
+        Returns: number
+      }
       acadia_current_role_slug: { Args: never; Returns: string }
       acadia_current_staff_profile_id: { Args: never; Returns: string }
       acadia_current_student_profile_id: { Args: never; Returns: string }
@@ -5630,6 +5523,10 @@ export type Database = {
       acadia_is_admin_or_registrar: { Args: never; Returns: boolean }
       acadia_is_staff_or_teacher: { Args: never; Returns: boolean }
       acadia_is_student: { Args: never; Returns: boolean }
+      acadia_provision_missing_fee_accounts: {
+        Args: { p_academic_year_id: string; p_class_id?: string | null }
+        Returns: number
+      }
     }
     Enums: {
       AcademicBranch: "GRAMMAR" | "TECHNICAL" | "COMMERCIAL"
@@ -5649,8 +5546,6 @@ export type Database = {
       CourseworkSubmissionStatus: "DRAFT" | "SUBMITTED"
       DataExportJobStatus: "PENDING" | "READY" | "FAILED"
       DeploymentMode: "CLOUD" | "LAN"
-      EnrollmentApplicationKind: "NEW" | "RE_ENROLL"
-      EnrollmentApplicationStatus: "PENDING" | "APPROVED" | "REJECTED"
       ExpenditureStatus: "PENDING" | "APPROVED" | "PAID" | "REJECTED"
       ExamSessionType:
         | "NORMAL"
@@ -5861,8 +5756,6 @@ export const Constants = {
       CourseworkSubmissionStatus: ["DRAFT", "SUBMITTED"],
       DataExportJobStatus: ["PENDING", "READY", "FAILED"],
       DeploymentMode: ["CLOUD", "LAN"],
-      EnrollmentApplicationKind: ["NEW", "RE_ENROLL"],
-      EnrollmentApplicationStatus: ["PENDING", "APPROVED", "REJECTED"],
       ExpenditureStatus: ["PENDING", "APPROVED", "PAID", "REJECTED"],
       ExamSessionType: [
         "NORMAL",

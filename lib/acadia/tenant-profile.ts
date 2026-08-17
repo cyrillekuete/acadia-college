@@ -15,8 +15,6 @@ export const TENANT_PROFILE_EDITABLE_FIELDS = [
   'secondaryContactEmail',
   'primaryColor',
   'accentColor',
-  'pdfIssuerDisplayNameEn',
-  'pdfIssuerDisplayNameFr',
   'customDomain',
 ] as const;
 

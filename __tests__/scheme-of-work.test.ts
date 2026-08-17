@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   attachTopicProgress,
   buildAdminSchemeCatalog,
+  buildTopicTree,
+  cascadeProgressTopicIds,
   filterAdminSchemeCatalog,
-  groupTopicsByTermAndWeek,
   nextTopicSortOrder,
   schemeProgressPercent,
+  topicCheckState,
   type SchemeOfWorkTopicProgressRecord,
   type SchemeOfWorkTopicRecord,
 } from '@/lib/acadia/scheme-of-work';
@@ -19,8 +21,7 @@ function topic(
   return {
     tenantId: 't1',
     schemeOfWorkId: 'sow-1',
-    termId: 'term-1',
-    weekNumber: 1,
+    parentTopicId: null,
     titleEn: 'Fractions',
     titleFr: 'Fractions',
     descriptionEn: null,
@@ -39,26 +40,22 @@ describe('scheme of work helpers', () => {
     expect(schemeProgressPercent(3, 3)).toBe(100);
   });
 
-  it('groups topics by term then week and keeps sort order', () => {
+  it('builds a topic tree and keeps sibling sort order', () => {
     const topics = attachTopicProgress(
       [
-        topic({ id: 'a', termId: 'term-2', weekNumber: 1, sortOrder: 1, titleEn: 'A2' }),
-        topic({ id: 'b', termId: 'term-1', weekNumber: 2, sortOrder: 0, titleEn: 'B' }),
-        topic({ id: 'c', termId: 'term-1', weekNumber: 1, sortOrder: 1, titleEn: 'C' }),
-        topic({ id: 'd', termId: 'term-1', weekNumber: 1, sortOrder: 0, titleEn: 'D' }),
+        topic({ id: 'root-b', sortOrder: 1, titleEn: 'B' }),
+        topic({ id: 'root-a', sortOrder: 0, titleEn: 'A' }),
+        topic({ id: 'child-2', parentTopicId: 'root-a', sortOrder: 1, titleEn: 'A2' }),
+        topic({ id: 'child-1', parentTopicId: 'root-a', sortOrder: 0, titleEn: 'A1' }),
       ],
       new Map(),
     );
 
-    const groups = groupTopicsByTermAndWeek(topics, [
-      { id: 'term-1', number: 1 },
-      { id: 'term-2', number: 2 },
-    ]);
+    const tree = buildTopicTree(topics);
 
-    expect(groups.map((group) => group.termNumber)).toEqual([1, 2]);
-    expect(groups[0]?.weeks.map((week) => week.weekNumber)).toEqual([1, 2]);
-    expect(groups[0]?.weeks[0]?.topics.map((item) => item.id)).toEqual(['d', 'c']);
-    expect(groups[1]?.weeks[0]?.topics.map((item) => item.id)).toEqual(['a']);
+    expect(tree.map((node) => node.id)).toEqual(['root-a', 'root-b']);
+    expect(tree[0]?.children.map((child) => child.id)).toEqual(['child-1', 'child-2']);
+    expect(tree[1]?.children).toEqual([]);
   });
 
   it('attaches class progress independently per topic map', () => {
@@ -92,26 +89,131 @@ describe('scheme of work helpers', () => {
     expect(schemeProgressPercent(0, 2)).toBe(0);
   });
 
-  it('assigns the next sort order within a term week', () => {
+  it('assigns the next sort order among siblings', () => {
     expect(
       nextTopicSortOrder(
         [
-          topic({ id: '1', weekNumber: 1, sortOrder: 0 }),
-          topic({ id: '2', weekNumber: 1, sortOrder: 2 }),
-          topic({ id: '3', weekNumber: 2, sortOrder: 9 }),
+          topic({ id: '1', parentTopicId: null, sortOrder: 0 }),
+          topic({ id: '2', parentTopicId: null, sortOrder: 2 }),
+          topic({ id: '3', parentTopicId: '1', sortOrder: 9 }),
         ],
-        'term-1',
-        1,
+        null,
       ),
     ).toBe(3);
+    expect(
+      nextTopicSortOrder(
+        [
+          topic({ id: '1', parentTopicId: null, sortOrder: 0 }),
+          topic({ id: '3', parentTopicId: '1', sortOrder: 9 }),
+        ],
+        '1',
+      ),
+    ).toBe(10);
   });
 
-  it('rejects week numbers outside 1-20', () => {
-    const result = schemeOfWorkTopicSchema.safeParse({
-      termId: 'term-1',
-      weekNumber: 21,
+  it('cascades parent completion to all children', () => {
+    const topics = attachTopicProgress(
+      [
+        topic({ id: 'parent' }),
+        topic({ id: 'c1', parentTopicId: 'parent' }),
+        topic({ id: 'c2', parentTopicId: 'parent', sortOrder: 1 }),
+      ],
+      new Map(),
+    );
+
+    expect(cascadeProgressTopicIds(topics, 'parent', true).sort()).toEqual([
+      'c1',
+      'c2',
+      'parent',
+    ]);
+    expect(cascadeProgressTopicIds(topics, 'parent', false).sort()).toEqual([
+      'c1',
+      'c2',
+      'parent',
+    ]);
+  });
+
+  it('auto-completes the parent when the last child is completed', () => {
+    const topics = attachTopicProgress(
+      [
+        topic({ id: 'parent' }),
+        topic({ id: 'c1', parentTopicId: 'parent' }),
+        topic({ id: 'c2', parentTopicId: 'parent', sortOrder: 1 }),
+      ],
+      new Map([
+        [
+          'c1',
+          {
+            id: 'p1',
+            tenantId: 't1',
+            topicId: 'c1',
+            classId: 'class-a',
+            completedAt: '2026-02-01',
+            completedByStaffProfileId: 'staff-1',
+          },
+        ],
+      ]),
+    );
+
+    expect(cascadeProgressTopicIds(topics, 'c2', true).sort()).toEqual(['c2', 'parent']);
+    expect(cascadeProgressTopicIds(topics, 'c1', false).sort()).toEqual(['c1', 'parent']);
+  });
+
+  it('does not auto-complete the parent until every sibling is done', () => {
+    const topics = attachTopicProgress(
+      [
+        topic({ id: 'parent' }),
+        topic({ id: 'c1', parentTopicId: 'parent' }),
+        topic({ id: 'c2', parentTopicId: 'parent', sortOrder: 1 }),
+      ],
+      new Map(),
+    );
+
+    expect(cascadeProgressTopicIds(topics, 'c1', true)).toEqual(['c1']);
+  });
+
+  it('reports mixed child progress as indeterminate', () => {
+    const topics = attachTopicProgress(
+      [
+        topic({ id: 'parent' }),
+        topic({ id: 'c1', parentTopicId: 'parent' }),
+        topic({ id: 'c2', parentTopicId: 'parent', sortOrder: 1 }),
+      ],
+      new Map([
+        [
+          'c1',
+          {
+            id: 'p1',
+            tenantId: 't1',
+            topicId: 'c1',
+            classId: 'class-a',
+            completedAt: '2026-02-01',
+            completedByStaffProfileId: 'staff-1',
+          },
+        ],
+      ]),
+    );
+    const tree = buildTopicTree(topics);
+    expect(topicCheckState(tree[0]!, tree[0]!.children)).toBe('indeterminate');
+  });
+
+  it('accepts a topic without term or week and optional parentTopicId', () => {
+    const root = schemeOfWorkTopicSchema.safeParse({
       titleEn: 'Topic',
       titleFr: 'Thème',
+    });
+    const child = schemeOfWorkTopicSchema.safeParse({
+      parentTopicId: 'parent-1',
+      titleEn: 'Sub-topic',
+    });
+    expect(root.success).toBe(true);
+    expect(child.success).toBe(true);
+  });
+
+  it('rejects a blank title', () => {
+    const result = schemeOfWorkTopicSchema.safeParse({
+      parentTopicId: '',
+      titleEn: '   ',
     });
     expect(result.success).toBe(false);
   });

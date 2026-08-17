@@ -6,7 +6,7 @@ describe('getNavbarQuickLinksForRole', () => {
     const links = getNavbarQuickLinksForRole('admin');
     expect(links.map((item) => item.titleKey)).toEqual([
       'nav.academicStructure',
-      'nav.enrollment',
+      'nav.students',
       'nav.finance',
       'nav.userManagement',
     ]);

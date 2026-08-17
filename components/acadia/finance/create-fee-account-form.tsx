@@ -43,6 +43,7 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const CREATE_FEE_ACCOUNT_FORM_ID = 'create-fee-account-form';
 
@@ -52,13 +53,16 @@ export function CreateFeeAccountForm({
   hideActions = false,
   formId = CREATE_FEE_ACCOUNT_FORM_ID,
   onPendingChange,
+  onCanSubmitChange,
 }: {
   onCancelHref?: string;
   onCancel?: () => void;
   hideActions?: boolean;
   formId?: string;
   onPendingChange?: (pending: boolean) => void;
+  onCanSubmitChange?: (canSubmit: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { createStudentFeeAccount } = useFinanceMutations();
   const { activeYearId } = useActiveAcademicYear();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -80,6 +84,7 @@ export function CreateFeeAccountForm({
   });
 
   const academicYearId = form.watch('academicYearId');
+  const classId = form.watch('classId');
 
   const studentsQuery = useQuery({
     queryKey: ['fee-account-students', tenantId, academicYearId],
@@ -127,6 +132,28 @@ export function CreateFeeAccountForm({
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
+  const classPlanQuery = useQuery({
+    queryKey: ['class-fee-plan', tenantId, academicYearId, classId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('StreamFeePlanClass')
+        .select('id')
+        .eq('tenantId', tenantId!)
+        .eq('academicYearId', academicYearId)
+        .eq('classId', classId)
+        .maybeSingle();
+      if (error) {
+        throw error;
+      }
+      return data;
+    },
+    enabled:
+      !!classId &&
+      !!academicYearId &&
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
+  });
+
   useEffect(() => {
     if (activeYearId) {
       form.setValue('academicYearId', activeYearId);
@@ -134,17 +161,30 @@ export function CreateFeeAccountForm({
   }, [activeYearId, form]);
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await createStudentFeeAccount.mutateAsync({
-      ...values,
-      academicYearId: activeYearId!,
-    });
+    if (classId && !classPlanQuery.data?.id) {
+      return;
+    }
+    try {
+      await createStudentFeeAccount.mutateAsync({
+        ...values,
+        academicYearId: activeYearId!,
+      });
+    } catch {
+      // Mutation already toasts the error.
+    }
   });
 
   const pending = createStudentFeeAccount.isPending;
+  const missingPlan =
+    !!classId && !classPlanQuery.isLoading && !classPlanQuery.data?.id;
 
   useEffect(() => {
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
+
+  useEffect(() => {
+    onCanSubmitChange?.(!pending && !!activeYearId && !missingPlan);
+  }, [pending, activeYearId, missingPlan, onCanSubmitChange]);
 
   return (
     <Form {...form}>
@@ -207,6 +247,16 @@ export function CreateFeeAccountForm({
                   {getQueryErrorMessage(studentsQuery.error)}
                 </p>
               ) : null}
+              {classId &&
+              !classPlanQuery.isLoading &&
+              !classPlanQuery.data?.id ? (
+                <p className="text-sm text-destructive">
+                  {t('finance.noFeePlanForClass')}{' '}
+                  <Link href="/finance/fees/setup" className="underline">
+                    {t('finance.setupFeePlan')}
+                  </Link>
+                </p>
+              ) : null}
               <FormMessage />
             </FormItem>
           )}
@@ -265,7 +315,7 @@ export function CreateFeeAccountForm({
 
         {hideActions ? null : (
           <div className="flex gap-2">
-            <Button type="submit" disabled={pending || !activeYearId}>
+            <Button type="submit" disabled={pending || !activeYearId || missingPlan}>
               {pending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />
               ) : null}

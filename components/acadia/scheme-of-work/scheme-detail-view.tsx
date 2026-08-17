@@ -12,7 +12,6 @@ import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
 import {
   useSchemeDetail,
-  useSchemeTerms,
   useSchemeTopics,
 } from '@/hooks/use-scheme-of-work';
 import { useSchemeOfWorkMutations } from '@/hooks/use-scheme-of-work-mutations';
@@ -33,7 +32,6 @@ export function SchemeDetailView({ schemeId }: { schemeId: string }) {
 
   const detailQuery = useSchemeDetail(schemeId);
   const topicsQuery = useSchemeTopics(schemeId, classId);
-  const termsQuery = useSchemeTerms(detailQuery.data?.academicYearId ?? null);
   const {
     setSchemeStatus,
     saveTopic,
@@ -44,7 +42,6 @@ export function SchemeDetailView({ schemeId }: { schemeId: string }) {
 
   const scheme = detailQuery.data;
   const topics = topicsQuery.data ?? [];
-  const terms = termsQuery.data ?? [];
   const completedCount = topics.filter((topic) => topic.completed).length;
   const published = scheme?.status === 'PUBLISHED';
   const canEdit = admin;
@@ -122,7 +119,6 @@ export function SchemeDetailView({ schemeId }: { schemeId: string }) {
               ) : null}
               <SchemeTopicBoard
                 topics={topics}
-                terms={terms}
                 canEdit={canEdit}
                 canMark={canMark}
                 pending={

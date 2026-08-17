@@ -128,7 +128,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                href="/account/billing/basic"
+                href="/finance/fees"
                 className="flex items-center gap-2"
               >
                 <CreditCard />
@@ -137,7 +137,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                href="/account/security/overview"
+                href="/user-management/account/security"
                 className="flex items-center gap-2"
               >
                 <Shield />
@@ -146,7 +146,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                href="/account/members/teams"
+                href="/admin/users"
                 className="flex items-center gap-2"
               >
                 <Users />
@@ -155,7 +155,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link
-                href="/account/integrations"
+                href="/account/home/settings-sidebar"
                 className="flex items-center gap-2"
               >
                 <BetweenHorizontalStart />

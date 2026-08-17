@@ -16,6 +16,7 @@ import {
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { CreateFeeAccountFormDialog } from '@/components/acadia/finance/create-fee-account-form-dialog';
 import { FeeOutstandingPanel } from '@/components/acadia/finance/fee-outstanding-panel';
+import { FeePlansPanel } from '@/components/acadia/finance/fee-plans-panel';
 import { FeeStatusBadge } from '@/components/acadia/finance/fee-status-badge';
 import { DataGrid } from '@/components/ui/data-grid';
 import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
@@ -40,9 +41,11 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation, streamLabel } from '@/lib/acadia/record-display';
 import { Input, InputWrapper } from '@/components/ui/input';
-import { Search } from '@/lib/icons';
+import { Search, LoaderCircleIcon } from '@/lib/icons';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { countMissingFeeAccounts } from '@/lib/acadia/fee-account-provision';
+import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 
 type FeeAccountRow = {
   id: string;
@@ -357,22 +360,61 @@ function FeeAccountsTable() {
 
 export default function StudentFeesPage() {
   const { t } = useTranslation();
-  const { data: session } = useAcadiaCollegeSession();
+  const { data: session, isLoading: sessionLoading, isError: sessionError } =
+    useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
   const canManage = canWriteFinance(session?.roleSlug);
+  const { activeYearId } = useActiveAcademicYear();
+  const { generateMissingFeeAccounts } = useFinanceMutations();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [tab, setTab] = useState('accounts');
+
+  const missingQuery = useQuery({
+    queryKey: ['missing-fee-accounts', tenantId, activeYearId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      return countMissingFeeAccounts(supabase, {
+        academicYearId: activeYearId!,
+      });
+    },
+    enabled:
+      !!canManage &&
+      !!activeYearId &&
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
+  });
+
+  const missingCount = missingQuery.data ?? 0;
+  const generating = generateMissingFeeAccounts.isPending;
 
   return (
     <AcadiaPageShell
       title={t('finance.feesTitle')}
       description={t('finance.feesDescription')}
     >
-      <div className="mb-4 flex flex-wrap gap-2 print:hidden">
+      <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
         {canManage ? (
           <>
-            <Button size="sm" asChild>
-              <Link href="/finance/fees/setup">{t('finance.setupDescription')}</Link>
+            <Button size="sm" onClick={() => setTab('plans')}>
+              {t('finance.setupDescription')}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setSheetOpen(true)}>
+            <Button
+              size="sm"
+              variant={missingCount > 0 ? 'default' : 'outline'}
+              disabled={!activeYearId || generating || missingQuery.isLoading}
+              onClick={() => {
+                if (!activeYearId) {
+                  return;
+                }
+                generateMissingFeeAccounts.mutate(activeYearId);
+              }}
+            >
+              {generating ? (
+                <LoaderCircleIcon className="size-4 animate-spin" />
+              ) : null}
+              {t('finance.generateMissingAccounts')}
+              {missingCount > 0 ? ` (${missingCount})` : ''}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSheetOpen(true)}>
               {t('finance.newAccount')}
             </Button>
           </>
@@ -380,24 +422,28 @@ export default function StudentFeesPage() {
         <Button size="sm" variant="outline" asChild>
           <Link href="/finance/reports">{t('finance.reportsTitle')}</Link>
         </Button>
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/finance/ledger">{t('finance.ledgerTitle')}</Link>
-        </Button>
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/finance/budget">{t('finance.budgetTitle')}</Link>
-        </Button>
       </div>
 
-      <Tabs defaultValue="accounts" className="print:hidden">
+      {canManage && missingCount > 0 ? (
+        <p className="mb-4 text-sm text-muted-foreground print:hidden">
+          {t('finance.missingFeeAccountsHint', { count: missingCount })}
+        </p>
+      ) : null}
+
+      <Tabs value={tab} onValueChange={setTab} className="print:hidden">
         <TabsList>
           <TabsTrigger value="accounts">All accounts</TabsTrigger>
           <TabsTrigger value="outstanding">Outstanding</TabsTrigger>
+          <TabsTrigger value="plans">{t('finance.setupTitle')}</TabsTrigger>
         </TabsList>
         <TabsContent value="accounts" className="mt-4">
           <FeeAccountsTable />
         </TabsContent>
         <TabsContent value="outstanding" className="mt-4">
           <FeeOutstandingPanel />
+        </TabsContent>
+        <TabsContent value="plans" className="mt-4">
+          <FeePlansPanel />
         </TabsContent>
       </Tabs>
 

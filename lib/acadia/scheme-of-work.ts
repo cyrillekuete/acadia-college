@@ -3,9 +3,6 @@ import { localizedText } from '@/lib/acadia/locale';
 export const SCHEME_OF_WORK_STATUSES = ['DRAFT', 'PUBLISHED'] as const;
 export type SchemeOfWorkStatus = (typeof SCHEME_OF_WORK_STATUSES)[number];
 
-export const SCHEME_OF_WORK_WEEK_MIN = 1;
-export const SCHEME_OF_WORK_WEEK_MAX = 20;
-
 export type SchemeOfWorkRecord = {
   id: string;
   tenantId: string;
@@ -21,8 +18,7 @@ export type SchemeOfWorkTopicRecord = {
   id: string;
   tenantId: string;
   schemeOfWorkId: string;
-  termId: string;
-  weekNumber: number;
+  parentTopicId: string | null;
   titleEn: string;
   titleFr: string;
   descriptionEn: string | null;
@@ -52,15 +48,8 @@ export type SchemeTopicWithProgress = SchemeOfWorkTopicRecord & {
   completedByStaffProfileId: string | null;
 };
 
-export type SchemeWeekGroup = {
-  weekNumber: number;
-  topics: SchemeTopicWithProgress[];
-};
-
-export type SchemeTermGroup = {
-  termId: string;
-  termNumber: number;
-  weeks: SchemeWeekGroup[];
+export type SchemeTopicTreeNode = SchemeTopicWithProgress & {
+  children: SchemeTopicTreeNode[];
 };
 
 export type SchemeListItem = {
@@ -144,68 +133,97 @@ export function attachTopicProgress(
   });
 }
 
-export function groupTopicsByTermAndWeek(
-  topics: SchemeTopicWithProgress[],
-  terms: SchemeTermOption[],
-): SchemeTermGroup[] {
-  const topicsByTerm = new Map<string, SchemeTopicWithProgress[]>();
+function siblingParentKey(parentTopicId: string | null | undefined): string {
+  return parentTopicId ?? '';
+}
+
+export function buildTopicTree(topics: SchemeTopicWithProgress[]): SchemeTopicTreeNode[] {
+  const childrenByParent = new Map<string, SchemeTopicWithProgress[]>();
+  const roots: SchemeTopicWithProgress[] = [];
+
   for (const topic of topics) {
-    const list = topicsByTerm.get(topic.termId) ?? [];
+    const parentId = topic.parentTopicId?.trim() || null;
+    if (!parentId) {
+      roots.push(topic);
+      continue;
+    }
+    const list = childrenByParent.get(parentId) ?? [];
     list.push(topic);
-    topicsByTerm.set(topic.termId, list);
+    childrenByParent.set(parentId, list);
   }
 
-  const seenTermIds = new Set<string>();
-  const groups: SchemeTermGroup[] = [];
+  const sortSiblings = (items: SchemeTopicWithProgress[]) =>
+    [...items].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
 
-  const pushTerm = (termId: string, termNumber: number) => {
-    if (seenTermIds.has(termId)) {
-      return;
-    }
-    seenTermIds.add(termId);
-    const termTopics = [...(topicsByTerm.get(termId) ?? [])].sort((a, b) => {
-      if (a.weekNumber !== b.weekNumber) {
-        return a.weekNumber - b.weekNumber;
-      }
-      return a.sortOrder - b.sortOrder;
-    });
-    const weekMap = new Map<number, SchemeTopicWithProgress[]>();
-    for (const topic of termTopics) {
-      const weekTopics = weekMap.get(topic.weekNumber) ?? [];
-      weekTopics.push(topic);
-      weekMap.set(topic.weekNumber, weekTopics);
-    }
-    const weeks = Array.from(weekMap.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([weekNumber, weekTopics]) => ({ weekNumber, topics: weekTopics }));
-    groups.push({ termId, termNumber, weeks });
-  };
-
-  for (const term of [...terms].sort((a, b) => a.number - b.number)) {
-    pushTerm(term.id, term.number);
-  }
-
-  const leftoverTermIds = Array.from(topicsByTerm.keys()).filter((id) => !seenTermIds.has(id));
-  leftoverTermIds.sort();
-  for (const termId of leftoverTermIds) {
-    pushTerm(termId, 0);
-  }
-
-  return groups;
+  return sortSiblings(roots).map((root) => ({
+    ...root,
+    children: sortSiblings(childrenByParent.get(root.id) ?? []).map((child) => ({
+      ...child,
+      children: [],
+    })),
+  }));
 }
 
 export function nextTopicSortOrder(
-  topics: Array<Pick<SchemeOfWorkTopicRecord, 'termId' | 'weekNumber' | 'sortOrder'>>,
-  termId: string,
-  weekNumber: number,
+  topics: Array<Pick<SchemeOfWorkTopicRecord, 'parentTopicId' | 'sortOrder'>>,
+  parentTopicId: string | null,
 ): number {
+  const parentKey = siblingParentKey(parentTopicId);
   let max = -1;
   for (const topic of topics) {
-    if (topic.termId === termId && topic.weekNumber === weekNumber) {
+    if (siblingParentKey(topic.parentTopicId) === parentKey) {
       max = Math.max(max, topic.sortOrder);
     }
   }
   return max + 1;
+}
+
+export function cascadeProgressTopicIds(
+  topics: Array<Pick<SchemeTopicWithProgress, 'id' | 'parentTopicId' | 'completed'>>,
+  topicId: string,
+  completed: boolean,
+): string[] {
+  const topic = topics.find((item) => item.id === topicId);
+  if (!topic) {
+    return [];
+  }
+
+  const children = topics.filter((item) => item.parentTopicId === topicId);
+  const isParent = !topic.parentTopicId;
+
+  if (isParent) {
+    return [topic.id, ...children.map((child) => child.id)];
+  }
+
+  if (!completed) {
+    return topic.parentTopicId ? [topic.id, topic.parentTopicId] : [topic.id];
+  }
+
+  const siblings = topics.filter((item) => item.parentTopicId === topic.parentTopicId);
+  const allSiblingsComplete = siblings.every(
+    (sibling) => sibling.id === topicId || sibling.completed,
+  );
+  if (allSiblingsComplete && topic.parentTopicId) {
+    return [topic.id, topic.parentTopicId];
+  }
+  return [topic.id];
+}
+
+export function topicCheckState(
+  topic: Pick<SchemeTopicWithProgress, 'completed'>,
+  children: Array<Pick<SchemeTopicWithProgress, 'completed'>>,
+): boolean | 'indeterminate' {
+  if (children.length === 0) {
+    return topic.completed;
+  }
+  const completedCount = children.filter((child) => child.completed).length;
+  if (completedCount === children.length) {
+    return true;
+  }
+  if (completedCount > 0 || topic.completed) {
+    return 'indeterminate';
+  }
+  return false;
 }
 
 export function canViewPublishedSchemeOnly(isAdmin: boolean): boolean {

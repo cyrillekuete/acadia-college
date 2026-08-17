@@ -4,20 +4,21 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  buildFeeInstallmentRows,
+  allocateFeePayment,
   buildFeePaymentUpdate,
   canDeleteExpenditure,
   canEditExpenditure,
+  computeFeeAccountTotals,
   computeSaleTotalMinor,
   DEFAULT_FEE_CURRENCY,
   nextExpenditureStatus,
+  remainingInstallmentMinor,
+  resolveFeePlanStream,
   sumInstallmentTemplates,
 } from '@/lib/acadia/finance';
 import type {
   CreateStudentFeeAccountValues,
   ExpenditureFormValues,
-  FinanceBudgetLineFormValues,
-  FinanceLedgerEntryFormValues,
   FinanceSaleFormValues,
   RecordFeePaymentValues,
   StreamFeePlanFormValues,
@@ -26,9 +27,12 @@ import { generateAcadiaId } from '@/lib/acadia/ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { dashboardTags, studentListTags } from '@/lib/acadia/cache/tags';
-import { unwrapRelation } from '@/lib/acadia/record-display';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import {
+  ensureStudentFeeAccount,
+  provisionMissingFeeAccounts,
+} from '@/lib/acadia/fee-account-provision';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -54,6 +58,10 @@ function invalidateFinanceQueries(
   void queryClient.invalidateQueries({ queryKey: ['fee-plan'] });
   void queryClient.invalidateQueries({ queryKey: ['fee-plans'] });
   void queryClient.invalidateQueries({ queryKey: ['fee-plan-class-assignments'] });
+  void queryClient.invalidateQueries({ queryKey: ['fee-account-installments'] });
+  void queryClient.invalidateQueries({ queryKey: ['student-fee-account'] });
+  void queryClient.invalidateQueries({ queryKey: ['student-detail'] });
+  void queryClient.invalidateQueries({ queryKey: ['missing-fee-accounts'] });
   if (tenantId) {
     invalidateAcadiaCache([...dashboardTags(tenantId), ...studentListTags(tenantId)]);
   }
@@ -90,11 +98,7 @@ export function useFinanceMutations() {
       if ((classes ?? []).length !== classIds.length) {
         throw new Error('One or more selected classes were not found.');
       }
-      const firstClass =
-        (classes ?? []).find((row) => row.id === classIds[0]) ?? (classes ?? [])[0];
-      if (!firstClass) {
-        throw new Error('Select at least one class.');
-      }
+      const stream = resolveFeePlanStream(classes ?? []);
 
       const { data: taken, error: takenError } = await supabase
         .from('StreamFeePlanClass')
@@ -114,8 +118,8 @@ export function useFinanceMutations() {
 
       const payload = {
         academicYearId: values.academicYearId,
-        subSystem: firstClass.subSystem,
-        branch: firstClass.branch,
+        subSystem: stream.subSystem,
+        branch: stream.branch,
         installments: values.installments,
         updatedAt: nowIso,
       };
@@ -204,6 +208,24 @@ export function useFinanceMutations() {
         }
       }
 
+      try {
+        const provisioned = await provisionMissingFeeAccounts(supabase, {
+          academicYearId: values.academicYearId,
+        });
+        if (provisioned.createdCount > 0 && userId) {
+          await appendSystemLog(supabase, {
+            userId,
+            event: 'fee_accounts.provisioned',
+            entityId: planId,
+            entityType: 'StreamFeePlan',
+            description: `Provisioned ${provisioned.createdCount} missing fee account(s) after saving the fee plan.`,
+            meta: { createdCount: provisioned.createdCount },
+          });
+        }
+      } catch (error) {
+        console.error('[provisionMissingFeeAccounts]', error);
+      }
+
       return planId;
     },
     onSuccess: () => {
@@ -242,97 +264,78 @@ export function useFinanceMutations() {
   });
 
   const createStudentFeeAccount = useMutation({
-    mutationFn: async (values: CreateStudentFeeAccountValues) => {
+    mutationFn: async (
+      values: CreateStudentFeeAccountValues & {
+        redirect?: boolean;
+        silent?: boolean;
+      },
+    ) => {
       if (!tenantId || !userId) {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
-      const nowIso = new Date().toISOString();
-      let installments: Parameters<typeof sumInstallmentTemplates>[0] = [];
-      let totalAmountMinor = 0;
-
-      if (values.useStreamPlan !== false) {
-        const classId = values.classId?.trim();
-        if (!classId) {
-          throw new Error('Student is not assigned to a class.');
-        }
-        const { data: assignment, error: planError } = await supabase
-          .from('StreamFeePlanClass')
-          .select(
-            `
-            streamFeePlanId,
-            StreamFeePlan!StreamFeePlanClass_streamFeePlanId_tenantId_fkey (
-              installments
-            )
-          `,
-          )
-          .eq('tenantId', tenantId)
-          .eq('academicYearId', values.academicYearId)
-          .eq('classId', classId)
-          .maybeSingle();
-        if (planError) {
-          throw planError;
-        }
-        const plan = unwrapRelation<{ installments?: unknown }>(
-          assignment?.StreamFeePlan,
-        );
-        if (!plan?.installments || !Array.isArray(plan.installments)) {
-          throw new Error('No fee plan for this class. Set up a plan first.');
-        }
-        installments = plan.installments as Parameters<
-          typeof sumInstallmentTemplates
-        >[0];
-      }
-
-      totalAmountMinor = sumInstallmentTemplates(installments);
-      if (totalAmountMinor <= 0) {
-        throw new Error('Fee plan has no installment amounts.');
-      }
-
-      const accountId = generateAcadiaId('fee-acct');
-      const { error: accountError } = await supabase.from('StudentFeeAccount').insert({
-        id: accountId,
+      const result = await ensureStudentFeeAccount(supabase, {
         tenantId,
         studentProfileId: values.studentProfileId,
         academicYearId: values.academicYearId,
         subSystem: values.subSystem,
         branch: values.branch,
-        studentEnrollmentId: values.studentEnrollmentId || null,
-        totalAmountMinor,
+        studentEnrollmentId: values.studentEnrollmentId || '',
+        classId: values.classId,
         feeCurrency: values.feeCurrency || DEFAULT_FEE_CURRENCY,
-        createdAt: nowIso,
-        updatedAt: nowIso,
+        actorUserId: userId,
       });
-      if (accountError) {
-        throw accountError;
+      if (!result.ok) {
+        throw new Error(result.message);
       }
-
-      const installmentRows = buildFeeInstallmentRows(
-        installments,
-        tenantId,
-        accountId,
-        nowIso,
-      );
-      const { error: instError } = await supabase
-        .from('StudentFeeInstallment')
-        .insert(installmentRows);
-      if (instError) {
-        throw instError;
-      }
-
-      await appendSystemLog(supabase, {
-        userId,
-        event: 'fee_account.created',
-        entityId: accountId,
-        entityType: 'StudentFeeAccount',
-        description: `Fee account created (${formatMinor(totalAmountMinor)})`,
-      });
-      return accountId;
+      return { accountId: result.accountId, created: result.created };
     },
-    onSuccess: (accountId) => {
+    onSuccess: (result, variables) => {
       invalidateFinanceQueries(queryClient, tenantId);
-      toast.success('Fee account created.');
-      router.push(`/finance/fees/${accountId}`);
+      if (!variables.silent) {
+        toast.success(
+          result.created ? 'Fee account created.' : 'Fee account ready.',
+        );
+      }
+      if (variables.redirect === false) {
+        return;
+      }
+      router.push(`/finance/fees/${result.accountId}`);
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const generateMissingFeeAccounts = useMutation({
+    mutationFn: async (academicYearId: string) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const result = await provisionMissingFeeAccounts(supabase, {
+        academicYearId,
+      });
+      if (result.createdCount > 0) {
+        await appendSystemLog(supabase, {
+          userId,
+          event: 'fee_accounts.provisioned',
+          entityType: 'StudentFeeAccount',
+          description: `Generated ${result.createdCount} missing fee account(s).`,
+          meta: { createdCount: result.createdCount, academicYearId },
+        });
+      }
+      return result.createdCount;
+    },
+    onSuccess: (createdCount) => {
+      invalidateFinanceQueries(queryClient, tenantId);
+      if (createdCount > 0) {
+        toast.success(
+          createdCount === 1
+            ? 'Created 1 missing fee account.'
+            : `Created ${createdCount} missing fee accounts.`,
+        );
+      } else {
+        toast.success('All enrolled students already have fee accounts.');
+      }
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -347,7 +350,7 @@ export function useFinanceMutations() {
 
       const { data: installment, error: fetchError } = await supabase
         .from('StudentFeeInstallment')
-        .select('id, amountMinor, studentFeeAccountId')
+        .select('id, amountMinor, paidAmountMinor, status, studentFeeAccountId')
         .eq('tenantId', tenantId)
         .eq('id', values.installmentId)
         .maybeSingle();
@@ -358,22 +361,109 @@ export function useFinanceMutations() {
         throw new Error('Installment not found.');
       }
 
-      const update = buildFeePaymentUpdate(
-        {
-          ...values,
-          amountMinor: installment.amountMinor as number,
-        },
-        userId,
-        nowIso,
-      );
-
-      const { error } = await supabase
-        .from('StudentFeeInstallment')
-        .update(update)
+      const accountId = String(installment.studentFeeAccountId);
+      const { data: account, error: accountError } = await supabase
+        .from('StudentFeeAccount')
+        .select(
+          `
+          id,
+          totalAmountMinor,
+          creditMinor,
+          StudentFeeInstallment (
+            id,
+            installmentNumber,
+            amountMinor,
+            paidAmountMinor,
+            status
+          ),
+          StudentScholarship ( discountMinor )
+        `,
+        )
         .eq('tenantId', tenantId)
-        .eq('id', values.installmentId);
-      if (error) {
-        throw error;
+        .eq('id', accountId)
+        .maybeSingle();
+      if (accountError) {
+        throw accountError;
+      }
+      if (!account) {
+        throw new Error('Fee account not found.');
+      }
+
+      const installments = (
+        account.StudentFeeInstallment ?? []
+      ) as Array<{
+        id: string;
+        installmentNumber: number;
+        amountMinor: number;
+        paidAmountMinor: number | null;
+        status: string;
+      }>;
+      const scholarships = (account.StudentScholarship ?? []) as Array<{
+        discountMinor: number;
+      }>;
+      const scholarshipMinor = scholarships.reduce(
+        (sum, row) => sum + Number(row.discountMinor ?? 0),
+        0,
+      );
+      const totals = computeFeeAccountTotals({
+        totalAmountMinor: Number(account.totalAmountMinor),
+        scholarshipMinor,
+        creditMinor: Number(account.creditMinor ?? 0),
+        installments,
+      });
+
+      const selected = installments.find((row) => row.id === values.installmentId);
+      const amountMinor = selected
+        ? Number(selected.amountMinor)
+        : Number(installment.amountMinor);
+      const thisPayment =
+        values.paidAmountMinor != null && values.paidAmountMinor > 0
+          ? values.paidAmountMinor
+          : remainingInstallmentMinor({
+              amountMinor,
+              paidAmountMinor: (selected?.paidAmountMinor ??
+                installment.paidAmountMinor) as number | null,
+              status: String(selected?.status ?? installment.status),
+            });
+
+      const allocation = allocateFeePayment({
+        selectedInstallmentId: values.installmentId,
+        paymentMinor: thisPayment,
+        installments,
+        accountRemainingMinor: totals.balanceMinor,
+      });
+      if (allocation.appliedMinor <= 0) {
+        throw new Error('No remaining school fees to apply this payment to.');
+      }
+
+      for (const row of allocation.updates) {
+        const isSelected = row.id === values.installmentId;
+        const update = isSelected
+          ? buildFeePaymentUpdate(
+              {
+                ...values,
+                amountMinor,
+                paidAmountMinor: row.paidAmountMinor,
+              },
+              userId,
+              nowIso,
+            )
+          : {
+              status: row.status,
+              paidAmountMinor: row.paidAmountMinor,
+              paidAt: nowIso,
+              updatedByUserId: userId,
+              updatedAt: nowIso,
+            };
+
+        const { error } = await supabase
+          .from('StudentFeeInstallment')
+          .update(update)
+          .eq('tenantId', tenantId)
+          .eq('id', row.id);
+        if (error) {
+          throw error;
+        }
       }
 
       await appendSystemLog(supabase, {
@@ -381,114 +471,16 @@ export function useFinanceMutations() {
         event: 'fee_payment.recorded',
         entityId: values.installmentId,
         entityType: 'StudentFeeInstallment',
-        meta: { studentFeeAccountId: installment.studentFeeAccountId },
+        meta: {
+          studentFeeAccountId: accountId,
+          appliedMinor: allocation.appliedMinor,
+          installmentCount: allocation.updates.length,
+        },
       });
     },
     onSuccess: () => {
       invalidateFinanceQueries(queryClient, tenantId);
       toast.success('Payment recorded.');
-    },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
-  });
-
-  const createLedgerEntry = useMutation({
-    mutationFn: async (values: FinanceLedgerEntryFormValues) => {
-      if (!tenantId || !userId) {
-        throw new Error('Session required.');
-      }
-      const supabase = requireBrowserClient();
-      const nowIso = new Date().toISOString();
-      const id = generateAcadiaId('ledger');
-      const { error } = await supabase.from('FinanceLedgerEntry').insert({
-        id,
-        tenantId,
-        academicYearId: values.academicYearId,
-        entryType: values.entryType,
-        category: values.category,
-        description: values.description?.trim() || null,
-        amountMinor: values.amountMinor,
-        currency: values.currency || DEFAULT_FEE_CURRENCY,
-        occurredOn: values.occurredOn,
-        createdByUserId: userId,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      });
-      if (error) {
-        throw error;
-      }
-      await appendSystemLog(supabase, {
-        userId,
-        event: 'finance_ledger.created',
-        entityId: id,
-        entityType: 'FinanceLedgerEntry',
-      });
-    },
-    onSuccess: () => {
-      invalidateFinanceQueries(queryClient, tenantId);
-      toast.success('Ledger entry added.');
-    },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
-  });
-
-  const saveBudgetLine = useMutation({
-    mutationFn: async (values: FinanceBudgetLineFormValues) => {
-      if (!tenantId || !userId) {
-        throw new Error('Session required.');
-      }
-      const supabase = requireBrowserClient();
-      const nowIso = new Date().toISOString();
-
-      const { data: existing, error: findError } = await supabase
-        .from('FinanceBudgetLine')
-        .select('id')
-        .eq('tenantId', tenantId)
-        .eq('academicYearId', values.academicYearId)
-        .eq('category', values.category)
-        .maybeSingle();
-      if (findError) {
-        throw findError;
-      }
-
-      const payload = {
-        budgetedMinor: values.budgetedMinor,
-        currency: values.currency || DEFAULT_FEE_CURRENCY,
-        notes: values.notes?.trim() || null,
-        updatedAt: nowIso,
-      };
-
-      if (existing?.id) {
-        const { error } = await supabase
-          .from('FinanceBudgetLine')
-          .update(payload)
-          .eq('tenantId', tenantId)
-          .eq('id', existing.id as string);
-        if (error) {
-          throw error;
-        }
-      } else {
-        const { error } = await supabase.from('FinanceBudgetLine').insert({
-          id: generateAcadiaId('budget'),
-          tenantId,
-          academicYearId: values.academicYearId,
-          category: values.category,
-          ...payload,
-          createdAt: nowIso,
-        });
-        if (error) {
-          throw error;
-        }
-      }
-
-      await appendSystemLog(supabase, {
-        userId,
-        event: 'finance_budget.saved',
-        entityType: 'FinanceBudgetLine',
-        description: `${values.category} budget updated`,
-      });
-    },
-    onSuccess: () => {
-      invalidateFinanceQueries(queryClient, tenantId);
-      toast.success('Budget line saved.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -879,9 +871,8 @@ export function useFinanceMutations() {
     saveStreamFeePlan,
     deleteStreamFeePlan,
     createStudentFeeAccount,
+    generateMissingFeeAccounts,
     recordFeePayment,
-    createLedgerEntry,
-    saveBudgetLine,
     createSale,
     updateSale,
     deleteSale,

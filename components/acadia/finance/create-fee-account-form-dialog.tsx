@@ -27,6 +27,7 @@ export function CreateFeeAccountFormDialog({
 }) {
   const { t } = useTranslation();
   const [pending, setPending] = useState(false);
+  const [canSubmit, setCanSubmit] = useState(false);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -42,6 +43,7 @@ export function CreateFeeAccountFormDialog({
                   hideActions
                   onCancel={() => onOpenChange(false)}
                   onPendingChange={setPending}
+                  onCanSubmitChange={setCanSubmit}
                 />
               ) : null}
             </div>
@@ -51,7 +53,11 @@ export function CreateFeeAccountFormDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.buttons.cancel')}
           </Button>
-          <Button type="submit" form={CREATE_FEE_ACCOUNT_FORM_ID} disabled={pending}>
+          <Button
+            type="submit"
+            form={CREATE_FEE_ACCOUNT_FORM_ID}
+            disabled={pending || !canSubmit}
+          >
             {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
             Create fee account
           </Button>

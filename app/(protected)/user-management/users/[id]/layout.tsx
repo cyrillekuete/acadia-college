@@ -126,7 +126,7 @@ export default function UserLayout({
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/user/users">Users</BreadcrumbLink>
+                  <BreadcrumbLink href="/admin/users">Users</BreadcrumbLink>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

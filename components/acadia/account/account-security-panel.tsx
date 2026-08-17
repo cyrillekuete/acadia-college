@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -66,6 +66,7 @@ function ChangeEmailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const queryClient = useQueryClient();
   const form = useForm<AccountEmailSchemaType>({
     resolver: zodResolver(AccountEmailSchema),
     defaultValues: { email: '' },
@@ -73,18 +74,23 @@ function ChangeEmailDialog({
 
   const mutation = useMutation({
     mutationFn: async (values: AccountEmailSchemaType) => {
-      const supabase = requireBrowserClient();
-      const { error } = await supabase.auth.updateUser({
-        email: values.email.trim(),
+      const response = await apiFetch('/api/acadia/account/email', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: values.email.trim() }),
       });
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const payload = (await response
+          .json()
+          .catch(() => null)) as { message?: string } | null;
+        throw new Error(payload?.message ?? 'Unable to update email.');
       }
+      const supabase = requireBrowserClient();
+      await supabase.auth.refreshSession();
     },
     onSuccess: () => {
-      toast.success(
-        'Confirmation emails sent. Check your inbox to finish updating your email.',
-      );
+      toast.success('Email updated.');
+      void queryClient.invalidateQueries({ queryKey: ['acadia-college-session'] });
       form.reset();
       onOpenChange(false);
     },
@@ -392,11 +398,9 @@ export function AccountSecurityPanel() {
           </CardDescription>
           <div className="flex items-center gap-2.5 rounded-lg bg-accent/60 p-4 text-sm">
             <span className="font-medium">{email || '—'}</span>
-            {authUser?.email_confirmed_at ? (
-              <Badge variant="success" appearance="light">
-                Verified
-              </Badge>
-            ) : null}
+            <Badge variant="success" appearance="light">
+              Verified
+            </Badge>
           </div>
           <Button variant="outline" onClick={() => setEmailDialogOpen(true)}>
             Change email

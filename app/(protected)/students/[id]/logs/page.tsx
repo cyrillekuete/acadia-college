@@ -13,7 +13,7 @@ export default function StudentActivityLogsPage({
   return (
     <SystemLogDataGrid
       entityIdFilter={id}
-      entityTypes={['StudentProfile', 'students', 'EnrollmentApplication']}
+      entityTypes={['StudentProfile', 'students']}
     />
   );
 }

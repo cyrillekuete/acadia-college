@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { ClassReportDocument } from '@/components/acadia/report-cards/class-report-document';
+import {
+  PdfDocumentReadyMarker,
+  usePdfDocumentReady,
+} from '@/hooks/use-pdf-document-ready';
 import type { ClassReportData } from '@/lib/acadia/class-report';
 
 export default function ClassReportPdfClient({
@@ -15,6 +19,7 @@ export default function ClassReportPdfClient({
 }) {
   const [data] = useState<ClassReportData | null>(initialData);
   const [error] = useState<string | null>(initialError);
+  const ready = usePdfDocumentReady(Boolean(data) && !error);
 
   if (!classId) {
     return (
@@ -39,12 +44,7 @@ export default function ClassReportPdfClient({
   return (
     <>
       <ClassReportDocument data={data} variant="pdfRender" />
-      <div
-        id="report-card-pdf-ready"
-        data-pdf-ready="true"
-        aria-hidden
-        style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
-      />
+      <PdfDocumentReadyMarker ready={ready} />
     </>
   );
 }

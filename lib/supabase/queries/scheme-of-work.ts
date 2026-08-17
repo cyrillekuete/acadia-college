@@ -3,6 +3,7 @@ import { generateAcadiaId } from '@/lib/acadia/ids';
 import { levelLabel, unwrapRelation } from '@/lib/acadia/record-display';
 import {
   attachTopicProgress,
+  cascadeProgressTopicIds,
   isSchemeOfWorkStatus,
   type AdminSchemeYearRow,
   type SchemeListItem,
@@ -190,11 +191,10 @@ export async function fetchSchemeTopics(
   const { data, error } = await supabase
     .from('SchemeOfWorkTopic')
     .select(
-      'id, tenantId, schemeOfWorkId, termId, weekNumber, titleEn, titleFr, descriptionEn, descriptionFr, sortOrder, createdAt, updatedAt',
+      'id, tenantId, schemeOfWorkId, parentTopicId, titleEn, titleFr, descriptionEn, descriptionFr, sortOrder, createdAt, updatedAt',
     )
     .eq('tenantId', tenantId)
     .eq('schemeOfWorkId', schemeOfWorkId)
-    .order('weekNumber', { ascending: true })
     .order('sortOrder', { ascending: true });
 
   if (error) {
@@ -249,26 +249,34 @@ export async function fetchSchemeTopicsWithProgress(
   return attachTopicProgress(topics, progressByTopicId);
 }
 
-export async function assertTermBelongsToYear(
+async function resolveParentTopicId(
   supabase: Client,
   tenantId: string,
-  academicYearId: string,
-  termId: string,
-): Promise<void> {
+  scheme: SchemeOfWorkRecord,
+  parentTopicId: string | null | undefined,
+): Promise<string | null> {
+  const parentId = parentTopicId?.trim() || null;
+  if (!parentId) {
+    return null;
+  }
+
   const { data, error } = await supabase
-    .from('Term')
-    .select('id')
+    .from('SchemeOfWorkTopic')
+    .select('id, schemeOfWorkId, parentTopicId')
     .eq('tenantId', tenantId)
-    .eq('id', termId)
-    .eq('academicYearId', academicYearId)
+    .eq('id', parentId)
     .maybeSingle();
 
   if (error) {
     throw error;
   }
-  if (!data) {
-    throw new Error('Term does not belong to this academic year.');
+  if (!data || data.schemeOfWorkId !== scheme.id) {
+    throw new Error('Parent topic was not found on this scheme of work.');
   }
+  if (data.parentTopicId) {
+    throw new Error('Sub-topics cannot have their own sub-topics.');
+  }
+  return parentId;
 }
 
 export async function upsertSchemeOfWork(
@@ -337,11 +345,11 @@ export async function insertSchemeTopic(
   values: SchemeOfWorkTopicFormValues,
   sortOrder: number,
 ): Promise<void> {
-  await assertTermBelongsToYear(
+  const parentTopicId = await resolveParentTopicId(
     supabase,
     tenantId,
-    scheme.academicYearId,
-    values.termId,
+    scheme,
+    values.parentTopicId,
   );
 
   const now = new Date().toISOString();
@@ -349,8 +357,7 @@ export async function insertSchemeTopic(
     id: generateAcadiaId('sowt'),
     tenantId,
     schemeOfWorkId: scheme.id,
-    termId: values.termId,
-    weekNumber: values.weekNumber,
+    parentTopicId,
     titleEn: values.titleEn.trim(),
     titleFr: values.titleFr?.trim() || values.titleEn.trim(),
     descriptionEn: emptyToNull(values.descriptionEn),
@@ -372,18 +379,9 @@ export async function updateSchemeTopic(
   topicId: string,
   values: SchemeOfWorkTopicFormValues,
 ): Promise<void> {
-  await assertTermBelongsToYear(
-    supabase,
-    tenantId,
-    scheme.academicYearId,
-    values.termId,
-  );
-
   const { error } = await supabase
     .from('SchemeOfWorkTopic')
     .update({
-      termId: values.termId,
-      weekNumber: values.weekNumber,
       titleEn: values.titleEn.trim(),
       titleFr: values.titleFr?.trim() || values.titleEn.trim(),
       descriptionEn: emptyToNull(values.descriptionEn),
@@ -433,7 +431,7 @@ export async function reorderSchemeTopics(
   }
 }
 
-export async function markSchemeTopicProgress(
+async function setSingleTopicProgress(
   supabase: Client,
   tenantId: string,
   input: {
@@ -496,6 +494,49 @@ export async function markSchemeTopicProgress(
 
   if (error) {
     throw error;
+  }
+}
+
+export async function markSchemeTopicProgress(
+  supabase: Client,
+  tenantId: string,
+  input: {
+    topicId: string;
+    classId: string;
+    completed: boolean;
+    staffProfileId: string | null;
+  },
+): Promise<void> {
+  const { data: topic, error: topicError } = await supabase
+    .from('SchemeOfWorkTopic')
+    .select('id, schemeOfWorkId')
+    .eq('tenantId', tenantId)
+    .eq('id', input.topicId)
+    .maybeSingle();
+
+  if (topicError) {
+    throw topicError;
+  }
+  if (!topic) {
+    throw new Error('Topic was not found.');
+  }
+
+  const topics = await fetchSchemeTopicsWithProgress(
+    supabase,
+    tenantId,
+    topic.schemeOfWorkId,
+    input.classId,
+  );
+  const topicIds = cascadeProgressTopicIds(topics, input.topicId, input.completed);
+  const ids = topicIds.length > 0 ? topicIds : [input.topicId];
+
+  for (const topicId of ids) {
+    await setSingleTopicProgress(supabase, tenantId, {
+      topicId,
+      classId: input.classId,
+      completed: input.completed,
+      staffProfileId: input.staffProfileId,
+    });
   }
 }
 

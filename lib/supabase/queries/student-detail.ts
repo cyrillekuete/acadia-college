@@ -3,6 +3,7 @@ import type {
   StudentEnrollmentStatus,
   StudentListItem,
 } from '@/lib/acadia/student-list-item';
+import { isAcadiaEmailVerified } from '@/lib/acadia/email-verified';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import {
   loadFeeSummaryForProfile,
@@ -139,7 +140,7 @@ async function fetchFromStudentProfile(
     enrollment_status: enrollmentStatus,
     status: profile.isActive === false ? 'inactive' : 'active',
     enrollment_date: enrollmentDate,
-    email_verified: !!user?.emailVerifiedAt,
+    email_verified: isAcadiaEmailVerified(user?.emailVerifiedAt),
     total_fees: feeByProfile.total,
     paid_fees: feeByProfile.paid,
     fees_status: feeByProfile.status,

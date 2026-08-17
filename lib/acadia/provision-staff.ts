@@ -220,6 +220,7 @@ export async function provisionStaff(
     tenantId,
     status: UserStatus.ACTIVE,
     invitedByUserId: actorUserId,
+    emailVerifiedAt: now,
     createdAt: now,
     updatedAt: now,
     isTrashed: false,

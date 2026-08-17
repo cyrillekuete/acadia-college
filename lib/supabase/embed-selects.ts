@@ -35,11 +35,6 @@ export const FK = {
   StudentFeeAccount_studentProfile: 'StudentFeeAccount_studentProfileId_tenantId_fkey',
   StudentFeeAccount_academicYear: 'StudentFeeAccount_academicYearId_tenantId_fkey',
 
-  // EnrollmentApplication
-  EnrollmentApplication_studentProfile: 'EnrollmentApplication_studentProfileId_tenantId_fkey',
-  EnrollmentApplication_academicYear: 'EnrollmentApplication_academicYearId_tenantId_fkey',
-  EnrollmentApplication_level: 'EnrollmentApplication_levelId_tenantId_fkey',
-
   // CourseworkSubmission / CourseworkTask
   CourseworkSubmission_studentProfile: 'CourseworkSubmission_studentProfileId_tenantId_fkey',
   CourseworkSubmission_task: 'CourseworkSubmission_taskId_tenantId_fkey',
@@ -107,7 +102,7 @@ export const FK = {
   SchemeOfWork_subject: 'SchemeOfWork_subjectId_tenantId_fkey',
   SchemeOfWork_level: 'SchemeOfWork_levelId_tenantId_fkey',
   SchemeOfWorkTopic_scheme: 'SchemeOfWorkTopic_schemeOfWorkId_tenantId_fkey',
-  SchemeOfWorkTopic_term: 'SchemeOfWorkTopic_termId_tenantId_fkey',
+  SchemeOfWorkTopic_parent: 'SchemeOfWorkTopic_parentTopicId_tenantId_fkey',
   SchemeOfWorkTopicProgress_topic: 'SchemeOfWorkTopicProgress_topicId_tenantId_fkey',
   SchemeOfWorkTopicProgress_class: 'SchemeOfWorkTopicProgress_classId_tenantId_fkey',
   SchemeOfWorkTopicProgress_completedBy: 'SchemeOfWorkTopicProgress_completedBy_tenantId_fkey',

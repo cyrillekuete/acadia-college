@@ -19,7 +19,6 @@ import { DataGrid } from '@/components/ui/data-grid';
 import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
-import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,8 +27,15 @@ import {
   computeFeeAccountTotals,
   formatMoneyMinor,
   paymentProgressPercent,
+  remainingInstallmentMinor,
 } from '@/lib/acadia/finance';
+import { parseLocalDateInputValue } from '@/lib/acadia/dates';
+import { formatDateTime } from '@/lib/acadia/record-display';
 import { FeeStatusBadge } from '@/components/acadia/finance/fee-status-badge';
+import {
+  RecordFeePaymentDialog,
+  type PayableInstallment,
+} from '@/components/acadia/finance/record-fee-payment-dialog';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
 import {
   isAcadiaTenantQueryEnabled,
@@ -51,6 +57,11 @@ type InstallmentRow = {
   paidAt: string | null;
 };
 
+function formatDueOn(value: string): string {
+  const date = parseLocalDateInputValue(value);
+  return date ? date.toLocaleDateString() : value;
+}
+
 export function FeeAccountInstallments({
   accountId,
   readOnly = false,
@@ -64,8 +75,8 @@ export function FeeAccountInstallments({
   const tenantId = session?.tenantId ?? null;
   const canManage = canWriteFinance(session?.roleSlug) && !readOnly;
   const { recordFeePayment } = useFinanceMutations();
-  const [payingId, setPayingId] = useState<string | null>(null);
-  const [notes, setNotes] = useState('');
+  const [payingInstallment, setPayingInstallment] =
+    useState<PayableInstallment | null>(null);
 
   const query = useQuery({
     queryKey: ['fee-account-installments', tenantId, accountId],
@@ -78,6 +89,7 @@ export function FeeAccountInstallments({
           id,
           feeCurrency,
           totalAmountMinor,
+          creditMinor,
           StudentFeeInstallment (
             id,
             installmentNumber,
@@ -112,6 +124,7 @@ export function FeeAccountInstallments({
       const totals = computeFeeAccountTotals({
         totalAmountMinor: Number(account.totalAmountMinor),
         scholarshipMinor,
+        creditMinor: Number(account.creditMinor ?? 0),
         installments,
       });
       return {
@@ -126,22 +139,20 @@ export function FeeAccountInstallments({
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
-  const handleRecordPayment = async (
-    installmentId: string,
-    amountMinor: number,
-  ) => {
-    setPayingId(installmentId);
-    try {
-      await recordFeePayment.mutateAsync({
-        installmentId,
-        amountMinor,
-        paidAmountMinor: amountMinor,
-        notes,
-      });
-      setNotes('');
-    } finally {
-      setPayingId(null);
+  const handleRecordPayment = async (input: {
+    amountMinor: number;
+    notes: string;
+  }) => {
+    if (!payingInstallment) {
+      return;
     }
+    await recordFeePayment.mutateAsync({
+      installmentId: payingInstallment.id,
+      amountMinor: payingInstallment.amountMinor,
+      paidAmountMinor: input.amountMinor,
+      notes: input.notes,
+    });
+    setPayingInstallment(null);
   };
 
   if (query.isError) {
@@ -170,6 +181,11 @@ export function FeeAccountInstallments({
             <span className="font-medium">
               {t('finance.balance')}: {formatMoneyMinor(totals.balanceMinor, currency)}
             </span>
+            {(totals.creditMinor ?? 0) > 0 ? (
+              <span>
+                {t('finance.credit')}: {formatMoneyMinor(totals.creditMinor ?? 0, currency)}
+              </span>
+            ) : null}
           </div>
           {progress !== null ? (
             <Progress value={progress} className="h-2" />
@@ -189,22 +205,22 @@ export function FeeAccountInstallments({
         currency={currency}
         isLoading={query.isLoading}
         canManage={canManage}
-        payingId={payingId}
-        isPaymentPending={recordFeePayment.isPending}
-        onRecordPayment={handleRecordPayment}
+        onAddPayment={setPayingInstallment}
       />
 
-      {canManage && query.data ? (
-        <div className="max-w-md print:hidden">
-          <label className="text-sm font-medium">{t('finance.paymentNotes')}</label>
-          <Input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={t('finance.paymentNotesPlaceholder')}
-            className="mt-1"
-          />
-        </div>
-      ) : null}
+      <RecordFeePaymentDialog
+        installment={payingInstallment}
+        accountRemainingMinor={totals?.balanceMinor ?? 0}
+        currency={currency}
+        open={payingInstallment != null}
+        pending={recordFeePayment.isPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPayingInstallment(null);
+          }
+        }}
+        onSubmit={handleRecordPayment}
+      />
     </div>
   );
 }
@@ -214,17 +230,13 @@ function InstallmentsTable({
   currency,
   isLoading,
   canManage,
-  payingId,
-  isPaymentPending,
-  onRecordPayment,
+  onAddPayment,
 }: {
   data: InstallmentRow[];
   currency: string;
   isLoading: boolean;
   canManage: boolean;
-  payingId: string | null;
-  isPaymentPending: boolean;
-  onRecordPayment: (installmentId: string, amountMinor: number) => void;
+  onAddPayment: (installment: PayableInstallment) => void;
 }) {
   const { t } = useTranslation();
   const [pagination, setPagination] = useState<PaginationState>({
@@ -237,6 +249,8 @@ function InstallmentsTable({
     'labelEn',
     'dueOn',
     'amountMinor',
+    'paidAmountMinor',
+    'paidAt',
     'status',
     'actions',
   ]);
@@ -262,7 +276,7 @@ function InstallmentsTable({
           />
         ),
         cell: ({ row }) => row.original.labelEn,
-        size: 200,
+        size: 180,
         enableSorting: true,
       },
       {
@@ -274,7 +288,7 @@ function InstallmentsTable({
             column={column}
           />
         ),
-        cell: ({ row }) => row.original.dueOn,
+        cell: ({ row }) => formatDueOn(row.original.dueOn),
         size: 140,
         enableSorting: true,
       },
@@ -288,7 +302,36 @@ function InstallmentsTable({
           />
         ),
         cell: ({ row }) => formatMoneyMinor(row.original.amountMinor, currency),
-        size: 140,
+        size: 130,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'paidAmountMinor',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('finance.paidAmount')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) =>
+          row.original.paidAmountMinor
+            ? formatMoneyMinor(row.original.paidAmountMinor, currency)
+            : '—',
+        size: 130,
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'paidAt',
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('finance.paidOn')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => formatDateTime(row.original.paidAt),
+        size: 160,
         enableSorting: true,
       },
       {
@@ -323,29 +366,29 @@ function InstallmentsTable({
             column={column}
           />
         ),
-        cell: ({ row }) => (
-          <div className="text-right">
-            {row.original.status !== 'PAID' && row.original.status !== 'WAIVED' ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={isPaymentPending && payingId === row.original.id}
-                onClick={() =>
-                  void onRecordPayment(row.original.id, row.original.amountMinor)
-                }
-              >
-                {t('finance.markPaid')}
-              </Button>
-            ) : (
-              '—'
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const remaining = remainingInstallmentMinor(row.original);
+          return (
+            <div className="text-right">
+              {remaining > 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAddPayment(row.original)}
+                >
+                  {t('finance.addPayment')}
+                </Button>
+              ) : (
+                '—'
+              )}
+            </div>
+          );
+        },
         size: 140,
         enableSorting: false,
       },
     ];
-  }, [canManage, currency, isPaymentPending, onRecordPayment, payingId, t]);
+  }, [canManage, currency, onAddPayment, t]);
 
   const table = useReactTable({
     data,

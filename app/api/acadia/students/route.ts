@@ -12,7 +12,7 @@ import {
 import {
   generateRegistrationNumber,
   normalizeMatriculeNumber,
-} from '@/lib/acadia/enrollment';
+} from '@/lib/acadia/student-ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 
 export async function POST(request: Request) {

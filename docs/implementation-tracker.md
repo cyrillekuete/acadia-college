@@ -91,7 +91,7 @@
 
 | ID | Feature | Status | Route | Template source | Notes |
 |----|---------|--------|-------|-----------------|-------|
-| F-030 | Student fees + installments | `done` | `/finance/fees` | account/billing/basic | List view |
+| F-030 | Student fees + installments | `done` | `/finance/fees` | account/billing/basic | Auto-provisioned from enrollment + class fee plans |
 | F-031 | Scholarships | `done` | `/finance/scholarships` | DataGrid list | |
 | F-032 | Transcripts | `done` | `/transcripts` | DataGrid list | |
 | F-032b | Transcript copy requests | `done` | `/transcripts/requests` | DataGrid list | |
@@ -218,8 +218,8 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-100 | Tuition fee plans / setup | FR-6.1.1 | `done` | `/finance/fees/setup` | account/billing/basic | `FeePlanSetupForm`, `StreamFeePlan` |
-| F-101 | Payment status tracking | FR-6.1.2 | `done` | `/finance/fees`, `/finance/fees/[id]` | billing | `FeeAccountInstallments`, status badges |
+| F-100 | Tuition fee plans / setup | FR-6.1.1 | `done` | `/finance/fees/setup` | account/billing/basic | `FeePlanSetupForm`, `StreamFeePlan`; saving a plan provisions missing student accounts |
+| F-101 | Payment status tracking | FR-6.1.2 | `done` | `/finance/fees`, `/finance/fees/[id]` | billing | `FeeAccountInstallments`; accounts auto-created on enrollment; bulk generate missing |
 | F-102 | Invoices and receipts | FR-6.1.3 | `done` | `/finance/fees/[id]/invoice` | — | `FeeInvoiceView` (print) |
 | F-103 | Outstanding balances view | FR-6.1.4 | `done` | `/finance/fees` | — | `FeeOutstandingPanel` tab |
 | F-104 | Financial summaries | FR-6.2.1 | `done` | `/finance/reports` | dashboard cards | `FinanceSummaryPanel` |
@@ -376,7 +376,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7E: course CRUD, assignments, class rosters, timetable slots, course materials (F-077–F-081) |
 | 2026-05-19 | — | Phase 7F: marks entry, averages, audit, exams CRUD/schedule/results, academic reports (F-082–F-093) |
 | 2026-05-19 | — | Phase 7G: attendance sessions, daily marks, reports, analytics, guardian notifications (F-094–F-099) |
-| 2026-05-19 | — | Phase 7H: fee plans, payments, invoices, outstanding balances, ledger, budget, annual reports (F-100–F-107) |
+| 2026-08-17 | — | Student fee accounts auto-provisioned from enrollment + class fee plans; class-change rebill carries paid amounts; bulk generate missing accounts |
 | 2026-05-19 | — | Phase 7I: automatic promotion, manual overrides, year rollover, data retention (F-108–F-111) |
 | 2026-05-19 | — | Phase 7J: messaging, group threads, notifications, preferences, announcements (F-112–F-118) |
 | 2026-05-19 | — | Phase 7K: learning materials, resource inventory/requests, room usage & maintenance (F-119–F-125) |
