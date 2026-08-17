@@ -399,7 +399,7 @@ export default function StudentFeesPage() {
             </Button>
             <Button
               size="sm"
-              variant={missingCount > 0 ? 'default' : 'outline'}
+              variant={missingCount > 0 ? 'primary' : 'outline'}
               disabled={!activeYearId || generating || missingQuery.isLoading}
               onClick={() => {
                 if (!activeYearId) {

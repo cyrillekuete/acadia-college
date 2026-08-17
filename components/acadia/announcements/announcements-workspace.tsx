@@ -94,7 +94,7 @@ const TEMPLATE_ICONS = {
 
 function priorityBadgeVariant(priority: string) {
   if (priority === 'urgent') return 'destructive' as const;
-  if (priority === 'high') return 'default' as const;
+  if (priority === 'high') return 'warning' as const;
   if (priority === 'normal') return 'secondary' as const;
   return 'outline' as const;
 }

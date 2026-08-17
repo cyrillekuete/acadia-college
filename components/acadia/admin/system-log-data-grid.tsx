@@ -368,14 +368,7 @@ export function SystemLogDataGrid({
 
   if (isError) {
     const message =
-      error instanceof Error
-        ? error.message
-        : error &&
-            typeof error === 'object' &&
-            'message' in error &&
-            typeof error.message === 'string'
-          ? error.message
-          : 'Failed to load logs.';
+      error instanceof Error ? error.message : 'Failed to load logs.';
     return <p className="text-sm text-destructive">{message}</p>;
   }
 

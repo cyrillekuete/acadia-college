@@ -197,7 +197,7 @@ export function ClassAbsencesGrid() {
       },
       {
         id: 'suspensions',
-        accessorFn: (row) => drafts[row.original.studentProfileId]?.suspensions ?? 0,
+        accessorFn: (row) => drafts[row.studentProfileId]?.suspensions ?? 0,
         header: ({ column }) => (
           <DataGridColumnHeader
             title={t('reports.suspensions')}
@@ -228,7 +228,7 @@ export function ClassAbsencesGrid() {
       },
       {
         id: 'warnings',
-        accessorFn: (row) => drafts[row.original.studentProfileId]?.warnings ?? 0,
+        accessorFn: (row) => drafts[row.studentProfileId]?.warnings ?? 0,
         header: ({ column }) => (
           <DataGridColumnHeader
             title={t('reports.warnings')}

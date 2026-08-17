@@ -263,7 +263,7 @@ export async function fetchClassReportBundle(
     if (profileError) {
       throw new Error(getQueryErrorMessage(profileError));
     }
-    for (const row of (profileRows ?? []) as Array<{
+    for (const row of (profileRows ?? []) as unknown as Array<{
       id: string;
       matriculeNumber: string | null;
       registrationNumber: string;

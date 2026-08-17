@@ -80,7 +80,7 @@ export async function fetchClassDisciplineRoster(
   }
 
   const students: ClassDisciplineStudent[] = (
-    (enrollmentResult.data ?? []) as Array<Record<string, unknown>>
+    (enrollmentResult.data ?? []) as unknown as Array<Record<string, unknown>>
   )
     .map((row) => {
       const profile = unwrapRelation<{

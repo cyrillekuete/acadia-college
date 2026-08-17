@@ -49,7 +49,7 @@ type InboxRow = {
 
 function priorityBadgeVariant(priority: string) {
   if (priority === 'urgent') return 'destructive' as const;
-  if (priority === 'high') return 'default' as const;
+  if (priority === 'high') return 'warning' as const;
   if (priority === 'normal') return 'secondary' as const;
   return 'outline' as const;
 }
@@ -247,7 +247,7 @@ export function GuardianAnnouncementsInbox() {
                           {title || t('communication.noTitle')}
                         </h3>
                         {!isRead ? (
-                          <Badge variant="default" className="ml-2">
+                          <Badge variant="primary" className="ml-2">
                             {t('communication.newBadge')}
                           </Badge>
                         ) : null}
