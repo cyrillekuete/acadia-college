@@ -82,6 +82,14 @@ export function canManageAlerts(roleSlug: string | null | undefined): boolean {
   return canWriteOperations(roleSlug);
 }
 
+/**
+ * Official school WhatsApp (1:1 parent notices). In-app messaging stays open to
+ * every signed-in user; the school WhatsApp number does not.
+ */
+export function canSendWhatsAppMessages(roleSlug: string | null | undefined): boolean {
+  return canWriteOperations(roleSlug);
+}
+
 /** All signed-in tenant users may participate in messaging. */
 export function canComposeMessages(_roleSlug: string | null | undefined): boolean {
   return true;

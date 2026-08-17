@@ -28,7 +28,7 @@ import {
   directMessageSchema,
   type DirectMessageFormValues,
 } from '@/lib/acadia/communication-schemas';
-import { isGuardian } from '@/lib/acadia/roles';
+import { canSendWhatsAppMessages, isGuardian } from '@/lib/acadia/roles';
 import { useCommunicationMutations } from '@/hooks/use-communication-mutations';
 import { useTenantUserOptions } from '@/hooks/use-tenant-user-options';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -43,9 +43,11 @@ export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
     session?.profile?.id,
   );
   const { createDirectMessage } = useCommunicationMutations();
+  const canSendWhatsApp = canSendWhatsAppMessages(session?.roleSlug);
   const whatsappQuery = useQuery({
     queryKey: ['whatsapp-configured'],
     queryFn: fetchWhatsAppConfigured,
+    enabled: canSendWhatsApp,
   });
   const whatsappConfigured = whatsappQuery.data === true;
 
@@ -62,7 +64,8 @@ export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
 
   const recipientUserId = form.watch('recipientUserId');
   const recipient = users.find((user) => user.id === recipientUserId);
-  const showWhatsApp = isGuardian(recipient?.roleSlug);
+  const showWhatsApp =
+    canSendWhatsApp && isGuardian(recipient?.roleSlug);
 
   const onSubmit = form.handleSubmit(async (values) => {
     await createDirectMessage.mutateAsync({

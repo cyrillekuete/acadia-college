@@ -15,6 +15,7 @@ import type {
 } from '@/lib/acadia/communication-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { getUiLocale } from '@/lib/acadia/locale';
+import { canSendWhatsAppMessages } from '@/lib/acadia/roles';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import {
   fetchWhatsAppConfigured,
@@ -133,6 +134,7 @@ export function useCommunicationMutations() {
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId;
   const userId = session?.profile?.id;
+  const roleSlug = session?.roleSlug;
   const senderName = session?.profile?.name ?? 'Someone';
 
   const createDirectMessage = useMutation({
@@ -141,6 +143,9 @@ export function useCommunicationMutations() {
         throw new Error('Session required.');
       }
       if (values.sendWhatsApp) {
+        if (!canSendWhatsAppMessages(roleSlug)) {
+          throw new Error('You do not have permission to send WhatsApp messages.');
+        }
         const configured = await fetchWhatsAppConfigured();
         if (!configured) {
           throw new Error('WhatsApp is not configured on this server.');
