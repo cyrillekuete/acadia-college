@@ -97,6 +97,27 @@ describe('ModulesProvider', () => {
     );
     expect(source).not.toMatch(/StoreClientTopbar/);
   });
+
+  it('does not mount Metronic demo chat, apps, or search in the Acadia header', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/components/layouts/demo1/components/header.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/ChatSheet/);
+    expect(source).not.toMatch(/AppsDropdownMenu/);
+    expect(source).not.toMatch(/SearchDialog/);
+    expect(source).toMatch(/href="\/messages"/);
+  });
+});
+
+describe('notification list query', () => {
+  it('caches header notification fetches for a minute', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'hooks/use-acadia-notifications.ts'),
+      'utf8',
+    );
+    expect(source).toMatch(/staleTime:\s*60_000/);
+  });
 });
 
 describe('Keenicons global stylesheet', () => {

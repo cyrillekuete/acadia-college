@@ -52,5 +52,6 @@ export function useAcadiaNotifications(limit = 20) {
     enabled:
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId) &&
       !!userId,
+    staleTime: 60_000,
   });
 }

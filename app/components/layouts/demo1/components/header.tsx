@@ -3,18 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SearchDialog } from '@/partials/dialogs/search/search-dialog';
-import { AppsDropdownMenu } from '@/partials/topbar/apps-dropdown-menu';
-import { ChatSheet } from '@/partials/topbar/chat-sheet';
 import { NotificationsSheet } from '@/partials/topbar/notifications-sheet';
 import { UserDropdownMenu } from '@/partials/topbar/user-dropdown-menu';
-import {
-  Bell,
-  LayoutGrid,
-  Menu,
-  MessageCircleMore,
-  Search,
-} from 'lucide-react';
+import { Bell, Menu, MessageCircleMore } from 'lucide-react';
 import { AcademicYearSwitcher } from '@/components/acadia/academics/academic-year-switcher';
 import { TenantLogo } from '@/components/acadia/tenant-logo';
 import { toAbsoluteUrl } from '@/lib/helpers';
@@ -97,20 +88,6 @@ export function Header() {
         {/* HeaderTopbar */}
         <div className="flex items-center gap-3">
           <AcademicYearSwitcher />
-          {!mobileMode && (
-            <SearchDialog
-              trigger={
-                <Button
-                  variant="ghost"
-                  mode="icon"
-                  shape="circle"
-                  className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
-                >
-                  <Search className="size-4.5!" />
-                </Button>
-              }
-            />
-          )}
           <NotificationsSheet
             trigger={
               <Button
@@ -123,30 +100,17 @@ export function Header() {
               </Button>
             }
           />
-          <ChatSheet
-            trigger={
-              <Button
-                variant="ghost"
-                mode="icon"
-                shape="circle"
-                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
-              >
-                <MessageCircleMore className="size-4.5!" />
-              </Button>
-            }
-          />
-          <AppsDropdownMenu
-            trigger={
-              <Button
-                variant="ghost"
-                mode="icon"
-                shape="circle"
-                className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
-              >
-                <LayoutGrid className="size-4.5!" />
-              </Button>
-            }
-          />
+          <Button
+            variant="ghost"
+            mode="icon"
+            shape="circle"
+            className="size-9 hover:bg-primary/10 hover:[&_svg]:text-primary"
+            asChild
+          >
+            <Link href="/messages" aria-label="Messages">
+              <MessageCircleMore className="size-4.5!" />
+            </Link>
+          </Button>
           <UserDropdownMenu
             trigger={
               <img
