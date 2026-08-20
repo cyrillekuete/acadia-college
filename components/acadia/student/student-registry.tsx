@@ -22,10 +22,11 @@ import {
   getStudentClassOptions,
   getStudentFeesStatusOptions,
   getTeacherSubjectOptions,
+  registryHasUnassignedClass,
   type StudentRegistryFilters,
 } from '@/lib/acadia/student-registry';
+import { UNASSIGNED_CLASS_FILTER } from '@/lib/acadia/student-enrollment';
 import {
-  findClassExportOptionByName,
   getStudentClassExportOptions,
 } from '@/lib/acadia/student-class-export';
 import { seededInitialData } from '@/lib/acadia/cache/tags';
@@ -104,6 +105,10 @@ export function StudentRegistry({
     () => teacherStudentsResult?.scope.pairs ?? [],
     [teacherStudentsResult?.scope.pairs],
   );
+  const classMasterPairs = useMemo(
+    () => teacherStudentsResult?.scope.classMaster ?? [],
+    [teacherStudentsResult?.scope.classMaster],
+  );
 
   const [filters, setFilters] = useState<StudentRegistryFilters>(
     EMPTY_STUDENT_REGISTRY_FILTERS,
@@ -117,15 +122,21 @@ export function StudentRegistry({
     () =>
       getStudentClassExportOptions(
         listSource,
-        isTeacherView ? scopePairs : undefined,
+        isTeacherView ? [...scopePairs, ...classMasterPairs] : undefined,
       ),
-    [isTeacherView, listSource, scopePairs],
+    [isTeacherView, listSource, scopePairs, classMasterPairs],
   );
 
-  const initialExportClassId = useMemo(
-    () => findClassExportOptionByName(exportClassOptions, filters.className)?.id ?? null,
-    [exportClassOptions, filters.className],
-  );
+  const initialExportClassId = useMemo(() => {
+    if (
+      filters.classId &&
+      filters.classId !== UNASSIGNED_CLASS_FILTER &&
+      exportClassOptions.some((option) => option.id === filters.classId)
+    ) {
+      return filters.classId;
+    }
+    return exportClassOptions[0]?.id ?? null;
+  }, [exportClassOptions, filters.classId]);
 
   useEffect(() => {
     if (!printJob) {
@@ -161,6 +172,11 @@ export function StudentRegistry({
         scopePairs: isTeacherView ? scopePairs : undefined,
       }),
     [filters, isTeacherView, listSource, scopePairs],
+  );
+
+  const hasUnassignedClass = useMemo(
+    () => registryHasUnassignedClass(listSource),
+    [listSource],
   );
 
   const classOptions = useMemo(
@@ -234,6 +250,7 @@ export function StudentRegistry({
               classOptions={classOptions}
               feesStatusOptions={feesStatusOptions}
               subjectOptions={subjectOptions}
+              hasUnassignedClass={hasUnassignedClass}
             />
             <StudentList
               students={filteredStudents}
@@ -253,6 +270,7 @@ export function StudentRegistry({
             open={exportOpen}
             onOpenChange={setExportOpen}
             students={listSource}
+            filteredStudents={filteredStudents}
             classOptions={exportClassOptions}
             academicYearLabel={activeYearLabel}
             initialClassId={initialExportClassId}

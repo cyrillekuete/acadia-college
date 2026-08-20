@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { shouldSkipWhatsAppRecipient } from '@/lib/acadia/alerts';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import type { UiLocale } from '@/lib/acadia/locale';
 import { toWhatsAppRecipient } from '@/lib/acadia/phone';
@@ -73,7 +74,7 @@ export async function dispatchAlertWhatsApp(
 
   const { data: recipients, error: recipientError } = await admin
     .from('SchoolAlertRecipient')
-    .select('id, guardianUserId')
+    .select('id, guardianUserId, whatsappStatus')
     .eq('tenantId', input.tenantId)
     .eq('alertId', input.alertId);
 
@@ -103,6 +104,10 @@ export async function dispatchAlertWhatsApp(
 
   await mapInChunks(rows, WHATSAPP_SEND_CHUNK_SIZE, async (row) => {
     const recipientId = row.id as string;
+    if (shouldSkipWhatsAppRecipient(row.whatsappStatus as string | null)) {
+      result.skipped += 1;
+      return;
+    }
     const phone = toWhatsAppRecipient(phones.get(row.guardianUserId as string));
     if (!phone) {
       result.skipped += 1;

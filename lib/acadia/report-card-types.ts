@@ -1,4 +1,4 @@
-export type ReportCardTerm = '1' | '2' | '3' | 'annual';
+export type ReportCardTerm = `${number}` | 'annual';
 
 export type ReportCardTemplateId = 'sequence' | 'yearSummary';
 
@@ -27,19 +27,8 @@ export type SubjectGrade = {
   groupingId?: string;
   groupingLabel?: string;
   groupingSortOrder?: number;
-  sequences?: {
-    seq1?: number;
-    seq2?: number;
-    seq3?: number;
-    seq4?: number;
-    seq5?: number;
-    seq6?: number;
-  };
-  termAverages?: {
-    term1?: number;
-    term2?: number;
-    term3?: number;
-  };
+  sequences?: Record<string, number>;
+  termAverages?: Record<string, number>;
   seq1?: number;
   seq2?: number;
   seq3?: number;
@@ -75,18 +64,21 @@ export type StudentInfo = {
 
 export type AcademicInfo = {
   year: string;
-  term: number | 'annual' | 1 | 2 | 3;
+  term: number | 'annual';
   orderNo: string;
 };
 
 export type StatsInfo = {
   classSize: number;
+  evaluated?: number;
+  unevaluated?: number;
   maxAvg: number;
   minAvg: number;
   passed: number;
   failed: number;
   passPercent: number;
   failPercent: number;
+  passPercentOfClass?: number;
   classAvg: number;
   gceTradeSubjects?: number;
   gceRelatedTrade?: number;
@@ -105,11 +97,24 @@ export type HistoryInfo = {
   term1?: number;
   term2?: number;
   term3?: number;
+  termAverages?: Record<string, number>;
   annualAvg?: number;
   rank1?: number;
   rank2?: number;
   rank3?: number;
   rank?: number;
+  promotionAvg?: number | null;
+  promotionStatus?: 'complete' | 'incomplete';
+};
+
+export type ReportCardTransferNote = {
+  className: string;
+  enrolledAt?: string | null;
+};
+
+export type ReportCardMarksStatus = {
+  status: 'complete' | 'incomplete' | 'unevaluated';
+  missingSubjectCount: number;
 };
 
 export type ReportCardBranding = {
@@ -170,22 +175,31 @@ export type ReportCardData = {
   branding: ReportCardBranding;
   watermarkUrl?: string;
   sequenceSlots?: number[];
+  termSlots?: number[];
   templateId?: ReportCardTemplateId;
+  preferFrenchNames?: boolean;
+  transferredFrom?: ReportCardTransferNote | null;
+  marksStatus?: ReportCardMarksStatus;
+  missingSignatures?: Array<'classMaster' | 'principal'>;
 };
 
 export function parseReportCardTerm(raw: string | null | undefined): ReportCardTerm {
-  if (raw === '1' || raw === '2' || raw === '3' || raw === 'annual') {
-    return raw;
+  if (raw === 'annual') {
+    return 'annual';
+  }
+  const n = Number((raw ?? '').trim());
+  if (Number.isInteger(n) && n >= 1 && n <= 12) {
+    return String(n) as ReportCardTerm;
   }
   return 'annual';
 }
 
-export function reportCardTermNumber(term: ReportCardTerm): 1 | 2 | 3 {
-  if (term === '1') return 1;
-  if (term === '2') return 2;
-  return 3;
+export function reportCardTermNumber(term: ReportCardTerm): number {
+  if (term === 'annual') return 3;
+  const n = Number(term);
+  return Number.isInteger(n) && n >= 1 ? n : 3;
 }
 
 export function isYearSummaryTerm(term: ReportCardTerm): boolean {
-  return term === 'annual' || term === '3';
+  return term === 'annual';
 }

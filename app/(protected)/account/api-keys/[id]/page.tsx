@@ -14,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
-import { PageNavbar } from '@/app/(protected)/account/page-navbar';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
+import { useTenantApiKeyMutations } from '@/hooks/use-tenant-api-key-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   apiKeyStatus,
   formatDateTime,
@@ -23,20 +24,8 @@ import {
   formatStringArray,
   unwrapRelation,
 } from '@/lib/acadia/record-display';
+import { TENANT_API_KEY_PUBLIC_SELECT } from '@/lib/acadia/tenant-api-keys';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const API_KEY_SELECT = `
-  id,
-  name,
-  keyPrefix,
-  scopes,
-  lastUsedAt,
-  revokedAt,
-  expiresAt,
-  createdAt,
-  updatedAt,
-  User:createdByUserId ( id, name, email )
-`;
 
 type TenantApiKeyDetail = {
   id: string;
@@ -68,10 +57,12 @@ export default function TenantApiKeyDetailPage({
 }) {
   const { id } = use(params);
   const { settings } = useSettings();
+  const { t } = useTranslation();
+  const { revokeApiKey } = useTenantApiKeyMutations();
   const { data, isLoading, isError, error } = useSupabaseRecord<TenantApiKeyDetail>(
     'TenantApiKey',
     id,
-    API_KEY_SELECT,
+    TENANT_API_KEY_PUBLIC_SELECT,
   );
 
   const creator = unwrapRelation<{ name?: string; email?: string }>(data?.User);
@@ -82,82 +73,122 @@ export default function TenantApiKeyDetailPage({
   const title = data?.name ? `API key — ${data.name}` : 'API key';
 
   return (
-    <Fragment>
-      <PageNavbar />
-      {settings?.layout === 'demo1' && (
+      <Fragment>
+        {settings?.layout === 'demo1' && (
+          <Container>
+            <Toolbar>
+              <ToolbarHeading>
+                <ToolbarPageTitle />
+                <ToolbarDescription>
+                  {t('account.apiKeysDescription', {
+                    defaultValue: 'Tenant API keys for integrations.',
+                  })}
+                </ToolbarDescription>
+              </ToolbarHeading>
+              <ToolbarActions>
+                {data && !data.revokedAt ? (
+                  <Button
+                    variant="outline"
+                    disabled={revokeApiKey.isPending}
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          'Revoke this API key? Existing integrations will stop working.',
+                        )
+                      ) {
+                        return;
+                      }
+                      revokeApiKey.mutate(id);
+                    }}
+                  >
+                    Revoke
+                  </Button>
+                ) : null}
+                <Button variant="outline" asChild>
+                  <Link href="/account/api-keys">Back to API keys</Link>
+                </Button>
+              </ToolbarActions>
+            </Toolbar>
+          </Container>
+        )}
         <Container>
-          <Toolbar>
-            <ToolbarHeading>
-              <ToolbarPageTitle />
-              <ToolbarDescription>
-                Central Hub for Personal Customization
-              </ToolbarDescription>
-            </ToolbarHeading>
-            <ToolbarActions>
-              <Button variant="outline" asChild>
-                <Link href="/account/api-keys">Back to API keys</Link>
-              </Button>
-            </ToolbarActions>
-          </Toolbar>
-        </Container>
-      )}
-      <Container>
-        <div className="mb-5">
-          {settings?.layout !== 'demo1' && (
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/account/api-keys">Back to API keys</Link>
-            </Button>
-          )}
-        </div>
-        {isLoading ? (
-          <Skeleton className="h-64 w-full" />
-        ) : isError ? (
-          <p className="text-sm text-destructive">{getQueryErrorMessage(error)}</p>
-        ) : data ? (
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 lg:gap-7.5">
-            <RecordDetailCard
-              title={title}
-              fields={[
-                { label: 'Name', value: formatRecordValue(data.name) },
-                {
-                  label: 'Prefix',
-                  value: data.keyPrefix ? `${data.keyPrefix}••••••••` : '—',
-                },
-                {
-                  label: 'Status',
-                  value:
-                    status === 'revoked' ? (
-                      <Badge variant="destructive" appearance="light">
-                        Revoked
-                      </Badge>
-                    ) : status === 'expired' ? (
-                      <Badge variant="secondary" appearance="light">
-                        Expired
-                      </Badge>
-                    ) : (
-                      <Badge variant="success" appearance="light">
-                        Active
-                      </Badge>
-                    ),
-                },
-                { label: 'Scopes', value: formatStringArray(data.scopes) },
-                { label: 'Last used', value: formatDateTime(data.lastUsedAt) },
-                { label: 'Revoked at', value: formatDateTime(data.revokedAt) },
-                { label: 'Expires', value: formatDateTime(data.expiresAt) },
-                { label: 'Created', value: formatDateTime(data.createdAt) },
-                { label: 'Updated', value: formatDateTime(data.updatedAt) },
-              ]}
-            />
-            <RecordDetailCard
-              title="Created by"
-              fields={[
-                { label: 'Name', value: formatRecordValue(creator?.name) },
-                { label: 'Email', value: formatRecordValue(creator?.email) },
-              ]}
-            />
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            {settings?.layout !== 'demo1' && (
+              <>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/account/api-keys">Back to API keys</Link>
+                </Button>
+                {data && !data.revokedAt ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={revokeApiKey.isPending}
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          'Revoke this API key? Existing integrations will stop working.',
+                        )
+                      ) {
+                        return;
+                      }
+                      revokeApiKey.mutate(id);
+                    }}
+                  >
+                    Revoke
+                  </Button>
+                ) : null}
+              </>
+            )}
           </div>
-        ) : null}
-      </Container>
-    </Fragment>
+          {isLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : isError ? (
+            <p className="text-sm text-destructive">{getQueryErrorMessage(error)}</p>
+          ) : data ? (
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 lg:gap-7.5">
+              <RecordDetailCard
+                title={title}
+                fields={[
+                  { label: 'Name', value: formatRecordValue(data.name) },
+                  {
+                    label: 'Prefix',
+                    value: data.keyPrefix ? `${data.keyPrefix}••••••••` : '—',
+                  },
+                  {
+                    label: 'Status',
+                    value:
+                      status === 'revoked' ? (
+                        <Badge variant="destructive" appearance="light">
+                          Revoked
+                        </Badge>
+                      ) : status === 'expired' ? (
+                        <Badge variant="secondary" appearance="light">
+                          Expired
+                        </Badge>
+                      ) : (
+                        <Badge variant="success" appearance="light">
+                          Active
+                        </Badge>
+                      ),
+                  },
+                  { label: 'Scopes', value: formatStringArray(data.scopes) },
+                  { label: 'Last used', value: formatDateTime(data.lastUsedAt) },
+                  { label: 'Revoked at', value: formatDateTime(data.revokedAt) },
+                  { label: 'Expires', value: formatDateTime(data.expiresAt) },
+                  { label: 'Created', value: formatDateTime(data.createdAt) },
+                  { label: 'Updated', value: formatDateTime(data.updatedAt) },
+                ]}
+              />
+              <RecordDetailCard
+                title="Created by"
+                fields={[
+                  { label: 'Name', value: formatRecordValue(creator?.name) },
+                  { label: 'Email', value: formatRecordValue(creator?.email) },
+                ]}
+              />
+            </div>
+          ) : null}
+        </Container>
+      </Fragment>
   );
 }

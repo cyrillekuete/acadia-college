@@ -104,7 +104,20 @@ export function SchemeTopicFormSheet({
                       name="titleEn"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('schemeOfWork.topicTitle')}</FormLabel>
+                          <FormLabel>{t('schemeOfWork.titleEn')}</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="titleFr"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('schemeOfWork.titleFr')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -117,12 +130,29 @@ export function SchemeTopicFormSheet({
                       name="descriptionEn"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('schemeOfWork.topicNotes')}</FormLabel>
+                          <FormLabel>{t('schemeOfWork.descriptionEn')}</FormLabel>
                           <FormControl>
                             <RichTextEditor
                               value={field.value ?? ''}
                               onChange={field.onChange}
-                              placeholder={t('schemeOfWork.topicNotes')}
+                              placeholder={t('schemeOfWork.descriptionEn')}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="descriptionFr"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('schemeOfWork.descriptionFr')}</FormLabel>
+                          <FormControl>
+                            <RichTextEditor
+                              value={field.value ?? ''}
+                              onChange={field.onChange}
+                              placeholder={t('schemeOfWork.descriptionFr')}
                             />
                           </FormControl>
                           <FormMessage />

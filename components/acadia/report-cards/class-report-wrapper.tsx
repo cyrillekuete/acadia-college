@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTermOptions } from '@/hooks/use-academic-calendar-options';
+import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
 import { useClassReportClassList } from '@/hooks/use-class-report-class-list';
 import {
   sequenceOptionLabel,
@@ -36,21 +38,45 @@ import { Download, GraduationCap } from '@/lib/icons';
 const SESSION_EXPIRED_MESSAGE =
   'Your session has expired. Please log in again to generate class reports.';
 
-export function ClassReportWrapper() {
+function termOptionLabel(
+  t: (key: string, values?: Record<string, unknown>) => string,
+  termNumber: number,
+): string {
+  if (termNumber === 1) return t('reports.term1');
+  if (termNumber === 2) return t('reports.term2');
+  if (termNumber === 3) return t('reports.term3');
+  return t('reports.termN', { n: termNumber });
+}
+
+export function ClassReportWrapper({
+  lockedPeriodKind,
+}: {
+  lockedPeriodKind?: ClassReportPeriodKind;
+} = {}) {
   const { t } = useTranslation();
   const { activeYearId } = useActiveAcademicYear();
   const { data: classes = [], isLoading: loadingClasses } = useClassReportClassList();
   const { data: sequences = [] } = useSequenceOptions(activeYearId);
+  const { data: terms = [] } = useTermOptions(activeYearId);
+  const { data: yearStructure } = useAcademicYearStructure(activeYearId ?? null);
 
   const [selectedClass, setSelectedClass] = useState('');
-  const [periodKind, setPeriodKind] = useState<ClassReportPeriodKind>('term');
-  const [selectedTerm, setSelectedTerm] = useState<'1' | '2' | '3'>('1');
+  const [periodKind, setPeriodKind] = useState<ClassReportPeriodKind>(
+    lockedPeriodKind ?? 'term',
+  );
+  const [selectedTerm, setSelectedTerm] = useState('1');
   const [selectedSequence, setSelectedSequence] = useState('');
   const [topN, setTopN] = useState<5 | 10>(5);
   const [reportData, setReportData] = useState<ClassReportData | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  useEffect(() => {
+    if (lockedPeriodKind) {
+      setPeriodKind(lockedPeriodKind);
+    }
+  }, [lockedPeriodKind]);
 
   const period: ClassReportPeriod | null = useMemo(() => {
     if (periodKind === 'annual') {
@@ -99,6 +125,12 @@ export function ClassReportWrapper() {
       setSelectedSequence(String(sequences[0].number));
     }
   }, [sequences, selectedSequence]);
+
+  useEffect(() => {
+    if (terms.length > 0 && !terms.some((term) => String(term.number) === selectedTerm)) {
+      setSelectedTerm(String(terms[0].number));
+    }
+  }, [terms, selectedTerm]);
 
   useEffect(() => {
     if (!selectedClass || !period || !activeYearId) {
@@ -206,6 +238,7 @@ export function ClassReportWrapper() {
           <Select
             value={periodKind}
             onValueChange={(value) => setPeriodKind(value as ClassReportPeriodKind)}
+            disabled={Boolean(lockedPeriodKind)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -222,15 +255,23 @@ export function ClassReportWrapper() {
             <label className="text-sm font-medium">{t('reports.selectTerm')}</label>
             <Select
               value={selectedTerm}
-              onValueChange={(value) => setSelectedTerm(value as '1' | '2' | '3')}
+              onValueChange={setSelectedTerm}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">{t('reports.term1')}</SelectItem>
-                <SelectItem value="2">{t('reports.term2')}</SelectItem>
-                <SelectItem value="3">{t('reports.term3')}</SelectItem>
+                {(terms.length > 0
+                  ? terms.map((term) => term.number)
+                  : Array.from(
+                      { length: yearStructure?.termsPerYear ?? 3 },
+                      (_, index) => index + 1,
+                    )
+                ).map((termNumber) => (
+                    <SelectItem key={termNumber} value={String(termNumber)}>
+                      {termOptionLabel(t, termNumber)}
+                    </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -290,7 +331,9 @@ export function ClassReportWrapper() {
                 ? t('reports.loadingClasses')
                 : classes.length === 0
                   ? t('reports.classReportNoClasses')
-                  : t('reports.classReportChooseDescription')}
+                  : lockedPeriodKind === 'sequence'
+                    ? t('reports.sequenceChooseDescription')
+                    : t('reports.classReportChooseDescription')}
             </CardDescription>
           </CardHeader>
         </Card>

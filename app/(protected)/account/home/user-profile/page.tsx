@@ -13,30 +13,40 @@ import { useSettings } from '@/providers/settings-provider';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { AccountUserProfileContent } from '@/app/(protected)/account/home/user-profile/content';
-import { PageNavbar } from '@/app/(protected)/account/page-navbar';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canViewTenantSettings } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AccountUserProfilePage() {
   const { settings } = useSettings();
+  const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
 
   return (
     <Fragment>
-      <PageNavbar />
       {settings?.layout === 'demo1' && (
         <Container>
           <Toolbar>
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Central Hub for Personal Customization
+                {t('account.profileDescription', {
+                  defaultValue: 'Your name, photo, and sign-in details.',
+                })}
               </ToolbarDescription>
             </ToolbarHeading>
             <ToolbarActions>
               <Button variant="outline" asChild>
-                <Link href="/account/notifications">Notifications</Link>
+                <Link href="/account/notifications">{t('nav.notifications')}</Link>
               </Button>
-              <Button asChild>
-                <Link href="/account/home/settings-sidebar">Settings</Link>
+              <Button variant="outline" asChild>
+                <Link href="/user-management/account/security">{t('nav.security')}</Link>
               </Button>
+              {canViewTenantSettings(session?.roleSlug) ? (
+                <Button asChild>
+                  <Link href="/account/home/settings-sidebar">{t('nav.settings')}</Link>
+                </Button>
+              ) : null}
             </ToolbarActions>
           </Toolbar>
         </Container>

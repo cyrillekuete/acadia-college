@@ -1,5 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { StudentEnrollmentStatus } from '@/lib/acadia/student-list-item';
+import {
+  computeFeeAccountTotals,
+  feeAccountCollectionStatus,
+  scholarshipMinorFromGrants,
+  type FeeInstallmentTotalsInput,
+} from '@/lib/acadia/finance';
 
 export function normalizeEnrollmentStatus(
   value: string | null | undefined,
@@ -35,17 +41,23 @@ export type StudentFeeSummary = {
   status: string | null;
 };
 
-function feeStatusFromTotals(total: number, paid: number): string | null {
-  if (total <= 0) {
-    return null;
-  }
-  if (paid >= total) {
-    return 'paid';
-  }
-  if (paid > 0) {
-    return 'partial';
-  }
-  return 'outstanding';
+function feeStatusFromAccount(input: {
+  totalAmountMinor: number;
+  creditMinor?: number | null;
+  scholarships?: Array<{ discountMinor?: number | null }> | null;
+  installments: FeeInstallmentTotalsInput[];
+}): { total: number; paid: number; status: string | null } {
+  const totals = computeFeeAccountTotals({
+    totalAmountMinor: input.totalAmountMinor,
+    creditMinor: Number(input.creditMinor ?? 0),
+    scholarshipMinor: scholarshipMinorFromGrants(input.scholarships),
+    installments: input.installments,
+  });
+  return {
+    total: totals.totalDueMinor,
+    paid: totals.totalPaidMinor,
+    status: feeAccountCollectionStatus(totals, input.installments),
+  };
 }
 
 export async function loadFeeSummaryForProfile(
@@ -61,7 +73,7 @@ export async function loadFeeSummaryForProfile(
   const { data: account, error } = await supabase
     .from('StudentFeeAccount')
     .select(
-      'totalAmountMinor, StudentFeeInstallment ( amountMinor, paidAmountMinor )',
+      'totalAmountMinor, creditMinor, StudentFeeInstallment ( amountMinor, status, paidAmountMinor, dueOn ), StudentScholarship ( discountMinor )',
     )
     .eq('tenantId', tenantId)
     .eq('studentProfileId', profileId)
@@ -76,20 +88,14 @@ export async function loadFeeSummaryForProfile(
     return { total: 0, paid: 0, status: null };
   }
 
-  const installments = (account.StudentFeeInstallment ?? []) as Array<{
-    paidAmountMinor: number | null;
-  }>;
-  const paid = installments.reduce(
-    (sum, row) => sum + Number(row.paidAmountMinor ?? 0),
-    0,
-  );
-  const total = Number(account.totalAmountMinor ?? 0);
-
-  return {
-    total,
-    paid,
-    status: feeStatusFromTotals(total, paid),
-  };
+  const installments = (account.StudentFeeInstallment ?? []) as FeeInstallmentTotalsInput[];
+  return feeStatusFromAccount({
+    totalAmountMinor: Number(account.totalAmountMinor ?? 0),
+    creditMinor: (account as { creditMinor?: number | null }).creditMinor,
+    scholarships: (account as { StudentScholarship?: Array<{ discountMinor?: number | null }> })
+      .StudentScholarship,
+    installments,
+  });
 }
 
 export async function loadFeeSummariesForProfiles(
@@ -106,7 +112,7 @@ export async function loadFeeSummariesForProfiles(
   const { data: feeAccounts, error } = await supabase
     .from('StudentFeeAccount')
     .select(
-      'studentProfileId, totalAmountMinor, StudentFeeInstallment ( amountMinor, status, paidAmountMinor )',
+      'studentProfileId, totalAmountMinor, creditMinor, StudentFeeInstallment ( amountMinor, status, paidAmountMinor, dueOn ), StudentScholarship ( discountMinor )',
     )
     .eq('tenantId', tenantId)
     .eq('academicYearId', academicYearId)
@@ -118,21 +124,16 @@ export async function loadFeeSummariesForProfiles(
 
   for (const account of feeAccounts ?? []) {
     const profileId = account.studentProfileId as string;
-    const installments = (account.StudentFeeInstallment ?? []) as Array<{
-      amountMinor: number;
-      status: string;
-      paidAmountMinor: number | null;
-    }>;
-    const paid = installments.reduce(
-      (sum, row) => sum + Number(row.paidAmountMinor ?? 0),
-      0,
+    const installments = (account.StudentFeeInstallment ?? []) as FeeInstallmentTotalsInput[];
+    feeByProfile.set(
+      profileId,
+      feeStatusFromAccount({
+        totalAmountMinor: Number(account.totalAmountMinor ?? 0),
+        creditMinor: account.creditMinor,
+        scholarships: account.StudentScholarship,
+        installments,
+      }),
     );
-    const total = Number(account.totalAmountMinor ?? 0);
-    feeByProfile.set(profileId, {
-      total,
-      paid,
-      status: feeStatusFromTotals(total, paid),
-    });
   }
 
   return feeByProfile;

@@ -12,14 +12,17 @@ export function AdminToolbar({
   addLabel,
   children,
   className,
+  canManage: canManageOverride,
 }: {
   onAdd?: () => void;
   addLabel?: string;
   children?: ReactNode;
   className?: string;
+  canManage?: boolean;
 }) {
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage =
+    canManageOverride ?? canWriteRegistry(session?.roleSlug);
 
   if (!canManage) {
     return null;

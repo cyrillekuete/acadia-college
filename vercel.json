@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/acadia/alerts/dispatch",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}

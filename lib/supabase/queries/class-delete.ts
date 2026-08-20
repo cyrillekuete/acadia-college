@@ -8,11 +8,13 @@ export type ClassDeleteBlockers = {
   enrollments: number;
   promotionFrom: number;
   promotionTarget: number;
+  timetableSlots: number;
 };
 
 type ClassBlockerCountTable =
   | 'StudentEnrollment'
-  | 'StudentPromotionDecision';
+  | 'StudentPromotionDecision'
+  | 'TimetableSlot';
 
 async function countRows(
   supabase: Client,
@@ -38,21 +40,27 @@ export async function fetchClassDeleteBlockers(
   tenantId: string,
   classId: string,
 ): Promise<ClassDeleteBlockers> {
-  const [enrollments, promotionFrom, promotionTarget] = await Promise.all([
+  const [enrollments, promotionFrom, promotionTarget, timetableSlots] = await Promise.all([
     countRows(supabase, 'StudentEnrollment', tenantId, 'classId', classId),
     countRows(supabase, 'StudentPromotionDecision', tenantId, 'classId', classId),
     countRows(supabase, 'StudentPromotionDecision', tenantId, 'targetClassId', classId),
+    countRows(supabase, 'TimetableSlot', tenantId, 'classId', classId),
   ]);
 
   return {
     enrollments,
     promotionFrom,
     promotionTarget,
+    timetableSlots,
   };
 }
 
 export function hasClassDeleteBlockers(blockers: ClassDeleteBlockers): boolean {
-  return blockers.enrollments > 0 || blockers.promotionFrom > 0;
+  return (
+    blockers.enrollments > 0 ||
+    blockers.promotionFrom > 0 ||
+    blockers.timetableSlots > 0
+  );
 }
 
 export function formatClassDeleteBlockers(blockers: ClassDeleteBlockers): string[] {
@@ -67,6 +75,9 @@ export function formatClassDeleteBlockers(blockers: ClassDeleteBlockers): string
     lines.push(
       `${blockers.promotionTarget} promotion decision(s) targeting this class (will be cleared on delete)`,
     );
+  }
+  if (blockers.timetableSlots > 0) {
+    lines.push(`${blockers.timetableSlots} timetable slot(s)`);
   }
   return lines;
 }

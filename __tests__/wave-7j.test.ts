@@ -192,6 +192,19 @@ describe('communication schemas', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('requires event end on or after start', () => {
+    const result = announcementSchema.safeParse({
+      kind: 'EVENT',
+      titleEn: 'Sports day',
+      titleFr: 'Journée sportive',
+      audience: 'ALL',
+      publishNow: true,
+      eventStartsAt: '2026-06-02T10:00',
+      eventEndsAt: '2026-06-01T10:00',
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('notificationEventLabel', () => {
@@ -223,6 +236,10 @@ describe('notificationHref', () => {
     expect(notificationHref('attendance.absence')).toBe('/attendance');
     expect(notificationHref('marks.published')).toBe('/marks');
     expect(notificationHref('fees.overdue')).toBe('/finance/fees');
+    expect(notificationHref('fees.overdue', null, 'admin')).toBe('/finance/fees');
+    expect(notificationHref('fees.overdue', null, 'student')).toBe('/finance/my-fees');
+    expect(notificationHref('fees.overdue', null, 'guardian')).toBe('/finance/my-fees');
+    expect(notificationHref('fees.overdue', null, 'parent')).toBe('/finance/my-fees');
     expect(notificationHref('alert.sent', { alertId: 'alrt-1' })).toBe('/announcements');
     expect(notificationHref('alert.sent')).toBe('/announcements');
     expect(notificationHref('unknown.event')).toBe('/account/notifications');

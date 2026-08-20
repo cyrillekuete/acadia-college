@@ -3,6 +3,7 @@ import {
   DEFAULT_ACADEMIC_STRUCTURE,
   type AcademicYearStructure,
 } from '@/lib/acadia/academic-calendar';
+import { uniqueIds } from '@/lib/acadia/staff-class-assignments';
 import { branchLabel } from '@/lib/acadia/education-system';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { unwrapRelation } from '@/lib/acadia/record-display';
@@ -38,22 +39,26 @@ const STUDENT_PROFILE_SELECT = `
 
 const ENROLLMENT_SELECT = `
   classId,
+  status,
+  createdAt,
   branch,
-  ${embed('Class', FK.StudentEnrollment_class, 'id, name, staffProfileId, branch')}
+  ${embed('Class', FK.StudentEnrollment_class, 'id, name, staffProfileId, branch, subSystem')}
 `;
 
 const CLASS_SUBJECT_SELECT = `
+  classId,
   subjectId,
   groupingId,
+  forceUngrouped,
   ${embed(
     'Subject',
     FK.ClassSubject_subject,
     [
       'id, nameEn, nameFr, code, coefficient, subjectType, hasSubBranches',
-      embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn, sortOrder'),
+      embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn, nameFr, sortOrder'),
     ].join(', '),
   )},
-  ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn, sortOrder')}
+  ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn, nameFr, sortOrder')}
 `;
 
 const MARK_SELECT = `
@@ -128,22 +133,25 @@ export async function fetchReportCardBundle(
     .select(ENROLLMENT_SELECT)
     .eq('tenantId', tenantId)
     .eq('studentProfileId', studentProfileId)
-    .eq('academicYearId', academicYearId)
-    .eq('status', 'ENROLLED');
+    .eq('academicYearId', academicYearId);
 
   if (classId) {
     enrollmentQuery = enrollmentQuery.eq('classId', classId);
   }
 
-  const { data: enrollmentRow, error: enrollmentError } = await enrollmentQuery
-    .order('createdAt', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const enrollment = enrollmentRow as {
+  const { data: yearEnrollmentRows, error: enrollmentError } = await enrollmentQuery.order(
+    'createdAt',
+    { ascending: false },
+  );
+  const yearEnrollments = (yearEnrollmentRows ?? []) as Array<{
     classId: string | null;
+    status: string | null;
+    createdAt: string | null;
     branch: string | null;
     Class?: unknown;
-  } | null;
+  }>;
+  const enrollment =
+    yearEnrollments.find((row) => row.status === 'ENROLLED') ?? yearEnrollments[0] ?? null;
 
   if (enrollmentError) {
     throw new Error(getQueryErrorMessage(enrollmentError));
@@ -154,11 +162,26 @@ export async function fetchReportCardBundle(
     name?: string;
     staffProfileId?: string | null;
     branch?: string | null;
+    subSystem?: string | null;
   }>(enrollment?.Class);
   const resolvedClassId = (enrollment?.classId as string | null) ?? classRow?.id ?? null;
   if (!resolvedClassId) {
     throw new Error('Student is not assigned to a class for this academic year.');
   }
+
+  const yearClassIds = uniqueIds(
+    yearEnrollments.map((row) => row.classId ?? '').concat(resolvedClassId),
+  );
+  const priorEnrollment = yearEnrollments.find(
+    (row) => row.classId && row.classId !== resolvedClassId,
+  );
+  const priorClass = unwrapRelation<{ name?: string | null }>(priorEnrollment?.Class);
+  const transferredFrom = priorClass
+    ? {
+        className: priorClass.name?.trim() || '—',
+        enrolledAt: enrollment?.createdAt ?? priorEnrollment?.createdAt ?? null,
+      }
+    : null;
 
   const [
     yearResult,
@@ -184,12 +207,12 @@ export async function fetchReportCardBundle(
       .from('ClassSubject')
       .select(CLASS_SUBJECT_SELECT)
       .eq('tenantId', tenantId)
-      .eq('classId', resolvedClassId),
+      .in('classId', yearClassIds),
     supabase
       .from('ClassSubjectSubBranch')
       .select('subjectId, subjectSubBranchId')
       .eq('tenantId', tenantId)
-      .eq('classId', resolvedClassId),
+      .in('classId', yearClassIds),
     supabase
       .from('StudentEnrollment')
       .select('studentProfileId')
@@ -258,12 +281,14 @@ export async function fetchReportCardBundle(
   }
 
   const classSubjectRows = (classSubjectResult.data ?? []) as unknown as Array<{
+    classId?: string | null;
     subjectId: string;
     groupingId: string | null;
+    forceUngrouped?: boolean;
     Subject?: unknown;
     ClassGrouping?: unknown;
   }>;
-  const subjects: ReportCardSubjectDef[] = classSubjectRows.flatMap((row) => {
+  const mappedSubjects = classSubjectRows.flatMap((row) => {
     const subject = unwrapRelation<{
       id?: string;
       nameEn?: string;
@@ -279,6 +304,7 @@ export async function fetchReportCardBundle(
     const grouping = resolveReportCardGrouping(
       unwrapRelation<ReportCardGroupingRef>(row.ClassGrouping),
       unwrapRelation<ReportCardGroupingRef>(subject.SubjectGrouping),
+      { forceUngrouped: Boolean(row.forceUngrouped) },
     );
     return [
       {
@@ -290,11 +316,22 @@ export async function fetchReportCardBundle(
         subjectType: subject.subjectType ?? 'OTHERS',
         groupingId: grouping.groupingId,
         groupingLabel: grouping.groupingLabel,
+        groupingLabelFr: grouping.groupingLabelFr,
         groupingSortOrder: grouping.groupingSortOrder,
         requiredSubBranchIds: requiredBySubject.get(subject.id) ?? [],
+        fromCurrentClass: row.classId === resolvedClassId,
       },
     ];
   });
+  const subjectsById = new Map<string, ReportCardSubjectDef>();
+  for (const row of mappedSubjects) {
+    const existing = subjectsById.get(row.subjectId);
+    if (!existing || row.fromCurrentClass) {
+      const { fromCurrentClass: _fromCurrentClass, ...subject } = row;
+      subjectsById.set(row.subjectId, subject);
+    }
+  }
+  const subjects = Array.from(subjectsById.values());
 
   const subjectIds = subjects.map((subject) => subject.subjectId);
   const cohortIds = [
@@ -459,6 +496,8 @@ export async function fetchReportCardBundle(
     subjects,
     marks,
     disciplineByTerm,
+    preferFrenchNames: classRow?.subSystem === 'FRENCH',
+    transferredFrom,
     branding: {
       ...resolveReportCardInstitutionNames(tenant),
       logoUrl,

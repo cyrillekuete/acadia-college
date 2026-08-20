@@ -3,16 +3,21 @@ import {
   attachTopicProgress,
   buildAdminSchemeCatalog,
   buildTopicTree,
+  canPublishScheme,
   cascadeProgressTopicIds,
   filterAdminSchemeCatalog,
   nextTopicSortOrder,
+  previousAcademicYearId,
+  resolveAllowedSchemeClassId,
   schemeProgressPercent,
+  schemeShouldBlockProgressWrites,
   topicCheckState,
   type SchemeOfWorkTopicProgressRecord,
   type SchemeOfWorkTopicRecord,
 } from '@/lib/acadia/scheme-of-work';
 import { schemeOfWorkTopicSchema } from '@/lib/acadia/scheme-of-work-schemas';
 import { ACADEMIC_YEAR_SCOPED_TABLES } from '@/lib/acadia/academic-year-scope';
+import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import { getMenuForRole } from '@/config/menu.acadia';
 
 function topic(
@@ -205,11 +210,11 @@ describe('scheme of work helpers', () => {
     const child = schemeOfWorkTopicSchema.safeParse({
       parentTopicId: 'parent-1',
       titleEn: 'Sub-topic',
+      titleFr: 'Sous-thème',
     });
     expect(root.success).toBe(true);
     expect(child.success).toBe(true);
   });
-
   it('rejects a blank title', () => {
     const result = schemeOfWorkTopicSchema.safeParse({
       parentTopicId: '',
@@ -283,6 +288,95 @@ describe('scheme of work helpers', () => {
   });
 });
 
+describe('scheme of work safety helpers', () => {
+  it('blocks publishing a scheme with no topics', () => {
+    expect(canPublishScheme(0)).toBe(false);
+    expect(canPublishScheme(1)).toBe(true);
+  });
+
+  it('resolves the previous academic year from newest-first order', () => {
+    expect(
+      previousAcademicYearId(
+        [{ id: 'year-2026' }, { id: 'year-2025' }, { id: 'year-2024' }],
+        'year-2026',
+      ),
+    ).toBe('year-2025');
+    expect(previousAcademicYearId([{ id: 'year-2026' }], 'year-2026')).toBeNull();
+  });
+
+  it('ignores a student classId that is not their enrollment', () => {
+    expect(
+      resolveAllowedSchemeClassId({
+        requestedClassId: 'other-class',
+        roleSlug: 'student',
+        studentClassId: 'enrolled-class',
+        teacherClassIds: [],
+        isAcademicAdmin: false,
+      }),
+    ).toBeNull();
+    expect(
+      resolveAllowedSchemeClassId({
+        requestedClassId: 'enrolled-class',
+        roleSlug: 'student',
+        studentClassId: 'enrolled-class',
+        teacherClassIds: [],
+        isAcademicAdmin: false,
+      }),
+    ).toBe('enrolled-class');
+  });
+
+  it('ignores a teacher classId outside teaching scope', () => {
+    expect(
+      resolveAllowedSchemeClassId({
+        requestedClassId: 'foreign-class',
+        roleSlug: 'teacher',
+        studentClassId: null,
+        teacherClassIds: ['taught-class'],
+        isAcademicAdmin: false,
+      }),
+    ).toBeNull();
+  });
+
+  it('blocks progress writes on draft or other-year schemes', () => {
+    expect(
+      schemeShouldBlockProgressWrites({
+        schemeAcademicYearId: 'year-a',
+        activeYearId: 'year-a',
+        status: 'PUBLISHED',
+      }),
+    ).toBe(false);
+    expect(
+      schemeShouldBlockProgressWrites({
+        schemeAcademicYearId: 'year-a',
+        activeYearId: 'year-b',
+        status: 'PUBLISHED',
+      }),
+    ).toBe(true);
+    expect(
+      schemeShouldBlockProgressWrites({
+        schemeAcademicYearId: 'year-a',
+        activeYearId: 'year-a',
+        status: 'DRAFT',
+      }),
+    ).toBe(true);
+  });
+
+  it('requires French topic titles', () => {
+    expect(
+      schemeOfWorkTopicSchema.safeParse({
+        titleEn: 'Fractions',
+        titleFr: '',
+      }).success,
+    ).toBe(false);
+    expect(
+      schemeOfWorkTopicSchema.safeParse({
+        titleEn: 'Fractions',
+        titleFr: 'Fractions',
+      }).success,
+    ).toBe(true);
+  });
+});
+
 describe('scheme of work menu', () => {
   it('adds scheme of work under subjects for admins', () => {
     const menu = getMenuForRole('admin');
@@ -299,5 +393,10 @@ describe('scheme of work menu', () => {
     expect(
       getMenuForRole('student').some((item) => item.path === '/scheme-of-work'),
     ).toBe(true);
+  });
+
+  it('does not let bursar write schemes of work', () => {
+    expect(canWriteAcademicAdmin('bursar')).toBe(false);
+    expect(canWriteAcademicAdmin('registrar')).toBe(true);
   });
 });

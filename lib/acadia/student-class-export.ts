@@ -8,6 +8,7 @@ import {
   type StudentEnrollmentStatus,
   type StudentListItem,
 } from '@/lib/acadia/student-list-item';
+import { isOfficialRosterEnrollment } from '@/lib/acadia/student-enrollment';
 
 export const CLASS_EXPORT_NAME_PREFIX = 'name:';
 
@@ -160,11 +161,29 @@ export function sortStudentsForClassExport(
   });
 }
 
+export function filterStudentsForOfficialRoster(
+  students: StudentListItem[],
+  includeWithdrawn: boolean,
+): StudentListItem[] {
+  if (includeWithdrawn) {
+    return students;
+  }
+  return students.filter((student) =>
+    isOfficialRosterEnrollment(student.enrollment_status),
+  );
+}
+
 export function studentsForClassExport(
   students: StudentListItem[],
   option: StudentClassExportOption,
+  includeWithdrawn = false,
 ): StudentListItem[] {
-  return sortStudentsForClassExport(filterStudentsByExportClass(students, option));
+  return sortStudentsForClassExport(
+    filterStudentsByExportClass(
+      filterStudentsForOfficialRoster(students, includeWithdrawn),
+      option,
+    ),
+  );
 }
 
 export function formatStudentForClassExport(
@@ -231,9 +250,11 @@ export function buildStudentClassCsv(
   option: StudentClassExportOption,
   labels: StudentClassExportLabels = DEFAULT_STUDENT_CLASS_EXPORT_LABELS,
   formatters: StudentClassExportFormatters = DEFAULT_STUDENT_CLASS_EXPORT_FORMATTERS,
+  includeWithdrawn = false,
 ): string {
-  const rows = studentsForClassExport(students, option).map((student) =>
-    studentClassExportRowValues(formatStudentForClassExport(student, formatters)),
+  const rows = studentsForClassExport(students, option, includeWithdrawn).map(
+    (student) =>
+      studentClassExportRowValues(formatStudentForClassExport(student, formatters)),
   );
   const lines = [studentClassExportHeaderValues(labels), ...rows].map((row) =>
     row.map(escapeCsvValue).join(','),

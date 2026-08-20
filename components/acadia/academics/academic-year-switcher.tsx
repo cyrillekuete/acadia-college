@@ -66,6 +66,11 @@ export function AcademicYearSwitcher({ className }: { className?: string }) {
                     Current
                   </Badge>
                 ) : null}
+                {year.isActive === false ? (
+                  <Badge variant="outline" className="text-[10px] px-1 py-0">
+                    Closed
+                  </Badge>
+                ) : null}
               </span>
             </SelectItem>
           ))}

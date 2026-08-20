@@ -10,7 +10,7 @@ import {
   useStudentSchemeList,
   useTeacherSchemeList,
 } from '@/hooks/use-scheme-of-work';
-import { canWriteRegistry, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
 
 function TeacherSchemeList() {
@@ -53,7 +53,7 @@ function StudentSchemeList() {
 export function SchemeOfWorkPage() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const admin = canWriteRegistry(session?.roleSlug);
+  const admin = canWriteAcademicAdmin(session?.roleSlug);
   const teacher = isStaffOrTeacher(session?.roleSlug) && !admin;
   const student = isStudent(session?.roleSlug);
 

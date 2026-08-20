@@ -31,16 +31,16 @@ export default function NewExamSessionPage() {
   return (
     <AcadiaPageShell
       title={t('exams.newTitle')}
-      description="Create an examination for a subject (FR-4.2.1)."
+      description={t('exams.newDescription')}
     >
       <div className="mb-4">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/exams">Back to exams</Link>
+          <Link href="/exams">{t('exams.backToExams')}</Link>
         </Button>
       </div>
       {canManage ? (
         <CalendarWindowGate
-          featureLabel="New exam sessions"
+          featureLabel={t('exams.newSessionsGate')}
           window={examWindow}
           loading={calendarLoading}
           bypass={canManageInstitution(session?.roleSlug)}
@@ -48,9 +48,7 @@ export default function NewExamSessionPage() {
           <ExamSessionForm onCancelHref="/exams" />
         </CalendarWindowGate>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          You do not have permission to create exam sessions.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('exams.permissionDenied')}</p>
       )}
     </AcadiaPageShell>
   );

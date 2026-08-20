@@ -33,6 +33,8 @@ export const editUserSchema = z.object({
   status: z.enum(USER_STATUSES),
   country: z.string().max(80).optional().or(z.literal('')),
   timezone: z.string().max(80).optional().or(z.literal('')),
+  expectedUpdatedAt: z.string().optional(),
+  isTrashed: z.boolean().optional(),
 });
 
 export type EditUserFormValues = z.infer<typeof editUserSchema>;

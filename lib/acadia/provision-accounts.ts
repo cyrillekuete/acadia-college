@@ -40,6 +40,7 @@ export type ProvisionResult =
       parentLoginEmail: string;
       parentTemporaryPassword: string | null;
       newParentAuthCreated: boolean;
+      feeWarning?: string;
     }
   | { ok: false; message: string; status: number };
 
@@ -500,6 +501,7 @@ export async function provisionStudentAndParent(
     parentLoginEmail,
     parentTemporaryPassword,
     newParentAuthCreated,
+    feeWarning: profileResult.feeWarning,
   };
 }
 

@@ -16,7 +16,7 @@ import {
 
 const EMPTY_RESULT: TeacherStudentsResult = {
   students: [],
-  scope: { classIds: [], subjectIds: [], pairs: [] },
+  scope: { classIds: [], subjectIds: [], pairs: [], classMaster: [] },
 };
 
 export function useTeacherStudents() {

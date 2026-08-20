@@ -25,21 +25,35 @@ function coefficientCellDisplay(subject: SubjectGrade): string | number {
   return '-';
 }
 
+function termValue(subject: SubjectGrade, termNumber: number): number | undefined {
+  const fromMap = subject.termAverages?.[`term${termNumber}`];
+  if (typeof fromMap === 'number') {
+    return fromMap;
+  }
+  if (termNumber === 1) return subject.term1;
+  if (termNumber === 2) return subject.term2;
+  if (termNumber === 3) return subject.term3;
+  return undefined;
+}
+
 export function ThirdTermYearSummaryGradesTable({
   subjects,
   totalCoefficient,
   totalScore,
   tableAnnualAvg,
+  termSlots,
 }: {
   subjects: SubjectGrade[];
   totalCoefficient: number;
   totalScore: number;
   tableAnnualAvg: number;
+  termSlots?: number[];
 }) {
   const groupedSubjects = useMemo(
     () => groupSubjectsForReportCard(subjects),
     [subjects],
   );
+  const terms = termSlots?.length ? termSlots : [1, 2, 3];
 
   return (
     <>
@@ -61,15 +75,15 @@ export function ThirdTermYearSummaryGradesTable({
           >
             Coef
           </th>
-          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
-            Term 1
-          </th>
-          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
-            Term 2
-          </th>
-          <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
-            Term 3
-          </th>
+          {terms.map((termNumber) => (
+            <th
+              key={termNumber}
+              className="p-1 print:p-0.5 text-center"
+              style={{ borderColor: navy }}
+            >
+              Term {termNumber}
+            </th>
+          ))}
           <th className="p-1 print:p-0.5 text-center" style={{ borderColor: navy }}>
             Annual Avg
           </th>
@@ -130,24 +144,15 @@ export function ThirdTermYearSummaryGradesTable({
                     >
                       {coefficientCellDisplay(subject)}
                     </td>
-                    <td
-                      className="p-1 print:p-0.5 text-center"
-                      style={{ borderColor: border, backgroundColor: rowBg }}
-                    >
-                      {formatReportMark(subject.term1)}
-                    </td>
-                    <td
-                      className="p-1 print:p-0.5 text-center"
-                      style={{ borderColor: border, backgroundColor: rowBg }}
-                    >
-                      {formatReportMark(subject.term2)}
-                    </td>
-                    <td
-                      className="p-1 print:p-0.5 text-center"
-                      style={{ borderColor: border, backgroundColor: rowBg }}
-                    >
-                      {formatReportMark(subject.term3)}
-                    </td>
+                    {terms.map((termNumber) => (
+                      <td
+                        key={termNumber}
+                        className="p-1 print:p-0.5 text-center"
+                        style={{ borderColor: border, backgroundColor: rowBg }}
+                      >
+                        {formatReportMark(termValue(subject, termNumber))}
+                      </td>
+                    ))}
                     <td
                       className="p-1 print:p-0.5 text-center"
                       style={{ borderColor: border, backgroundColor: rowBg }}
@@ -202,7 +207,7 @@ export function ThirdTermYearSummaryGradesTable({
                   {coef}
                 </td>
                 <td
-                  colSpan={3}
+                  colSpan={terms.length}
                   className="p-1 print:p-0.5 text-center text-gray-400"
                   style={{ borderColor: navy, backgroundColor: summary }}
                 >
@@ -248,7 +253,7 @@ export function ThirdTermYearSummaryGradesTable({
             Total Summary / Bilan Totale
           </td>
           <td className="p-1 print:p-0.5 text-center">{totalCoefficient}</td>
-          <td colSpan={3} />
+          <td colSpan={terms.length} />
           <td className="p-1 print:p-0.5 text-center">{tableAnnualAvg.toFixed(2)}</td>
           <td className="p-1 print:p-0.5 text-center">{totalScore.toFixed(0)}</td>
           <td colSpan={2} />

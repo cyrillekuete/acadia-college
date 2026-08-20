@@ -51,7 +51,10 @@ export function AcademicYearProvider({ children }: { children: React.ReactNode }
   const userId = session?.authUser?.id ?? null;
 
   const value = useCurrentAcademicYearQuery();
-  const { data: years = [], isLoading: yearsLoading } = useAcademicYearOptions();
+  const { data: years = [], isLoading: yearsLoading } = useAcademicYearOptions(
+    undefined,
+    { includeInactive: true },
+  );
 
   const [activeYearId, setActiveYearIdState] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);

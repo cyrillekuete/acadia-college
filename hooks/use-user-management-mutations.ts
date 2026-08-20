@@ -8,7 +8,6 @@ import type {
   TenantSessionSettingsValues,
 } from '@/lib/acadia/user-schemas';
 import { appendSystemLog } from '@/lib/acadia/system-log';
-import { userStatusLogEvent } from '@/lib/acadia/user-management';
 import { UserStatus } from '@/app/models/user';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { catalogTag, dashboardTags } from '@/lib/acadia/cache/tags';
@@ -28,6 +27,13 @@ function mutationErrorMessage(error: unknown): string {
     return (error as { message: string }).message;
   }
   return 'Operation failed.';
+}
+
+async function readApiError(response: Response): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as {
+    message?: string;
+  } | null;
+  return payload?.message ?? 'Operation failed.';
 }
 
 function invalidateUserQueries(
@@ -73,70 +79,22 @@ export function useUserManagementMutations() {
     mutationFn: async ({
       id,
       values,
-      previousStatus,
-      previousRoleId,
     }: {
       id: string;
       values: EditUserFormValues;
       previousStatus?: string;
       previousRoleId?: string;
     }) => {
-      if (!tenantId || !actorUserId) {
-        throw new Error('Tenant context is required.');
-      }
-      const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
-
-      const { error } = await supabase
-        .from('User')
-        .update({
-          email: values.email.trim().toLowerCase(),
-          name: values.name.trim(),
-          roleId: values.roleId,
-          status: values.status,
-          country: values.country?.trim() || null,
-          timezone: values.timezone?.trim() || null,
-          updatedAt: now,
-        })
-        .eq('id', id)
-        .eq('tenantId', tenantId);
-
-      if (error) {
-        throw error;
-      }
-
-      const statusEvent =
-        previousStatus !== undefined
-          ? userStatusLogEvent(previousStatus, values.status)
-          : null;
-
-      if (statusEvent) {
-        await appendSystemLog(supabase, {
-          userId: actorUserId,
-          event: statusEvent,
-          description: `User ${values.email} status → ${values.status}`,
-          entityId: id,
-          entityType: 'User',
-        });
-      }
-
-      if (previousRoleId && previousRoleId !== values.roleId) {
-        await appendSystemLog(supabase, {
-          userId: actorUserId,
-          event: 'user.role_changed',
-          description: `User ${values.email} role changed`,
-          entityId: id,
-          entityType: 'User',
-          meta: { fromRoleId: previousRoleId, toRoleId: values.roleId },
-        });
-      } else if (!statusEvent) {
-        await appendSystemLog(supabase, {
-          userId: actorUserId,
-          event: 'user.updated',
-          description: `Updated user ${values.email}`,
-          entityId: id,
-          entityType: 'User',
-        });
+      const response = await fetch(
+        `/api/acadia/admin/users/${encodeURIComponent(id)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(values),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readApiError(response));
       }
     },
     onSuccess: () => {
@@ -150,40 +108,44 @@ export function useUserManagementMutations() {
     mutationFn: async ({
       id,
       email,
+      name,
+      roleId,
       status,
-      previousStatus,
+      country,
+      timezone,
+      expectedUpdatedAt,
+      isTrashed,
     }: {
       id: string;
       email: string;
+      name?: string;
+      roleId: string;
       status: (typeof UserStatus)[keyof typeof UserStatus];
+      country?: string | null;
+      timezone?: string | null;
+      expectedUpdatedAt?: string;
+      isTrashed?: boolean;
       previousStatus: string;
     }) => {
-      if (!tenantId || !actorUserId) {
-        throw new Error('Tenant context is required.');
-      }
-      const supabase = requireBrowserClient();
-      const { error } = await supabase
-        .from('User')
-        .update({
-          status,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .eq('tenantId', tenantId);
-
-      if (error) {
-        throw error;
-      }
-
-      const event = userStatusLogEvent(previousStatus, status);
-      if (event) {
-        await appendSystemLog(supabase, {
-          userId: actorUserId,
-          event,
-          description: `User ${email} status → ${status}`,
-          entityId: id,
-          entityType: 'User',
-        });
+      const response = await fetch(
+        `/api/acadia/admin/users/${encodeURIComponent(id)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            name: name || email,
+            roleId,
+            status,
+            country: country ?? '',
+            timezone: timezone ?? '',
+            expectedUpdatedAt,
+            isTrashed,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readApiError(response));
       }
     },
     onSuccess: () => {
@@ -199,9 +161,8 @@ export function useUserManagementMutations() {
         `/api/acadia/admin/users/${encodeURIComponent(userId)}/reset-password`,
         { method: 'POST' },
       );
-      const payload = (await response.json()) as { message?: string };
       if (!response.ok) {
-        throw new Error(payload.message ?? 'Failed to send reset email.');
+        throw new Error(await readApiError(response));
       }
     },
     onSuccess: () => toast.success('Password reset email sent.'),
@@ -235,6 +196,7 @@ export function useUserManagementMutations() {
         description: 'Session timeout settings updated',
         entityId: tenantId,
         entityType: 'Tenant',
+        tenantId,
         meta: values,
       });
     },

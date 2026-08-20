@@ -7,8 +7,8 @@ export function staffNeedsOnboarding(
 export const STAFF_ONBOARDING_EXEMPT_PATH_PREFIXES = [
   '/staff/onboarding',
   '/change-password',
-  '/account/',
-  '/user-management/',
+  '/account/home/user-profile',
+  '/user-management/account',
 ] as const;
 
 export function isStaffOnboardingExemptPath(pathname: string): boolean {

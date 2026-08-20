@@ -2,40 +2,27 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  planSubjectSubBranchSync,
-  subBranchNameFr,
-  type SubjectType,
-} from '@/lib/acadia/subject-catalog';
-import { buildSubjectRow } from '@/lib/acadia/subject';
+import { type SubjectType } from '@/lib/acadia/subject-catalog';
+import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
+import { localDateTimeInputToIso } from '@/lib/acadia/dates';
+import { materialHasSubmissionsMessage } from '@/lib/acadia/coursework';
 import type {
   SubjectAssignmentFormValues,
   SubjectFormValues,
   SubjectMaterialFormValues,
   TimetableSlotFormValues,
 } from '@/lib/acadia/subject-schemas';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { requireBrowserClient } from '@/lib/supabase/client';
-import { replaceSubjectLevels } from '@/lib/supabase/queries/subject-levels';
 import {
-  assertNoOverlappingSubjectVariant,
-  copySubjectAssignments,
-} from '@/lib/supabase/queries/subject-variants';
-import {
+  assertTimetableSlotDeletable,
   assertTimetableSlotValid,
   buildTimetableSlotWritePayload,
+  writeTimetableSlot,
 } from '@/lib/supabase/queries/timetable';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { catalogTags, dashboardTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-
-function mutationErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Operation failed.';
-}
 
 function invalidateSubjectQueries(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -54,87 +41,25 @@ function invalidateSubjectQueries(
   }
 }
 
-async function replaceSubjectSubBranches(
-  supabase: SupabaseClient,
-  tenantId: string,
-  subjectId: string,
+function subjectPayload(
   values: SubjectFormValues,
-  now: string,
+  extras?: { copyAssignmentsFromSubjectId?: string; subjectType?: SubjectType },
 ) {
-  const { data: existing, error: existingError } = await supabase
-    .from('SubjectSubBranch')
-    .select('id')
-    .eq('tenantId', tenantId)
-    .eq('subjectId', subjectId);
-  if (existingError) {
-    throw existingError;
-  }
-
-  const incoming = values.hasSubBranches ? values.subBranches : [];
-  const plan = planSubjectSubBranchSync(
-    (existing ?? []).map((row) => ({ id: row.id as string })),
-    incoming,
-  );
-
-  if (plan.toDelete.length > 0) {
-    const { error: deleteError } = await supabase
-      .from('SubjectSubBranch')
-      .delete()
-      .eq('tenantId', tenantId)
-      .eq('subjectId', subjectId)
-      .in('id', plan.toDelete);
-    if (deleteError) {
-      throw deleteError;
-    }
-  }
-
-  for (const item of plan.toUpdate) {
-    const branch = incoming[item.index];
-    if (!branch) {
-      continue;
-    }
-    const { error: updateError } = await supabase
-      .from('SubjectSubBranch')
-      .update({
-        name: branch.name.trim(),
-        nameFr: subBranchNameFr(branch),
-        coefficient: branch.hasCustomCoefficient ? branch.coefficient ?? null : null,
-        sortOrder: item.index,
-        updatedAt: now,
-      })
-      .eq('tenantId', tenantId)
-      .eq('id', item.id);
-    if (updateError) {
-      throw updateError;
-    }
-  }
-
-  const toInsert = plan.toInsert.flatMap((item) => {
-    const branch = incoming[item.index];
-    if (!branch) {
-      return [];
-    }
-    return [
-      {
-        id: generateAcadiaId('subbranch'),
-        tenantId,
-        subjectId,
-        name: branch.name.trim(),
-        nameFr: subBranchNameFr(branch),
-        coefficient: branch.hasCustomCoefficient ? branch.coefficient ?? null : null,
-        sortOrder: item.index,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ];
-  });
-
-  if (toInsert.length > 0) {
-    const { error: insertError } = await supabase.from('SubjectSubBranch').insert(toInsert);
-    if (insertError) {
-      throw insertError;
-    }
-  }
+  return {
+    code: values.code.trim().toUpperCase(),
+    nameEn: values.nameEn.trim(),
+    nameFr: values.nameFr?.trim() || values.nameEn.trim(),
+    academicYearId: values.academicYearId,
+    subSystem: values.subSystem,
+    branch: values.branch,
+    levelIds: values.levelIds,
+    coefficient: values.coefficient,
+    groupingId: values.groupingId?.trim() || '',
+    hasSubBranches: values.hasSubBranches,
+    subBranches: values.hasSubBranches ? values.subBranches : [],
+    copyAssignmentsFromSubjectId: extras?.copyAssignmentsFromSubjectId ?? '',
+    subjectType: extras?.subjectType ?? 'OTHERS',
+  };
 }
 
 export function useSubjectMutations() {
@@ -154,43 +79,23 @@ export function useSubjectMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
-      await assertNoOverlappingSubjectVariant(supabase, tenantId, {
-        nameEn: values.nameEn,
-        subSystem: values.subSystem,
-        branch: values.branch,
-        academicYearId: values.academicYearId,
-        levelIds: values.levelIds,
-      });
-      const id = generateAcadiaId('subject');
-      const now = new Date().toISOString();
-      const row = buildSubjectRow(tenantId, id, values, now, 'OTHERS');
-
-      const { error } = await supabase.from('Subject').insert({
-        ...row,
-        createdAt: now,
+      const { data, error } = await supabase.rpc('acadia_save_subject', {
+        p_tenant_id: tenantId,
+        p_subject_id: null,
+        p_payload: subjectPayload(values, {
+          copyAssignmentsFromSubjectId,
+        }),
       });
       if (error) {
         throw error;
       }
-      await replaceSubjectSubBranches(supabase, tenantId, id, values, now);
-      await replaceSubjectLevels(supabase, tenantId, id, values.levelIds, now);
-      if (copyAssignmentsFromSubjectId) {
-        await copySubjectAssignments(
-          supabase,
-          tenantId,
-          copyAssignmentsFromSubjectId,
-          id,
-          now,
-          generateAcadiaId,
-        );
-      }
-      return id;
+      return data as string;
     },
     onSuccess: () => {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject created.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const updateSubject = useMutation({
@@ -205,15 +110,6 @@ export function useSubjectMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
-      await assertNoOverlappingSubjectVariant(supabase, tenantId, {
-        id,
-        nameEn: values.nameEn,
-        subSystem: values.subSystem,
-        branch: values.branch,
-        academicYearId: values.academicYearId,
-        levelIds: values.levelIds,
-      });
-      const now = new Date().toISOString();
       const { data: existing, error: fetchError } = await supabase
         .from('Subject')
         .select('subjectType')
@@ -223,46 +119,22 @@ export function useSubjectMutations() {
       if (fetchError) {
         throw fetchError;
       }
-      const row = buildSubjectRow(
-        tenantId,
-        id,
-        values,
-        now,
-        (existing?.subjectType as SubjectType | undefined) ?? 'OTHERS',
-      );
-
-      const { error } = await supabase
-        .from('Subject')
-        .update({
-          code: row.code,
-          nameEn: row.nameEn,
-          nameFr: row.nameFr,
-          credits: row.credits,
-          hours: row.hours,
-          subSystem: row.subSystem,
-          branch: row.branch,
-          levelId: row.levelId,
-          academicYearId: row.academicYearId,
-          termId: row.termId,
-          subjectType: row.subjectType,
-          coefficient: row.coefficient,
-          groupingId: row.groupingId,
-          hasSubBranches: row.hasSubBranches,
-          updatedAt: now,
-        })
-        .eq('id', id)
-        .eq('tenantId', tenantId);
+      const { error } = await supabase.rpc('acadia_save_subject', {
+        p_tenant_id: tenantId,
+        p_subject_id: id,
+        p_payload: subjectPayload(values, {
+          subjectType: (existing?.subjectType as SubjectType | undefined) ?? 'OTHERS',
+        }),
+      });
       if (error) {
         throw error;
       }
-      await replaceSubjectSubBranches(supabase, tenantId, id, values, now);
-      await replaceSubjectLevels(supabase, tenantId, id, values.levelIds, now);
     },
     onSuccess: () => {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject updated.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const deactivateSubject = useMutation({
@@ -287,7 +159,7 @@ export function useSubjectMutations() {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject deactivated.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const reactivateSubject = useMutation({
@@ -312,7 +184,7 @@ export function useSubjectMutations() {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject reactivated.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const createAssignment = useMutation({
@@ -328,6 +200,18 @@ export function useSubjectMutations() {
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
+      if (values.isLead) {
+        const { error: leadError } = await supabase
+          .from('SubjectAssignment')
+          .update({ isLead: false, updatedAt: now })
+          .eq('tenantId', tenantId)
+          .eq('subjectId', subjectId)
+          .eq('academicYearId', values.academicYearId)
+          .eq('isLead', true);
+        if (leadError) {
+          throw leadError;
+        }
+      }
       const { error } = await supabase.from('SubjectAssignment').insert({
         id: generateAcadiaId('assign'),
         tenantId,
@@ -348,7 +232,7 @@ export function useSubjectMutations() {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Teacher assigned to subject.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const deleteAssignment = useMutation({
@@ -370,7 +254,7 @@ export function useSubjectMutations() {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Assignment removed.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const createMaterial = useMutation({
@@ -384,6 +268,10 @@ export function useSubjectMutations() {
       if (!tenantId) {
         throw new Error('Tenant context is required.');
       }
+      const dueAt = localDateTimeInputToIso(values.dueAt);
+      if (!dueAt) {
+        throw new Error('Due date is invalid.');
+      }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
       const { error } = await supabase.from('CourseworkTask').insert({
@@ -395,7 +283,7 @@ export function useSubjectMutations() {
         titleFr: values.titleFr.trim(),
         descriptionEn: values.descriptionEn?.trim() || null,
         descriptionFr: values.descriptionFr?.trim() || null,
-        dueAt: values.dueAt,
+        dueAt,
         maxScore: values.maxScore,
         isPublished: values.isPublished,
         createdAt: now,
@@ -409,7 +297,48 @@ export function useSubjectMutations() {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Subject material added.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
+  });
+
+  const updateMaterial = useMutation({
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: SubjectMaterialFormValues;
+    }) => {
+      if (!tenantId) {
+        throw new Error('Tenant context is required.');
+      }
+      const dueAt = localDateTimeInputToIso(values.dueAt);
+      if (!dueAt) {
+        throw new Error('Due date is invalid.');
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase
+        .from('CourseworkTask')
+        .update({
+          titleEn: values.titleEn.trim(),
+          titleFr: values.titleFr.trim(),
+          descriptionEn: values.descriptionEn?.trim() || null,
+          descriptionFr: values.descriptionFr?.trim() || null,
+          dueAt,
+          maxScore: values.maxScore,
+          isPublished: values.isPublished,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('tenantId', tenantId);
+      if (error) {
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      invalidateSubjectQueries(queryClient, tenantId);
+      toast.success('Subject material updated.');
+    },
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const deleteMaterial = useMutation({
@@ -418,6 +347,17 @@ export function useSubjectMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      const { count, error: countError } = await supabase
+        .from('CourseworkSubmission')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenantId', tenantId)
+        .eq('taskId', id);
+      if (countError) {
+        throw countError;
+      }
+      if ((count ?? 0) > 0) {
+        throw new Error(materialHasSubmissionsMessage(count ?? 0));
+      }
       const { error } = await supabase
         .from('CourseworkTask')
         .delete()
@@ -431,7 +371,7 @@ export function useSubjectMutations() {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Material removed.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const createTimetableSlot = useMutation({
@@ -441,23 +381,17 @@ export function useSubjectMutations() {
       }
       const supabase = requireBrowserClient();
       await assertTimetableSlotValid(supabase, tenantId, values);
-      const now = new Date().toISOString();
-      const { error } = await supabase.from('TimetableSlot').insert({
-        id: generateAcadiaId('slot'),
-        tenantId,
+      const slotId = generateAcadiaId('slot');
+      await writeTimetableSlot(supabase, tenantId, {
+        id: slotId,
         ...buildTimetableSlotWritePayload(values),
-        createdAt: now,
-        updatedAt: now,
       });
-      if (error) {
-        throw error;
-      }
     },
     onSuccess: () => {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Timetable slot created.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const updateTimetableSlot = useMutation({
@@ -473,23 +407,17 @@ export function useSubjectMutations() {
       }
       const supabase = requireBrowserClient();
       await assertTimetableSlotValid(supabase, tenantId, values, id);
-      const { error } = await supabase
-        .from('TimetableSlot')
-        .update({
-          ...buildTimetableSlotWritePayload(values),
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .eq('tenantId', tenantId);
-      if (error) {
-        throw error;
-      }
+      await writeTimetableSlot(supabase, tenantId, {
+        id,
+        ...buildTimetableSlotWritePayload(values),
+        excludeSlotId: id,
+      });
     },
     onSuccess: () => {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Timetable slot updated.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const deleteTimetableSlot = useMutation({
@@ -498,6 +426,7 @@ export function useSubjectMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertTimetableSlotDeletable(supabase, tenantId, id);
       const { error } = await supabase
         .from('TimetableSlot')
         .delete()
@@ -511,7 +440,7 @@ export function useSubjectMutations() {
       invalidateSubjectQueries(queryClient, tenantId);
       toast.success('Timetable slot deleted.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   return {
@@ -522,6 +451,7 @@ export function useSubjectMutations() {
     createAssignment,
     deleteAssignment,
     createMaterial,
+    updateMaterial,
     deleteMaterial,
     createTimetableSlot,
     updateTimetableSlot,

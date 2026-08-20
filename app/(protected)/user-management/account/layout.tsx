@@ -37,7 +37,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       profile: {
         title: 'Profile',
         icon: UserPen,
-        path: '/user-management/account',
+        path: '/account/home/user-profile',
       },
       security: {
         title: 'Security',

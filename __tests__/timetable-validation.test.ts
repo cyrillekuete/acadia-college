@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   findTimetableSlotConflicts,
   formatTimetableConflictMessage,
+  formatTimetableConflictMessages,
   groupTimetableSlotsByDay,
   normalizeTimetableClassId,
   timeRangesOverlap,
@@ -53,6 +54,18 @@ describe('findTimetableSlotConflicts', () => {
 
     const conflicts = findTimetableSlotConflicts(existing, candidate);
     expect(conflicts.some((c) => c.kind === 'class')).toBe(false);
+  });
+});
+
+describe('formatTimetableConflictMessages', () => {
+  it('returns unique conflict kinds in one message', () => {
+    const existing = [baseSlot({ id: 'existing-1' })];
+    const candidate = baseSlot({ id: 'candidate' });
+    const conflicts = findTimetableSlotConflicts(existing, candidate);
+
+    expect(formatTimetableConflictMessages(conflicts)).toBe(
+      'This teacher already has a slot on Monday 08:00 – 09:00. This room is already booked on Monday 08:00 – 09:00. This class already has a slot on Monday 08:00 – 09:00.',
+    );
   });
 });
 

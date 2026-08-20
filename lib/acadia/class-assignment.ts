@@ -22,7 +22,7 @@ export async function resolveClassForEnrollment(
 ): Promise<ClassResolutionResult> {
   const { data, error } = await supabase
     .from('Class')
-    .select('id')
+    .select('id, isDefaultPromotionTarget')
     .eq('tenantId', tenantId)
     .eq('levelId', levelId)
     .eq('subSystem', subSystem)
@@ -33,13 +33,23 @@ export async function resolveClassForEnrollment(
     throw error;
   }
 
-  const candidateIds = (data ?? []).map((r) => r.id as string);
+  const rows = data ?? [];
+  const candidateIds = rows.map((r) => r.id as string);
 
   if (candidateIds.length === 1) {
     return { status: 'resolved', classId: candidateIds[0]!, candidateIds };
   }
   if (candidateIds.length === 0) {
     return { status: 'none', classId: null, candidateIds: [] };
+  }
+
+  const defaults = rows.filter((r) => r.isDefaultPromotionTarget);
+  if (defaults.length === 1) {
+    return {
+      status: 'resolved',
+      classId: defaults[0]!.id as string,
+      candidateIds,
+    };
   }
   return { status: 'ambiguous', classId: null, candidateIds };
 }
@@ -60,4 +70,25 @@ export async function resolveClassIdForEnrollment(
     branch,
   );
   return result.status === 'resolved' ? result.classId : null;
+}
+
+export function requireClassIdForEnrollment(
+  explicitClassId: string | null | undefined,
+  resolution: ClassResolutionResult,
+): string {
+  const explicit = explicitClassId?.trim() || null;
+  if (explicit) {
+    return explicit;
+  }
+  if (resolution.status === 'resolved' && resolution.classId) {
+    return resolution.classId;
+  }
+  if (resolution.status === 'none') {
+    throw new Error(
+      'No active class matches this level and stream. Select a class.',
+    );
+  }
+  throw new Error(
+    'Multiple classes match this level and stream. Select a class.',
+  );
 }

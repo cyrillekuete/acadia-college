@@ -22,7 +22,19 @@ export function minutesToTimeString(minutes: number): string {
 }
 
 export function timeStringToMinutes(value: string): number {
-  const [h, m] = value.split(':').map((part) => Number(part));
+  const [hourPart, minutePart] = value.split(':');
+  const h = Number(hourPart);
+  const m = Number(minutePart);
+  if (
+    !Number.isFinite(h) ||
+    !Number.isFinite(m) ||
+    h < 0 ||
+    h > 23 ||
+    m < 0 ||
+    m > 59
+  ) {
+    throw new Error('Invalid time value.');
+  }
   return h * 60 + m;
 }
 

@@ -3,7 +3,9 @@ import { generateAcadiaId } from '@/lib/acadia/ids';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import {
   classSubjectPairsForSelection,
+  diffAssignmentSubjectIds,
   hasClassTeacherSubjects,
+  subjectIdsUnreferencedAfterRemoval,
   uniqueIds,
   validateSubjectIdsOfferedInClass,
 } from '@/lib/acadia/staff-class-assignments';
@@ -174,6 +176,83 @@ async function ensureSubjectAssignments(
   );
   if (insertError) {
     throwMutationError(insertError);
+  }
+}
+
+async function reconcileOrphanSubjectAssignments(
+  supabase: Client,
+  tenantId: string,
+  staffProfileId: string,
+  academicYearId: string,
+  removedSubjectIds: string[],
+): Promise<void> {
+  const candidates = uniqueIds(removedSubjectIds);
+  if (candidates.length === 0) {
+    return;
+  }
+
+  const { data: remaining, error } = await supabase
+    .from('StaffClassSubjectAssignment')
+    .select('subjectId')
+    .eq('tenantId', tenantId)
+    .eq('staffProfileId', staffProfileId)
+    .eq('academicYearId', academicYearId)
+    .in('subjectId', candidates);
+
+  if (error) {
+    throwMutationError(error);
+  }
+
+  const orphanIds = subjectIdsUnreferencedAfterRemoval(
+    candidates,
+    (remaining ?? []).map((row) => row.subjectId as string),
+  );
+  if (orphanIds.length === 0) {
+    return;
+  }
+
+  const { error: deleteError } = await supabase
+    .from('SubjectAssignment')
+    .delete()
+    .eq('tenantId', tenantId)
+    .eq('staffProfileId', staffProfileId)
+    .eq('academicYearId', academicYearId)
+    .in('subjectId', orphanIds);
+
+  if (deleteError) {
+    throwMutationError(deleteError);
+  }
+}
+
+async function clearClassMasterIfMatches(
+  supabase: Client,
+  tenantId: string,
+  classId: string,
+  staffProfileId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('Class')
+    .select('staffProfileId')
+    .eq('tenantId', tenantId)
+    .eq('id', classId)
+    .maybeSingle();
+
+  if (error) {
+    throwMutationError(error);
+  }
+  if (data?.staffProfileId !== staffProfileId) {
+    return;
+  }
+
+  const { error: clearError } = await supabase
+    .from('Class')
+    .update({ staffProfileId: null, updatedAt: new Date().toISOString() })
+    .eq('tenantId', tenantId)
+    .eq('id', classId)
+    .eq('staffProfileId', staffProfileId);
+
+  if (clearError) {
+    throwMutationError(clearError);
   }
 }
 
@@ -363,23 +442,29 @@ export async function syncClassTeacherAssignment(
     now,
   );
 
-  const { error: deleteError } = await supabase
+  const { data: existingRows, error: existingError } = await supabase
     .from('StaffClassSubjectAssignment')
-    .delete()
+    .select('subjectId')
     .eq('tenantId', tenantId)
     .eq('staffProfileId', input.staffProfileId)
     .eq('classId', input.classId)
     .eq('academicYearId', input.academicYearId);
 
-  if (deleteError) {
-    throwMutationError(deleteError);
+  if (existingError) {
+    throwMutationError(existingError);
   }
 
-  if (subjectIds.length > 0) {
+  const { toInsert, toDelete } = diffAssignmentSubjectIds(
+    (existingRows ?? []).map((row) => row.subjectId as string),
+    subjectIds,
+  );
+
+  // Insert first so a failed insert does not wipe existing subjects.
+  if (toInsert.length > 0) {
     const { error: insertError } = await supabase
       .from('StaffClassSubjectAssignment')
       .insert(
-        subjectIds.map((subjectId) => ({
+        toInsert.map((subjectId) => ({
           id: generateAcadiaId('scsa'),
           tenantId,
           staffProfileId: input.staffProfileId,
@@ -394,6 +479,21 @@ export async function syncClassTeacherAssignment(
     }
   }
 
+  if (toDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('StaffClassSubjectAssignment')
+      .delete()
+      .eq('tenantId', tenantId)
+      .eq('staffProfileId', input.staffProfileId)
+      .eq('classId', input.classId)
+      .eq('academicYearId', input.academicYearId)
+      .in('subjectId', toDelete);
+
+    if (deleteError) {
+      throwMutationError(deleteError);
+    }
+  }
+
   await ensureSubjectAssignments(
     supabase,
     tenantId,
@@ -401,6 +501,14 @@ export async function syncClassTeacherAssignment(
     input.academicYearId,
     subjectIds,
     now,
+  );
+
+  await reconcileOrphanSubjectAssignments(
+    supabase,
+    tenantId,
+    input.staffProfileId,
+    input.academicYearId,
+    toDelete,
   );
 }
 
@@ -413,6 +521,22 @@ export async function removeClassTeacherAssignment(
     staffProfileId: string;
   },
 ): Promise<void> {
+  const { data: removedRows, error: lookupError } = await supabase
+    .from('StaffClassSubjectAssignment')
+    .select('subjectId')
+    .eq('tenantId', tenantId)
+    .eq('staffProfileId', input.staffProfileId)
+    .eq('classId', input.classId)
+    .eq('academicYearId', input.academicYearId);
+
+  if (lookupError) {
+    throwMutationError(lookupError);
+  }
+
+  const removedSubjectIds = (removedRows ?? []).map(
+    (row) => row.subjectId as string,
+  );
+
   const { error: subjectError } = await supabase
     .from('StaffClassSubjectAssignment')
     .delete()
@@ -436,6 +560,21 @@ export async function removeClassTeacherAssignment(
   if (classError) {
     throwMutationError(classError);
   }
+
+  await clearClassMasterIfMatches(
+    supabase,
+    tenantId,
+    input.classId,
+    input.staffProfileId,
+  );
+
+  await reconcileOrphanSubjectAssignments(
+    supabase,
+    tenantId,
+    input.staffProfileId,
+    input.academicYearId,
+    removedSubjectIds,
+  );
 }
 
 export async function insertClassSubjectAssignmentsForStaff(
@@ -484,7 +623,11 @@ export async function insertClassSubjectAssignmentsForStaff(
   }));
 
   if (rows.length === 0) {
-    return { ok: true };
+    return {
+      ok: false,
+      message:
+        'None of the selected subjects are offered in the selected classes. Adjust class or subject choices.',
+    };
   }
 
   const { error: insertError } = await supabase

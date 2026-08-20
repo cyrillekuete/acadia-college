@@ -36,6 +36,7 @@ import {
   financeLedgerEntrySchema,
   financeSaleSchema,
   recordFeePaymentSchema,
+  scholarshipTypeSchema,
   streamFeePlanSchema,
 } from '@/lib/acadia/finance-schemas';
 import {
@@ -74,6 +75,16 @@ describe('parseMoneyToMinor', () => {
   it('converts major units to minor', () => {
     expect(parseMoneyToMinor('1500')).toBe(150000);
   });
+
+  it('treats grouped thousands as whole units', () => {
+    expect(parseMoneyToMinor('1,500')).toBe(150000);
+    expect(parseMoneyToMinor('1 500')).toBe(150000);
+  });
+
+  it('keeps 1-2 digit fractions as decimals', () => {
+    expect(parseMoneyToMinor('1.50')).toBe(150);
+    expect(parseMoneyToMinor('1,50')).toBe(150);
+  });
 });
 
 describe('computeFeeAccountTotals', () => {
@@ -87,10 +98,37 @@ describe('computeFeeAccountTotals', () => {
         { amountMinor: 100000, status: 'WAIVED', paidAmountMinor: null },
       ],
     });
-    expect(totals.totalDueMinor).toBe(250000);
+    expect(totals.waivedMinor).toBe(100000);
+    expect(totals.totalDueMinor).toBe(150000);
     expect(totals.totalPaidMinor).toBe(100000);
-    expect(totals.balanceMinor).toBe(150000);
+    expect(totals.balanceMinor).toBe(50000);
     expect(totals.creditMinor).toBe(0);
+  });
+
+  it('applies credit against the remaining balance', () => {
+    const totals = computeFeeAccountTotals({
+      totalAmountMinor: 300000,
+      scholarshipMinor: 0,
+      creditMinor: 25000,
+      installments: [
+        { amountMinor: 150000, status: 'PAID', paidAmountMinor: 150000 },
+        { amountMinor: 150000, status: 'PENDING', paidAmountMinor: null },
+      ],
+    });
+    expect(totals.balanceMinor).toBe(125000);
+  });
+
+  it('caps stacked scholarships at the assessed amount', () => {
+    const totals = computeFeeAccountTotals({
+      totalAmountMinor: 100000,
+      scholarshipMinor: 250000,
+      installments: [
+        { amountMinor: 100000, status: 'PENDING', paidAmountMinor: null },
+      ],
+    });
+    expect(totals.scholarshipMinor).toBe(100000);
+    expect(totals.totalDueMinor).toBe(0);
+    expect(totals.balanceMinor).toBe(0);
   });
 });
 
@@ -311,11 +349,11 @@ describe('splitTuitionIntoDefaultInstallments', () => {
 
   it('puts the remainder on the last installment', () => {
     expect(splitTuitionIntoDefaultInstallments(10001)).toEqual([5000, 2500, 2501]);
-    expect(splitTuitionIntoDefaultInstallments(3)).toEqual([1, 0, 2]);
+    expect(splitTuitionIntoDefaultInstallments(3)).toEqual([1, 1, 1]);
   });
 
-  it('keeps a tiny total on the last installment', () => {
-    expect(splitTuitionIntoDefaultInstallments(1)).toEqual([0, 0, 1]);
+  it('keeps a tiny total on a single installment', () => {
+    expect(splitTuitionIntoDefaultInstallments(1)).toEqual([1, 0, 0]);
     expect(splitTuitionIntoDefaultInstallments(0)).toEqual([0, 0, 0]);
   });
 
@@ -739,6 +777,20 @@ describe('financeSaleSchema', () => {
       }).success,
     ).toBe(true);
   });
+
+  it('allows walk-in sales without a student', () => {
+    expect(
+      financeSaleSchema.safeParse({
+        academicYearId: 'year-1',
+        studentProfileId: '',
+        itemType: 'UNIFORM',
+        itemName: 'School Uniform',
+        quantity: 1,
+        unitPriceMinor: 150000,
+        saleDate: '2026-08-15',
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe('rebillInstallments', () => {
@@ -925,5 +977,41 @@ describe('expenditureSchema', () => {
         budgetCategory: 'Facilities',
       }).success,
     ).toBe(true);
+  });
+
+  it('allows pending expenditures without a payment date', () => {
+    expect(
+      expenditureSchema.safeParse({
+        academicYearId: 'year-1',
+        title: 'Generator fuel',
+        category: 'utilities',
+        amountMinor: 250000,
+        currency: 'XAF',
+        vendor: 'Total',
+        budgetCategory: 'Facilities',
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe('scholarshipTypeSchema', () => {
+  it('requires percent or fixed amount matching the kind', () => {
+    expect(
+      scholarshipTypeSchema.safeParse({
+        nameEn: 'Merit',
+        nameFr: 'Mérite',
+        discountKind: 'PERCENT_BPS',
+        percentBps: 2500,
+        isActive: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      scholarshipTypeSchema.safeParse({
+        nameEn: 'Merit',
+        nameFr: 'Mérite',
+        discountKind: 'PERCENT_BPS',
+        isActive: true,
+      }).success,
+    ).toBe(false);
   });
 });

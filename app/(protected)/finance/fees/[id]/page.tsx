@@ -2,6 +2,7 @@
 
 import { use } from 'react';
 import { FeeAccountInstallments } from '@/components/acadia/finance/fee-account-installments';
+import { FeeAccountScholarships } from '@/components/acadia/finance/fee-account-scholarships';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
@@ -95,6 +96,7 @@ export default function FeeAccountDetailPage({
               },
             ]}
           />
+          <FeeAccountScholarships accountId={data.id} readOnly={!canManage} />
           <FeeAccountInstallments accountId={data.id} readOnly={!canManage} />
         </div>
       ) : null}

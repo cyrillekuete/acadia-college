@@ -97,6 +97,10 @@ describe('suggestVariantCode', () => {
     expect(suggestVariantCode('CHEM', ['CHEM'])).toBe('CHEM-2');
     expect(suggestVariantCode('CHEM', ['CHEM', 'CHEM-2'])).toBe('CHEM-3');
   });
+
+  it('avoids peer catalog codes when suggesting a variant', () => {
+    expect(suggestVariantCode('CHEM', ['CHEM', 'BIO', 'CHEM-2'])).toBe('CHEM-3');
+  });
 });
 
 describe('catalog grouping', () => {

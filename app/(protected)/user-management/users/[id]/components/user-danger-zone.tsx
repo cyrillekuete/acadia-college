@@ -46,7 +46,7 @@ const UserDangerZone = ({
           <Button
             variant="destructive"
             onClick={() => setDeleteDialogOpen(true)}
-            disabled={user.role?.isProtected}
+            disabled={user.isProtected || user.role?.isProtected}
           >
             Delete user
           </Button>

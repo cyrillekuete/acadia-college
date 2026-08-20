@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatSelectionLabel,
+  groupingOverrideFromDb,
+  groupingOverrideToDb,
   isGroupingOverridden,
+  isUngroupedOverride,
   normalizeSubjectClassAssignments,
   normalizeSubjectSelections,
   resolveEffectiveGrouping,
+  selectAllSubjectSelections,
   selectionsToSubjectIds,
   setAssignmentGrouping,
   setSelectionGrouping,
   toggleFullClass,
   toggleFullSubject,
   toggleSubBranch,
+  UNGROUPED_GROUPING_OVERRIDE,
 } from '@/lib/acadia/class-subject-selections';
 import type { SubjectForClassOption } from '@/hooks/use-subjects-for-class';
 
@@ -137,6 +142,9 @@ describe('grouping helpers', () => {
   it('resolves effective grouping from override or subject default', () => {
     expect(resolveEffectiveGrouping({ groupingId: 'grp-1' }, 'grp-default')).toBe('grp-1');
     expect(resolveEffectiveGrouping({ groupingId: null }, 'grp-default')).toBe('grp-default');
+    expect(
+      resolveEffectiveGrouping({ groupingId: UNGROUPED_GROUPING_OVERRIDE }, 'grp-default'),
+    ).toBeNull();
   });
 
   it('updates grouping on class-side selections', () => {
@@ -213,8 +221,7 @@ describe('formatSelectionLabel', () => {
   });
 
   it('appends grouping override to labels', () => {
-    expect(
-      formatSelectionLabel(
+    expect(formatSelectionLabel(
         mathSubject,
         {
           subjectId: 'sub-math',
@@ -224,5 +231,36 @@ describe('formatSelectionLabel', () => {
         new Map([['grp-elective', 'Elective']]),
       ),
     ).toBe('MATH — Mathematics · Elective');
+  });
+});
+
+describe('force-ungrouped persistence', () => {
+  it('stores the ungrouped sentinel distinctly from a null default', () => {
+    expect(isUngroupedOverride(UNGROUPED_GROUPING_OVERRIDE)).toBe(true);
+    expect(groupingOverrideToDb(UNGROUPED_GROUPING_OVERRIDE, 'grp-core')).toEqual({
+      groupingId: null,
+      forceUngrouped: true,
+    });
+    expect(groupingOverrideFromDb(null, true)).toBe(UNGROUPED_GROUPING_OVERRIDE);
+  });
+
+  it('coalesces an override equal to the subject default', () => {
+    expect(groupingOverrideToDb('grp-core', 'grp-core')).toEqual({
+      groupingId: null,
+      forceUngrouped: false,
+    });
+  });
+});
+
+describe('selectAllSubjectSelections', () => {
+  it('preserves in-progress grouping overrides', () => {
+    expect(
+      selectAllSubjectSelections(options, [
+        { subjectId: 'sub-math', subBranchIds: ['sb-pure'], groupingId: 'grp-elective' },
+      ]),
+    ).toEqual([
+      { subjectId: 'sub-math', subBranchIds: ['sb-pure'], groupingId: 'grp-elective' },
+      { subjectId: 'sub-eng', subBranchIds: null, groupingId: null },
+    ]);
   });
 });

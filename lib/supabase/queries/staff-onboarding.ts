@@ -29,6 +29,8 @@ export type StaffOnboardingProfile = {
 export type StaffOnboardingStatus = {
   profile: StaffOnboardingProfile | null;
   needsOnboarding: boolean;
+  /** True when the user has no active StaffProfile (deactivated or missing). */
+  blocked: boolean;
 };
 
 function emptyToNull(value: string | undefined): string | null {
@@ -58,12 +60,15 @@ export async function fetchStaffOnboardingStatus(
       emergencyContactName,
       emergencyContactRelationship,
       emergencyContactPhone,
-      onboardingCompletedAt
+      onboardingCompletedAt,
+      isActive
     `,
     )
     .eq('tenantId', tenantId)
     .eq('userId', userId)
-    .eq('isActive', true)
+    .order('isActive', { ascending: false })
+    .order('createdAt', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
@@ -71,7 +76,7 @@ export async function fetchStaffOnboardingStatus(
   }
 
   if (!data) {
-    return { profile: null, needsOnboarding: false };
+    return { profile: null, needsOnboarding: false, blocked: true };
   }
 
   const profile: StaffOnboardingProfile = {
@@ -94,6 +99,7 @@ export async function fetchStaffOnboardingStatus(
   return {
     profile,
     needsOnboarding: staffNeedsOnboarding(data.onboardingCompletedAt),
+    blocked: data.isActive === false,
   };
 }
 

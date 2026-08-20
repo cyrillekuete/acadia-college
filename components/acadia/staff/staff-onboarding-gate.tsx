@@ -10,10 +10,12 @@ import {
 import { useStaffOnboardingStatus } from '@/hooks/use-staff-onboarding';
 import { isAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 import { isStaffOnboardingExemptPath } from '@/lib/acadia/staff-onboarding';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function StaffOnboardingGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError } =
     useAcadiaCollegeSession();
   const roleSlug = session?.roleSlug ?? null;
@@ -28,9 +30,12 @@ export function StaffOnboardingGate({ children }: { children: React.ReactNode })
   const needsOnboarding =
     isTeacherStaff &&
     onboardingStatus?.needsOnboarding === true;
+  const blocked =
+    isTeacherStaff &&
+    onboardingStatus?.blocked === true;
 
   useEffect(() => {
-    if (!sessionReady || exempt || onboardingLoading || !needsOnboarding) {
+    if (!sessionReady || exempt || onboardingLoading || blocked || !needsOnboarding) {
       return;
     }
 
@@ -39,6 +44,7 @@ export function StaffOnboardingGate({ children }: { children: React.ReactNode })
     }
   }, [
     exempt,
+    blocked,
     needsOnboarding,
     onboardingLoading,
     pathname,
@@ -49,9 +55,23 @@ export function StaffOnboardingGate({ children }: { children: React.ReactNode })
   if (
     isTeacherStaff &&
     !exempt &&
+    !blocked &&
     (onboardingLoading || (needsOnboarding && pathname !== '/staff/onboarding'))
   ) {
     return <ScreenLoader />;
+  }
+
+  const blockedExempt = isStaffOnboardingExemptPath(pathname);
+
+  if (isTeacherStaff && blocked && !blockedExempt) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-6 text-center">
+        <h1 className="text-xl font-semibold">{t('staff.accountBlockedTitle')}</h1>
+        <p className="max-w-md text-sm text-muted-foreground">
+          {t('staff.accountBlockedDescription')}
+        </p>
+      </div>
+    );
   }
 
   return <>{children}</>;

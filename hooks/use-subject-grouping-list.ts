@@ -14,6 +14,8 @@ export type SubjectGroupingListRow = {
   code: string | null;
   sortOrder: number;
   subjectCount: number;
+  inactiveSubjectCount: number;
+  classOverrideCount: number;
 };
 
 export function useSubjectGroupingList() {
@@ -24,7 +26,7 @@ export function useSubjectGroupingList() {
     queryKey: ['subject-grouping-list', tenantId],
     queryFn: async (): Promise<SubjectGroupingListRow[]> => {
       const supabase = requireBrowserClient();
-      const [groupingsResult, subjectsResult] = await Promise.all([
+      const [groupingsResult, subjectsResult, classOverridesResult] = await Promise.all([
         supabase
           .from('SubjectGrouping')
           .select('id, nameEn, nameFr, code, sortOrder')
@@ -33,9 +35,13 @@ export function useSubjectGroupingList() {
           .order('nameEn', { ascending: true }),
         supabase
           .from('Subject')
+          .select('groupingId, deactivatedAt')
+          .eq('tenantId', tenantId!),
+        supabase
+          .from('ClassSubject')
           .select('groupingId')
           .eq('tenantId', tenantId!)
-          .is('deactivatedAt', null),
+          .not('groupingId', 'is', null),
       ]);
 
       if (groupingsResult.error) {
@@ -45,12 +51,35 @@ export function useSubjectGroupingList() {
         throw subjectsResult.error;
       }
 
-      const counts = new Map<string, number>();
+      if (classOverridesResult.error) {
+        throw classOverridesResult.error;
+      }
+
+      const activeCounts = new Map<string, number>();
+      const inactiveCounts = new Map<string, number>();
       for (const subject of subjectsResult.data ?? []) {
         if (!subject.groupingId) {
           continue;
         }
-        counts.set(subject.groupingId, (counts.get(subject.groupingId) ?? 0) + 1);
+        if (subject.deactivatedAt) {
+          inactiveCounts.set(
+            subject.groupingId,
+            (inactiveCounts.get(subject.groupingId) ?? 0) + 1,
+          );
+        } else {
+          activeCounts.set(
+            subject.groupingId,
+            (activeCounts.get(subject.groupingId) ?? 0) + 1,
+          );
+        }
+      }
+
+      const overrideCounts = new Map<string, number>();
+      for (const row of classOverridesResult.data ?? []) {
+        if (!row.groupingId) {
+          continue;
+        }
+        overrideCounts.set(row.groupingId, (overrideCounts.get(row.groupingId) ?? 0) + 1);
       }
 
       return (groupingsResult.data ?? []).map((grouping) => ({
@@ -59,7 +88,9 @@ export function useSubjectGroupingList() {
         nameFr: grouping.nameFr,
         code: grouping.code,
         sortOrder: grouping.sortOrder,
-        subjectCount: counts.get(grouping.id) ?? 0,
+        subjectCount: activeCounts.get(grouping.id) ?? 0,
+        inactiveSubjectCount: inactiveCounts.get(grouping.id) ?? 0,
+        classOverrideCount: overrideCounts.get(grouping.id) ?? 0,
       }));
     },
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),

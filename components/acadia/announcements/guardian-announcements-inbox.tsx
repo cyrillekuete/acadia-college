@@ -23,6 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  ALERT_INBOX_PAGE_SIZE,
+  isAlertVisibleToGuardian,
+} from '@/lib/acadia/alerts';
 import { alertChannelLabel } from '@/lib/acadia/alerts';
 import { getUiLocale, localizedText } from '@/lib/acadia/locale';
 import { useAlertMutations } from '@/hooks/use-alert-mutations';
@@ -74,41 +78,48 @@ export function GuardianAnnouncementsInbox() {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [inboxLimit, setInboxLimit] = useState(ALERT_INBOX_PAGE_SIZE);
 
   const query = useQuery({
-    queryKey: ['school-alerts', 'inbox', tenantId, userId],
+    queryKey: ['school-alerts', 'inbox', tenantId, userId, inboxLimit],
     queryFn: async (): Promise<InboxRow[]> => {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
         .from('SchoolAlertRecipient')
-        .select('id, alertId, readAt, createdAt')
+        .select(
+          'id, alertId, readAt, createdAt, SchoolAlert!inner ( id, titleEn, titleFr, bodyEn, bodyFr, priority, channel, status )',
+        )
         .eq('tenantId', tenantId!)
         .eq('guardianUserId', userId!)
-        .order('createdAt', { ascending: false });
+        .eq('SchoolAlert.status', 'SENT')
+        .order('createdAt', { ascending: false })
+        .limit(inboxLimit);
       if (error) {
         throw error;
       }
-      const recipients = data ?? [];
-      if (recipients.length === 0) {
-        return [];
-      }
-      const { data: alerts, error: alertError } = await supabase
-        .from('SchoolAlert')
-        .select('id, titleEn, titleFr, bodyEn, bodyFr, priority, channel, status')
-        .eq('tenantId', tenantId!)
-        .in(
-          'id',
-          recipients.map((row) => row.alertId as string),
-        );
-      if (alertError) {
-        throw alertError;
-      }
-      const byId = new Map(
-        (alerts ?? []).map((alert) => [alert.id as string, alert]),
-      );
-      return recipients.flatMap((row) => {
-        const alert = byId.get(row.alertId as string);
-        if (!alert) {
+      return (data ?? []).flatMap((row) => {
+        const nested = row.SchoolAlert as
+          | {
+              titleEn?: string;
+              titleFr?: string;
+              bodyEn?: string | null;
+              bodyFr?: string | null;
+              priority?: string;
+              channel?: string;
+              status?: string;
+            }
+          | {
+              titleEn?: string;
+              titleFr?: string;
+              bodyEn?: string | null;
+              bodyFr?: string | null;
+              priority?: string;
+              channel?: string;
+              status?: string;
+            }[]
+          | null;
+        const alert = Array.isArray(nested) ? nested[0] : nested;
+        if (!alert || !isAlertVisibleToGuardian(alert.status ?? '')) {
           return [];
         }
         return [
@@ -285,6 +296,15 @@ export function GuardianAnnouncementsInbox() {
               </Card>
             );
           })}
+          {(query.data?.length ?? 0) >= inboxLimit ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setInboxLimit((current) => current + ALERT_INBOX_PAGE_SIZE)}
+            >
+              {t('communication.loadMore')}
+            </Button>
+          ) : null}
         </div>
       )}
     </div>

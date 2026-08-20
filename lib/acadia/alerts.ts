@@ -8,6 +8,20 @@ export type AlertPriority = (typeof ALERT_PRIORITIES)[number];
 export const ALERT_CHANNELS = ['whatsapp', 'in_app', 'email', 'sms', 'both'] as const;
 export type AlertChannel = (typeof ALERT_CHANNELS)[number];
 
+/** Channels the compose UI may actually send. Email/SMS remain in the DB enum. */
+export const ALERT_COMPOSE_CHANNELS = ['in_app', 'whatsapp'] as const;
+export type AlertComposeChannel = (typeof ALERT_COMPOSE_CHANNELS)[number];
+
+export const ALERT_IN_QUERY_CHUNK = 80;
+export const ALERT_HISTORY_PAGE_SIZE = 50;
+export const ALERT_INBOX_PAGE_SIZE = 50;
+
+export const WHATSAPP_ALREADY_SENT_STATUSES = new Set([
+  'sent',
+  'delivered',
+  'read',
+]);
+
 export const ALERT_STATUSES = ['DRAFT', 'SCHEDULED', 'SENT', 'CANCELLED'] as const;
 export type AlertStatus = (typeof ALERT_STATUSES)[number];
 
@@ -240,11 +254,162 @@ export function deriveAlertStatusOnSave(
   return 'DRAFT';
 }
 
+/** Reject incomplete or past schedules instead of silently drafting or sending now. */
+export function alertScheduleIssue(
+  values: Pick<AlertFormValues, 'sendNow' | 'scheduledAt'>,
+  nowIso = new Date().toISOString(),
+): string | null {
+  if (values.sendNow) {
+    return null;
+  }
+  const raw = values.scheduledAt?.trim() ?? '';
+  if (!raw) {
+    return 'validation.publishOrSchedule';
+  }
+  const scheduledIso = localDateTimeInputToIso(raw);
+  if (!scheduledIso) {
+    return 'validation.scheduleDateAndTime';
+  }
+  if (scheduledIso <= nowIso) {
+    return 'validation.scheduleInFuture';
+  }
+  return null;
+}
+
+export function isAlertVisibleToGuardian(status: string): boolean {
+  return status === 'SENT';
+}
+
+export function chunkIds<T>(items: readonly T[], size = ALERT_IN_QUERY_CHUNK): T[][] {
+  if (items.length === 0) {
+    return [];
+  }
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push([...items.slice(i, i + size)]);
+  }
+  return chunks;
+}
+
+export function eligibleGuardianLinks(
+  links: readonly GuardianStudentLinkRow[],
+  input: {
+    activeGuardianIds: ReadonlySet<string>;
+    enrolledStudentIds?: ReadonlySet<string> | null;
+    activeStudentIds?: ReadonlySet<string> | null;
+  },
+): GuardianStudentLinkRow[] {
+  return links.filter((link) => {
+    if (!input.activeGuardianIds.has(link.guardianUserId)) {
+      return false;
+    }
+    if (
+      input.activeStudentIds &&
+      !input.activeStudentIds.has(link.studentProfileId)
+    ) {
+      return false;
+    }
+    if (
+      input.enrolledStudentIds &&
+      !input.enrolledStudentIds.has(link.studentProfileId)
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function filterActiveGroupMembers(
+  members: readonly AlertGroupMemberRow[],
+  activeGuardianIds: ReadonlySet<string>,
+): AlertGroupMemberRow[] {
+  return members.filter((row) => activeGuardianIds.has(row.guardianUserId));
+}
+
+export function alertTargetsNeedAcademicYear(
+  targets: readonly AlertTarget[],
+): boolean {
+  return targets.some((target) => target.kind === 'all' || target.kind === 'class');
+}
+
+export function filterAlertTargetsForTeacherScope(
+  targets: readonly AlertTarget[],
+  input: {
+    canBroadcastAll: boolean;
+    allowedClassIds: readonly string[] | null;
+  },
+): AlertTarget[] {
+  const allowed =
+    input.allowedClassIds === null ? null : new Set(input.allowedClassIds);
+  return targets.filter((target) => {
+    if (target.kind === 'all') {
+      return input.canBroadcastAll;
+    }
+    if (target.kind === 'class') {
+      return allowed === null || allowed.has(target.classId);
+    }
+    return true;
+  });
+}
+
+export function recipientsForSendNow(input: {
+  existing: readonly ResolvedAlertRecipient[];
+  resolvedFromTargets: readonly ResolvedAlertRecipient[];
+}): ResolvedAlertRecipient[] {
+  if (input.existing.length > 0) {
+    return [...input.existing];
+  }
+  if (input.resolvedFromTargets.length > 0) {
+    return [...input.resolvedFromTargets];
+  }
+  throw new Error('No guardians to notify.');
+}
+
+export function shouldSkipWhatsAppRecipient(
+  status: string | null | undefined,
+): boolean {
+  const normalized = status?.trim().toLowerCase() ?? '';
+  return WHATSAPP_ALREADY_SENT_STATUSES.has(normalized);
+}
+
+export function diffGroupMemberIds(
+  existingIds: readonly string[],
+  desiredIds: readonly string[],
+): { toInsert: string[]; toDelete: string[] } {
+  const existing = [...new Set(existingIds.map((id) => id.trim()).filter(Boolean))];
+  const desired = [...new Set(desiredIds.map((id) => id.trim()).filter(Boolean))];
+  const existingSet = new Set(existing);
+  const desiredSet = new Set(desired);
+  return {
+    toInsert: desired.filter((id) => !existingSet.has(id)),
+    toDelete: existing.filter((id) => !desiredSet.has(id)),
+  };
+}
+
 export function alertRecipientStats(
   rows: readonly { readAt?: string | null }[],
 ): { total: number; read: number; unread: number } {
   const total = rows.length;
   const read = rows.filter((row) => Boolean(row.readAt)).length;
   return { total, read, unread: total - read };
+}
+
+export function alertWhatsAppStats(
+  rows: readonly { whatsappStatus?: string | null }[],
+): { sent: number; failed: number; skipped: number } {
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+  for (const row of rows) {
+    const status = row.whatsappStatus?.trim().toLowerCase() ?? '';
+    if (status === 'sent' || status === 'delivered' || status === 'read') {
+      sent += 1;
+    } else if (status === 'failed') {
+      failed += 1;
+    } else if (status === 'skipped') {
+      skipped += 1;
+    }
+  }
+  return { sent, failed, skipped };
 }
 

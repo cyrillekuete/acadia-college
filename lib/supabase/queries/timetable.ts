@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TimetableSlotFormValues } from '@/lib/acadia/subject-schemas';
+import { pickPreferredEnrolledClassId } from '@/lib/acadia/student-enrollment';
 import {
   findTimetableSlotConflicts,
-  formatTimetableConflictMessage,
+  formatTimetableConflictMessages,
   normalizeTimetableClassId,
   type TimetableSlotInterval,
 } from '@/lib/acadia/timetable-validation';
@@ -58,6 +59,17 @@ export type TimetableSlotListRow = {
   } | null;
   Room?: { code?: string; nameEn?: string } | null;
   AcademicYear?: { label?: string } | null;
+};
+
+export type TimetableSlotWritePayload = {
+  academicYearId: string;
+  classId: string;
+  subjectId: string;
+  staffProfileId: string;
+  roomId: string;
+  dayOfWeek: number;
+  startMinutes: number;
+  endMinutes: number;
 };
 
 function mapInterval(row: {
@@ -140,6 +152,69 @@ async function isTeacherAssignedToClassSubject(
   return !!data;
 }
 
+async function assertRoomIsActive(
+  supabase: Client,
+  tenantId: string,
+  roomId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('Room')
+    .select('isActive')
+    .eq('tenantId', tenantId)
+    .eq('id', roomId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.isActive) {
+    throw new Error('The selected room is inactive or no longer available.');
+  }
+}
+
+async function assertSubjectIsActive(
+  supabase: Client,
+  tenantId: string,
+  subjectId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('Subject')
+    .select('deactivatedAt')
+    .eq('tenantId', tenantId)
+    .eq('id', subjectId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data || data.deactivatedAt) {
+    throw new Error('The selected subject is deactivated or no longer available.');
+  }
+}
+
+async function assertStaffProfileIsActive(
+  supabase: Client,
+  tenantId: string,
+  staffProfileId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('StaffProfile')
+    .select('isActive')
+    .eq('tenantId', tenantId)
+    .eq('id', staffProfileId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data?.isActive) {
+    throw new Error('The selected teacher is inactive or no longer available.');
+  }
+}
+
 export async function assertTimetableSlotValid(
   supabase: Client,
   tenantId: string,
@@ -147,26 +222,33 @@ export async function assertTimetableSlotValid(
   excludeSlotId?: string,
 ): Promise<void> {
   const classId = normalizeTimetableClassId(values.classId);
+  if (!classId) {
+    throw new Error('A class is required for every timetable slot.');
+  }
 
-  if (classId) {
-    const classSubjectIds = await fetchClassSubjectIds(supabase, tenantId, classId);
-    if (!classSubjectIds.includes(values.subjectId)) {
-      throw new Error('This subject is not assigned to the selected class.');
-    }
+  await Promise.all([
+    assertRoomIsActive(supabase, tenantId, values.roomId),
+    assertSubjectIsActive(supabase, tenantId, values.subjectId),
+    assertStaffProfileIsActive(supabase, tenantId, values.staffProfileId),
+  ]);
 
-    const teacherAssigned = await isTeacherAssignedToClassSubject(
-      supabase,
-      tenantId,
-      values.academicYearId,
-      classId,
-      values.subjectId,
-      values.staffProfileId,
+  const classSubjectIds = await fetchClassSubjectIds(supabase, tenantId, classId);
+  if (!classSubjectIds.includes(values.subjectId)) {
+    throw new Error('This subject is not assigned to the selected class.');
+  }
+
+  const teacherAssigned = await isTeacherAssignedToClassSubject(
+    supabase,
+    tenantId,
+    values.academicYearId,
+    classId,
+    values.subjectId,
+    values.staffProfileId,
+  );
+  if (!teacherAssigned) {
+    throw new Error(
+      'This teacher is not assigned to the selected subject in this class.',
     );
-    if (!teacherAssigned) {
-      throw new Error(
-        'This teacher is not assigned to the selected subject in this class.',
-      );
-    }
   }
 
   const candidate = candidateFromFormValues(values, excludeSlotId);
@@ -183,7 +265,53 @@ export async function assertTimetableSlotValid(
   );
 
   if (conflicts.length > 0) {
-    throw new Error(formatTimetableConflictMessage(conflicts[0]!));
+    throw new Error(formatTimetableConflictMessages(conflicts));
+  }
+}
+
+export async function assertTimetableSlotDeletable(
+  supabase: Client,
+  tenantId: string,
+  slotId: string,
+): Promise<void> {
+  const { count, error } = await supabase
+    .from('AttendanceSession')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenantId', tenantId)
+    .eq('timetableSlotId', slotId);
+
+  if (error) {
+    throw error;
+  }
+
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      `Cannot delete: ${count} attendance session(s) reference this slot.`,
+    );
+  }
+}
+
+export async function writeTimetableSlot(
+  supabase: Client,
+  tenantId: string,
+  payload: TimetableSlotWritePayload & { id: string; excludeSlotId?: string },
+): Promise<void> {
+  const { error } = await supabase.rpc('acadia_write_timetable_slot', {
+    p_tenant_id: tenantId,
+    p_slot_id: payload.id,
+    p_exclude_slot_id: payload.excludeSlotId ?? null,
+    p_academic_year_id: payload.academicYearId,
+    p_class_id: payload.classId,
+    p_subject_id: payload.subjectId,
+    p_staff_profile_id: payload.staffProfileId,
+    p_room_id: payload.roomId,
+    p_day_of_week: payload.dayOfWeek,
+    p_start_minutes: payload.startMinutes,
+    p_end_minutes: payload.endMinutes,
+  });
+
+  if (error) {
+    throw error;
   }
 }
 
@@ -239,18 +367,18 @@ export async function fetchStudentEnrolledClassId(
 ): Promise<string | null> {
   const { data, error } = await supabase
     .from('StudentEnrollment')
-    .select('classId')
+    .select('classId, createdAt')
     .eq('tenantId', tenantId)
     .eq('studentProfileId', studentProfileId)
     .eq('academicYearId', academicYearId)
     .eq('status', 'ENROLLED')
-    .maybeSingle();
+    .order('createdAt', { ascending: false });
 
   if (error) {
     throw error;
   }
 
-  return (data?.classId as string | null | undefined) ?? null;
+  return pickPreferredEnrolledClassId(data ?? []);
 }
 
 export async function fetchTimetableSlotsForStudent(
@@ -278,10 +406,17 @@ export async function fetchTimetableSlotsForStudent(
   );
 }
 
-export function buildTimetableSlotWritePayload(values: TimetableSlotFormValues) {
+export function buildTimetableSlotWritePayload(
+  values: TimetableSlotFormValues,
+): TimetableSlotWritePayload {
+  const classId = normalizeTimetableClassId(values.classId);
+  if (!classId) {
+    throw new Error('A class is required for every timetable slot.');
+  }
+
   return {
     academicYearId: values.academicYearId,
-    classId: normalizeTimetableClassId(values.classId),
+    classId,
     subjectId: values.subjectId,
     staffProfileId: values.staffProfileId,
     roomId: values.roomId,

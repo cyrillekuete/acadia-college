@@ -6,7 +6,14 @@ import {
   isWithinCalendarWindow,
   milestonesOnDate,
   resolveEnrollmentWindow,
+  todayDateOnly,
 } from '@/lib/acadia/calendar-milestones';
+
+describe('todayDateOnly', () => {
+  it('uses the local calendar date, not UTC', () => {
+    expect(todayDateOnly(new Date(2026, 0, 15, 0, 30, 0))).toBe('2026-01-15');
+  });
+});
 
 describe('isWithinCalendarWindow', () => {
   it('allows when no bounds are configured', () => {

@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { ALERT_CHANNELS, ALERT_PRIORITIES } from '@/lib/acadia/alerts';
+import {
+  ALERT_COMPOSE_CHANNELS,
+  ALERT_PRIORITIES,
+  alertScheduleIssue,
+} from '@/lib/acadia/alerts';
 
 export const alertSchema = z
   .object({
@@ -8,16 +12,17 @@ export const alertSchema = z
     bodyEn: z.string().max(20000).optional(),
     bodyFr: z.string().max(20000).optional(),
     priority: z.enum(ALERT_PRIORITIES),
-    channel: z.enum(ALERT_CHANNELS),
+    channel: z.enum(ALERT_COMPOSE_CHANNELS),
     targetKeys: z.array(z.string()).min(1, 'validation.required.alertTarget'),
     scheduledAt: z.string().optional(),
     sendNow: z.boolean(),
   })
   .superRefine((values, ctx) => {
-    if (!values.sendNow && !values.scheduledAt) {
+    const issue = alertScheduleIssue(values);
+    if (issue) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'validation.publishOrSchedule',
+        message: issue,
         path: ['scheduledAt'],
       });
     }

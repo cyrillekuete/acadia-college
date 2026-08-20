@@ -14,6 +14,7 @@ import {
   normalizeMatriculeNumber,
 } from '@/lib/acadia/student-ids';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import { assertEnrollmentWindowForYear } from '@/lib/acadia/enrollment-window';
 
 export async function POST(request: Request) {
   const auth = await requireRegistryApi();
@@ -49,6 +50,31 @@ export async function POST(request: Request) {
 
   const supabase = await createClient();
 
+  try {
+    const window = await assertEnrollmentWindowForYear(
+      supabase,
+      auth.ctx.tenantId,
+      parsed.data.academic_year_id,
+      { override: parsed.data.override_enrollment_window === true },
+    );
+    if (!window.allowed && parsed.data.override_enrollment_window) {
+      void appendSystemLog(supabase, {
+        userId: auth.ctx.actorUserId,
+        event: 'student.enrollment_window_override',
+        description: `Enrollment window override: ${window.message ?? 'closed'}`,
+        entityId: parsed.data.academic_year_id,
+        entityType: 'AcademicYear',
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      {
+        message: error instanceof Error ? error.message : 'Enrollment is closed.',
+      },
+      { status: 400 },
+    );
+  }
+
   const emailCheck = await checkRegistryStudentEmail(
     supabase,
     auth.ctx.tenantId,
@@ -58,19 +84,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: emailCheck.message }, { status: 400 });
   }
 
-  const studentId = generateRegistrationNumber(
+  let studentId = generateRegistrationNumber(
     parsed.data.academic_year ?? undefined,
   );
-  const studentIdCheck = await checkRegistrationNumberAvailable(
-    supabase,
-    auth.ctx.tenantId,
-    studentId,
-  );
-  if (!studentIdCheck.ok) {
-    return NextResponse.json(
-      { message: studentIdCheck.message, field: 'registrationNumber' },
-      { status: 400 },
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const studentIdCheck = await checkRegistrationNumberAvailable(
+      supabase,
+      auth.ctx.tenantId,
+      studentId,
     );
+    if (studentIdCheck.ok) {
+      break;
+    }
+    if (attempt === 2) {
+      return NextResponse.json(
+        { message: studentIdCheck.message, field: 'registrationNumber' },
+        { status: 400 },
+      );
+    }
+    studentId = generateRegistrationNumber(parsed.data.academic_year ?? undefined);
   }
 
   const matricule = normalizeMatriculeNumber(parsed.data.matricule_number);
@@ -126,6 +158,7 @@ export async function POST(request: Request) {
       parentLoginEmail: result.parentLoginEmail,
       parentTemporaryPassword: result.parentTemporaryPassword,
       newParentAuthCreated: result.newParentAuthCreated,
+      feeWarning: result.feeWarning ?? null,
     },
     { status: 201 },
   );

@@ -1,12 +1,5 @@
-'use client';
-
-import { Container } from '@/components/common/container';
-import AccountProfile from './components/account-profile';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return (
-    <Container>
-      <AccountProfile />
-    </Container>
-  );
+  redirect('/account/home/user-profile');
 }

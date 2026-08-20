@@ -1,23 +1,24 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
+import { TranscriptListToolbar } from '@/components/acadia/transcripts/transcript-list-toolbar';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime, unwrapRelation } from '@/lib/acadia/record-display';
+import {
+  currentTranscriptVersion,
+  transcriptMatchesSearch,
+  transcriptRowMatchesStatusFilter,
+  transcriptVersionBadgeVariant,
+  type TranscriptListRow,
+  type TranscriptListStatusFilter,
+} from '@/lib/acadia/transcripts';
 import { useTranslation } from '@/hooks/useTranslation';
 
-type TranscriptRow = {
-  id: string;
-  createdAt?: string;
-  StudentProfile?: unknown;
-  AcademicYear?: unknown;
-  Term?: unknown;
-  TranscriptVersion?: unknown;
-} & Record<string, unknown>;
-
-function studentLabel(row: TranscriptRow): string {
+function studentLabel(row: TranscriptListRow): string {
   const profile = unwrapRelation<{
     id?: string;
     registrationNumber?: string;
@@ -27,91 +28,29 @@ function studentLabel(row: TranscriptRow): string {
   return user?.name?.trim() || profile?.registrationNumber?.trim() || '—';
 }
 
-function studentId(row: TranscriptRow): string | null {
+function studentId(row: TranscriptListRow): string | null {
   const profile = unwrapRelation<{ id?: string }>(row.StudentProfile);
   return profile?.id ?? null;
 }
 
-function yearLabel(row: TranscriptRow): string {
+function yearLabel(row: TranscriptListRow): string {
   const year = unwrapRelation<{ label?: string }>(row.AcademicYear);
   return year?.label?.trim() || '—';
 }
 
-function termLabel(row: TranscriptRow): string {
+function termLabel(row: TranscriptListRow, termPrefix: string): string {
   const term = unwrapRelation<{ number?: number }>(row.Term);
-  return term?.number != null ? `Term ${term.number}` : '—';
+  return term?.number != null ? `${termPrefix} ${term.number}` : '—';
 }
-
-function currentVersion(row: TranscriptRow) {
-  return unwrapRelation<{
-    issuedAt?: string;
-    status?: string;
-    versionNumber?: number;
-  }>(row.TranscriptVersion);
-}
-
-const columns: ColumnDef<TranscriptRow>[] = [
-  {
-    id: 'student',
-    header: 'Student',
-    cell: ({ row }) => {
-      const profileId = studentId(row.original);
-      const label = studentLabel(row.original);
-      if (!profileId) {
-        return label;
-      }
-      return (
-        <Link
-          href={`/students/${profileId}`}
-          className="font-medium text-primary hover:underline"
-        >
-          {label}
-        </Link>
-      );
-    },
-  },
-  {
-    id: 'year',
-    header: 'Year',
-    cell: ({ row }) => yearLabel(row.original),
-  },
-  {
-    id: 'term',
-    header: 'Term',
-    cell: ({ row }) => termLabel(row.original),
-  },
-  {
-    id: 'issuedAt',
-    header: 'Issued',
-    cell: ({ row }) => formatDateTime(currentVersion(row.original)?.issuedAt),
-  },
-  {
-    id: 'status',
-    header: 'Status',
-    cell: ({ row }) => {
-      const status = currentVersion(row.original)?.status;
-      if (!status) {
-        return '—';
-      }
-      return (
-        <Badge
-          variant={status === 'READY' ? 'success' : 'secondary'}
-          appearance="light"
-          size="sm"
-        >
-          {status}
-        </Badge>
-      );
-    },
-  },
-];
 
 const TRANSCRIPT_SELECT = `
   id,
   createdAt,
+  currentVersionId,
   StudentProfile!Transcript_studentProfileId_tenantId_fkey (
     id,
     registrationNumber,
+    matriculeNumber,
     User!StudentProfile_userId_tenantId_fkey ( name )
   ),
   AcademicYear!Transcript_academicYearId_tenantId_fkey ( label ),
@@ -121,6 +60,80 @@ const TRANSCRIPT_SELECT = `
 
 export default function Page() {
   const { t } = useTranslation();
+  const [status, setStatus] = useState<TranscriptListStatusFilter>('ready');
+
+  const columns = useMemo<ColumnDef<TranscriptListRow>[]>(
+    () => [
+      {
+        id: 'student',
+        header: t('transcripts.student'),
+        cell: ({ row }) => {
+          const profileId = studentId(row.original);
+          const label = studentLabel(row.original);
+          if (!profileId) {
+            return label;
+          }
+          return (
+            <Link
+              href={`/students/${profileId}`}
+              className="font-medium text-primary hover:underline"
+            >
+              {label}
+            </Link>
+          );
+        },
+      },
+      {
+        id: 'year',
+        header: t('transcripts.year'),
+        cell: ({ row }) => yearLabel(row.original),
+      },
+      {
+        id: 'term',
+        header: t('transcripts.term'),
+        cell: ({ row }) => termLabel(row.original, t('transcripts.term')),
+      },
+      {
+        id: 'version',
+        header: t('transcripts.version'),
+        cell: ({ row }) => {
+          const version = currentTranscriptVersion(row.original);
+          if (!version || row.original.currentVersionId == null) {
+            return t('transcripts.noVersion');
+          }
+          return String(version.versionNumber ?? '—');
+        },
+      },
+      {
+        id: 'issuedAt',
+        header: t('transcripts.issued'),
+        cell: ({ row }) =>
+          formatDateTime(currentTranscriptVersion(row.original)?.issuedAt),
+      },
+      {
+        id: 'status',
+        header: t('transcripts.status'),
+        cell: ({ row }) => {
+          const version = currentTranscriptVersion(row.original);
+          const statusValue = version?.status;
+          if (!statusValue || !row.original.currentVersionId) {
+            return t('transcripts.noVersion');
+          }
+          return (
+            <Badge
+              variant={transcriptVersionBadgeVariant(statusValue)}
+              appearance="light"
+              size="sm"
+            >
+              {statusValue}
+            </Badge>
+          );
+        },
+      },
+    ],
+    [t],
+  );
+
   return (
     <AcadiaPageShell title={t('transcripts.title')} description={t('transcripts.description')}>
       <SupabaseTableList
@@ -129,7 +142,14 @@ export default function Page() {
         title={t('transcripts.title')}
         select={TRANSCRIPT_SELECT}
         columns={columns}
-        searchKeys={[]}
+        searchFn={transcriptMatchesSearch}
+        rowFilter={(row) => transcriptRowMatchesStatusFilter(row, status)}
+        order={{ column: 'createdAt', ascending: false }}
+        limit={500}
+        truncatedLabel={t('transcripts.truncated', { count: 500 })}
+        toolbarExtra={
+          <TranscriptListToolbar status={status} onStatusChange={setStatus} />
+        }
       />
     </AcadiaPageShell>
   );

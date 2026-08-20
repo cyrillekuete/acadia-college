@@ -28,6 +28,7 @@ const USER_DETAIL_SELECT = `
   updatedAt,
   lastSignInAt,
   isProtected,
+  isTrashed,
   UserRole:roleId ( slug, name )
 `;
 
@@ -91,7 +92,12 @@ export default function AdminUserDetailPage() {
             ]}
           />
           {canManage ? (
-            <UserEditForm user={user} />
+            <UserEditForm
+              user={{
+                ...user,
+                roleSlug: role?.slug ?? null,
+              }}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">
               You do not have permission to edit users.

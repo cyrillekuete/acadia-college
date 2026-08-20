@@ -81,13 +81,23 @@ describe('validateAcadiaProfile', () => {
     }
   });
 
-  it('fails when role is unknown', () => {
-    const result = validateAcadiaProfile(
+  it('fails when role is unknown or trashed', () => {
+    const unknown = validateAcadiaProfile(
       activeProfile({ UserRole: { slug: 'unknown', name: 'Unknown' } }),
     );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errorCode).toBe('profile_role');
+    expect(unknown.ok).toBe(false);
+    if (!unknown.ok) {
+      expect(unknown.errorCode).toBe('profile_role');
+    }
+
+    const trashed = validateAcadiaProfile(
+      activeProfile({
+        UserRole: { slug: 'admin', name: 'Admin', isTrashed: true },
+      }),
+    );
+    expect(trashed.ok).toBe(false);
+    if (!trashed.ok) {
+      expect(trashed.errorCode).toBe('profile_role');
     }
   });
 });

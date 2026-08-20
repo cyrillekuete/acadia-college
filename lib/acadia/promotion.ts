@@ -1,4 +1,9 @@
 import {
+  type AcademicYearStructure,
+  DEFAULT_ACADEMIC_STRUCTURE,
+  buildSequenceDistribution,
+} from '@/lib/acadia/academic-calendar';
+import {
   collapseMarksToSubjectScore,
   computeAnnualAverage,
   computeTermAverageFromSequences,
@@ -66,6 +71,15 @@ export type YearRolloverEnrollmentPlan = {
   finalAction: PromotionAction;
   createEnrollment: boolean;
   markAlumni: boolean;
+  withdrawSource: boolean;
+  closeSourceEnrollment: boolean;
+};
+
+export type UnresolvedRolloverClass = {
+  studentProfileId: string;
+  finalAction: PromotionAction;
+  targetLevelId: string;
+  reason: 'missing';
 };
 
 export type YearRolloverPlan = {
@@ -401,6 +415,7 @@ function promotionMarksAreComplete(
 export function computeYearAveragesFromMarks(
   marks: YearAverageMark[],
   requiredSubBranchesBySubjectId?: ReadonlyMap<string, readonly string[]>,
+  structure: AcademicYearStructure = DEFAULT_ACADEMIC_STRUCTURE,
 ): Map<string, number> {
   const byStudent = new Map<string, { sequenceNumber: number; average: number }[]>();
   const grouped = new Map<string, YearAverageMark[]>();
@@ -451,15 +466,20 @@ export function computeYearAveragesFromMarks(
     byStudent.set(studentId, list);
   }
 
+  const { termNumberBySequence } = buildSequenceDistribution(structure);
   const result = new Map<string, number>();
   for (const [studentId, sequences] of Array.from(byStudent.entries())) {
     const termAvgs: (number | null)[] = [];
-    const termNumbers = new Set(sequences.map((s) => Math.floor((s.sequenceNumber - 1) / 2) + 1));
-    for (const termNum of Array.from(termNumbers)) {
+    const termNumbers = new Set(
+      sequences
+        .map((row) => termNumberBySequence.get(row.sequenceNumber))
+        .filter((term): term is number => term != null),
+    );
+    for (const termNum of Array.from(termNumbers).sort((a, b) => a - b)) {
       const seqInTerm = sequences.filter(
-        (s) => Math.floor((s.sequenceNumber - 1) / 2) + 1 === termNum,
+        (row) => termNumberBySequence.get(row.sequenceNumber) === termNum,
       );
-      const termAvg = computeTermAverageFromSequences(seqInTerm);
+      const termAvg = computeTermAverageFromSequences(seqInTerm, structure);
       termAvgs.push(termAvg);
     }
     const yearAvg = computeAnnualAverage(termAvgs);
@@ -483,6 +503,7 @@ export function computeYearAverageForPromotionFromMarks(
   }[],
   studentProfileId: string,
   classSubjects: Array<string | PromotionClassSubject> | null,
+  structure: AcademicYearStructure = DEFAULT_ACADEMIC_STRUCTURE,
 ): YearAverageForPromotion {
   const requirements = normalizePromotionClassSubjects(classSubjects);
   const studentMarks = marks.filter((m) => m.studentProfileId === studentProfileId);
@@ -507,6 +528,7 @@ export function computeYearAverageForPromotionFromMarks(
       subBranchCoefficient: m.subBranchCoefficient,
     })),
     requirements ? requiredSubBranchesBySubject(requirements) : undefined,
+    structure,
   );
 
   const average = averages.get(studentProfileId) ?? null;
@@ -543,13 +565,26 @@ export function planYearRollover(input: {
       continue;
     }
 
-    if (row.finalAction === 'DEFER' || row.finalAction === 'WITHDRAW') {
-      if (row.finalAction === 'DEFER') {
-        deferred += 1;
-      } else {
-        withdrawn += 1;
-      }
+    if (row.finalAction === 'DEFER') {
+      deferred += 1;
       skipped += 1;
+      continue;
+    }
+
+    if (row.finalAction === 'WITHDRAW') {
+      withdrawn += 1;
+      enrollments.push({
+        studentProfileId: row.studentProfileId,
+        subSystem: row.subSystem,
+        branch: row.branch,
+        targetLevelId: row.fromLevelId,
+        targetClassId: null,
+        finalAction: 'WITHDRAW',
+        createEnrollment: false,
+        markAlumni: false,
+        withdrawSource: true,
+        closeSourceEnrollment: true,
+      });
       continue;
     }
 
@@ -564,6 +599,8 @@ export function planYearRollover(input: {
         finalAction: 'GRADUATE',
         createEnrollment: false,
         markAlumni: true,
+        withdrawSource: false,
+        closeSourceEnrollment: true,
       });
       continue;
     }
@@ -583,6 +620,8 @@ export function planYearRollover(input: {
         finalAction: 'PROMOTE',
         createEnrollment: true,
         markAlumni: false,
+        withdrawSource: false,
+        closeSourceEnrollment: true,
       });
       continue;
     }
@@ -602,6 +641,8 @@ export function planYearRollover(input: {
         finalAction: 'REPEAT',
         createEnrollment: true,
         markAlumni: false,
+        withdrawSource: false,
+        closeSourceEnrollment: true,
       });
     }
   }
@@ -644,6 +685,95 @@ export function previewRetentionArchive(input: {
   };
 }
 
+export function retentionCutoffDate(referenceDate: Date, years: number): string {
+  const cutoff = new Date(referenceDate);
+  cutoff.setFullYear(cutoff.getFullYear() - years);
+  return cutoff.toISOString().slice(0, 10);
+}
+
+export function shouldArchiveEnrollment(input: {
+  status: string;
+  yearIsCurrent: boolean;
+  yearEndsOn: string | null;
+  cutoffDate: string;
+}): boolean {
+  if (input.yearIsCurrent) {
+    return false;
+  }
+  if (input.status !== 'ENROLLED') {
+    return false;
+  }
+  if (!input.yearEndsOn) {
+    return false;
+  }
+  return input.yearEndsOn.slice(0, 10) < input.cutoffDate;
+}
+
+export function shouldDeactivateRetentionProfile(input: {
+  isActive: boolean;
+  hasCurrentYearEnrollment: boolean;
+  updatedAt: string;
+  inactiveCutoffIso: string;
+}): boolean {
+  if (!input.isActive || input.hasCurrentYearEnrollment) {
+    return false;
+  }
+  return input.updatedAt < input.inactiveCutoffIso;
+}
+
+export function selectRetentionArchiveTargets(input: {
+  referenceDate: Date;
+  archiveInactiveAfterYears: number;
+  enrollmentRetentionYears: number;
+  profiles: Array<{ id: string; isActive: boolean; updatedAt: string }>;
+  enrollments: Array<{
+    id: string;
+    studentProfileId: string;
+    status: string;
+    yearIsCurrent: boolean;
+    yearEndsOn: string | null;
+  }>;
+}): { profileIds: string[]; enrollmentIds: string[] } {
+  const enrollmentCutoff = retentionCutoffDate(
+    input.referenceDate,
+    input.enrollmentRetentionYears,
+  );
+  const inactiveCutoff = new Date(input.referenceDate);
+  inactiveCutoff.setFullYear(
+    inactiveCutoff.getFullYear() - input.archiveInactiveAfterYears,
+  );
+  const inactiveCutoffIso = inactiveCutoff.toISOString();
+
+  const currentYearProfileIds = new Set(
+    input.enrollments
+      .filter((row) => row.yearIsCurrent && row.status === 'ENROLLED')
+      .map((row) => row.studentProfileId),
+  );
+
+  return {
+    profileIds: input.profiles
+      .filter((profile) =>
+        shouldDeactivateRetentionProfile({
+          isActive: profile.isActive,
+          hasCurrentYearEnrollment: currentYearProfileIds.has(profile.id),
+          updatedAt: profile.updatedAt,
+          inactiveCutoffIso,
+        }),
+      )
+      .map((profile) => profile.id),
+    enrollmentIds: input.enrollments
+      .filter((row) =>
+        shouldArchiveEnrollment({
+          status: row.status,
+          yearIsCurrent: row.yearIsCurrent,
+          yearEndsOn: row.yearEndsOn,
+          cutoffDate: enrollmentCutoff,
+        }),
+      )
+      .map((row) => row.id),
+  };
+}
+
 export const DEFAULT_RETENTION_POLICY = {
   marksRetentionYears: 7,
   enrollmentRetentionYears: 10,
@@ -679,4 +809,52 @@ export function requireClassPromotionPolicy(
     );
   }
   return policy;
+}
+
+export function unresolvedRolloverTargetClasses(
+  plan: YearRolloverPlan,
+): UnresolvedRolloverClass[] {
+  return plan.enrollments
+    .filter((item) => item.createEnrollment && !item.targetClassId)
+    .map((item) => ({
+      studentProfileId: item.studentProfileId,
+      finalAction: item.finalAction,
+      targetLevelId: item.targetLevelId,
+      reason: 'missing' as const,
+    }));
+}
+
+export function formatUnresolvedRolloverMessage(
+  unresolved: UnresolvedRolloverClass[],
+): string {
+  const sample = unresolved
+    .slice(0, 5)
+    .map((item) => item.targetLevelId)
+    .join(', ');
+  return (
+    `Cannot enroll ${unresolved.length} student(s) because the next class is missing or ambiguous (${sample}). ` +
+    'Assign a unique active class or mark a default promotion class for that level and stream.'
+  );
+}
+
+export function assertRolloverTargetClassesResolved(plan: YearRolloverPlan): void {
+  const unresolved = unresolvedRolloverTargetClasses(plan);
+  if (unresolved.length > 0) {
+    throw new Error(formatUnresolvedRolloverMessage(unresolved));
+  }
+}
+
+export function rolloverItemsForRpc(plan: YearRolloverPlan) {
+  return plan.enrollments.map((item) => ({
+    studentProfileId: item.studentProfileId,
+    subSystem: item.subSystem,
+    branch: item.branch,
+    targetLevelId: item.targetLevelId,
+    targetClassId: item.targetClassId,
+    finalAction: item.finalAction,
+    createEnrollment: item.createEnrollment,
+    markAlumni: item.markAlumni,
+    withdrawSource: item.withdrawSource,
+    closeSourceEnrollment: item.closeSourceEnrollment,
+  }));
 }

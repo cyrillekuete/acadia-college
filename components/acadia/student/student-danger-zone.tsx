@@ -15,7 +15,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { useStudentMutations } from '@/hooks/use-student-mutations';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function StudentDangerZone({
   student,
@@ -24,7 +26,11 @@ export function StudentDangerZone({
   student: StudentListItem | undefined;
   isLoading: boolean;
 }) {
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { t } = useTranslation();
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const { activeYearId, activeYear } = useActiveAcademicYear();
+  const { withdrawStudent } = useStudentMutations();
+  const profileId = student?.id;
 
   if (isLoading || !student) {
     return (
@@ -41,42 +47,62 @@ export function StudentDangerZone({
     );
   }
 
-  const handleConfirmDelete = () => {
-    setDeleteDialogOpen(false);
-    toast.info('Delete is not available in demo mode.');
+  const handleConfirmWithdraw = () => {
+    if (!profileId || !activeYearId) {
+      return;
+    }
+    withdrawStudent.mutate(
+      {
+        profileId,
+        academicYearId: activeYearId,
+        deactivateProfile: true,
+      },
+      { onSuccess: () => setWithdrawDialogOpen(false) },
+    );
   };
 
   return (
     <>
       <div className="space-y-3">
-        <h2 className="font-semibold text-destructive">Danger Zone</h2>
+        <h2 className="font-semibold text-destructive">{t('students.dangerZone')}</h2>
         <Card>
           <CardContent>
-            <h3 className="mb-3 font-semibold">Delete student account</h3>
+            <h3 className="mb-3 font-semibold">{t('students.withdrawTitle')}</h3>
             <p className="mb-4 text-sm text-muted-foreground">
-              This action will permanently delete the student and all related data.
-              It cannot be undone.
+              {t('students.withdrawDescription', {
+                year: activeYear?.label ?? t('students.academicYear'),
+              })}
             </p>
-            <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
-              Delete student
+            <Button
+              variant="destructive"
+              disabled={!activeYearId || withdrawStudent.isPending}
+              onClick={() => setWithdrawDialogOpen(true)}
+            >
+              {t('students.withdrawButton')}
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete student account?</AlertDialogTitle>
+            <AlertDialogTitle>{t('students.withdrawConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Demo data only — no records will be removed. Connect Supabase to enable
-              permanent deletion for {student.student_id}.
+              {t('students.withdrawConfirmDescription', {
+                studentId: student.student_id,
+                year: activeYear?.label ?? t('students.academicYear'),
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleConfirmDelete}>
-              Delete student
+            <AlertDialogCancel>{t('common.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={withdrawStudent.isPending}
+              onClick={handleConfirmWithdraw}
+            >
+              {t('students.withdrawButton')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

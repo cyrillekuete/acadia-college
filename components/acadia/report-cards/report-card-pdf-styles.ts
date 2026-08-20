@@ -3,11 +3,29 @@ import { REPORT_CARD_THEME } from '@/components/acadia/report-cards/report-card-
 const { navy, gold, grouping, green, red, stripe, summary, border } = REPORT_CARD_THEME;
 
 export const REPORT_CARD_PDF_STYLES = `
+@page {
+  size: A4;
+  margin: 0;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
 @media print, screen {
   .pdf-report-card,
   .pdf-report-card * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    color-adjust: exact !important;
     box-sizing: border-box !important;
   }
   .pdf-report-card {
@@ -122,6 +140,53 @@ export const REPORT_CARD_PDF_STYLES = `
   @media print {
     .pdf-report-card { box-shadow: none !important; }
     .pdf-report-card .print\\:hidden { display: none !important; }
+    .pdf-report-card .print\\:shadow-none { box-shadow: none !important; }
+    .pdf-report-card .print\\:overflow-visible { overflow: visible !important; }
+    .pdf-report-card .print\\:w-full { width: 100% !important; }
+    .pdf-report-card .print\\:max-w-full { max-width: 100% !important; }
+    .pdf-report-card .print\\:h-auto { height: auto !important; }
+    .pdf-report-card .print\\:min-h-\\[297mm\\] { min-height: 297mm !important; }
+    .pdf-report-card .print\\:min-h-\\[4\\.25rem\\] { min-height: 4.25rem !important; }
+    .pdf-report-card .print\\:p-0 { padding: 0 !important; }
+    .pdf-report-card .print\\:p-0\\.5 { padding: 0.125rem !important; }
+    .pdf-report-card .print\\:p-1 { padding: 0.25rem !important; }
+    .pdf-report-card .print\\:px-0\\.5 { padding-left: 0.125rem !important; padding-right: 0.125rem !important; }
+    .pdf-report-card .print\\:px-1 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+    .pdf-report-card .print\\:px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+    .pdf-report-card .print\\:py-0 { padding-top: 0 !important; padding-bottom: 0 !important; }
+    .pdf-report-card .print\\:py-0\\.5 { padding-top: 0.125rem !important; padding-bottom: 0.125rem !important; }
+    .pdf-report-card .print\\:pt-6 { padding-top: 1.5rem !important; }
+    .pdf-report-card .print\\:pb-1 { padding-bottom: 0.25rem !important; }
+    .pdf-report-card .print\\:pb-8 { padding-bottom: 2rem !important; }
+    .pdf-report-card .print\\:mb-0 { margin-bottom: 0 !important; }
+    .pdf-report-card .print\\:mb-0\\.5 { margin-bottom: 0.125rem !important; }
+    .pdf-report-card .print\\:mb-1 { margin-bottom: 0.25rem !important; }
+    .pdf-report-card .print\\:mb-3 { margin-bottom: 0.75rem !important; }
+    .pdf-report-card .print\\:gap-0\\.5 { gap: 0.125rem !important; }
+    .pdf-report-card .print\\:gap-1 { gap: 0.25rem !important; }
+    .pdf-report-card .print\\:gap-1\\.5 { gap: 0.375rem !important; }
+    .pdf-report-card .print\\:gap-2 { gap: 0.5rem !important; }
+    .pdf-report-card .print\\:border { border-width: 1px !important; }
+    .pdf-report-card .print\\:text-\\[5\\.5pt\\] { font-size: 5.5pt !important; }
+    .pdf-report-card .print\\:text-\\[6pt\\] { font-size: 6pt !important; }
+    .pdf-report-card .print\\:text-\\[7pt\\] { font-size: 7pt !important; }
+    .pdf-report-card .print\\:text-\\[8pt\\] { font-size: 8pt !important; }
+    .pdf-report-card .print\\:text-\\[9pt\\] { font-size: 9pt !important; }
+    .pdf-report-card .print\\:text-\\[10\\.5pt\\] { font-size: 10.5pt !important; }
+    .pdf-report-card .print\\:text-xs { font-size: 0.75rem !important; }
+    .pdf-report-card .print\\:text-sm { font-size: 0.875rem !important; }
+    .pdf-report-card .print\\:text-lg { font-size: 1.125rem !important; }
+    .pdf-report-card .print\\:text-2xl { font-size: 1.5rem !important; }
+    .pdf-report-card .print\\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    .pdf-report-card .md\\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    .pdf-report-card .md\\:flex-row { flex-direction: row !important; }
+    .pdf-report-card .md\\:text-left { text-align: left !important; }
+    .pdf-report-card .md\\:block { display: block !important; }
+    .pdf-report-card .md\\:items-stretch { align-items: stretch !important; }
   }
 }
 `;

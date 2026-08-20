@@ -3,10 +3,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import {
-  buildMessageReceivedNotification,
-  shouldDeliverInAppNotification,
-} from '@/lib/acadia/communication';
 import type {
   DirectMessageFormValues,
   GroupThreadFormValues,
@@ -15,6 +11,8 @@ import type {
 } from '@/lib/acadia/communication-schemas';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { getUiLocale } from '@/lib/acadia/locale';
+import { assertNotSelfRecipient } from '@/lib/acadia/messages';
+import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import {
   fetchWhatsAppConfigured,
@@ -24,11 +22,19 @@ import { formatWhatsAppSendToast } from '@/lib/acadia/whatsapp-types';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
-function mutationErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
+function asRecord(data: unknown): Record<string, unknown> {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
   }
-  return 'Operation failed.';
+  return {};
+}
+
+function requireRpcString(data: unknown, key: string): string {
+  const value = asRecord(data)[key];
+  if (typeof value !== 'string' || !value) {
+    throw new Error('Unexpected server response.');
+  }
+  return value;
 }
 
 function invalidateCommunicationQueries(
@@ -43,103 +49,19 @@ function invalidateCommunicationQueries(
   void queryClient.invalidateQueries({ queryKey: ['acadia-notification-preferences'] });
 }
 
-async function insertThreadMembers(
-  supabase: ReturnType<typeof requireBrowserClient>,
-  tenantId: string,
-  threadId: string,
-  userIds: string[],
-): Promise<void> {
-  const uniqueIds = Array.from(new Set(userIds));
-  const rows = uniqueIds.map((userId) => ({
-    id: generateAcadiaId('mtm'),
-    tenantId,
-    threadId,
-    userId,
-    joinedAt: new Date().toISOString(),
-  }));
-  const { error } = await supabase.from('MessageThreadMember').insert(rows);
-  if (error) {
-    throw error;
-  }
-}
-
-async function notifyMessageRecipients(
-  supabase: ReturnType<typeof requireBrowserClient>,
-  input: {
-    tenantId: string;
-    threadId: string;
-    senderUserId: string;
-    senderName: string;
-    subject: string;
-    recipientUserIds: string[];
-  },
-): Promise<number> {
-  const recipients = input.recipientUserIds.filter(
-    (id) => id !== input.senderUserId,
-  );
-  if (recipients.length === 0) {
-    return 0;
-  }
-
-  const { data: preferences, error: prefError } = await supabase
-    .from('NotificationPreference')
-    .select('userId, inApp')
-    .eq('tenantId', input.tenantId)
-    .eq('event', 'message.received')
-    .in('userId', recipients);
-
-  if (prefError) {
-    console.error('[notifyMessageRecipients] preferences', prefError.message);
-  }
-
-  const prefByUser = new Map(
-    (preferences ?? []).map((p) => [p.userId as string, { inApp: p.inApp as boolean }]),
-  );
-
-  const now = new Date().toISOString();
-  const rows = recipients
-    .filter((userId) =>
-      shouldDeliverInAppNotification(prefByUser, userId, 'message.received'),
-    )
-    .map((recipientUserId) => ({
-      ...buildMessageReceivedNotification(
-        {
-          tenantId: input.tenantId,
-          recipientUserId,
-          threadId: input.threadId,
-          senderName: input.senderName,
-          subject: input.subject,
-        },
-        generateAcadiaId('notif'),
-      ),
-      createdAt: now,
-    }));
-
-  if (rows.length === 0) {
-    return 0;
-  }
-
-  const { error: insertError } = await supabase.from('Notification').insert(rows);
-  if (insertError) {
-    console.error('[notifyMessageRecipients] insert', insertError.message);
-    return 0;
-  }
-  return rows.length;
-}
-
 export function useCommunicationMutations() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId;
   const userId = session?.profile?.id;
-  const senderName = session?.profile?.name ?? 'Someone';
 
   const createDirectMessage = useMutation({
     mutationFn: async (values: DirectMessageFormValues) => {
       if (!tenantId || !userId) {
         throw new Error('Session required.');
       }
+      assertNotSelfRecipient(userId, values.recipientUserId);
       if (values.sendWhatsApp) {
         const configured = await fetchWhatsAppConfigured();
         if (!configured) {
@@ -147,50 +69,18 @@ export function useCommunicationMutations() {
         }
       }
       const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
-      const threadId = generateAcadiaId('mth');
-      const messageId = generateAcadiaId('msg');
-      const subjectFr = values.subjectFr?.trim() || values.subjectEn;
-
-      const { error: threadError } = await supabase.from('MessageThread').insert({
-        id: threadId,
-        tenantId,
-        kind: 'DIRECT',
-        subjectEn: values.subjectEn.trim(),
-        subjectFr,
-        createdByUserId: userId,
-        createdAt: now,
-        updatedAt: now,
+      const { data, error } = await supabase.rpc('acadia_create_direct_message', {
+        p_tenant_id: tenantId,
+        p_recipient_user_id: values.recipientUserId,
+        p_subject_en: values.subjectEn.trim(),
+        p_subject_fr: values.subjectFr?.trim() || values.subjectEn.trim(),
+        p_body: values.body.trim(),
       });
-      if (threadError) {
-        throw threadError;
+      if (error) {
+        throw error;
       }
-
-      await insertThreadMembers(supabase, tenantId, threadId, [
-        userId,
-        values.recipientUserId,
-      ]);
-
-      const { error: messageError } = await supabase.from('Message').insert({
-        id: messageId,
-        tenantId,
-        threadId,
-        senderUserId: userId,
-        body: values.body.trim(),
-        createdAt: now,
-      });
-      if (messageError) {
-        throw messageError;
-      }
-
-      await notifyMessageRecipients(supabase, {
-        tenantId,
-        threadId,
-        senderUserId: userId,
-        senderName,
-        subject: values.subjectEn,
-        recipientUserIds: [values.recipientUserId],
-      });
+      const threadId = requireRpcString(data, 'threadId');
+      const messageId = requireRpcString(data, 'messageId');
 
       await appendSystemLog(supabase, {
         userId,
@@ -217,7 +107,7 @@ export function useCommunicationMutations() {
       toast.success(whatsappToast ?? 'Message sent.');
       router.push(`/messages/${threadId}`);
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const createGroupThread = useMutation({
@@ -226,50 +116,19 @@ export function useCommunicationMutations() {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
-      const threadId = generateAcadiaId('mth');
-      const messageId = generateAcadiaId('msg');
-      const subjectFr = values.subjectFr?.trim() || values.subjectEn;
-      const members = Array.from(new Set([userId, ...values.memberUserIds]));
-
-      const { error: threadError } = await supabase.from('MessageThread').insert({
-        id: threadId,
-        tenantId,
-        kind: 'GROUP',
-        subjectEn: values.subjectEn.trim(),
-        subjectFr,
-        groupScope: values.groupScope,
-        groupScopeId: values.groupScopeId,
-        createdByUserId: userId,
-        createdAt: now,
-        updatedAt: now,
+      const { data, error } = await supabase.rpc('acadia_create_group_thread', {
+        p_tenant_id: tenantId,
+        p_subject_en: values.subjectEn.trim(),
+        p_subject_fr: values.subjectFr?.trim() || values.subjectEn.trim(),
+        p_group_scope: values.groupScope,
+        p_group_scope_id: values.groupScopeId,
+        p_member_user_ids: values.memberUserIds,
+        p_body: values.body.trim(),
       });
-      if (threadError) {
-        throw threadError;
+      if (error) {
+        throw error;
       }
-
-      await insertThreadMembers(supabase, tenantId, threadId, members);
-
-      const { error: messageError } = await supabase.from('Message').insert({
-        id: messageId,
-        tenantId,
-        threadId,
-        senderUserId: userId,
-        body: values.body.trim(),
-        createdAt: now,
-      });
-      if (messageError) {
-        throw messageError;
-      }
-
-      await notifyMessageRecipients(supabase, {
-        tenantId,
-        threadId,
-        senderUserId: userId,
-        senderName,
-        subject: values.subjectEn,
-        recipientUserIds: members,
-      });
+      const threadId = requireRpcString(data, 'threadId');
 
       await appendSystemLog(supabase, {
         userId,
@@ -287,57 +146,34 @@ export function useCommunicationMutations() {
       toast.success('Group conversation created.');
       router.push(`/messages/${threadId}`);
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const replyToThread = useMutation({
     mutationFn: async ({
       threadId,
       values,
-      memberUserIds,
       subject,
     }: {
       threadId: string;
       values: MessageReplyFormValues;
-      memberUserIds: string[];
+      memberUserIds?: string[];
       subject: string;
     }) => {
       if (!tenantId || !userId) {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
-      const messageId = generateAcadiaId('msg');
-
-      const { error: messageError } = await supabase.from('Message').insert({
-        id: messageId,
-        tenantId,
-        threadId,
-        senderUserId: userId,
-        body: values.body.trim(),
-        createdAt: now,
+      const { data, error } = await supabase.rpc('acadia_reply_to_thread', {
+        p_tenant_id: tenantId,
+        p_thread_id: threadId,
+        p_body: values.body.trim(),
+        p_subject: subject,
       });
-      if (messageError) {
-        throw messageError;
+      if (error) {
+        throw error;
       }
-
-      const { error: threadError } = await supabase
-        .from('MessageThread')
-        .update({ updatedAt: now })
-        .eq('id', threadId)
-        .eq('tenantId', tenantId);
-      if (threadError) {
-        throw threadError;
-      }
-
-      await notifyMessageRecipients(supabase, {
-        tenantId,
-        threadId,
-        senderUserId: userId,
-        senderName,
-        subject,
-        recipientUserIds: memberUserIds,
-      });
+      const messageId = requireRpcString(data, 'messageId');
 
       await appendSystemLog(supabase, {
         userId,
@@ -352,7 +188,58 @@ export function useCommunicationMutations() {
       invalidateCommunicationQueries(queryClient);
       toast.success('Reply sent.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
+  });
+
+  const markThreadRead = useMutation({
+    mutationFn: async (threadId: string) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase.rpc('acadia_mark_thread_read', {
+        p_tenant_id: tenantId,
+        p_thread_id: threadId,
+      });
+      if (error) {
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['supabase-list'] });
+      void queryClient.invalidateQueries({ queryKey: ['acadia-notifications'] });
+    },
+  });
+
+  const updateGroupMembers = useMutation({
+    mutationFn: async ({
+      threadId,
+      addUserIds = [],
+      removeUserIds = [],
+    }: {
+      threadId: string;
+      addUserIds?: string[];
+      removeUserIds?: string[];
+    }) => {
+      if (!tenantId || !userId) {
+        throw new Error('Session required.');
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase.rpc('acadia_update_group_members', {
+        p_tenant_id: tenantId,
+        p_thread_id: threadId,
+        p_add_user_ids: addUserIds,
+        p_remove_user_ids: removeUserIds,
+      });
+      if (error) {
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      invalidateCommunicationQueries(queryClient);
+      toast.success('Group members updated.');
+    },
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const upsertNotificationPreference = useMutation({
@@ -413,7 +300,7 @@ export function useCommunicationMutations() {
       invalidateCommunicationQueries(queryClient);
       toast.success('Preference saved.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const upsertNotificationPreferences = useMutation({
@@ -493,7 +380,7 @@ export function useCommunicationMutations() {
       invalidateCommunicationQueries(queryClient);
       toast.success('Preferences saved.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const markNotificationRead = useMutation({
@@ -515,7 +402,7 @@ export function useCommunicationMutations() {
     onSuccess: () => {
       invalidateCommunicationQueries(queryClient);
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const markAllNotificationsRead = useMutation({
@@ -538,13 +425,15 @@ export function useCommunicationMutations() {
       invalidateCommunicationQueries(queryClient);
       toast.success('All notifications marked as read.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   return {
     createDirectMessage,
     createGroupThread,
     replyToThread,
+    markThreadRead,
+    updateGroupMembers,
     upsertNotificationPreference,
     upsertNotificationPreferences,
     markNotificationRead,

@@ -12,7 +12,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
   NOTIFICATION_EVENTS,
@@ -37,14 +36,8 @@ const EVENT_ICONS: Record<NotificationEvent, LucideIcon> = {
 const OtherNotifications = () => {
   const { t } = useTranslation();
   const locale = getUiLocale();
-  const {
-    preferences,
-    allInAppEnabled,
-    pending,
-    isLoading,
-    setEventInApp,
-    setAllInApp,
-  } = useNotificationPreferenceToggles();
+  const { preferences, pending, isLoading, setEventInApp } =
+    useNotificationPreferenceToggles();
 
   const disabled = pending || isLoading;
 
@@ -52,20 +45,12 @@ const OtherNotifications = () => {
     <Card>
       <CardHeader className="gap-2">
         <CardTitle>{t('account.otherNotifications')}</CardTitle>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="notification-enable-all-events" className="text-sm">
-            {t('account.enableAllEvents')}
-          </Label>
-          <Switch
-            id="notification-enable-all-events"
-            size="sm"
-            checked={allInAppEnabled}
-            disabled={disabled}
-            onCheckedChange={(checked) => {
-              void setAllInApp(checked);
-            }}
-          />
-        </div>
+        <p className="text-sm text-muted-foreground">
+          {t('account.inAppEventsHint', {
+            defaultValue:
+              'These switches control in-app alerts only. Email follows the master switch above.',
+          })}
+        </p>
       </CardHeader>
       <div id="notifications_cards">
         {NOTIFICATION_EVENTS.map((event) => {

@@ -27,6 +27,7 @@ import {
   editUserSchema,
   type EditUserFormValues,
 } from '@/lib/acadia/user-schemas';
+import { canSendAdminPasswordReset, isAdminDirectoryRole, registryPathForRole } from '@/lib/acadia/user-management';
 import { useUserManagementMutations } from '@/hooks/use-user-management-mutations';
 import { useUserRoleOptions } from '@/hooks/use-user-role-options';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -46,12 +47,18 @@ export type AdminUserRecord = {
   country: string | null;
   timezone: string | null;
   isProtected?: boolean;
+  isTrashed?: boolean;
+  updatedAt?: string | null;
+  roleSlug?: string | null;
 };
 
 export function UserEditForm({ user }: { user: AdminUserRecord }) {
   const { t } = useTranslation();
   const { updateUser, sendPasswordReset } = useUserManagementMutations();
-  const { data: roles = [], isLoading: rolesLoading } = useUserRoleOptions();
+  const { data: roles = [], isLoading: rolesLoading } = useUserRoleOptions({
+    directoryOnly: true,
+  });
+  const directoryAccount = isAdminDirectoryRole(user.roleSlug);
 
   const form = useForm<EditUserFormValues>({
     resolver: zodResolver(editUserSchema),
@@ -79,7 +86,12 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
   const onSubmit = (values: EditUserFormValues) => {
     updateUser.mutate({
       id: user.id,
-      values,
+      values: {
+        ...values,
+        expectedUpdatedAt: user.updatedAt ?? undefined,
+        isTrashed:
+          values.status === UserStatus.ACTIVE ? false : user.isTrashed,
+      },
       previousStatus: user.status,
       previousRoleId: user.roleId,
     });
@@ -124,7 +136,7 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
-                  disabled={rolesLoading || user.isProtected}
+                  disabled={rolesLoading || user.isProtected || !directoryAccount}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -139,6 +151,20 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
                     ))}
                   </SelectContent>
                 </Select>
+                {!directoryAccount ? (
+                  <p className="text-xs text-muted-foreground">
+                    This role is managed from{' '}
+                    <Link
+                      href={registryPathForRole(user.roleSlug)}
+                      className="underline underline-offset-2"
+                    >
+                      {registryPathForRole(user.roleSlug) === '/students'
+                        ? 'Students'
+                        : 'Staff'}
+                    </Link>
+                    .
+                  </p>
+                ) : null}
                 <FormMessage />
               </FormItem>
             )}
@@ -221,7 +247,13 @@ export function UserEditForm({ user }: { user: AdminUserRecord }) {
         <Button
           type="button"
           variant="outline"
-          disabled={sendPasswordReset.isPending}
+          disabled={
+            sendPasswordReset.isPending ||
+            !canSendAdminPasswordReset({
+              status: user.status,
+              isTrashed: Boolean(user.isTrashed),
+            })
+          }
           onClick={() => sendPasswordReset.mutate(user.id)}
         >
           {sendPasswordReset.isPending

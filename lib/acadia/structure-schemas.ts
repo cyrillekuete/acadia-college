@@ -31,6 +31,7 @@ export const classFormSchema = z.object({
   branch: z.enum(ACADEMIC_BRANCHES),
   staffProfileId: z.string().optional(),
   status: z.enum(CLASS_STATUSES),
+  isDefaultPromotionTarget: z.boolean().optional(),
   subjectSelections: z.array(classSubjectSelectionSchema),
 });
 

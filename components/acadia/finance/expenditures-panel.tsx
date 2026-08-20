@@ -12,7 +12,7 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Check, Eye, Pencil, Plus, Search, Trash2, Wallet } from '@/lib/icons';
+import { Check, Eye, Pencil, Plus, Search, Trash2, Wallet, X } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTable, CardTitle } from '@/components/ui/card';
@@ -50,6 +50,8 @@ import {
   canDeleteExpenditure,
   canEditExpenditure,
   canMarkExpenditurePaid,
+  canRejectExpenditure,
+  canReopenExpenditure,
   EXPENDITURE_CATEGORIES,
   EXPENDITURE_STATUSES,
   formatMoneyMinor,
@@ -58,6 +60,10 @@ import {
   type ExpenditureStatus,
   type FinancePaymentMethod,
 } from '@/lib/acadia/finance';
+import {
+  FinanceClosedYearHint,
+  useFinanceYearClosed,
+} from '@/components/acadia/finance/finance-year-lock';
 import { useTranslation } from '@/hooks/useTranslation';
 
 function expenditureStatusVariant(status: string) {
@@ -84,7 +90,10 @@ export function ExpendituresPanel() {
     deleteExpenditure,
     approveExpenditure,
     markExpenditurePaid,
+    rejectExpenditure,
+    reopenExpenditure,
   } = useFinanceMutations();
+  const yearClosed = useFinanceYearClosed();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -298,10 +307,34 @@ export function ExpendituresPanel() {
                 type="button"
                 variant="ghost"
                 size="icon"
+                disabled={yearClosed}
                 onClick={() => approveExpenditure.mutate(row.original.id)}
                 aria-label={t('finance.approve')}
               >
                 <Check className="size-4" />
+              </Button>
+            ) : null}
+            {canManage && canRejectExpenditure(row.original.status) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={yearClosed}
+                onClick={() => rejectExpenditure.mutate(row.original.id)}
+                aria-label={t('finance.reject')}
+              >
+                <X className="size-4" />
+              </Button>
+            ) : null}
+            {canManage && canReopenExpenditure(row.original.status) ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={yearClosed}
+                onClick={() => reopenExpenditure.mutate(row.original.id)}
+              >
+                {t('finance.reopen')}
               </Button>
             ) : null}
             {canManage && canMarkExpenditurePaid(row.original.status) ? (
@@ -309,6 +342,7 @@ export function ExpendituresPanel() {
                 type="button"
                 variant="ghost"
                 size="icon"
+                disabled={yearClosed}
                 onClick={() => markExpenditurePaid.mutate(row.original.id)}
                 aria-label={t('finance.markPaidExpenditure')}
               >
@@ -320,6 +354,7 @@ export function ExpendituresPanel() {
                 type="button"
                 variant="ghost"
                 size="icon"
+                disabled={yearClosed}
                 onClick={() => {
                   setEditing(row.original);
                   setFormOpen(true);
@@ -334,6 +369,7 @@ export function ExpendituresPanel() {
                 type="button"
                 variant="ghost"
                 size="icon"
+                disabled={yearClosed}
                 onClick={() => setDeleting(row.original)}
                 aria-label={t('common.buttons.delete')}
               >
@@ -348,7 +384,15 @@ export function ExpendituresPanel() {
         enableHiding: false,
       },
     ],
-    [approveExpenditure, canManage, markExpenditurePaid, t],
+    [
+      approveExpenditure,
+      canManage,
+      markExpenditurePaid,
+      rejectExpenditure,
+      reopenExpenditure,
+      t,
+      yearClosed,
+    ],
   );
 
   const table = useReactTable({
@@ -382,10 +426,14 @@ export function ExpendituresPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <CurrentAcademicYearBadge label="Year" />
+        <div className="space-y-1">
+          <CurrentAcademicYearBadge label="Year" />
+          <FinanceClosedYearHint />
+        </div>
         {canManage ? (
           <Button
             size="sm"
+            disabled={yearClosed}
             onClick={() => {
               setEditing(null);
               setFormOpen(true);

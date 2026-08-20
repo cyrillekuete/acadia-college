@@ -46,19 +46,32 @@ export const streamFeePlanSchema = z
       (total, row) => total + (Number(row.amountMinor) || 0),
       0,
     );
-    if (sum === value.totalAmountMinor) {
-      return;
+    if (sum !== value.totalAmountMinor) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.installmentsMustMatchTotal',
+        path: ['totalAmountMinor'],
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.installmentsMustMatchTotal',
+        path: ['installments'],
+      });
     }
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'validation.installmentsMustMatchTotal',
-      path: ['totalAmountMinor'],
-    });
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'validation.installmentsMustMatchTotal',
-      path: ['installments'],
-    });
+    const ordered = [...value.installments].sort(
+      (a, b) => a.installmentNumber - b.installmentNumber,
+    );
+    for (let i = 1; i < ordered.length; i += 1) {
+      const prev = ordered[i - 1]?.dueOn ?? '';
+      const next = ordered[i]?.dueOn ?? '';
+      if (prev && next && next < prev) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'validation.dueDatesMustBeOrdered',
+          path: ['installments', i, 'dueOn'],
+        });
+      }
+    }
   });
 
 export type StreamFeePlanFormValues = z.infer<typeof streamFeePlanSchema>;
@@ -130,7 +143,7 @@ export const feeInstallmentStatusSchema = z.enum(FEE_INSTALLMENT_STATUSES);
 
 export const financeSaleSchema = z.object({
   academicYearId: z.string().min(1, 'validation.required.academicYear'),
-  studentProfileId: z.string().min(1, 'validation.required.student'),
+  studentProfileId: z.string().optional().or(z.literal('')),
   itemType: z.enum(FINANCE_SALE_ITEM_TYPES),
   itemName: z.string().min(1, 'validation.required.itemName'),
   quantity: z.coerce.number().int().min(1, 'validation.quantityMin'),
@@ -149,8 +162,8 @@ export const expenditureSchema = z.object({
   category: z.enum(EXPENDITURE_CATEGORIES),
   amountMinor: z.coerce.number().int().min(1, 'validation.amountPositive'),
   currency: z.string().min(1),
-  paymentMethod: z.enum(FINANCE_PAYMENT_METHODS),
-  paymentDate: z.string().min(1, 'validation.required.date'),
+  paymentMethod: z.enum(FINANCE_PAYMENT_METHODS).optional(),
+  paymentDate: z.string().optional().or(z.literal('')),
   vendor: z.string().min(1, 'validation.required.vendor'),
   vendorContact: z.string().optional().or(z.literal('')),
   receiptNumber: z.string().optional().or(z.literal('')),
@@ -162,3 +175,42 @@ export const expenditureSchema = z.object({
 });
 
 export type ExpenditureFormValues = z.infer<typeof expenditureSchema>;
+
+export const scholarshipTypeSchema = z
+  .object({
+    id: z.string().optional(),
+    nameEn: z.string().min(1, 'validation.required.nameEn'),
+    nameFr: z.string().min(1, 'validation.required.nameFr'),
+    discountKind: z.enum(['PERCENT_BPS', 'FIXED_MINOR']),
+    percentBps: z.coerce.number().int().min(0).max(10_000).optional().nullable(),
+    fixedAmountMinor: z.coerce.number().int().min(0).optional().nullable(),
+    isActive: z.boolean(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.discountKind === 'PERCENT_BPS' && !(value.percentBps && value.percentBps > 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.required.percent',
+        path: ['percentBps'],
+      });
+    }
+    if (
+      value.discountKind === 'FIXED_MINOR' &&
+      !(value.fixedAmountMinor && value.fixedAmountMinor > 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.amountPositive',
+        path: ['fixedAmountMinor'],
+      });
+    }
+  });
+
+export type ScholarshipTypeFormValues = z.infer<typeof scholarshipTypeSchema>;
+
+export const grantScholarshipSchema = z.object({
+  studentFeeAccountId: z.string().min(1),
+  scholarshipTypeId: z.string().min(1),
+});
+
+export type GrantScholarshipValues = z.infer<typeof grantScholarshipSchema>;

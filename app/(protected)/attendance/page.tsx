@@ -14,7 +14,11 @@ import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { canWriteOperations } from '@/lib/acadia/roles';
+import {
+  canViewAttendanceAnalytics,
+  canViewAttendanceReports,
+  canWriteOperations,
+} from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type AttendanceRow = {
@@ -22,6 +26,7 @@ type AttendanceRow = {
   sessionDate?: string;
   label?: string;
   Subject?: unknown;
+  Class?: unknown;
 } & Record<string, unknown>;
 
 const ATTENDANCE_SELECT = `
@@ -29,7 +34,8 @@ const ATTENDANCE_SELECT = `
   sessionDate,
   label,
   createdAt,
-  Subject!AttendanceSession_subjectId_tenantId_fkey ( code, nameEn )
+  Subject!AttendanceSession_subjectId_tenantId_fkey ( code, nameEn ),
+  Class!AttendanceSession_classId_tenantId_fkey ( name )
 `;
 
 export default function AttendancePage() {
@@ -38,6 +44,8 @@ export default function AttendancePage() {
   const searchParams = useSearchParams();
   const { data: session, isLoading: sessionLoading } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
+  const canReports = canViewAttendanceReports(session?.roleSlug);
+  const canAnalytics = canViewAttendanceAnalytics(session?.roleSlug);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const columns = useMemo<ColumnDef<AttendanceRow>[]>(
@@ -55,7 +63,18 @@ export default function AttendancePage() {
             {String(row.original.sessionDate ?? '—')}
           </Link>
         ),
-        size: 160,
+        size: 140,
+      },
+      {
+        id: 'class',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Class" visibility column={column} />
+        ),
+        cell: ({ row }) => {
+          const classRow = unwrapRelation<{ name?: string }>(row.original.Class);
+          return classRow?.name ?? '—';
+        },
+        size: 140,
       },
       {
         id: 'subject',
@@ -66,14 +85,14 @@ export default function AttendancePage() {
           const subject = unwrapRelation<{ code?: string }>(row.original.Subject);
           return subject?.code ?? '—';
         },
-        size: 140,
+        size: 120,
       },
       {
         accessorKey: 'label',
         header: ({ column }) => (
           <DataGridColumnHeader title="Label" visibility column={column} />
         ),
-        size: 200,
+        size: 180,
       },
     ],
     [],
@@ -100,21 +119,28 @@ export default function AttendancePage() {
             {t('attendance.newSession')}
           </Button>
         ) : null}
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/attendance/reports">{t('attendance.reportsTitle')}</Link>
-        </Button>
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/attendance/analytics">{t('attendance.analyticsTitle')}</Link>
-        </Button>
+        {canReports ? (
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/attendance/reports">{t('attendance.reportsTitle')}</Link>
+          </Button>
+        ) : null}
+        {canAnalytics ? (
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/attendance/analytics">{t('attendance.analyticsTitle')}</Link>
+          </Button>
+        ) : null}
       </div>
 
       <Tabs defaultValue="sessions" className="print:hidden">
         <TabsList>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="rates">Attendance rates</TabsTrigger>
+          {canReports ? (
+            <TabsTrigger value="rates">Attendance rates</TabsTrigger>
+          ) : null}
         </TabsList>
         <TabsContent value="sessions" className="mt-4">
-          <SupabaseTableList scopeByAcademicYear
+          <SupabaseTableList
+            scopeByAcademicYear
             table="AttendanceSession"
             title={t('attendance.sessions')}
             select={ATTENDANCE_SELECT}
@@ -123,9 +149,11 @@ export default function AttendancePage() {
             tableLayout={ATTENDANCE_TABLE_LAYOUT}
           />
         </TabsContent>
-        <TabsContent value="rates" className="mt-4">
-          <AttendancePercentagesPanel />
-        </TabsContent>
+        {canReports ? (
+          <TabsContent value="rates" className="mt-4">
+            <AttendancePercentagesPanel />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       {canManage ? (

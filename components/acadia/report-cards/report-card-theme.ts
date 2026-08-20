@@ -18,5 +18,6 @@ export function reportCardPeriodLabel(term: number | 'annual'): string {
   if (term === 'annual') return 'ANNUAL';
   if (term === 1) return 'FIRST TERM';
   if (term === 2) return 'SECOND TERM';
-  return 'THIRD TERM';
+  if (term === 3) return 'THIRD TERM';
+  return `TERM ${term}`;
 }

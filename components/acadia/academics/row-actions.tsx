@@ -10,14 +10,16 @@ export function RegistryRowActions({
   onEdit,
   onDelete,
   onAssign,
+  canManage: canManageOverride,
 }: {
   onEdit: () => void;
   onDelete?: () => void;
   onAssign?: () => void;
+  canManage?: boolean;
 }) {
   const { data: session } = useAcadiaCollegeSession();
   const { t } = useTranslation();
-  if (!canWriteRegistry(session?.roleSlug)) {
+  if (!(canManageOverride ?? canWriteRegistry(session?.roleSlug))) {
     return null;
   }
 

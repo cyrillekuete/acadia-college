@@ -1,4 +1,5 @@
 import { translate } from '@/lib/acadia/locale';
+import { toWhatsAppRecipient } from '@/lib/acadia/phone';
 
 export const TENANT_PROFILE_EDITABLE_FIELDS = [
   'displayNameEn',
@@ -19,6 +20,24 @@ export const TENANT_PROFILE_EDITABLE_FIELDS = [
 ] as const;
 
 export type TenantProfileField = (typeof TENANT_PROFILE_EDITABLE_FIELDS)[number];
+
+export const CUSTOM_DOMAIN_IN_USE_MESSAGE =
+  'This custom domain is already used by another institution.';
+
+export function tenantStatusBadgeVariant(
+  status: string | null | undefined,
+): 'success' | 'warning' | 'destructive' | 'secondary' {
+  switch (status) {
+    case 'ACTIVE':
+      return 'success';
+    case 'ONBOARDING':
+      return 'warning';
+    case 'SUSPENDED':
+      return 'destructive';
+    default:
+      return 'secondary';
+  }
+}
 
 export type TenantProfilePatch = Partial<Record<TenantProfileField, string | null>>;
 
@@ -100,6 +119,19 @@ export function parseTenantProfileField(
       };
     }
     return { field, value: trimmed.toUpperCase() };
+  }
+
+  if (field === 'institutionPhone') {
+    const recipient = toWhatsAppRecipient(trimmed);
+    if (!recipient) {
+      return {
+        error: errorMessage(
+          'validation.phone',
+          'Enter a valid phone number, including country code.',
+        ),
+      };
+    }
+    return { field, value: `+${recipient}` };
   }
 
   if (field === 'customDomain') {

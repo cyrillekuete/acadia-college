@@ -3,15 +3,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { provisionAcademicCalendar, setCurrentAcademicYear } from '@/lib/acadia/academic-calendar';
-import { resolveClassIdForEnrollment } from '@/lib/acadia/class-assignment';
+import {
+  DEFAULT_ACADEMIC_STRUCTURE,
+  provisionAcademicCalendar,
+} from '@/lib/acadia/academic-calendar';
+import { assertAcademicYearUniqueness } from '@/lib/acadia/academic-year-guards';
+import { resolveClassForEnrollment, resolveClassIdForEnrollment } from '@/lib/acadia/class-assignment';
 import { requireAcademicStream } from '@/lib/acadia/education-system';
 import {
+  assertRolloverTargetClassesResolved,
   buildPromotionCandidates,
   computeYearAverageForPromotionFromMarks,
-  DEFAULT_RETENTION_POLICY,
   planYearRollover,
   requireClassPromotionPolicy,
+  rolloverItemsForRpc,
 } from '@/lib/acadia/promotion';
 import type {
   DataRetentionPolicyValues,
@@ -92,6 +97,7 @@ async function computePromotionForClass(
     classSubjects,
     { data: levels, error: levelError },
     { data: sessions, error: sessionError },
+    { data: yearRow, error: yearError },
   ] = await Promise.all([
     fetchEnrollmentsForClassPromotion(supabase, tenantId, academicYearId, classId),
     fetchClassSubjectSelections(supabase, tenantId, classId),
@@ -104,6 +110,12 @@ async function computePromotionForClass(
       .select('id, AcademicSequence:sequenceId ( number )')
       .eq('tenantId', tenantId)
       .eq('academicYearId', academicYearId),
+    supabase
+      .from('AcademicYear')
+      .select('termsPerYear, sequencesPerTerm, sequencesPerYear')
+      .eq('tenantId', tenantId)
+      .eq('id', academicYearId)
+      .maybeSingle(),
   ]);
 
   if (levelError) {
@@ -112,6 +124,17 @@ async function computePromotionForClass(
   if (sessionError) {
     throw sessionError;
   }
+  if (yearError) {
+    throw yearError;
+  }
+
+  const yearStructure = {
+    termsPerYear: yearRow?.termsPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.termsPerYear,
+    sequencesPerTerm:
+      yearRow?.sequencesPerTerm ?? DEFAULT_ACADEMIC_STRUCTURE.sequencesPerTerm,
+    sequencesPerYear:
+      yearRow?.sequencesPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear,
+  };
 
   const sessionIds = (sessions ?? []).map((s) => s.id as string);
   const classSubjectIds = classSubjects.map((subject) => subject.subjectId);
@@ -229,6 +252,7 @@ async function computePromotionForClass(
               subBranchIds: subject.subBranchIds,
             }))
           : null,
+        yearStructure,
       );
       return {
         studentProfileId: studentId,
@@ -700,26 +724,7 @@ export function usePromotionMutations() {
       }
 
       let targetYearId = values.targetAcademicYearId;
-
-      if (values.createTargetYear) {
-        targetYearId = generateAcadiaId('year');
-        const { error: yearError } = await supabase.from('AcademicYear').insert({
-          id: targetYearId,
-          tenantId,
-          label: values.targetYearLabel?.trim() ?? '',
-          startsOn: values.targetYearStartsOn ?? '',
-          endsOn: values.targetYearEndsOn ?? '',
-          isCurrent: false,
-          isActive: true,
-          updatedAt: now,
-        });
-        if (yearError) {
-          throw yearError;
-        }
-        await provisionAcademicCalendar(supabase, tenantId, targetYearId);
-      }
-
-      if (!targetYearId?.trim()) {
+      if (!values.createTargetYear && !targetYearId?.trim()) {
         throw new Error('Target academic year is required.');
       }
 
@@ -772,7 +777,7 @@ export function usePromotionMutations() {
 
       const plan = planYearRollover({
         sourceAcademicYearId: values.sourceAcademicYearId,
-        targetAcademicYearId: targetYearId,
+        targetAcademicYearId: targetYearId || 'pending-target-year',
         candidates,
         promoteEligible: values.promoteEligible,
         repeatNonEligible: values.repeatNonEligible,
@@ -780,107 +785,109 @@ export function usePromotionMutations() {
       });
 
       for (const item of plan.enrollments) {
-        if (item.markAlumni) {
-          const { error: alumniError } = await supabase
-            .from('StudentProfile')
-            .update({
-              alumniSince: now,
-              isActive: false,
-              currentLevelId: item.targetLevelId,
-              updatedAt: now,
-            })
-            .eq('id', item.studentProfileId)
-            .eq('tenantId', tenantId);
-          if (alumniError) {
-            throw alumniError;
-          }
+        if (!item.createEnrollment || item.targetClassId) {
+          continue;
         }
-
-        if (item.createEnrollment) {
-          let classId = item.targetClassId;
-          if (!classId) {
-            const stream = requireAcademicStream(
-              item.subSystem,
-              item.branch,
-              'Year rollover enrollment',
-            );
-            classId = await resolveClassIdForEnrollment(
-              supabase,
-              tenantId,
-              item.targetLevelId,
-              stream.subSystem,
-              stream.branch,
-            );
-          }
-
-          const { error: enrollError } = await supabase
-            .from('StudentEnrollment')
-            .insert({
-              id: generateAcadiaId('enr'),
-              tenantId,
-              studentProfileId: item.studentProfileId,
-              academicYearId: targetYearId,
-              subSystem: item.subSystem,
-              branch: item.branch,
-              levelId: item.targetLevelId,
-              classId,
-              status: 'ENROLLED',
-              createdAt: now,
-              updatedAt: now,
-            });
-          if (enrollError) {
-            throw enrollError;
-          }
-
-          const { error: profileError } = await supabase
-            .from('StudentProfile')
-            .update({
-              subSystem: item.subSystem,
-              branch: item.branch,
-              currentLevelId: item.targetLevelId,
-              updatedAt: now,
-            })
-            .eq('id', item.studentProfileId)
-            .eq('tenantId', tenantId);
-          if (profileError) {
-            throw profileError;
-          }
-        }
-
-        await supabase
-          .from('StudentPromotionDecision')
-          .update({ appliedAt: now, updatedAt: now })
-          .eq('tenantId', tenantId)
-          .eq('studentProfileId', item.studentProfileId)
-          .eq('academicYearId', values.sourceAcademicYearId);
+        const stream = requireAcademicStream(
+          item.subSystem,
+          item.branch,
+          'Year rollover enrollment',
+        );
+        const resolution = await resolveClassForEnrollment(
+          supabase,
+          tenantId,
+          item.targetLevelId,
+          stream.subSystem,
+          stream.branch,
+        );
+        item.targetClassId = resolution.classId;
       }
 
-      await setCurrentAcademicYear(supabase, tenantId, targetYearId);
+      assertRolloverTargetClassesResolved(plan);
 
+      if (values.createTargetYear) {
+        const { data: existingYears, error: existingYearsError } = await supabase
+          .from('AcademicYear')
+          .select('id, label, startsOn, endsOn')
+          .eq('tenantId', tenantId);
+        if (existingYearsError) {
+          throw existingYearsError;
+        }
+        assertAcademicYearUniqueness({
+          label: values.targetYearLabel?.trim() ?? '',
+          startsOn: values.targetYearStartsOn ?? '',
+          endsOn: values.targetYearEndsOn ?? '',
+          existing: (existingYears ?? []).map((row) => ({
+            id: row.id as string,
+            label: row.label as string,
+            startsOn: String(row.startsOn).slice(0, 10),
+            endsOn: String(row.endsOn).slice(0, 10),
+          })),
+        });
+        targetYearId = generateAcadiaId('year');
+        const { error: yearError } = await supabase.from('AcademicYear').insert({
+          id: targetYearId,
+          tenantId,
+          label: values.targetYearLabel?.trim() ?? '',
+          startsOn: values.targetYearStartsOn ?? '',
+          endsOn: values.targetYearEndsOn ?? '',
+          isCurrent: false,
+          isActive: true,
+          updatedAt: now,
+        });
+        if (yearError) {
+          throw yearError;
+        }
+        await provisionAcademicCalendar(supabase, tenantId, targetYearId);
+      }
+
+      if (!targetYearId?.trim()) {
+        throw new Error('Target academic year is required.');
+      }
+
+      plan.targetAcademicYearId = targetYearId;
+
+      const { error: rpcError } = await supabase.rpc('acadia_execute_year_rollover', {
+        p_tenant_id: tenantId,
+        p_source_year_id: values.sourceAcademicYearId,
+        p_target_year_id: targetYearId,
+        p_items: rolloverItemsForRpc(plan),
+      });
+      if (rpcError) {
+        throw rpcError;
+      }
+
+      let feeWarning: string | null = null;
       try {
         await provisionMissingFeeAccounts(supabase, {
           academicYearId: targetYearId,
         });
       } catch (error) {
-        console.error('[provisionMissingFeeAccounts]', error);
+        feeWarning =
+          error instanceof Error
+            ? error.message
+            : 'Fee accounts could not be provisioned after rollover.';
       }
 
       await appendSystemLog(supabase, {
         userId,
         event: 'academic_year.rollover',
-        description: `Rollover: ${plan.promoted} promoted, ${plan.repeated} repeated, ${plan.graduated} graduated (${plan.skippedManualOnly} manual-only skipped).`,
+        description: `Rollover: ${plan.promoted} promoted, ${plan.repeated} repeated, ${plan.graduated} graduated, ${plan.withdrawn} withdrawn (${plan.skippedManualOnly} manual-only skipped).`,
         entityId: targetYearId,
         entityType: 'AcademicYear',
-        meta: plan,
+        meta: { ...plan, feeWarning },
       });
 
-      return { targetYearId, plan };
+      return { targetYearId, plan, feeWarning };
     },
     onSuccess: (result) => {
       invalidatePromotionQueries(queryClient);
-      toast.success('Academic year rollover completed.');
+      if (result.feeWarning) {
+        toast.warning(result.feeWarning);
+      } else {
+        toast.success('Academic year rollover completed.');
+      }
       router.push(`/academics/years`);
-      void result;
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
@@ -920,97 +927,39 @@ export function usePromotionMutations() {
   });
 
   const runRetentionArchive = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (options?: { dryRun?: boolean }) => {
       if (!tenantId || !userId) {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
-      const now = new Date().toISOString();
+      const dryRun = options?.dryRun === true;
+      const { data, error } = await supabase.rpc('acadia_run_retention_archive', {
+        p_dry_run: dryRun,
+      });
+      if (error) {
+        throw error;
+      }
 
-      const { data: policy } = await supabase
-        .from('TenantDataRetentionPolicy')
-        .select('*')
-        .eq('tenantId', tenantId)
-        .maybeSingle();
-
-      const retention = {
-        ...DEFAULT_RETENTION_POLICY,
-        ...policy,
+      const result = (data ?? {}) as {
+        archivedEnrollments?: number;
+        deactivated?: number;
+        dryRun?: boolean;
       };
+      const archivedEnrollments = Number(result.archivedEnrollments ?? 0);
+      const deactivated = Number(result.deactivated ?? 0);
 
-      const inactiveCutoff = new Date();
-      inactiveCutoff.setFullYear(
-        inactiveCutoff.getFullYear() - retention.archiveInactiveAfterYears,
-      );
-      const enrollmentCutoff = new Date();
-      enrollmentCutoff.setFullYear(
-        enrollmentCutoff.getFullYear() - retention.enrollmentRetentionYears,
-      );
-      const cutoffIso = enrollmentCutoff.toISOString();
-
-      const { data: inactiveProfiles, error: inactiveError } = await supabase
-        .from('StudentProfile')
-        .select('id')
-        .eq('tenantId', tenantId)
-        .eq('isActive', true)
-        .lt('updatedAt', inactiveCutoff.toISOString());
-      if (inactiveError) {
-        throw inactiveError;
+      if (!dryRun) {
+        await appendSystemLog(supabase, {
+          userId,
+          event: 'data_retention.archive_run',
+          description: `Archived ${archivedEnrollments} enrollment(s); deactivated ${deactivated} profile(s).`,
+          entityId: tenantId,
+          entityType: 'Tenant',
+          meta: { archivedEnrollments, deactivated },
+        });
       }
 
-      let deactivated = 0;
-      for (const profile of inactiveProfiles ?? []) {
-        const { error } = await supabase
-          .from('StudentProfile')
-          .update({ isActive: false, updatedAt: now })
-          .eq('id', profile.id as string)
-          .eq('tenantId', tenantId);
-        if (!error) {
-          deactivated += 1;
-        }
-      }
-
-      const { data: oldEnrollments, error: enrollError } = await supabase
-        .from('StudentEnrollment')
-        .select('id')
-        .eq('tenantId', tenantId)
-        .eq('status', 'ENROLLED')
-        .lt('createdAt', cutoffIso);
-      if (enrollError) {
-        throw enrollError;
-      }
-
-      let archivedEnrollments = 0;
-      for (const enrollment of oldEnrollments ?? []) {
-        const { error } = await supabase
-          .from('StudentEnrollment')
-          .update({ status: 'WITHDRAWN', updatedAt: now })
-          .eq('id', enrollment.id as string)
-          .eq('tenantId', tenantId);
-        if (!error) {
-          archivedEnrollments += 1;
-        }
-      }
-
-      await supabase.from('TenantDataRetentionPolicy').upsert({
-        tenantId,
-        marksRetentionYears: retention.marksRetentionYears,
-        enrollmentRetentionYears: retention.enrollmentRetentionYears,
-        archiveInactiveAfterYears: retention.archiveInactiveAfterYears,
-        lastArchivalRunAt: now,
-        updatedAt: now,
-      });
-
-      await appendSystemLog(supabase, {
-        userId,
-        event: 'data_retention.archive_run',
-        description: `Archived ${archivedEnrollments} enrollment(s); deactivated ${deactivated} profile(s).`,
-        entityId: tenantId,
-        entityType: 'Tenant',
-        meta: { archivedEnrollments, deactivated },
-      });
-
-      return { archivedEnrollments, deactivated };
+      return { archivedEnrollments, deactivated, dryRun };
     },
     onSuccess: (result) => {
       invalidatePromotionQueries(queryClient);

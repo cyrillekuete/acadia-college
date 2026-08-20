@@ -325,17 +325,17 @@ export async function isPromotionYearLocked(
   tenantId: string,
   academicYearId: string,
 ): Promise<boolean> {
-  const { count, error } = await supabase
-    .from('StudentPromotionDecision')
-    .select('id', { count: 'exact', head: true })
+  const { data, error } = await supabase
+    .from('AcademicYear')
+    .select('rolloverCompletedAt')
     .eq('tenantId', tenantId)
-    .eq('academicYearId', academicYearId)
-    .not('appliedAt', 'is', null);
+    .eq('id', academicYearId)
+    .maybeSingle();
 
   if (error) {
     throw error;
   }
-  return (count ?? 0) > 0;
+  return data?.rolloverCompletedAt != null;
 }
 
 export async function deleteAutoPromotionDecisionsForClass(

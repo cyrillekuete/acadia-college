@@ -194,6 +194,9 @@ export function StudentEditForm({ student }: { student: StudentEditRecord }) {
             </FormItem>
           )}
         />
+        <p className="-mt-2 text-xs text-muted-foreground">
+          {t('students.deactivateHint')}
+        </p>
         <FormField
           control={form.control}
           name="alumniDirectoryOptIn"

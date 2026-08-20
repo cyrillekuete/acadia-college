@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import { Trash2 } from '@/lib/icons';
 import {
   type SubjectClassAssignment,
+  SUBJECT_DEFAULT_GROUPING,
+  UNGROUPED_GROUPING_OVERRIDE,
   formatAssignmentLabel,
   isSubBranchSelected,
   normalizeSubjectClassAssignments,
@@ -13,6 +15,7 @@ import {
 } from '@/lib/acadia/class-subject-selections';
 import type { ClassForSubjectOption } from '@/hooks/use-classes-for-subject';
 import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,8 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const SUBJECT_DEFAULT_GROUPING = '__subject_default__';
 
 export type SubjectClassAssignmentEditorProps = {
   subjectDefaultGroupingId: string | null;
@@ -58,6 +59,7 @@ export function SubjectClassAssignmentEditor({
   onChange,
   disabled,
 }: SubjectClassAssignmentEditorProps) {
+  const { t } = useTranslation();
   const { data: groupings = [] } = useSubjectGroupingOptions();
 
   const groupingNames = useMemo(
@@ -143,7 +145,9 @@ export function SubjectClassAssignmentEditor({
                         setAssignmentGrouping(
                           normalizedValue,
                           assignment.classId,
-                          next === SUBJECT_DEFAULT_GROUPING ? null : next,
+                          next === SUBJECT_DEFAULT_GROUPING
+                            ? null
+                            : next,
                         ),
                       )
                     }
@@ -154,6 +158,11 @@ export function SubjectClassAssignmentEditor({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={SUBJECT_DEFAULT_GROUPING}>{defaultLabel}</SelectItem>
+                      {subjectDefaultGroupingId ? (
+                        <SelectItem value={UNGROUPED_GROUPING_OVERRIDE}>
+                          {t('subjects.ungrouped')}
+                        </SelectItem>
+                      ) : null}
                       {groupings.map((grouping) => (
                         <SelectItem key={grouping.id} value={grouping.id}>
                           {grouping.nameEn}

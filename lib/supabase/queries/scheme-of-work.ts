@@ -4,6 +4,7 @@ import { levelLabel, unwrapRelation } from '@/lib/acadia/record-display';
 import {
   attachTopicProgress,
   cascadeProgressTopicIds,
+  canPublishScheme,
   isSchemeOfWorkStatus,
   type AdminSchemeYearRow,
   type SchemeListItem,
@@ -52,6 +53,7 @@ export type SchemeOfWorkDetail = SchemeOfWorkRecord & {
   subjectName: string;
   levelName: string;
   academicYearLabel: string;
+  subjectDeactivatedAt: string | null;
 };
 
 function emptyToNull(value: string | null | undefined): string | null {
@@ -144,7 +146,7 @@ export async function fetchSchemeDetailById(
     .select(
       [
         'id, tenantId, academicYearId, subjectId, levelId, status, createdAt, updatedAt',
-        embed('Subject', FK.SchemeOfWork_subject, 'code, nameEn, nameFr'),
+        embed('Subject', FK.SchemeOfWork_subject, 'code, nameEn, nameFr, deactivatedAt'),
         embed('Level', FK.SchemeOfWork_level, 'number, name, labelEn, labelFr'),
         embed('AcademicYear', FK.SchemeOfWork_academicYear, 'label'),
       ].join(', '),
@@ -160,7 +162,12 @@ export async function fetchSchemeDetailById(
     return null;
   }
 
-  const subject = unwrapRelation<{ code?: string; nameEn?: string; nameFr?: string }>(
+  const subject = unwrapRelation<{
+    code?: string;
+    nameEn?: string;
+    nameFr?: string;
+    deactivatedAt?: string | null;
+  }>(
     (data as { Subject?: unknown }).Subject,
   );
   const level = unwrapRelation<{
@@ -180,6 +187,7 @@ export async function fetchSchemeDetailById(
       localizedText(subject?.nameEn, subject?.nameFr) || subject?.nameEn || '',
     levelName: levelLabel(level),
     academicYearLabel: year?.label?.trim() || '',
+    subjectDeactivatedAt: subject?.deactivatedAt ?? null,
   };
 }
 
@@ -327,6 +335,12 @@ export async function updateSchemeStatus(
   schemeId: string,
   status: SchemeOfWorkStatus,
 ): Promise<void> {
+  if (status === 'PUBLISHED') {
+    const topics = await fetchSchemeTopics(supabase, tenantId, schemeId);
+    if (!canPublishScheme(topics.length)) {
+      throw new Error('Add at least one topic before publishing this scheme of work.');
+    }
+  }
   const { error } = await supabase
     .from('SchemeOfWork')
     .update({ status, updatedAt: new Date().toISOString() })
@@ -418,83 +432,61 @@ export async function reorderSchemeTopics(
   tenantId: string,
   orderedTopicIds: string[],
 ): Promise<void> {
-  const now = new Date().toISOString();
-  for (const [index, topicId] of orderedTopicIds.entries()) {
-    const { error } = await supabase
-      .from('SchemeOfWorkTopic')
-      .update({ sortOrder: index, updatedAt: now })
-      .eq('tenantId', tenantId)
-      .eq('id', topicId);
-    if (error) {
-      throw error;
-    }
-  }
-}
-
-async function setSingleTopicProgress(
-  supabase: Client,
-  tenantId: string,
-  input: {
-    topicId: string;
-    classId: string;
-    completed: boolean;
-    staffProfileId: string | null;
-  },
-): Promise<void> {
-  if (!input.completed) {
-    const { error } = await supabase
-      .from('SchemeOfWorkTopicProgress')
-      .delete()
-      .eq('tenantId', tenantId)
-      .eq('topicId', input.topicId)
-      .eq('classId', input.classId);
-    if (error) {
-      throw error;
-    }
-    return;
-  }
-
-  const now = new Date().toISOString();
-  const { data: existing, error: existingError } = await supabase
-    .from('SchemeOfWorkTopicProgress')
-    .select('id')
-    .eq('tenantId', tenantId)
-    .eq('topicId', input.topicId)
-    .eq('classId', input.classId)
-    .maybeSingle();
-
-  if (existingError) {
-    throw existingError;
-  }
-
-  if (existing) {
-    const { error } = await supabase
-      .from('SchemeOfWorkTopicProgress')
-      .update({
-        completedAt: now,
-        completedByStaffProfileId: input.staffProfileId,
-      })
-      .eq('tenantId', tenantId)
-      .eq('id', existing.id);
-    if (error) {
-      throw error;
-    }
-    return;
-  }
-
-  const { error } = await supabase.from('SchemeOfWorkTopicProgress').insert({
-    id: generateAcadiaId('sowp'),
-    tenantId,
-    topicId: input.topicId,
-    classId: input.classId,
-    completedAt: now,
-    completedByStaffProfileId: input.staffProfileId,
-    createdAt: now,
+  const { error } = await supabase.rpc('acadia_reorder_scheme_topics', {
+    p_tenant_id: tenantId,
+    p_topic_ids: orderedTopicIds,
   });
-
   if (error) {
     throw error;
   }
+}
+
+export async function countSchemeProgressRows(
+  supabase: Client,
+  tenantId: string,
+  schemeId: string,
+): Promise<number> {
+  const { data: topics, error: topicError } = await supabase
+    .from('SchemeOfWorkTopic')
+    .select('id')
+    .eq('tenantId', tenantId)
+    .eq('schemeOfWorkId', schemeId);
+  if (topicError) {
+    throw topicError;
+  }
+  const topicIds = (topics ?? []).map((row) => row.id as string);
+  if (topicIds.length === 0) {
+    return 0;
+  }
+  const { count, error } = await supabase
+    .from('SchemeOfWorkTopicProgress')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenantId', tenantId)
+    .in('topicId', topicIds);
+  if (error) {
+    throw error;
+  }
+  return count ?? 0;
+}
+
+export async function fetchClassesForSchemeLevel(
+  supabase: Client,
+  tenantId: string,
+  levelId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  const { data, error } = await supabase
+    .from('Class')
+    .select('id, name')
+    .eq('tenantId', tenantId)
+    .eq('levelId', levelId)
+    .order('name', { ascending: true });
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: (row.name as string) || row.id,
+  }));
 }
 
 export async function markSchemeTopicProgress(
@@ -507,37 +499,35 @@ export async function markSchemeTopicProgress(
     staffProfileId: string | null;
   },
 ): Promise<void> {
-  const { data: topic, error: topicError } = await supabase
-    .from('SchemeOfWorkTopic')
-    .select('id, schemeOfWorkId')
-    .eq('tenantId', tenantId)
-    .eq('id', input.topicId)
-    .maybeSingle();
-
-  if (topicError) {
-    throw topicError;
+  const { error } = await supabase.rpc('acadia_set_scheme_topic_progress', {
+    p_tenant_id: tenantId,
+    p_topic_id: input.topicId,
+    p_class_id: input.classId,
+    p_completed: input.completed,
+    p_staff_profile_id: input.staffProfileId,
+  });
+  if (error) {
+    throw error;
   }
-  if (!topic) {
-    throw new Error('Topic was not found.');
-  }
+}
 
-  const topics = await fetchSchemeTopicsWithProgress(
-    supabase,
-    tenantId,
-    topic.schemeOfWorkId,
-    input.classId,
-  );
-  const topicIds = cascadeProgressTopicIds(topics, input.topicId, input.completed);
-  const ids = topicIds.length > 0 ? topicIds : [input.topicId];
-
-  for (const topicId of ids) {
-    await setSingleTopicProgress(supabase, tenantId, {
-      topicId,
-      classId: input.classId,
-      completed: input.completed,
-      staffProfileId: input.staffProfileId,
-    });
+export async function copySchemesOfWork(
+  supabase: Client,
+  tenantId: string,
+  sourceYearId: string,
+  targetYearId: string,
+  sourceSchemeId?: string | null,
+): Promise<number> {
+  const { data, error } = await supabase.rpc('acadia_copy_schemes_of_work', {
+    p_tenant_id: tenantId,
+    p_source_year_id: sourceYearId,
+    p_target_year_id: targetYearId,
+    p_source_scheme_id: sourceSchemeId ?? undefined,
+  });
+  if (error) {
+    throw error;
   }
+  return typeof data === 'number' ? data : 0;
 }
 
 export async function fetchSubjectLevelsForSchemePicker(
@@ -663,13 +653,41 @@ export async function fetchTeacherSchemeListItems(
   }
 
   const subjectIds = Array.from(new Set(scope.pairs.map((pair) => pair.subjectId)));
+  const { data: subjectRows, error: subjectError } = await supabase
+    .from('Subject')
+    .select('id, code, nameEn, deactivatedAt')
+    .eq('tenantId', tenantId)
+    .in('id', subjectIds);
+  if (subjectError) {
+    throw subjectError;
+  }
+  const activeSubjects = new Map(
+    (subjectRows ?? [])
+      .filter((row) => !row.deactivatedAt)
+      .map((row) => [
+        row.id as string,
+        {
+          code: (row.code as string) || '',
+          name: (row.nameEn as string) || '',
+        },
+      ]),
+  );
+
+  const activePairs = scope.pairs.filter((pair) => activeSubjects.has(pair.subjectId));
+  if (activePairs.length === 0) {
+    return [];
+  }
+
   const { data: schemeRows, error: schemeError } = await supabase
     .from('SchemeOfWork')
     .select('id, subjectId, levelId, status')
     .eq('tenantId', tenantId)
     .eq('academicYearId', academicYearId)
     .eq('status', 'PUBLISHED')
-    .in('subjectId', subjectIds);
+    .in(
+      'subjectId',
+      Array.from(new Set(activePairs.map((pair) => pair.subjectId))),
+    );
 
   if (schemeError) {
     throw schemeError;
@@ -724,7 +742,7 @@ export async function fetchTeacherSchemeListItems(
     }
   }
 
-  return scope.pairs.map((pair) => {
+  return activePairs.map((pair) => {
     const classInfo = classById.get(pair.classId);
     const levelId = classInfo?.levelId ?? '';
     const scheme = schemeByKey.get(`${pair.subjectId}:${levelId}`);
@@ -732,12 +750,13 @@ export async function fetchTeacherSchemeListItems(
     const completedCount = topicIds.filter((topicId) =>
       completedByClassTopic.has(`${pair.classId}:${topicId}`),
     ).length;
+    const subject = activeSubjects.get(pair.subjectId);
 
     return {
       schemeId: scheme?.id ?? null,
       subjectId: pair.subjectId,
-      subjectCode: '',
-      subjectName: pair.subjectName,
+      subjectCode: subject?.code ?? '',
+      subjectName: subject?.name || pair.subjectName,
       levelId,
       levelName: classInfo?.levelName ?? '',
       classId: pair.classId,

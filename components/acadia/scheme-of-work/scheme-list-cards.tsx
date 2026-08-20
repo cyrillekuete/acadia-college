@@ -65,14 +65,16 @@ export function SchemeListCards({ items }: { items: SchemeListItem[] }) {
               </p>
             </CardHeader>
             <CardContent>
-              {item.schemeId ? (
+              {item.schemeId && item.status === 'PUBLISHED' ? (
                 <SchemeProgress
                   completedCount={item.completedCount}
                   topicCount={item.topicCount}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {t('schemeOfWork.notPublished')}
+                  {item.schemeId
+                    ? t('schemeOfWork.notPublished')
+                    : t('schemeOfWork.notCreated')}
                 </p>
               )}
             </CardContent>

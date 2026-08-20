@@ -16,6 +16,19 @@ export function getTenantAssetPublicUrl(storageKey: string | null | undefined): 
   return `${env.url}/storage/v1/object/public/${TENANT_ASSETS_BUCKET}/${path}`;
 }
 
+/** Resolve a stored user avatar (public URL, site path, or tenant-assets key) for `<img src>`. */
+export function resolveUserAvatarUrl(
+  avatar: string | null | undefined,
+): string | null {
+  if (!avatar?.trim()) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(avatar) || avatar.startsWith('/')) {
+    return avatar;
+  }
+  return getTenantAssetPublicUrl(avatar);
+}
+
 export type TenantLogoKeys = {
   reportCardLogoStorageKey?: string | null;
   logoStorageKey?: string | null;

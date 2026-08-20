@@ -1,9 +1,9 @@
 import { canWriteAcademicAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 import type { DisciplineInfo, ReportCardTerm } from '@/lib/acadia/report-card-types';
 
-export const CLASS_DISCIPLINE_TERMS = ['1', '2', '3'] as const;
+export const CLASS_DISCIPLINE_TERMS = ['1', '2', '3', '4', '5', '6'] as const;
 
-export type ClassDisciplineTerm = (typeof CLASS_DISCIPLINE_TERMS)[number];
+export type ClassDisciplineTerm = `${number}`;
 
 export type ClassDisciplineRow = {
   termNumber: number;
@@ -35,8 +35,9 @@ const EMPTY_DISCIPLINE: DisciplineInfo = {
 export function parseClassDisciplineTerm(
   raw: string | null | undefined,
 ): ClassDisciplineTerm {
-  if (raw === '1' || raw === '2' || raw === '3') {
-    return raw;
+  const n = Number((raw ?? '').trim());
+  if (Number.isInteger(n) && n >= 1 && n <= 12) {
+    return String(n) as ClassDisciplineTerm;
   }
   return '1';
 }

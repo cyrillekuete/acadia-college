@@ -1,54 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { MarksAuditPanel } from '@/components/acadia/assessment/marks-audit-panel';
 import { MarksAveragesPanel } from '@/components/acadia/assessment/marks-averages-panel';
 import { MarksYearScopedList } from '@/components/acadia/assessment/marks-year-scoped-list';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { nestedFieldColumn } from '@/lib/acadia/list-columns';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { canWriteOperations } from '@/lib/acadia/roles';
+import { canWriteOperations, isAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
-
-type Row = {
-  id: string;
-  Subject?: unknown;
-  StudentProfile?: unknown;
-} & Record<string, unknown>;
-
-const columns: ColumnDef<Row>[] = [
-  {
-    ...nestedFieldColumn<Row>('student', 'Student', 'StudentProfile', 'registrationNumber'),
-    size: 180,
-  } as ColumnDef<Row>,
-  {
-    ...nestedFieldColumn<Row>('subject', 'Subject', 'Subject', 'code'),
-    size: 140,
-  } as ColumnDef<Row>,
-  { accessorKey: 'caScore', header: 'CA', size: 80 },
-  { accessorKey: 'examScore', header: 'Exam', size: 80 },
-  { accessorKey: 'totalScore', header: 'Total', size: 80 },
-  { accessorKey: 'updatedAt', header: 'Updated', size: 180 },
-];
-
-const SELECT = `
-  id,
-  caScore,
-  examScore,
-  totalScore,
-  isResitEligible,
-  updatedAt,
-  Subject!SubjectMark_subjectId_tenantId_fkey ( code ),
-  StudentProfile!SubjectMark_studentProfileId_tenantId_fkey ( registrationNumber )
-`;
 
 export default function MarksPage() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canEnter = canWriteOperations(session?.roleSlug);
+  const canOpenGradeReports =
+    isAdmin(session?.roleSlug) || isStaffOrTeacher(session?.roleSlug);
 
   return (
     <AcadiaPageShell
@@ -61,19 +29,21 @@ export default function MarksPage() {
             <Link href="/marks/entry">{t('marks.entryTitle')}</Link>
           </Button>
         ) : null}
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/marks/reports">{t('marks.reportsTitle')}</Link>
-        </Button>
+        {canOpenGradeReports ? (
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/marks/reports">{t('marks.reportsTitle')}</Link>
+          </Button>
+        ) : null}
       </div>
 
       <Tabs defaultValue="list" className="space-y-5">
         <TabsList>
-          <TabsTrigger value="list">All marks</TabsTrigger>
-          <TabsTrigger value="averages">Averages & rankings</TabsTrigger>
-          <TabsTrigger value="audit">Change history</TabsTrigger>
+          <TabsTrigger value="list">{t('marks.tabList')}</TabsTrigger>
+          <TabsTrigger value="averages">{t('marks.tabAverages')}</TabsTrigger>
+          <TabsTrigger value="audit">{t('marks.tabAudit')}</TabsTrigger>
         </TabsList>
         <TabsContent value="list">
-          <MarksYearScopedList<Row> select={SELECT} columns={columns} />
+          <MarksYearScopedList />
         </TabsContent>
         <TabsContent value="averages">
           <MarksAveragesPanel />

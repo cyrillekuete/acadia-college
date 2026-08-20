@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { MarksDataGrid } from '@/components/acadia/assessment/marks-data-grid';
-import { computeTotalScore, formatMarkScore } from '@/lib/acadia/assessment';
+import { computeTotalScore, canEditExamSession, formatMarkScore } from '@/lib/acadia/assessment';
 import type { SubjectMarkEntryValues } from '@/lib/acadia/assessment-schemas';
 import {
   columnsForStudent,
@@ -29,6 +29,12 @@ import {
   resolveStudentBranchIds,
   type MarksEntryColumn,
 } from '@/lib/acadia/marks-entry';
+import {
+  buildMarksViewerScope,
+  filterRosterForTeacherScope,
+  filterSubjectsForTeacherScope,
+} from '@/lib/acadia/marks-access';
+import { isAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
@@ -37,6 +43,7 @@ import {
 } from '@/hooks/use-assessment-catalog-options';
 import { useAssessmentMutations } from '@/hooks/use-assessment-mutations';
 import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
+import { useTeacherStudents } from '@/hooks/use-teacher-students';
 import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
@@ -66,17 +73,53 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const roleSlug = session?.roleSlug ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const academicYearId = preset?.academicYearId ?? activeYearId ?? '';
   const [sequenceId, setSequenceId] = useState(preset?.sequenceId ?? '');
   const [subjectId, setSubjectId] = useState(preset?.subjectId ?? '');
   const [examSessionId, setExamSessionId] = useState(preset?.examSessionId ?? '');
+  const [classFilterId, setClassFilterId] = useState<string>('all');
   const [drafts, setDrafts] = useState<Record<string, MarkDraft>>({});
   const [columnOrder, setColumnOrder] = useState<string[]>(['student', 'resit']);
 
   const { data: sequences = [] } = useSequenceOptions(academicYearId);
-  const { data: subjects = [] } = useSubjectOptions(academicYearId);
+  const { data: allSubjects = [] } = useSubjectOptions(academicYearId);
+  const { data: teacherStudents } = useTeacherStudents();
   const { ensureSequenceExamSession, saveMarksEntry } = useAssessmentMutations();
+
+  const viewerScope = useMemo(() => {
+    const isTeacherScoped = isStaffOrTeacher(roleSlug) && !isAdmin(roleSlug);
+    return buildMarksViewerScope({
+      roleSlug,
+      teacherSubjectIds: isTeacherScoped
+        ? teacherStudents?.scope.subjectIds
+        : undefined,
+      teacherClassIds: isTeacherScoped ? teacherStudents?.scope.classIds : undefined,
+      teacherStudentProfileIds: isTeacherScoped
+        ? teacherStudents?.students.map((student) => student.id)
+        : undefined,
+    });
+  }, [roleSlug, teacherStudents]);
+
+  const subjects = useMemo(
+    () => filterSubjectsForTeacherScope(allSubjects, viewerScope),
+    [allSubjects, viewerScope],
+  );
+
+  const classFilterOptions = useMemo(() => {
+    const pairs = [
+      ...(teacherStudents?.scope.pairs ?? []),
+      ...(teacherStudents?.scope.classMaster ?? []),
+    ];
+    const byId = new Map<string, string>();
+    for (const pair of pairs) {
+      if (pair.classId) {
+        byId.set(pair.classId, pair.className || pair.classId);
+      }
+    }
+    return Array.from(byId.entries()).map(([id, name]) => ({ id, name }));
+  }, [teacherStudents]);
 
   const selectedSequence = sequences.find((s) => s.id === sequenceId);
 
@@ -182,13 +225,25 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
 
       const { data: marks, error: marksError } = await supabase
         .from('SubjectMark')
-        .select('id, studentProfileId, subjectSubBranchId, caScore, examScore, isResitEligible')
+        .select(
+          'id, studentProfileId, subjectSubBranchId, caScore, examScore, isResitEligible, updatedAt',
+        )
         .eq('tenantId', tenantId!)
         .eq('examSessionId', examSessionId)
         .eq('subjectId', subjectId);
 
       if (marksError) {
         throw marksError;
+      }
+
+      const { data: examSession, error: examSessionError } = await supabase
+        .from('ExamSession')
+        .select('finalizedAt')
+        .eq('id', examSessionId)
+        .eq('tenantId', tenantId!)
+        .maybeSingle();
+      if (examSessionError) {
+        throw examSessionError;
       }
 
       return {
@@ -199,6 +254,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
           name: branch.name as string,
         })),
         assignedByClass,
+        finalizedAt: (examSession?.finalizedAt as string | null) ?? null,
       };
     },
     enabled:
@@ -250,6 +306,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
           caScore,
           examScore,
           isResitEligible: existing?.isResitEligible ?? false,
+          expectedUpdatedAt: (existing?.updatedAt as string | null | undefined) ?? null,
           totalPreview: computeTotalScore(caScore, examScore),
         };
       }
@@ -326,16 +383,23 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
       sequenceId,
       subjectId,
       examSessionId,
-      marks: Object.values(drafts),
+      marks: Object.values(drafts).map(({ totalPreview: _preview, ...mark }) => mark),
     });
   };
 
-  const studentRows = useMemo(
-    () => rosterQuery.data?.students ?? [],
-    [rosterQuery.data?.students],
-  );
+  const studentRows = useMemo(() => {
+    const scoped = filterRosterForTeacherScope(
+      rosterQuery.data?.students ?? [],
+      viewerScope,
+    );
+    if (classFilterId === 'all') {
+      return scoped;
+    }
+    return scoped.filter((student) => student.classId === classFilterId);
+  }, [rosterQuery.data?.students, viewerScope, classFilterId]);
 
-  const readOnly = preset?.readOnly ?? false;
+  const sessionFinalized = !canEditExamSession(rosterQuery.data?.finalizedAt);
+  const readOnly = (preset?.readOnly ?? false) || sessionFinalized;
 
   const columns = useMemo<ColumnDef<StudentRow>[]>(() => {
     const scoreColumns: ColumnDef<StudentRow>[] = entryColumns.flatMap((column) => {
@@ -542,6 +606,24 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
             </SelectContent>
           </Select>
         </div>
+        {classFilterOptions.length > 0 ? (
+          <div className="min-w-[200px]">
+            <p className="text-sm font-medium mb-1.5">{t('marks.classFilter')}</p>
+            <Select value={classFilterId} onValueChange={setClassFilterId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('marks.classFilter')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('marks.allClasses')}</SelectItem>
+                {classFilterOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
         <Button
           type="button"
           variant="outline"
@@ -561,6 +643,10 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
       </div>
       ) : null}
 
+      {examSessionId && sessionFinalized ? (
+        <p className="text-sm text-muted-foreground">{t('marks.sessionFinalizedReadonly')}</p>
+      ) : null}
+
       {examSessionId ? (
         <>
           <MarksDataGrid
@@ -569,7 +655,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
             isLoading={rosterQuery.isLoading}
             isError={rosterQuery.isError}
             error={rosterQuery.error}
-            emptyMessage="No enrolled students on this roster."
+            emptyMessage={t('marks.emptyRoster')}
             paginate={false}
           />
 

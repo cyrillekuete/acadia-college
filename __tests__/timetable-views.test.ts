@@ -19,8 +19,12 @@ describe('resolveTimetableViewMode', () => {
     expect(resolveTimetableViewMode('lecturer')).toBe('teacher');
   });
 
+  it('routes guardians and parents to guardian mode', () => {
+    expect(resolveTimetableViewMode('guardian')).toBe('guardian');
+    expect(resolveTimetableViewMode('parent')).toBe('guardian');
+  });
+
   it('routes other roles to browse mode', () => {
-    expect(resolveTimetableViewMode('guardian')).toBe('browse');
     expect(resolveTimetableViewMode(null)).toBe('browse');
   });
 });
@@ -30,6 +34,7 @@ describe('timetableViewDescription', () => {
     expect(timetableViewDescription('admin')).toContain('Manage');
     expect(timetableViewDescription('teacher')).toContain('teaching');
     expect(timetableViewDescription('student')).toContain('class');
+    expect(timetableViewDescription('guardian')).toContain('linked students');
     expect(timetableViewDescription('browse')).toContain('Browse');
   });
 });

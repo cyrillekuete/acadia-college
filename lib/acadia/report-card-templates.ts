@@ -3,6 +3,10 @@ import type {
   ReportCardTerm,
   ReportCardTemplateId,
 } from '@/lib/acadia/report-card-types';
+import {
+  DEFAULT_ACADEMIC_STRUCTURE,
+  type AcademicYearStructure,
+} from '@/lib/acadia/academic-calendar';
 
 export type { ReportCardTemplateId };
 
@@ -39,16 +43,18 @@ export function reportCardTermFromAcademic(
   term: ReportCardData['academic']['term'],
 ): ReportCardTerm {
   if (term === 'annual') return 'annual';
-  if (term === 1) return '1';
-  if (term === 2) return '2';
-  return '3';
+  const n = Number(term);
+  if (Number.isInteger(n) && n >= 1 && n <= 12) {
+    return String(n) as ReportCardTerm;
+  }
+  return '1';
 }
 
 export function defaultReportCardTemplate(term: ReportCardTerm): ReportCardTemplateId {
   if (term === '1') return DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE.term1Template;
   if (term === '2') return DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE.term2Template;
-  if (term === '3') return DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE.term3Template;
-  return DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE.annualTemplate;
+  if (term === 'annual') return DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE.annualTemplate;
+  return DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE.term3Template;
 }
 
 export function normalizeReportCardTemplatePreference(
@@ -77,8 +83,8 @@ export function resolveReportCardTemplate(
   const normalized = normalizeReportCardTemplatePreference(preference);
   if (term === '1') return normalized.term1Template;
   if (term === '2') return normalized.term2Template;
-  if (term === '3') return normalized.term3Template;
-  return normalized.annualTemplate;
+  if (term === 'annual') return normalized.annualTemplate;
+  return normalized.term3Template;
 }
 
 export function applyReportCardTemplateToAll(
@@ -124,17 +130,21 @@ const SAMPLE_BRANDING: ReportCardData['branding'] = {
 function sampleSubject(overrides: Partial<ReportCardData['subjects'][number]> & {
   subjectName: string;
   subjectId: string;
-}): ReportCardData['subjects'][number] {
+}, sequenceCount = 6): ReportCardData['subjects'][number] {
+  const sequences: Record<string, number> = {};
+  for (let i = 1; i <= sequenceCount; i += 1) {
+    sequences[`seq${i}`] = 12 + (i % 5);
+  }
   return {
     coefficient: 3,
     hasMark: true,
     category: 'others',
-    seq1: 14,
-    seq2: 16,
-    seq3: 13,
-    seq4: 15,
-    seq5: 14,
-    seq6: 16,
+    seq1: sequences.seq1,
+    seq2: sequences.seq2,
+    seq3: sequences.seq3,
+    seq4: sequences.seq4,
+    seq5: sequences.seq5,
+    seq6: sequences.seq6,
     termAverage: 15,
     term1: 15,
     term2: 14,
@@ -143,14 +153,7 @@ function sampleSubject(overrides: Partial<ReportCardData['subjects'][number]> & 
     grade: 'B',
     rank: 2,
     remarks: 'Very good',
-    sequences: {
-      seq1: 14,
-      seq2: 16,
-      seq3: 13,
-      seq4: 15,
-      seq5: 14,
-      seq6: 16,
-    },
+    sequences,
     termAverages: { term1: 15, term2: 14, term3: 15 },
     ...overrides,
   };
@@ -158,24 +161,31 @@ function sampleSubject(overrides: Partial<ReportCardData['subjects'][number]> & 
 
 export function sampleReportCardPreviewData(
   templateId: ReportCardTemplateId,
+  options?: { structure?: AcademicYearStructure; french?: boolean },
 ): ReportCardData {
   const isYearSummary = templateId === 'yearSummary';
+  const structure = options?.structure ?? DEFAULT_ACADEMIC_STRUCTURE;
+  const french = options?.french === true;
+  const sequenceSlots = Array.from(
+    { length: isYearSummary ? structure.sequencesPerYear : structure.sequencesPerTerm },
+    (_, index) => index + 1,
+  );
   return {
     templateId,
     student: {
       id: 'preview',
       studentId: 'AC-001',
-      name: 'Ada Lovelace',
+      name: french ? 'Ada Lovelace' : 'Ada Lovelace',
       firstName: 'Ada',
       lastName: 'Lovelace',
       sex: 'F',
       dob: '01/01/2010',
       pob: 'Douala',
-      class: 'Form 5 A',
-      className: 'Form 5 A',
-      classMaster: 'Mr. Teacher',
+      class: french ? 'Première A' : 'Form 5 A',
+      className: french ? 'Première A' : 'Form 5 A',
+      classMaster: french ? 'M. Enseignant' : 'Mr. Teacher',
       enrollment: 32,
-      speciality: 'Grammar',
+      speciality: french ? 'Général' : 'Grammar',
     },
     academic: {
       year: '2025/2026',
@@ -183,38 +193,35 @@ export function sampleReportCardPreviewData(
       orderNo: 'REF-PREVIEW',
     },
     subjects: [
-      sampleSubject({
-        subjectId: 'eng',
-        subjectName: 'English',
-        code: 'ENG',
-        category: 'languages',
-        groupingLabel: 'Languages',
-        coefficient: 3,
-      }),
-      sampleSubject({
-        subjectId: 'math',
-        subjectName: 'Mathematics',
-        code: 'MATH',
-        coefficient: 4,
-        seq1: 16,
-        seq2: 18,
-        termAverage: 17,
-        term1: 17,
-        term2: 16,
-        term3: 17,
-        annualAverage: 16.7,
-        grade: 'A',
-        remarks: 'Excellent',
-        sequences: {
+      sampleSubject(
+        {
+          subjectId: 'eng',
+          subjectName: french ? 'Anglais' : 'English',
+          code: 'ENG',
+          category: 'languages',
+          groupingLabel: french ? 'Langues' : 'Languages',
+          coefficient: 3,
+        },
+        structure.sequencesPerYear,
+      ),
+      sampleSubject(
+        {
+          subjectId: 'math',
+          subjectName: french ? 'Mathématiques' : 'Mathematics',
+          code: 'MATH',
+          coefficient: 4,
           seq1: 16,
           seq2: 18,
-          seq3: 15,
-          seq4: 17,
-          seq5: 16,
-          seq6: 18,
+          termAverage: 17,
+          term1: 17,
+          term2: 16,
+          term3: 17,
+          annualAverage: 16.7,
+          grade: 'A',
+          remarks: french ? 'Excellent' : 'Excellent',
         },
-        termAverages: { term1: 17, term2: 16, term3: 17 },
-      }),
+        structure.sequencesPerYear,
+      ),
     ],
     totals: {
       coefficient: 7,
@@ -243,6 +250,8 @@ export function sampleReportCardPreviewData(
     },
     discipline: { absences: 2, suspensions: 0, warnings: 1 },
     branding: SAMPLE_BRANDING,
-    sequenceSlots: isYearSummary ? [1, 2, 3, 4, 5, 6] : [1, 2],
+    sequenceSlots,
+    termSlots: Array.from({ length: structure.termsPerYear }, (_, index) => index + 1),
+    preferFrenchNames: french,
   };
 }

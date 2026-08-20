@@ -334,12 +334,18 @@ export function AcademicYearFormDialog({
                   <FormItem className="flex flex-row items-center justify-between gap-3 rounded-lg border p-3">
                     <div>
                       <FormLabel>{t('academics.currentYear')}</FormLabel>
-                      <p className="text-xs text-muted-foreground">
-                        {t('academics.currentYearHint')}
-                      </p>
+                    <p className="text-xs text-muted-foreground">
+                      {isEdit && record?.isCurrent
+                        ? t('academics.currentYearLockedHint')
+                        : t('academics.currentYearHint')}
+                    </p>
                     </div>
                     <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      <Switch
+                        checked={field.value}
+                        disabled={Boolean(isEdit && record?.isCurrent && field.value)}
+                        onCheckedChange={field.onChange}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -351,7 +357,11 @@ export function AcademicYearFormDialog({
                   <FormItem className="flex flex-row items-center justify-between gap-3 rounded-lg border p-3">
                     <FormLabel>{t('common.labels.active')}</FormLabel>
                     <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      <Switch
+                        checked={field.value}
+                        disabled={Boolean(form.watch('isCurrent'))}
+                        onCheckedChange={field.onChange}
+                      />
                     </FormControl>
                   </FormItem>
                 )}

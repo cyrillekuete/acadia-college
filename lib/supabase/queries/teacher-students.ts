@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { StudentListItem } from '@/lib/acadia/student-list-item';
-import { buildTeacherTeachingScope } from '@/lib/acadia/staff-class-assignments';
+import { buildTeacherTeachingScope, mergeTeacherClassScope } from '@/lib/acadia/staff-class-assignments';
 import type { Database } from '@/lib/supabase/database.types';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { embed, FK } from '@/lib/supabase/embed-selects';
@@ -26,6 +26,7 @@ export type TeacherTeachingScope = {
   classIds: string[];
   subjectIds: string[];
   pairs: TeacherTeachingScopePair[];
+  classMaster?: TeacherTeachingScopePair[];
 };
 
 export type TeacherStudentsResult = {
@@ -73,18 +74,51 @@ export async function fetchTeacherTeachingScope(
   return buildTeacherTeachingScope(rows);
 }
 
+async function fetchClassMasterScope(
+  supabase: Client,
+  tenantId: string,
+  academicYearId: string,
+  staffProfileId: string,
+): Promise<TeacherTeachingScopePair[]> {
+  const { data, error } = await supabase
+    .from('StaffClassAssignment')
+    .select(
+      `
+      classId,
+      ${embed('Class', FK.StaffClassAssignment_class, 'name')}
+    `,
+    )
+    .eq('tenantId', tenantId)
+    .eq('academicYearId', academicYearId)
+    .eq('staffProfileId', staffProfileId);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as Array<{ classId: string; Class?: unknown }>).map((row) => {
+    const classRow = unwrapRelation<{ name?: string }>(row.Class);
+    return {
+      classId: row.classId,
+      subjectId: '',
+      className: classRow?.name?.trim() || row.classId,
+      subjectName: '',
+    };
+  });
+}
+
 export async function fetchStudentsForTeacher(
   supabase: Client,
   tenantId: string,
   academicYearId: string,
   staffProfileId: string,
 ): Promise<TeacherStudentsResult> {
-  const scope = await fetchTeacherTeachingScope(
-    supabase,
-    tenantId,
-    academicYearId,
-    staffProfileId,
-  );
+  const [subjectScope, classMaster] = await Promise.all([
+    fetchTeacherTeachingScope(supabase, tenantId, academicYearId, staffProfileId),
+    fetchClassMasterScope(supabase, tenantId, academicYearId, staffProfileId),
+  ]);
+
+  const scope = mergeTeacherClassScope(subjectScope, classMaster);
 
   if (scope.classIds.length === 0) {
     return { students: [], scope };

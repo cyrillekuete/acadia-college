@@ -6,7 +6,6 @@ import { TenantLogoUpload } from '@/components/acadia/account/tenant-logo-upload
 import { AccountDataState } from '@/components/acadia/account/account-data-state';
 import { useAcadiaTenant } from '@/hooks/use-acadia-tenant';
 import { getTenantAssetPublicUrl } from '@/lib/supabase/storage';
-import { formatRecordValue } from '@/lib/acadia/record-display';
 import { GraduationCap } from '@/lib/icons';
 
 export function TenantLogoPreview() {
@@ -32,11 +31,8 @@ export function TenantLogoPreview() {
           <TenantLogoUpload kind="institution" />
           <p className="text-sm text-muted-foreground">
             {logoUrl
-              ? 'Logo loaded from Supabase Storage (tenant-assets bucket).'
+              ? 'Logo loaded from school branding storage.'
               : 'No logo uploaded yet — default Acadia branding is shown until you upload one.'}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Storage key: {formatRecordValue(tenant?.logoStorageKey)}
           </p>
           <div className="flex flex-col gap-4 border-t border-border pt-4">
             <p className="text-sm font-medium">Report card logo</p>
@@ -56,11 +52,8 @@ export function TenantLogoPreview() {
             <TenantLogoUpload kind="reportCard" />
             <p className="text-sm text-muted-foreground">
               {reportCardLogoUrl
-                ? 'Report card logo loaded from Supabase Storage (tenant-assets bucket).'
+                ? 'Report card logo loaded from school branding storage.'
                 : 'No report card logo uploaded yet — report cards will use the institution logo until you upload one.'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Storage key: {formatRecordValue(tenant?.reportCardLogoStorageKey)}
             </p>
           </div>
         </AccountDataState>

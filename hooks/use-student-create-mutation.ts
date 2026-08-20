@@ -16,6 +16,7 @@ type CreateStudentResult = {
   parentLoginEmail: string;
   parentTemporaryPassword: string | null;
   newParentAuthCreated: boolean;
+  feeWarning: string | null;
 };
 
 function readRequiredString(
@@ -76,6 +77,11 @@ export function useStudentCreateMutation() {
         throw new Error('Server returned an invalid student creation response.');
       }
 
+      const feeWarning =
+        typeof json.feeWarning === 'string' && json.feeWarning.trim()
+          ? json.feeWarning
+          : null;
+
       return {
         studentId,
         studentUuid,
@@ -86,6 +92,7 @@ export function useStudentCreateMutation() {
         parentLoginEmail,
         parentTemporaryPassword,
         newParentAuthCreated,
+        feeWarning,
       };
     },
     onSuccess: (_data, _vars, _ctx) => {

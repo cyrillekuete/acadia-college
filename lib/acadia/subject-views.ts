@@ -1,6 +1,6 @@
-import { isStudent } from '@/lib/acadia/roles';
+import { isAdmin, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
 
-export type SubjectsViewMode = 'student' | 'catalog';
+export type SubjectsViewMode = 'student' | 'catalog' | 'restricted';
 
 export function resolveSubjectsViewMode(
   roleSlug: string | null | undefined,
@@ -8,7 +8,10 @@ export function resolveSubjectsViewMode(
   if (isStudent(roleSlug)) {
     return 'student';
   }
-  return 'catalog';
+  if (isAdmin(roleSlug) || isStaffOrTeacher(roleSlug)) {
+    return 'catalog';
+  }
+  return 'restricted';
 }
 
 export function subjectsViewDescription(mode: SubjectsViewMode): string {
@@ -17,5 +20,7 @@ export function subjectsViewDescription(mode: SubjectsViewMode): string {
       return 'Subjects assigned to your class for the current academic year.';
     case 'catalog':
       return 'Subject catalog for the academic year.';
+    case 'restricted':
+      return 'Subject catalog is available to school staff.';
   }
 }

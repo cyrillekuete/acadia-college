@@ -48,21 +48,26 @@ export function useCurrentAcademicYearOption() {
         label: year.label,
         isCurrent: year.isCurrent,
         timetablePublishedAt: year.timetablePublishedAt,
+        isActive: year.isActive,
       } satisfies AcademicYearOption;
     },
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 }
 
-export function useAcademicYearOptions(initialData?: AcademicYearOption[]) {
+export function useAcademicYearOptions(
+  initialData?: AcademicYearOption[],
+  options?: { includeInactive?: boolean },
+) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const includeInactive = options?.includeInactive ?? false;
 
   return useQuery({
-    queryKey: ['academic-year-options', tenantId],
+    queryKey: ['academic-year-options', tenantId, includeInactive],
     queryFn: async () => {
       const supabase = requireBrowserClient();
-      return fetchAcademicYearOptions(supabase, tenantId!);
+      return fetchAcademicYearOptions(supabase, tenantId!, { includeInactive });
     },
     initialData,
     staleTime: 60_000,

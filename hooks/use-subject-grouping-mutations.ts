@@ -4,17 +4,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { SubjectGroupingFormValues } from '@/lib/acadia/subject-catalog';
 import { generateAcadiaId } from '@/lib/acadia/ids';
+import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { catalogTags } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-
-function mutationErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Operation failed.';
-}
 
 function invalidateGroupingQueries(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -41,7 +35,7 @@ export function useSubjectGroupingMutations() {
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
-      const code = values.code?.trim() || null;
+      const code = values.code?.trim().toUpperCase() || null;
       const { error } = await supabase.from('SubjectGrouping').insert({
         id: generateAcadiaId('subjgrp'),
         tenantId,
@@ -60,7 +54,7 @@ export function useSubjectGroupingMutations() {
       invalidateGroupingQueries(queryClient, tenantId);
       toast.success('Grouping created.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const updateGrouping = useMutation({
@@ -76,7 +70,7 @@ export function useSubjectGroupingMutations() {
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
-      const code = values.code?.trim() || null;
+      const code = values.code?.trim().toUpperCase() || null;
       const { error } = await supabase
         .from('SubjectGrouping')
         .update({
@@ -96,7 +90,7 @@ export function useSubjectGroupingMutations() {
       invalidateGroupingQueries(queryClient, tenantId);
       toast.success('Grouping updated.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
   const deleteGrouping = useMutation({
@@ -118,8 +112,44 @@ export function useSubjectGroupingMutations() {
       invalidateGroupingQueries(queryClient, tenantId);
       toast.success('Grouping deleted.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
   });
 
-  return { createGrouping, updateGrouping, deleteGrouping };
+  const moveSubjectsToGrouping = useMutation({
+    mutationFn: async (input: {
+      subjectIds: string[];
+      groupingId: string | null;
+    }) => {
+      if (!tenantId) {
+        throw new Error('Tenant context is required.');
+      }
+      if (input.subjectIds.length === 0) {
+        return 0;
+      }
+      const supabase = requireBrowserClient();
+      const { error } = await supabase
+        .from('Subject')
+        .update({
+          groupingId: input.groupingId,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('tenantId', tenantId)
+        .in('id', input.subjectIds);
+      if (error) {
+        throw error;
+      }
+      return input.subjectIds.length;
+    },
+    onSuccess: (count) => {
+      invalidateGroupingQueries(queryClient, tenantId);
+      toast.success(
+        count === 1
+          ? 'Moved 1 subject.'
+          : `Moved ${count} subjects.`,
+      );
+    },
+    onError: (error) => toast.error(getMutationErrorMessage(error)),
+  });
+
+  return { createGrouping, updateGrouping, deleteGrouping, moveSubjectsToGrouping };
 }

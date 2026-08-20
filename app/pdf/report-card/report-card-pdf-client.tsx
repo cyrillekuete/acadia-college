@@ -43,8 +43,8 @@ export default function ReportCardPdfClient({
     return <div className="p-4 text-sm text-muted-foreground">Loading report card…</div>;
   }
 
-  const termNumber: 1 | 2 | 3 =
-    term === '1' ? 1 : term === '2' ? 2 : 3;
+  const termNumber: number | 'annual' =
+    term === 'annual' ? 'annual' : Number(term);
   const viewData: ReportCardData =
     term === 'annual'
       ? data
@@ -52,7 +52,7 @@ export default function ReportCardPdfClient({
           ...data,
           academic: {
             ...data.academic,
-            term: termNumber,
+            term: Number.isInteger(termNumber) ? (termNumber as number) : data.academic.term,
           },
         };
 

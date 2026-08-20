@@ -115,3 +115,77 @@ export const staffCreateSchema = z
 
 export type StaffCreateInput = z.infer<typeof staffCreateSchema>;
 export type StaffCreateFormValues = z.input<typeof staffCreateSchema>;
+
+/** Admin PATCH body for staff profile (HR fields + active flag). */
+export const staffUpdateSchema = z
+  .object({
+    title: staffTitleEnum,
+    firstName: z.string().min(1, 'validation.required.firstName').max(80),
+    lastName: z.string().min(1, 'validation.required.lastName').max(80),
+    personalEmail: z.string().email('validation.email').max(200),
+    phoneCountry: phoneCountryField(),
+    phone: phoneNationalField(true, 'validation.required.phone'),
+    address: z.string().max(500).optional().or(z.literal('')),
+    city: z.string().max(120).optional().or(z.literal('')),
+    region: z.string().max(120).optional().or(z.literal('')),
+    qualifications: z.string().max(2000).optional().or(z.literal('')),
+    teachingExperience: z.string().max(2000).optional().or(z.literal('')),
+    employmentType: staffEmploymentTypeEnum,
+    hireDate: z.string().optional().or(z.literal('')),
+    monthlySalary: z.coerce
+      .number()
+      .min(0, 'validation.salaryMin')
+      .optional(),
+    emergencyContactName: z.string().max(120).optional().or(z.literal('')),
+    emergencyContactRelationship: staffEmergencyRelationshipEnum.optional(),
+    emergencyContactPhoneCountry: phoneCountryField(),
+    emergencyContactPhone: phoneNationalField(),
+    bio: z.string().max(2000).optional().or(z.literal('')),
+    officeRoom: z.string().max(80).optional().or(z.literal('')),
+    officePhoneCountry: phoneCountryField(),
+    officePhone: phoneNationalField(),
+    departmentId: z.string().optional().or(z.literal('')),
+    isActive: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    refinePhoneWithCountry(
+      data,
+      { phoneKey: 'phone', countryKey: 'phoneCountry', required: true },
+      ctx,
+    );
+    refinePhoneWithCountry(
+      data,
+      {
+        phoneKey: 'emergencyContactPhone',
+        countryKey: 'emergencyContactPhoneCountry',
+      },
+      ctx,
+    );
+    refinePhoneWithCountry(
+      data,
+      {
+        phoneKey: 'officePhone',
+        countryKey: 'officePhoneCountry',
+      },
+      ctx,
+    );
+  })
+  .transform((data) => {
+    const {
+      phoneCountry: _phoneCountry,
+      emergencyContactPhoneCountry: _emergencyPhoneCountry,
+      officePhoneCountry: _officePhoneCountry,
+      ...rest
+    } = data;
+
+    return {
+      ...rest,
+      monthlySalary:
+        rest.monthlySalary === undefined || Number.isNaN(rest.monthlySalary)
+          ? undefined
+          : rest.monthlySalary,
+    };
+  });
+
+export type StaffUpdateInput = z.infer<typeof staffUpdateSchema>;
+export type StaffUpdateFormValues = z.input<typeof staffUpdateSchema>;

@@ -11,8 +11,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  computeFeeAccountTotals,
   formatMoneyMinor,
+  totalsFromFeeAccountRecord,
 } from '@/lib/acadia/finance';
 import { FeeStatusBadge } from '@/components/acadia/finance/fee-status-badge';
 import {
@@ -41,6 +41,7 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
           id,
           feeCurrency,
           totalAmountMinor,
+          creditMinor,
           createdAt,
           StudentProfile!StudentFeeAccount_studentProfileId_tenantId_fkey (
             registrationNumber,
@@ -80,17 +81,11 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
         paidAt: string | null;
       }>;
       installments.sort((a, b) => a.installmentNumber - b.installmentNumber);
-      const scholarships = (account.StudentScholarship ?? []) as Array<{
-        discountMinor: number;
-      }>;
-      const scholarshipMinor = scholarships.reduce(
-        (s, x) => s + Number(x.discountMinor ?? 0),
-        0,
-      );
-      const totals = computeFeeAccountTotals({
+      const totals = totalsFromFeeAccountRecord({
         totalAmountMinor: Number(account.totalAmountMinor),
-        scholarshipMinor,
-        installments,
+        creditMinor: account.creditMinor,
+        StudentFeeInstallment: installments,
+        StudentScholarship: account.StudentScholarship,
       });
       return { account, installments, totals };
     },
@@ -208,6 +203,18 @@ export function FeeInvoiceView({ accountId }: { accountId: string }) {
             <span>{t('finance.paid')}</span>
             <span>{formatMoneyMinor(totals.totalPaidMinor, currency)}</span>
           </div>
+          {(totals.creditMinor ?? 0) > 0 ? (
+            <div className="flex justify-between text-muted-foreground">
+              <span>{t('finance.credit')}</span>
+              <span>-{formatMoneyMinor(totals.creditMinor ?? 0, currency)}</span>
+            </div>
+          ) : null}
+          {(totals.waivedMinor ?? 0) > 0 ? (
+            <div className="flex justify-between text-muted-foreground">
+              <span>{t('finance.status.WAIVED')}</span>
+              <span>-{formatMoneyMinor(totals.waivedMinor ?? 0, currency)}</span>
+            </div>
+          ) : null}
           <div className="flex justify-between font-semibold">
             <span>{t('finance.balance')}</span>
             <span>{formatMoneyMinor(totals.balanceMinor, currency)}</span>

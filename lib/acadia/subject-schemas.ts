@@ -17,6 +17,7 @@ export const subjectSchema = z
   .object({
     code: z.string().trim().min(1, 'validation.required.code').max(32),
     nameEn: z.string().trim().min(1, 'validation.required.name'),
+    nameFr: z.string().trim().optional().or(z.literal('')),
     academicYearId: z.string().min(1, 'validation.required.academicYear'),
     coefficient: z.coerce.number().positive('validation.coefficientPositive'),
     groupingId: z.string().optional().or(z.literal('')),
@@ -40,6 +41,23 @@ export const subjectSchema = z
         path: ['subBranches'],
       });
     }
+    if (data.hasSubBranches) {
+      const names = data.subBranches.map((branch) => branch.name.trim().toLowerCase());
+      const seen = new Set<string>();
+      names.forEach((name, index) => {
+        if (!name) {
+          return;
+        }
+        if (seen.has(name)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'validation.duplicateSubBranchName',
+            path: ['subBranches', index, 'name'],
+          });
+        }
+        seen.add(name);
+      });
+    }
   });
 
 export type SubjectFormValues = z.infer<typeof subjectSchema>;
@@ -61,7 +79,7 @@ export const timetableSlotSchema = z
     subjectId: z.string().min(1, 'validation.required.subject'),
     staffProfileId: z.string().min(1, 'validation.required.teacher'),
     roomId: z.string().min(1, 'validation.required.room'),
-    dayOfWeek: z.coerce.number().int().min(1).max(7),
+    dayOfWeek: z.coerce.number().int().min(1).max(6),
     startTime: z.string().regex(/^\d{2}:\d{2}$/, 'validation.timeFormat'),
     endTime: z.string().regex(/^\d{2}:\d{2}$/, 'validation.timeFormat'),
   })
@@ -72,15 +90,25 @@ export const timetableSlotSchema = z
 
 export type TimetableSlotFormValues = z.infer<typeof timetableSlotSchema>;
 
-export const subjectMaterialSchema = z.object({
-  academicYearId: z.string().min(1, 'validation.required.academicYear'),
-  titleEn: z.string().trim().min(1, 'validation.required.titleEn'),
-  titleFr: z.string().trim().min(1, 'validation.required.titleFr'),
-  descriptionEn: z.string().optional().or(z.literal('')),
-  descriptionFr: z.string().optional().or(z.literal('')),
-  dueAt: z.string().min(1, 'validation.required.dueDate'),
-  maxScore: z.coerce.number().min(0, 'validation.maxScoreMin'),
-  isPublished: z.boolean(),
-});
+export const subjectMaterialSchema = z
+  .object({
+    academicYearId: z.string().min(1, 'validation.required.academicYear'),
+    titleEn: z.string().trim().min(1, 'validation.required.titleEn'),
+    titleFr: z.string().trim().min(1, 'validation.required.titleFr'),
+    descriptionEn: z.string().optional().or(z.literal('')),
+    descriptionFr: z.string().optional().or(z.literal('')),
+    dueAt: z.string().min(1, 'validation.required.dueDate'),
+    maxScore: z.coerce.number().min(0, 'validation.maxScoreMin'),
+    isPublished: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isPublished && data.maxScore < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.maxScorePublishedMin',
+        path: ['maxScore'],
+      });
+    }
+  });
 
 export type SubjectMaterialFormValues = z.infer<typeof subjectMaterialSchema>;

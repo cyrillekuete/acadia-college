@@ -9,13 +9,23 @@ import {
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchStudentsFromEnrollmentsForClassIds } from '@/lib/supabase/queries/students-list';
 
-export function useClassEnrolledStudents(classId: string | null) {
+export function useClassEnrolledStudents(
+  classId: string | null,
+  options?: { includeWithdrawn?: boolean },
+) {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
+  const includeWithdrawn = options?.includeWithdrawn === true;
 
   return useQuery({
-    queryKey: ['class-enrolled-students', tenantId, activeYearId, classId],
+    queryKey: [
+      'class-enrolled-students',
+      tenantId,
+      activeYearId,
+      classId,
+      includeWithdrawn,
+    ],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       return fetchStudentsFromEnrollmentsForClassIds(
@@ -23,6 +33,7 @@ export function useClassEnrolledStudents(classId: string | null) {
         tenantId!,
         activeYearId!,
         [classId!],
+        { includeWithdrawn },
       );
     },
     enabled:

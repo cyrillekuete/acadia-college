@@ -1,4 +1,5 @@
 import type { CalendarMilestoneKind } from '@/lib/acadia/calendar-schemas';
+import { formatLocalDateInputValue } from '@/lib/acadia/dates';
 import { localizedText } from '@/lib/acadia/locale';
 
 export type MilestoneRecord = {
@@ -29,7 +30,7 @@ export function dateOnly(value: string | null | undefined): string | null {
 }
 
 export function todayDateOnly(reference = new Date()): string {
-  return reference.toISOString().slice(0, 10);
+  return formatLocalDateInputValue(reference);
 }
 
 export function earliestMilestoneDate(

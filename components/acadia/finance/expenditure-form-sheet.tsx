@@ -35,7 +35,7 @@ import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useFinanceMutations } from '@/hooks/use-finance-mutations';
-import { formatLocalDateInputValue } from '@/lib/acadia/dates';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   canEditExpenditure,
   EXPENDITURE_CATEGORIES,
@@ -48,7 +48,6 @@ import {
   expenditureSchema,
   type ExpenditureFormValues,
 } from '@/lib/acadia/finance-schemas';
-import { useTranslation } from '@/hooks/useTranslation';
 
 const EXPENDITURE_FORM_ID = 'finance-expenditure-form';
 
@@ -84,7 +83,7 @@ export function ExpenditureFormSheet({
       amountMinor: 0,
       currency: 'XAF',
       paymentMethod: 'CASH',
-      paymentDate: formatLocalDateInputValue(),
+      paymentDate: '',
       vendor: '',
       vendorContact: '',
       receiptNumber: '',
@@ -109,7 +108,7 @@ export function ExpenditureFormSheet({
         amountMinor: record.amountMinor,
         currency: record.currency,
         paymentMethod: record.paymentMethod ?? 'CASH',
-        paymentDate: record.paymentDate,
+        paymentDate: record.paymentDate ?? '',
         vendor: record.vendor,
         vendorContact: record.vendorContact ?? '',
         receiptNumber: record.receiptNumber ?? '',
@@ -131,7 +130,7 @@ export function ExpenditureFormSheet({
       amountMinor: 0,
       currency: 'XAF',
       paymentMethod: 'CASH',
-      paymentDate: formatLocalDateInputValue(),
+      paymentDate: '',
       vendor: '',
       vendorContact: '',
       receiptNumber: '',

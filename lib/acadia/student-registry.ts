@@ -4,6 +4,7 @@ import {
   formatMoneyMinor,
 } from '@/lib/acadia/finance';
 import type { TeacherTeachingScopePair } from '@/lib/supabase/queries/teacher-students';
+import { UNASSIGNED_CLASS_FILTER } from '@/lib/acadia/student-enrollment';
 
 export type StudentRegistrySubjectOption = {
   id: string;
@@ -28,7 +29,7 @@ export type StudentRegistryFilters = {
   query: string;
   subSystem: string | null;
   branch: string | null;
-  className: string | null;
+  classId: string | null;
   subjectId: string | null;
   enrollmentStatus: string | null;
   feesStatus: string | null;
@@ -39,7 +40,7 @@ export const EMPTY_STUDENT_REGISTRY_FILTERS: StudentRegistryFilters = {
   query: '',
   subSystem: null,
   branch: null,
-  className: null,
+  classId: null,
   subjectId: null,
   enrollmentStatus: null,
   feesStatus: null,
@@ -92,6 +93,7 @@ function matchesQuickFilter(
       return (
         feesStatus === 'pending' ||
         feesStatus === 'partial' ||
+        feesStatus === 'outstanding' ||
         (student.paid_fees > 0 && student.paid_fees < student.total_fees)
       );
     case 'pending_enrollment':
@@ -110,7 +112,7 @@ export function studentRegistryHasActiveFilters(
     filters.query.trim().length > 0 ||
     filters.subSystem != null ||
     filters.branch != null ||
-    filters.className != null ||
+    filters.classId != null ||
     filters.subjectId != null ||
     filters.enrollmentStatus != null ||
     filters.feesStatus != null ||
@@ -176,8 +178,14 @@ export function filterStudentsRegistry(
       }
     }
 
-    if (filters.className && student.class_name !== filters.className) {
-      return false;
+    if (filters.classId) {
+      if (filters.classId === UNASSIGNED_CLASS_FILTER) {
+        if (student.class_id) {
+          return false;
+        }
+      } else if (student.class_id !== filters.classId) {
+        return false;
+      }
     }
 
     if (
@@ -251,7 +259,7 @@ export function computeStudentRegistryStats(
   academicYearLabel?: string | null,
 ): StudentRegistryStats {
   const total = students.length;
-  const active = students.filter((s) => s.status === 'active').length;
+  const active = students.filter((s) => s.enrollment_status === 'active').length;
   const inactive = total - active;
 
   const sevenDaysAgo = new Date();
@@ -280,10 +288,50 @@ export function computeStudentRegistryStats(
   };
 }
 
-export function getStudentClassOptions(students: StudentListItem[]): string[] {
-  return Array.from(
-    new Set(students.map((s) => s.class_name).filter((c) => c && c !== '—')),
-  ).sort();
+export type StudentRegistryClassOption = {
+  id: string;
+  name: string;
+};
+
+export function formatStudentClassOptionLabel(student: StudentListItem): string {
+  const name = student.class_name?.trim() && student.class_name !== '—'
+    ? student.class_name
+    : student.class_id ?? '';
+  const stream = [student.subsystem, student.branch].filter(Boolean).join(' / ');
+  return stream ? `${name} (${stream})` : name;
+}
+
+export function getStudentClassOptions(
+  students: StudentListItem[],
+): StudentRegistryClassOption[] {
+  const byName = new Map<string, Set<string>>();
+  const byId = new Map<string, StudentListItem>();
+
+  for (const student of students) {
+    if (!student.class_id) {
+      continue;
+    }
+    byId.set(student.class_id, student);
+    const name = student.class_name?.trim() || student.class_id;
+    const ids = byName.get(name) ?? new Set<string>();
+    ids.add(student.class_id);
+    byName.set(name, ids);
+  }
+
+  return Array.from(byId.entries())
+    .map(([id, student]) => {
+      const name = student.class_name?.trim() || id;
+      const colliding = (byName.get(name)?.size ?? 0) > 1;
+      return {
+        id,
+        name: colliding ? formatStudentClassOptionLabel(student) : name,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+export function registryHasUnassignedClass(students: StudentListItem[]): boolean {
+  return students.some((student) => !student.class_id);
 }
 
 export function getStudentFeesStatusOptions(students: StudentListItem[]): string[] {

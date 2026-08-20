@@ -10,6 +10,7 @@ import {
   type ReportCardMarkRow,
   type ReportCardSubjectDef,
 } from '@/lib/acadia/report-card';
+import { missingSubjectsForPeriod } from '@/lib/acadia/report-period-status';
 import type { AcademicYearStructure } from '@/lib/acadia/academic-calendar';
 import type { ReportCardBranding, ReportCardTerm } from '@/lib/acadia/report-card-types';
 
@@ -59,6 +60,7 @@ export type ClassReportData = {
     classSize: number;
     evaluated: number;
     unevaluated: number;
+    incomplete: number;
     classAvg: number | null;
     maxAvg: number | null;
     minAvg: number | null;
@@ -66,6 +68,7 @@ export type ClassReportData = {
     failed: number;
     passPercent: number;
     failPercent: number;
+    passPercentOfClass: number;
   };
   best: ClassReportRankedStudent[];
   worst: ClassReportRankedStudent[];
@@ -73,6 +76,8 @@ export type ClassReportData = {
   bottom: ClassReportRankedStudent[];
   ranked: ClassReportRankedStudent[];
   unevaluated: ClassReportStudent[];
+  incomplete: ClassReportStudent[];
+  missingClassMaster: boolean;
 };
 
 function round2(value: number): number {
@@ -93,11 +98,11 @@ export function parseClassReportPeriod(input: {
     return { kind: 'annual' };
   }
   if (kind === 'term') {
-    const term = (input.term ?? '').trim();
-    if (term === '1' || term === '2' || term === '3') {
-      return { kind: 'term', term };
+    const n = Number((input.term ?? '').trim());
+    if (Number.isInteger(n) && n >= 1 && n <= 12) {
+      return { kind: 'term', term: String(n) as Exclude<ReportCardTerm, 'annual'> };
     }
-    return { error: 'Term is required (1, 2, or 3).' };
+    return { error: 'Term is required (1–12).' };
   }
   if (kind === 'sequence') {
     const n = Number(input.sequenceNumber);
@@ -149,12 +154,13 @@ export function classReportPeriodLabel(period: ClassReportPeriod): {
       fr: `Séquence ${period.sequenceNumber}`,
     };
   }
-  const terms: Record<'1' | '2' | '3', { en: string; fr: string }> = {
-    '1': { en: 'First term', fr: 'Premier trimestre' },
-    '2': { en: 'Second term', fr: 'Deuxième trimestre' },
-    '3': { en: 'Third term', fr: 'Troisième trimestre' },
+  const n = Number(period.term);
+  const terms: Record<number, { en: string; fr: string }> = {
+    1: { en: 'First term', fr: 'Premier trimestre' },
+    2: { en: 'Second term', fr: 'Deuxième trimestre' },
+    3: { en: 'Third term', fr: 'Troisième trimestre' },
   };
-  return terms[period.term];
+  return terms[n] ?? { en: `Term ${n}`, fr: `Trimestre ${n}` };
 }
 
 export function classReportPeriodSlug(period: ClassReportPeriod): string {
@@ -243,10 +249,26 @@ export function buildClassReport(
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const incomplete = bundle.students
+    .filter((student) => averages.has(student.studentProfileId))
+    .filter((student) => {
+      const status = missingSubjectsForPeriod(
+        bundle.subjects,
+        bundle.marks,
+        student.studentProfileId,
+        period,
+        bundle.structure,
+      ).status;
+      return status === 'incomplete';
+    })
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const values = ranked.map((row) => row.average);
   const passed = ranked.filter((row) => row.passed).length;
   const evaluated = ranked.length;
   const failed = evaluated - passed;
+  const classSize = bundle.students.length;
   const bestAverage = values[0];
   const worstAverage = values[values.length - 1];
   const sliceN = Math.min(topN, ranked.length);
@@ -263,9 +285,10 @@ export function buildClassReport(
     topN,
     branding: bundle.branding,
     stats: {
-      classSize: bundle.students.length,
+      classSize,
       evaluated,
       unevaluated: unevaluated.length,
+      incomplete: incomplete.length,
       classAvg: averageScores(values),
       maxAvg: values.length ? Math.max(...values) : null,
       minAvg: values.length ? Math.min(...values) : null,
@@ -273,6 +296,7 @@ export function buildClassReport(
       failed,
       passPercent: evaluated ? round2((passed / evaluated) * 100) : 0,
       failPercent: evaluated ? round2((failed / evaluated) * 100) : 0,
+      passPercentOfClass: classSize ? round2((passed / classSize) * 100) : 0,
     },
     best:
       bestAverage == null ? [] : ranked.filter((row) => row.average === bestAverage),
@@ -282,5 +306,7 @@ export function buildClassReport(
     bottom: ranked.slice(ranked.length - sliceN),
     ranked,
     unevaluated,
+    incomplete,
+    missingClassMaster: !bundle.classMaster.trim(),
   };
 }

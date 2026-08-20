@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { SchemeTopicBoard } from '@/components/acadia/scheme-of-work/scheme-topic-board';
@@ -23,6 +23,9 @@ import {
 } from '@/hooks/use-scheme-of-work';
 import { useSchemeOfWorkMutations } from '@/hooks/use-scheme-of-work-mutations';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { requireBrowserClient } from '@/lib/supabase/client';
+import { countSchemeProgressRows } from '@/lib/supabase/queries/scheme-of-work';
 
 export function SchemeCreateSheet({
   open,
@@ -40,6 +43,8 @@ export function SchemeCreateSheet({
   levelName: string;
 }) {
   const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
   const [schemeId, setSchemeId] = useState<string | null>(null);
   const {
     openOrCreateScheme,
@@ -48,27 +53,6 @@ export function SchemeCreateSheet({
     removeTopic,
     moveTopic,
   } = useSchemeOfWorkMutations();
-  const createScheme = openOrCreateScheme.mutate;
-
-  useEffect(() => {
-    if (!open || !subjectId || !levelId) {
-      return;
-    }
-    let cancelled = false;
-    createScheme(
-      { subjectId, levelId },
-      {
-        onSuccess: (scheme) => {
-          if (!cancelled) {
-            setSchemeId(scheme.id);
-          }
-        },
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [open, subjectId, levelId, createScheme]);
 
   const detailQuery = useSchemeDetail(open ? schemeId : null);
   const topicsQuery = useSchemeTopics(open ? schemeId : null);
@@ -85,6 +69,40 @@ export function SchemeCreateSheet({
       setSchemeId(null);
     }
     onOpenChange(next);
+  };
+
+  const handleCreate = () => {
+    openOrCreateScheme.mutate(
+      { subjectId, levelId },
+      {
+        onSuccess: (created) => {
+          setSchemeId(created.id);
+        },
+      },
+    );
+  };
+
+  const handleTogglePublish = async () => {
+    if (!scheme) {
+      return;
+    }
+    if (published) {
+      const supabase = requireBrowserClient();
+      const progressCount = tenantId
+        ? await countSchemeProgressRows(supabase, tenantId, scheme.id)
+        : 0;
+      if (progressCount > 0) {
+        const confirmed = window.confirm(
+          t('schemeOfWork.unpublishWithProgressConfirm', { count: progressCount }),
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+      setSchemeStatus.mutate({ schemeId: scheme.id, status: 'DRAFT' });
+      return;
+    }
+    setSchemeStatus.mutate({ schemeId: scheme.id, status: 'PUBLISHED' });
   };
 
   return (
@@ -112,14 +130,29 @@ export function SchemeCreateSheet({
                 ) : null}
                 <CurrentAcademicYearBadge />
               </div>
-              {!schemeId ||
-              openOrCreateScheme.isPending ||
-              detailQuery.isLoading ||
-              topicsQuery.isLoading ? (
+              {!schemeId ? (
+                <div className="space-y-3 rounded-lg border p-4">
+                  <p className="text-sm text-muted-foreground">
+                    {t('schemeOfWork.createSheetStartHint')}
+                  </p>
+                  <Button
+                    type="button"
+                    disabled={openOrCreateScheme.isPending}
+                    onClick={handleCreate}
+                  >
+                    {t('schemeOfWork.createScheme')}
+                  </Button>
+                  {openOrCreateScheme.isError ? (
+                    <p className="text-destructive text-sm">
+                      {t('schemeOfWork.loadFailed')}
+                    </p>
+                  ) : null}
+                </div>
+              ) : openOrCreateScheme.isPending ||
+                detailQuery.isLoading ||
+                topicsQuery.isLoading ? (
                 <Skeleton className="h-40 w-full" />
-              ) : openOrCreateScheme.isError ||
-                detailQuery.isError ||
-                topicsQuery.isError ? (
+              ) : detailQuery.isError || topicsQuery.isError ? (
                 <p className="text-destructive text-sm">
                   {t('schemeOfWork.loadFailed')}
                 </p>
@@ -167,13 +200,13 @@ export function SchemeCreateSheet({
             {scheme ? (
               <Button
                 type="button"
-                disabled={setSchemeStatus.isPending}
-                onClick={() =>
-                  setSchemeStatus.mutate({
-                    schemeId: scheme.id,
-                    status: published ? 'DRAFT' : 'PUBLISHED',
-                  })
+                disabled={
+                  setSchemeStatus.isPending ||
+                  (!published && topics.length === 0)
                 }
+                onClick={() => {
+                  void handleTogglePublish();
+                }}
               >
                 {published
                   ? t('schemeOfWork.unpublish')

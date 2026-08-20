@@ -51,7 +51,9 @@ import {
 import { useSubjectList, type SubjectListRowView } from '@/hooks/use-subject-list';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
-import { canWriteRegistry } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
+import { fetchSubjectDependencyCounts } from '@/lib/supabase/queries/subject-list';
+import { requireBrowserClient } from '@/lib/supabase/client';
 import { useTranslation } from '@/hooks/useTranslation';
 
 function truncateCell(text: string) {
@@ -111,7 +113,7 @@ export function SubjectsTable({
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteAcademicAdmin(session?.roleSlug);
   const defaultColumnOrder = useMemo(
     () => subjectTableColumnOrder(canManage),
     [canManage],
@@ -121,7 +123,11 @@ export function SubjectsTable({
   useEffect(() => {
     setColumnOrder(defaultColumnOrder);
   }, [defaultColumnOrder]);
-  const { data = [], isLoading, isError, error } = useSubjectList(catalogFilters);
+  const { data = [], isLoading, isError, error } = useSubjectList(
+    catalogFilters,
+    undefined,
+    { allYears: listFilters.allYears },
+  );
   const { deactivateSubject, reactivateSubject } = useSubjectMutations();
 
   const filtered = useMemo(() => {
@@ -397,20 +403,50 @@ export function SubjectsTable({
           }
           return (
             <RegistryRowActions
+              canManage={canManage}
               onAssign={
                 onAssignToClasses ? () => onAssignToClasses(row.original) : undefined
               }
               onEdit={() => router.push(`/subjects/${row.original.id}/edit`)}
               onDelete={() => {
-                if (
-                  window.confirm(
-                    t('subjects.deactivateConfirm', {
-                      name: row.original.nameEn,
-                    }),
-                  )
-                ) {
-                  deactivateSubject.mutate(row.original.id);
-                }
+                void (async () => {
+                  const supabase = requireBrowserClient();
+                  const tenantId = session?.tenantId;
+                  let note = '';
+                  if (tenantId) {
+                    try {
+                      const counts = await fetchSubjectDependencyCounts(
+                        supabase,
+                        tenantId,
+                        row.original.id,
+                      );
+                      const parts: string[] = [];
+                      if (counts.classCount > 0) {
+                        parts.push(`${counts.classCount} class link(s)`);
+                      }
+                      if (counts.assignmentCount > 0) {
+                        parts.push(`${counts.assignmentCount} teacher assignment(s)`);
+                      }
+                      if (counts.schemeCount > 0) {
+                        parts.push(`${counts.schemeCount} scheme(s) of work`);
+                      }
+                      if (parts.length > 0) {
+                        note = ` Linked records stay in place: ${parts.join(', ')}.`;
+                      }
+                    } catch {
+                      note = '';
+                    }
+                  }
+                  if (
+                    window.confirm(
+                      `${t('subjects.deactivateConfirm', {
+                        name: row.original.nameEn,
+                      })}${note}`,
+                    )
+                  ) {
+                    deactivateSubject.mutate(row.original.id);
+                  }
+                })();
               }}
             />
           );

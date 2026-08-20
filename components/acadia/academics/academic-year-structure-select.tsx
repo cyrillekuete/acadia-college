@@ -23,7 +23,9 @@ export function AcademicYearStructureSelect({
   onValueChange: (yearId: string) => void;
   className?: string;
 }) {
-  const { data: years = [], isLoading } = useAcademicYearOptions();
+  const { data: years = [], isLoading } = useAcademicYearOptions(undefined, {
+    includeInactive: true,
+  });
 
   useEffect(() => {
     if (value || years.length === 0) {

@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
-import { canWriteRegistry } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
+import { EMPTY_CATALOG_FILTERS } from '@/lib/acadia/education-system';
 import { suggestVariantCode } from '@/lib/acadia/subject-variants';
+import { useSubjectList } from '@/hooks/use-subject-list';
 import type { SubjectFormValues } from '@/lib/acadia/subject-schemas';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -42,19 +44,23 @@ export default function NewSubjectPage() {
   const searchParams = useSearchParams();
   const variantOf = searchParams.get('variantOf')?.trim() || undefined;
   const { data: session, isLoading } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteAcademicAdmin(session?.roleSlug);
   const sourceQuery = useSupabaseRecord<VariantSource>(
     'Subject',
     variantOf,
     VARIANT_SOURCE_SELECT,
   );
+  const { data: catalogSubjects = [] } = useSubjectList(EMPTY_CATALOG_FILTERS);
 
   const source = variantOf ? sourceQuery.data : undefined;
   const variantLoading = Boolean(variantOf) && sourceQuery.isLoading;
   const initialValues: Partial<SubjectFormValues> | undefined = source
     ? {
         nameEn: source.nameEn,
-        code: suggestVariantCode(source.code, [source.code]),
+        code: suggestVariantCode(
+          source.code,
+          catalogSubjects.map((row) => row.code),
+        ),
         academicYearId: source.academicYearId ?? '',
         subSystem: source.subSystem as SubjectFormValues['subSystem'],
         branch: source.branch as SubjectFormValues['branch'],

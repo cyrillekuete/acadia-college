@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { ReportCardView } from '@/components/acadia/report-cards/report-card-view';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAcademicYearWriteGuard } from '@/hooks/use-academic-year-write-guard';
+import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import {
   useReportCardTemplatePreference,
@@ -21,6 +23,7 @@ import {
 } from '@/hooks/use-report-card-template-preference';
 import { useTranslation } from '@/hooks/useTranslation';
 import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
+import { getUiLocale } from '@/lib/acadia/locale';
 import {
   applyReportCardTemplateToAll,
   DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE,
@@ -40,8 +43,26 @@ function periodLabelKey(period: ReportCardTerm): string {
   return 'reports.term3';
 }
 
-function TemplatePreview({ templateId }: { templateId: ReportCardTemplateId }) {
-  const data = useMemo(() => sampleReportCardPreviewData(templateId), [templateId]);
+function TemplatePreview({
+  templateId,
+  sequencesPerYear,
+}: {
+  templateId: ReportCardTemplateId;
+  sequencesPerYear: number;
+}) {
+  const french = getUiLocale() === 'fr';
+  const data = useMemo(
+    () =>
+      sampleReportCardPreviewData(templateId, {
+        structure: {
+          termsPerYear: 3,
+          sequencesPerTerm: Math.max(1, Math.round(sequencesPerYear / 3)),
+          sequencesPerYear,
+        },
+        french,
+      }),
+    [templateId, sequencesPerYear, french],
+  );
   return (
     <div className="relative h-[380px] overflow-hidden rounded-lg border bg-muted/40">
       <div className="pointer-events-none origin-top-left scale-[0.38] w-[263%]">
@@ -55,6 +76,8 @@ export function ReportCardTemplatesWrapper() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canWrite = canWriteAcademicAdmin(session?.roleSlug);
+  const { activeYearId } = useActiveAcademicYear();
+  const { data: yearStructure } = useAcademicYearStructure(activeYearId ?? null);
   const { confirmWrite } = useAcademicYearWriteGuard();
   const { data: saved, isLoading } = useReportCardTemplatePreference();
   const savePreference = useSaveReportCardTemplatePreference();
@@ -73,6 +96,8 @@ export function ReportCardTemplatesWrapper() {
     if (!canWrite) return;
     const allowed = await confirmWrite();
     if (!allowed) return;
+    const confirmed = window.confirm(t('reports.templatesConfirmChange'));
+    if (!confirmed) return;
     setDraft(next);
     await savePreference.mutateAsync(next);
   };
@@ -117,7 +142,10 @@ export function ReportCardTemplatesWrapper() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <TemplatePreview templateId={template.id} />
+                <TemplatePreview
+                  templateId={template.id}
+                  sequencesPerYear={yearStructure?.sequencesPerYear ?? 6}
+                />
                 {canWrite ? (
                   <Button
                     type="button"

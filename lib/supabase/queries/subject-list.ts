@@ -49,8 +49,9 @@ export async function fetchSubjectList(
   supabase: SupabaseClient,
   tenantId: string,
   filters?: CatalogFilters,
+  options?: { academicYearId?: string | null },
 ): Promise<SubjectListRowView[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('Subject')
     .select(
       `
@@ -80,6 +81,12 @@ export async function fetchSubjectList(
     )
     .eq('tenantId', tenantId)
     .order('nameEn', { ascending: true });
+
+  if (options?.academicYearId) {
+    query = query.eq('academicYearId', options.academicYearId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
@@ -122,4 +129,42 @@ export async function fetchSubjectList(
     return mapped;
   }
   return mapped.filter((row) => rowMatchesCatalogFilters(row, filters));
+}
+
+export type SubjectDependencyCounts = {
+  classCount: number;
+  assignmentCount: number;
+  schemeCount: number;
+};
+
+export async function fetchSubjectDependencyCounts(
+  supabase: SupabaseClient,
+  tenantId: string,
+  subjectId: string,
+): Promise<SubjectDependencyCounts> {
+  const [classes, assignments, schemes] = await Promise.all([
+    supabase
+      .from('ClassSubject')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenantId', tenantId)
+      .eq('subjectId', subjectId),
+    supabase
+      .from('SubjectAssignment')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenantId', tenantId)
+      .eq('subjectId', subjectId),
+    supabase
+      .from('SchemeOfWork')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenantId', tenantId)
+      .eq('subjectId', subjectId),
+  ]);
+  if (classes.error) throw classes.error;
+  if (assignments.error) throw assignments.error;
+  if (schemes.error) throw schemes.error;
+  return {
+    classCount: classes.count ?? 0,
+    assignmentCount: assignments.count ?? 0,
+    schemeCount: schemes.count ?? 0,
+  };
 }

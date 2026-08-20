@@ -30,6 +30,7 @@ export type SubjectForClassOption = {
   subBranches: SubjectSubBranchOption[];
   groupingId: string | null;
   groupingNameEn: string | null;
+  groupingSortOrder?: number | null;
 };
 
 type SubjectRow = {
@@ -45,7 +46,10 @@ type SubjectRow = {
   termId: string | null;
   deactivatedAt: string | null;
   Term?: ClassSubjectEligibilitySubject['Term'];
-  SubjectGrouping?: { nameEn?: string | null } | { nameEn?: string | null }[] | null;
+  SubjectGrouping?:
+    | { nameEn?: string | null; sortOrder?: number | null }
+    | { nameEn?: string | null; sortOrder?: number | null }[]
+    | null;
   SubjectSubBranch?: {
     id: string;
     name: string;
@@ -98,7 +102,7 @@ export function useSubjectsForClass(filters: {
           termId,
           deactivatedAt,
           Term!Subject_semesterId_tenantId_fkey ( academicYearId ),
-          SubjectGrouping!Subject_groupingId_tenantId_fkey ( nameEn ),
+          SubjectGrouping!Subject_groupingId_tenantId_fkey ( nameEn, sortOrder ),
           SubjectSubBranch ( id, name, nameFr, sortOrder )
         `,
         )
@@ -148,9 +152,8 @@ export function useSubjectsForClass(filters: {
           : [];
 
         const groupingRel = subjectRow.SubjectGrouping;
-        const groupingNameEn = Array.isArray(groupingRel)
-          ? groupingRel[0]?.nameEn ?? null
-          : groupingRel?.nameEn ?? null;
+        const grouping = Array.isArray(groupingRel) ? groupingRel[0] : groupingRel;
+        const groupingNameEn = grouping?.nameEn ?? null;
 
         options.push({
           id: subjectRow.id,
@@ -164,6 +167,7 @@ export function useSubjectsForClass(filters: {
           })),
           groupingId: subjectRow.groupingId ?? null,
           groupingNameEn: groupingNameEn?.trim() || null,
+          groupingSortOrder: typeof grouping?.sortOrder === 'number' ? grouping.sortOrder : null,
         });
       }
 

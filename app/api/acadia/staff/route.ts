@@ -50,14 +50,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: result.message }, { status: result.status });
   }
 
-  await appendSystemLog(supabase, {
-    userId: auth.ctx.actorUserId,
-    event: 'staff.created',
-    description: `Provisioned staff ${result.staffCode}`,
-    entityId: result.staffId,
-    entityType: 'StaffProfile',
-    meta: { staffCode: result.staffCode },
-  });
+  try {
+    await appendSystemLog(supabase, {
+      userId: auth.ctx.actorUserId,
+      event: 'staff.created',
+      description: `Provisioned staff ${result.staffCode}`,
+      entityId: result.staffId,
+      entityType: 'StaffProfile',
+      meta: { staffCode: result.staffCode },
+    });
+  } catch (error) {
+    console.error('[staff.created] system log failed', error);
+  }
 
   return NextResponse.json(
     {

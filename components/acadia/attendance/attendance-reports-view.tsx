@@ -24,26 +24,35 @@ import {
 import { Search } from '@/lib/icons';
 import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { Input, InputWrapper } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AttendanceDataGrid } from '@/components/acadia/attendance/attendance-data-grid';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
+  ATTENDANCE_ROSTER_ENROLLMENT_STATUS,
+  buildAttendanceSummaryCsv,
+  chunkIds,
+  computeWeightedAttendancePercentage,
   countAttendanceStatuses,
   formatAttendancePercentage,
+  normalizeReportDateRange,
   summarizeStudentAttendance,
-  type AttendanceStatus,
   type StudentAttendanceSummary,
 } from '@/lib/acadia/attendance';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
+import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
 import {
   useAcadiaCollegeSession,
   isAcadiaTenantQueryEnabled,
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { fetchAttendanceRecordsForSessions } from '@/lib/supabase/queries/attendance-records';
 
 const ALL_SUBJECTS = '__all__';
+const ALL_CLASSES = '__all__';
 
 type SummaryRow = StudentAttendanceSummary & {
   name: string;
@@ -55,6 +64,7 @@ type SessionRow = {
   sessionDate: string;
   label: string;
   subjectCode: string;
+  className: string;
 };
 
 const SUMMARY_COLUMN_ORDER = [
@@ -64,7 +74,7 @@ const SUMMARY_COLUMN_ORDER = [
   'late',
   'rate',
 ];
-const SESSION_COLUMN_ORDER = ['sessionDate', 'subject', 'label'];
+const SESSION_COLUMN_ORDER = ['sessionDate', 'class', 'subject', 'label'];
 
 export function AttendanceReportsView() {
   const { t } = useTranslation();
@@ -73,10 +83,13 @@ export function AttendanceReportsView() {
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const [subjectId, setSubjectId] = useState(ALL_SUBJECTS);
+  const [classId, setClassId] = useState(ALL_CLASSES);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [includeWithdrawn, setIncludeWithdrawn] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const { data: subjects = [] } = useSubjectOptions(activeYearId ?? '');
+  const { data: classes = [] } = useClassesForFilters();
   const [summaryPagination, setSummaryPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -90,20 +103,37 @@ export function AttendanceReportsView() {
   const [sessionSorting, setSessionSorting] = useState<SortingState>([]);
   const [sessionColumnOrder, setSessionColumnOrder] = useState(SESSION_COLUMN_ORDER);
 
+  const dateRange = normalizeReportDateRange(fromDate, toDate);
+  const dateRangeError =
+    fromDate && toDate && fromDate > toDate
+      ? t('attendance.invalidDateRange')
+      : null;
+
   const query = useQuery({
     queryKey: [
       'attendance-reports',
       tenantId,
       activeYearId,
       subjectId,
-      fromDate,
-      toDate,
+      classId,
+      dateRange.fromDate,
+      dateRange.toDate,
+      includeWithdrawn,
     ],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       let sessionQuery = supabase
         .from('AttendanceSession')
-        .select('id, sessionDate, label, Subject!AttendanceSession_subjectId_tenantId_fkey ( code )')
+        .select(
+          `
+          id,
+          sessionDate,
+          label,
+          classId,
+          Subject!AttendanceSession_subjectId_tenantId_fkey ( code ),
+          Class!AttendanceSession_classId_tenantId_fkey ( name )
+        `,
+        )
         .eq('tenantId', tenantId!)
         .eq('academicYearId', activeYearId!)
         .order('sessionDate', { ascending: false });
@@ -111,11 +141,14 @@ export function AttendanceReportsView() {
       if (subjectId !== ALL_SUBJECTS) {
         sessionQuery = sessionQuery.eq('subjectId', subjectId);
       }
-      if (fromDate) {
-        sessionQuery = sessionQuery.gte('sessionDate', fromDate);
+      if (classId !== ALL_CLASSES) {
+        sessionQuery = sessionQuery.eq('classId', classId);
       }
-      if (toDate) {
-        sessionQuery = sessionQuery.lte('sessionDate', toDate);
+      if (dateRange.fromDate) {
+        sessionQuery = sessionQuery.gte('sessionDate', dateRange.fromDate);
+      }
+      if (dateRange.toDate) {
+        sessionQuery = sessionQuery.lte('sessionDate', dateRange.toDate);
       }
 
       const { data: sessions, error: sessionError } = await sessionQuery;
@@ -125,69 +158,103 @@ export function AttendanceReportsView() {
 
       const sessionIds = (sessions ?? []).map((s) => s.id as string);
       if (sessionIds.length === 0) {
-        return { sessions: [], summaries: [], totals: countAttendanceStatuses([]) };
+        return {
+          sessions: [],
+          summaries: [],
+          totals: countAttendanceStatuses([]),
+          overallRate: null as number | null,
+          sessionsWithoutMarks: 0,
+        };
       }
 
-      const { data: records, error: recordsError } = await supabase
-        .from('AttendanceRecord')
-        .select(
-          `
-          studentProfileId,
-          status,
-          attendanceSessionId,
-          StudentProfile!AttendanceRecord_studentProfileId_tenantId_fkey (
-            registrationNumber,
-            User!StudentProfile_userId_tenantId_fkey ( name )
-          )
-        `,
-        )
-        .eq('tenantId', tenantId!)
-        .in('attendanceSessionId', sessionIds);
-
-      if (recordsError) {
-        throw recordsError;
-      }
-
-      const statuses = (records ?? []).map(
-        (r) => r.status as AttendanceStatus,
+      let records = await fetchAttendanceRecordsForSessions(
+        supabase,
+        tenantId!,
+        sessionIds,
       );
-      const summaries = summarizeStudentAttendance(
-        (records ?? []).map((r) => ({
-          studentProfileId: r.studentProfileId as string,
-          status: r.status as AttendanceStatus,
-        })),
-      ).map((summary) => {
-        const record = (records ?? []).find(
-          (r) => r.studentProfileId === summary.studentProfileId,
+
+      if (!includeWithdrawn) {
+        const profileIds = Array.from(
+          new Set(records.map((r) => r.studentProfileId)),
         );
+        if (profileIds.length > 0) {
+          const enrolled = new Set<string>();
+          for (const chunk of chunkIds(profileIds)) {
+            const { data: enrollments, error: enrollError } = await supabase
+              .from('StudentEnrollment')
+              .select('studentProfileId')
+              .eq('tenantId', tenantId!)
+              .eq('academicYearId', activeYearId!)
+              .eq('status', ATTENDANCE_ROSTER_ENROLLMENT_STATUS)
+              .in('studentProfileId', chunk);
+            if (enrollError) {
+              throw enrollError;
+            }
+            for (const row of enrollments ?? []) {
+              enrolled.add(row.studentProfileId as string);
+            }
+          }
+          records = records.filter((r) => enrolled.has(r.studentProfileId));
+        }
+      }
+
+      const profileByStudent = new Map<
+        string,
+        { name: string; registrationNumber: string }
+      >();
+      for (const record of records) {
+        if (profileByStudent.has(record.studentProfileId)) {
+          continue;
+        }
         const profile = unwrapRelation<{
           registrationNumber?: string;
           User?: unknown;
-        }>(record?.StudentProfile);
+        }>(record.StudentProfile);
         const user = unwrapRelation<{ name?: string }>(profile?.User);
+        profileByStudent.set(record.studentProfileId, {
+          name: user?.name ?? profile?.registrationNumber ?? '—',
+          registrationNumber: profile?.registrationNumber ?? '—',
+        });
+      }
+
+      const statuses = records.map((r) => r.status);
+      const summaries = summarizeStudentAttendance(records).map((summary) => {
+        const profile = profileByStudent.get(summary.studentProfileId);
         return {
           ...summary,
-          name: user?.name ?? profile?.registrationNumber ?? '—',
+          name: profile?.name ?? '—',
           registrationNumber: profile?.registrationNumber ?? '—',
         };
       });
 
+      const sessionsWithMarks = new Set(
+        records
+          .map((r) => r.attendanceSessionId)
+          .filter((id): id is string => !!id),
+      );
+
       return {
         sessions: (sessions ?? []).map((s) => {
           const subject = unwrapRelation<{ code?: string }>(s.Subject);
+          const classRow = unwrapRelation<{ name?: string }>(s.Class);
           return {
             id: s.id as string,
             sessionDate: s.sessionDate as string,
             label: (s.label as string) ?? '—',
             subjectCode: subject?.code ?? '—',
+            className: classRow?.name ?? '—',
           };
         }),
         summaries,
         totals: countAttendanceStatuses(statuses),
+        overallRate: computeWeightedAttendancePercentage(statuses),
+        sessionsWithoutMarks: sessionIds.filter((id) => !sessionsWithMarks.has(id))
+          .length,
       };
     },
     enabled:
       !!activeYearId &&
+      !dateRangeError &&
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
@@ -216,7 +283,16 @@ export function AttendanceReportsView() {
   useEffect(() => {
     setSummaryPagination((prev) => ({ ...prev, pageIndex: 0 }));
     setSessionPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [subjectId, fromDate, toDate, studentSearch, summaries.length, recentSessions.length]);
+  }, [
+    subjectId,
+    classId,
+    fromDate,
+    toDate,
+    includeWithdrawn,
+    studentSearch,
+    summaries.length,
+    recentSessions.length,
+  ]);
 
   const summaryColumns = useMemo<ColumnDef<SummaryRow>[]>(
     () => [
@@ -282,7 +358,16 @@ export function AttendanceReportsView() {
         header: ({ column }) => (
           <DataGridColumnHeader title="Date" visibility column={column} />
         ),
-        size: 160,
+        size: 140,
+        enableSorting: true,
+      },
+      {
+        id: 'class',
+        accessorFn: (row) => row.className,
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Class" visibility column={column} />
+        ),
+        size: 140,
         enableSorting: true,
       },
       {
@@ -291,7 +376,7 @@ export function AttendanceReportsView() {
         header: ({ column }) => (
           <DataGridColumnHeader title="Subject" visibility column={column} />
         ),
-        size: 140,
+        size: 120,
         enableSorting: true,
       },
       {
@@ -299,7 +384,7 @@ export function AttendanceReportsView() {
         header: ({ column }) => (
           <DataGridColumnHeader title="Label" visibility column={column} />
         ),
-        size: 200,
+        size: 180,
         enableSorting: true,
       },
     ],
@@ -342,13 +427,50 @@ export function AttendanceReportsView() {
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const handleExportCsv = () => {
+    const csv = buildAttendanceSummaryCsv(summaries);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `attendance-report-${activeYearId ?? 'year'}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const emptySummaryMessage = (() => {
+    if (studentSearch.trim()) {
+      return t('attendance.noSearchMatches');
+    }
+    if ((data?.sessions.length ?? 0) > 0 && summaries.length === 0) {
+      return t('attendance.sessionsWithoutMarks');
+    }
+    return t('attendance.noRecordsInRange');
+  })();
+
   return (
     <div className="space-y-6 print:space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <CurrentAcademicYearBadge label="Year" />
         <div className="flex flex-wrap items-end justify-end gap-4">
+          <div className="min-w-[180px]">
+            <p className="mb-1.5 text-sm font-medium">{t('students.class')}</p>
+            <Select value={classId} onValueChange={setClassId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('students.allClasses')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_CLASSES}>{t('students.allClasses')}</SelectItem>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="min-w-[200px]">
-            <p className="text-sm font-medium mb-1.5">Subject</p>
+            <p className="mb-1.5 text-sm font-medium">{t('students.subject')}</p>
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger>
                 <SelectValue placeholder="All subjects" />
@@ -364,7 +486,7 @@ export function AttendanceReportsView() {
             </Select>
           </div>
           <div className="min-w-[180px]">
-            <p className="text-sm font-medium mb-1.5">From</p>
+            <p className="mb-1.5 text-sm font-medium">From</p>
             <DatePickerInput
               value={fromDate}
               onChange={setFromDate}
@@ -372,17 +494,39 @@ export function AttendanceReportsView() {
             />
           </div>
           <div className="min-w-[180px]">
-            <p className="text-sm font-medium mb-1.5">To</p>
+            <p className="mb-1.5 text-sm font-medium">To</p>
             <DatePickerInput
               value={toDate}
               onChange={setToDate}
               placeholder="Pick a date"
             />
           </div>
+          <label className="flex items-center gap-2 pb-2 text-sm">
+            <Checkbox
+              checked={includeWithdrawn}
+              onCheckedChange={(checked) => setIncludeWithdrawn(checked === true)}
+            />
+            {t('attendance.includeWithdrawn')}
+          </label>
+          <Button size="sm" variant="outline" onClick={handleExportCsv}>
+            {t('attendance.exportCsv')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => window.print()}>
+            {t('common.buttons.print')}
+          </Button>
         </div>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
+      {dateRangeError ? (
+        <p className="text-sm text-destructive print:hidden">{dateRangeError}</p>
+      ) : null}
+      {dateRange.inverted && !dateRangeError ? (
+        <p className="text-sm text-muted-foreground print:hidden">
+          {t('attendance.dateRangeSwapped')}
+        </p>
+      ) : null}
+
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5 print:grid-cols-5">
         <AdminOverviewStatCard
           title="Sessions"
           value={
@@ -418,7 +562,27 @@ export function AttendanceReportsView() {
           footer={isLoading ? 'Loading…' : 'Arrived late'}
           icon="notification"
         />
+        <AdminOverviewStatCard
+          title={t('attendance.excused')}
+          value={
+            isLoading || !totals ? '—' : formatDashboardStatValue(totals.excused)
+          }
+          footer={
+            isLoading
+              ? 'Loading…'
+              : formatAttendancePercentage(data?.overallRate ?? null)
+          }
+          icon="check"
+        />
       </div>
+
+      {(data?.sessionsWithoutMarks ?? 0) > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {t('attendance.sessionsWithoutMarksCount', {
+            count: data?.sessionsWithoutMarks ?? 0,
+          })}
+        </p>
+      ) : null}
 
       <AttendanceDataGrid
         table={summaryTable}
@@ -437,21 +601,17 @@ export function AttendanceReportsView() {
         isLoading={isLoading}
         isError={query.isError}
         error={query.error}
-        emptyMessage={
-          studentSearch.trim()
-            ? 'No students match your search.'
-            : 'No records in range.'
-        }
+        emptyMessage={emptySummaryMessage}
       />
 
       <AttendanceDataGrid
         table={sessionTable}
-        title="Recent sessions"
+        title={t('attendance.recentSessions')}
         recordCount={recentSessions.length}
         isLoading={isLoading}
         isError={query.isError}
         error={query.error}
-        emptyMessage="No sessions in range."
+        emptyMessage={t('attendance.noSessionsInRange')}
       />
     </div>
   );

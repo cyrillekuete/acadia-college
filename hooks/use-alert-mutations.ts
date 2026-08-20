@@ -2,21 +2,27 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { AlertFormValues, AlertGroupFormValues } from '@/lib/acadia/alert-schemas';
+import { alertSchema, type AlertFormValues, type AlertGroupFormValues } from '@/lib/acadia/alert-schemas';
 import {
-  ALERT_SENT_EVENT,
+  deliverAlertNotifications,
+  insertAlertRecipients,
+  resolveRecipientsForAlert,
+} from '@/lib/acadia/alert-dispatch';
+import {
+  alertScheduleIssue,
+  alertTargetsNeedAcademicYear,
   deriveAlertStatusOnSave,
+  diffGroupMemberIds,
+  filterAlertTargetsForTeacherScope,
   parseAlertTargetKeys,
   resolveAlertRecipients,
-  type AlertGroupMemberRow,
-  type EnrollmentClassRow,
-  type GuardianStudentLinkRow,
   type ResolvedAlertRecipient,
 } from '@/lib/acadia/alerts';
-import { shouldDeliverInAppNotification } from '@/lib/acadia/communication';
 import { localDateTimeInputToIso } from '@/lib/acadia/dates';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { getUiLocale } from '@/lib/acadia/locale';
+import { unwrapRelation } from '@/lib/acadia/record-display';
+import { isGuardian } from '@/lib/acadia/roles';
 import { appendSystemLog } from '@/lib/acadia/system-log';
 import {
   fetchWhatsAppConfigured,
@@ -24,6 +30,7 @@ import {
 } from '@/lib/acadia/whatsapp-request';
 import { formatWhatsAppSendToast } from '@/lib/acadia/whatsapp-types';
 import type { WhatsAppSendResult } from '@/lib/acadia/whatsapp-types';
+import { fetchAlertAudience } from '@/lib/supabase/queries/alert-audience';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 
@@ -44,121 +51,10 @@ function invalidateAlertQueries(queryClient: ReturnType<typeof useQueryClient>) 
   void queryClient.invalidateQueries({ queryKey: ['supabase-record'] });
 }
 
-async function fetchAlertAudience(
-  supabase: ReturnType<typeof requireBrowserClient>,
-  tenantId: string,
-  academicYearId: string | null,
-): Promise<{
-  links: GuardianStudentLinkRow[];
-  enrollments: EnrollmentClassRow[];
-  groupMembers: AlertGroupMemberRow[];
-}> {
-  const [linksResult, enrollmentsResult, membersResult] = await Promise.all([
-    supabase
-      .from('GuardianStudentLink')
-      .select('guardianUserId, studentProfileId')
-      .eq('tenantId', tenantId)
-      .is('consentRevokedAt', null),
-    academicYearId
-      ? supabase
-          .from('StudentEnrollment')
-          .select('studentProfileId, classId')
-          .eq('tenantId', tenantId)
-          .eq('academicYearId', academicYearId)
-          .eq('status', 'ENROLLED')
-      : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from('SchoolAlertGroupMember')
-      .select('groupId, guardianUserId')
-      .eq('tenantId', tenantId),
-  ]);
-
-  if (linksResult.error) {
-    throw linksResult.error;
-  }
-  if (enrollmentsResult.error) {
-    throw enrollmentsResult.error;
-  }
-  if (membersResult.error) {
-    throw membersResult.error;
-  }
-
-  return {
-    links: (linksResult.data ?? []) as GuardianStudentLinkRow[],
-    enrollments: (enrollmentsResult.data ?? []) as EnrollmentClassRow[],
-    groupMembers: (membersResult.data ?? []) as AlertGroupMemberRow[],
-  };
-}
-
-async function deliverAlertNotifications(
-  supabase: ReturnType<typeof requireBrowserClient>,
-  input: {
-    tenantId: string;
-    alertId: string;
-    titleEn: string;
-    titleFr: string;
-    bodyEn: string | null;
-    bodyFr: string | null;
-    recipients: ResolvedAlertRecipient[];
-  },
-): Promise<Map<string, string>> {
-  const notificationIds = new Map<string, string>();
-  if (input.recipients.length === 0) {
-    return notificationIds;
-  }
-
-  const recipientIds = input.recipients.map((row) => row.guardianUserId);
-  const { data: preferences, error: prefError } = await supabase
-    .from('NotificationPreference')
-    .select('userId, inApp')
-    .eq('tenantId', input.tenantId)
-    .eq('event', ALERT_SENT_EVENT)
-    .in('userId', recipientIds);
-
-  if (prefError) {
-    console.error('[deliverAlert] preferences', prefError.message);
-  }
-
-  const prefByUser = new Map(
-    (preferences ?? []).map((row) => [
-      row.userId as string,
-      { inApp: row.inApp as boolean },
-    ]),
-  );
-
-  const now = new Date().toISOString();
-  const rows = input.recipients
-    .filter((recipient) =>
-      shouldDeliverInAppNotification(prefByUser, recipient.guardianUserId, ALERT_SENT_EVENT),
-    )
-    .map((recipient) => {
-      const notificationId = generateAcadiaId('notif');
-      notificationIds.set(recipient.guardianUserId, notificationId);
-      return {
-        id: notificationId,
-        tenantId: input.tenantId,
-        userId: recipient.guardianUserId,
-        event: ALERT_SENT_EVENT,
-        titleEn: input.titleEn,
-        titleFr: input.titleFr,
-        bodyEn: input.bodyEn,
-        bodyFr: input.bodyFr,
-        data: { alertId: input.alertId },
-        createdAt: now,
-      };
-    });
-
-  if (rows.length === 0) {
-    return notificationIds;
-  }
-
-  const { error } = await supabase.from('Notification').insert(rows);
-  if (error) {
-    console.error('[deliverAlert] insert', error.message);
-    return new Map();
-  }
-  return notificationIds;
-}
+export type AlertTeacherScope = {
+  canBroadcastAll: boolean;
+  allowedClassIds: string[] | null;
+};
 
 export function useAlertMutations() {
   const queryClient = useQueryClient();
@@ -170,35 +66,56 @@ export function useAlertMutations() {
     mutationFn: async ({
       values,
       academicYearId,
+      teacherScope,
     }: {
       values: AlertFormValues;
       academicYearId: string | null;
+      teacherScope?: AlertTeacherScope;
     }) => {
       if (!tenantId || !userId) {
         throw new Error('Session required.');
       }
+      const parsed = alertSchema.safeParse(values);
+      if (!parsed.success) {
+        throw new Error(parsed.error.issues[0]?.message ?? 'Invalid announcement.');
+      }
+      const scheduleIssue = alertScheduleIssue(parsed.data);
+      if (scheduleIssue) {
+        throw new Error(scheduleIssue);
+      }
+
+      let targets = parseAlertTargetKeys(parsed.data.targetKeys);
+      if (teacherScope) {
+        targets = filterAlertTargetsForTeacherScope(targets, teacherScope);
+      }
+      if (targets.length === 0) {
+        throw new Error('No guardians match the selected groups.');
+      }
+      if (alertTargetsNeedAcademicYear(targets) && !academicYearId) {
+        throw new Error('Select an academic year before sending to a class or all guardians.');
+      }
+
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
       const alertId = generateAcadiaId('alrt');
-      const status = deriveAlertStatusOnSave(values, now);
-      const scheduledAt = values.sendNow
+      const status = deriveAlertStatusOnSave(parsed.data, now);
+      const scheduledAt = parsed.data.sendNow
         ? null
-        : localDateTimeInputToIso(values.scheduledAt);
+        : localDateTimeInputToIso(parsed.data.scheduledAt);
       const sentAt = status === 'SENT' ? now : null;
-      const targets = parseAlertTargetKeys(values.targetKeys);
       const audience = await fetchAlertAudience(supabase, tenantId, academicYearId);
       const recipients = resolveAlertRecipients(
         targets,
-        audience.links,
+        audience.eligibleLinks,
         audience.enrollments,
-        audience.groupMembers,
+        audience.activeGroupMembers,
       );
 
-      if (status === 'SENT' && recipients.length === 0) {
+      if ((status === 'SENT' || status === 'SCHEDULED') && recipients.length === 0) {
         throw new Error('No guardians match the selected groups.');
       }
 
-      if (status === 'SENT' && values.channel === 'whatsapp') {
+      if (status === 'SENT' && parsed.data.channel === 'whatsapp') {
         const configured = await fetchWhatsAppConfigured();
         if (!configured) {
           throw new Error('WhatsApp is not configured on this server.');
@@ -208,15 +125,17 @@ export function useAlertMutations() {
       const { error: alertError } = await supabase.from('SchoolAlert').insert({
         id: alertId,
         tenantId,
-        titleEn: values.titleEn.trim(),
-        titleFr: values.titleFr.trim(),
-        bodyEn: values.bodyEn?.trim() || null,
-        bodyFr: values.bodyFr?.trim() || null,
-        priority: values.priority,
-        channel: values.channel,
+        titleEn: parsed.data.titleEn.trim(),
+        titleFr: parsed.data.titleFr.trim(),
+        bodyEn: parsed.data.bodyEn?.trim() || null,
+        bodyFr: parsed.data.bodyFr?.trim() || null,
+        priority: parsed.data.priority,
+        channel: parsed.data.channel,
         status,
         scheduledAt,
         sentAt,
+        targetKeys: parsed.data.targetKeys,
+        academicYearId,
         createdByUserId: userId,
         createdAt: now,
         updatedAt: now,
@@ -225,35 +144,23 @@ export function useAlertMutations() {
         throw alertError;
       }
 
-      let notificationIds = new Map<string, string>();
       if (status === 'SENT') {
-        notificationIds = await deliverAlertNotifications(supabase, {
+        const notificationIds = await deliverAlertNotifications(supabase, {
           tenantId,
           alertId,
-          titleEn: values.titleEn.trim(),
-          titleFr: values.titleFr.trim(),
-          bodyEn: values.bodyEn?.trim() || null,
-          bodyFr: values.bodyFr?.trim() || null,
+          titleEn: parsed.data.titleEn.trim(),
+          titleFr: parsed.data.titleFr.trim(),
+          bodyEn: parsed.data.bodyEn?.trim() || null,
+          bodyFr: parsed.data.bodyFr?.trim() || null,
           recipients,
         });
-      }
-
-      if (recipients.length > 0) {
-        const rows = recipients.map((recipient) => ({
-          id: generateAcadiaId('alrc'),
+        await insertAlertRecipients(supabase, {
           tenantId,
           alertId,
-          guardianUserId: recipient.guardianUserId,
-          studentProfileIds: recipient.studentProfileIds,
-          notificationId: notificationIds.get(recipient.guardianUserId) ?? null,
-          createdAt: now,
-        }));
-        const { error: recipientError } = await supabase
-          .from('SchoolAlertRecipient')
-          .insert(rows);
-        if (recipientError) {
-          throw recipientError;
-        }
+          recipients,
+          notificationIds,
+          now,
+        });
       }
 
       await appendSystemLog(supabase, {
@@ -265,7 +172,7 @@ export function useAlertMutations() {
       });
 
       let whatsapp: WhatsAppSendResult | null = null;
-      if (status === 'SENT' && values.channel === 'whatsapp') {
+      if (status === 'SENT' && parsed.data.channel === 'whatsapp') {
         whatsapp = await requestWhatsAppAlertSend(alertId, getUiLocale());
       }
 
@@ -304,7 +211,9 @@ export function useAlertMutations() {
 
       const { data: alert, error: fetchError } = await supabase
         .from('SchoolAlert')
-        .select('id, titleEn, titleFr, bodyEn, bodyFr, status, channel')
+        .select(
+          'id, titleEn, titleFr, bodyEn, bodyFr, status, channel, targetKeys, academicYearId',
+        )
         .eq('id', alertId)
         .eq('tenantId', tenantId)
         .single();
@@ -324,24 +233,19 @@ export function useAlertMutations() {
         throw existingError;
       }
 
-      let recipients: ResolvedAlertRecipient[] = (existingRecipients ?? []).map((row) => ({
+      const existing: ResolvedAlertRecipient[] = (existingRecipients ?? []).map((row) => ({
         guardianUserId: row.guardianUserId as string,
         studentProfileIds: (row.studentProfileIds as string[] | null) ?? [],
       }));
 
-      if (recipients.length === 0) {
-        const audience = await fetchAlertAudience(supabase, tenantId, academicYearId);
-        recipients = resolveAlertRecipients(
-          [{ kind: 'all' }],
-          audience.links,
-          audience.enrollments,
-          audience.groupMembers,
-        );
-      }
-
-      if (recipients.length === 0) {
-        throw new Error('No guardians to notify.');
-      }
+      const yearId =
+        (alert.academicYearId as string | null) ?? academicYearId;
+      const recipients = await resolveRecipientsForAlert(supabase, {
+        tenantId,
+        academicYearId: yearId,
+        targetKeys: (alert.targetKeys as string[] | null) ?? [],
+        existing,
+      });
 
       if (alert.channel === 'whatsapp') {
         const configured = await fetchWhatsAppConfigured();
@@ -374,21 +278,13 @@ export function useAlertMutations() {
       });
 
       if ((existingRecipients ?? []).length === 0) {
-        const rows = recipients.map((recipient) => ({
-          id: generateAcadiaId('alrc'),
+        await insertAlertRecipients(supabase, {
           tenantId,
           alertId,
-          guardianUserId: recipient.guardianUserId,
-          studentProfileIds: recipient.studentProfileIds,
-          notificationId: notificationIds.get(recipient.guardianUserId) ?? null,
-          createdAt: now,
-        }));
-        const { error: insertError } = await supabase
-          .from('SchoolAlertRecipient')
-          .insert(rows);
-        if (insertError) {
-          throw insertError;
-        }
+          recipients,
+          notificationIds,
+          now,
+        });
       } else {
         for (const recipient of recipients) {
           const notificationId = notificationIds.get(recipient.guardianUserId);
@@ -491,7 +387,36 @@ export function useAlertMutations() {
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
       const id = groupId ?? generateAcadiaId('algrp');
-      const memberIds = [...new Set(values.guardianUserIds.map((item) => item.trim()).filter(Boolean))];
+      const memberIds = [
+        ...new Set(values.guardianUserIds.map((item) => item.trim()).filter(Boolean)),
+      ];
+
+      const { data: users, error: usersError } = await supabase
+        .from('User')
+        .select('id, status, isTrashed, UserRole:roleId ( slug )')
+        .eq('tenantId', tenantId)
+        .in('id', memberIds);
+      if (usersError) {
+        throw usersError;
+      }
+      const validIds = new Set(
+        (users ?? [])
+          .filter((row) => {
+            const role = unwrapRelation<{ slug?: string }>(
+              (row as { UserRole?: unknown }).UserRole,
+            );
+            return (
+              isGuardian(role?.slug) &&
+              row.status === 'ACTIVE' &&
+              row.isTrashed !== true
+            );
+          })
+          .map((row) => row.id as string),
+      );
+      const validMembers = memberIds.filter((memberId) => validIds.has(memberId));
+      if (validMembers.length === 0) {
+        throw new Error('Select at least one active guardian.');
+      }
 
       if (groupId) {
         const { error } = await supabase
@@ -505,14 +430,6 @@ export function useAlertMutations() {
           .eq('tenantId', tenantId);
         if (error) {
           throw error;
-        }
-        const { error: deleteError } = await supabase
-          .from('SchoolAlertGroupMember')
-          .delete()
-          .eq('groupId', groupId)
-          .eq('tenantId', tenantId);
-        if (deleteError) {
-          throw deleteError;
         }
       } else {
         const { error } = await supabase.from('SchoolAlertGroup').insert({
@@ -530,9 +447,33 @@ export function useAlertMutations() {
         }
       }
 
-      if (memberIds.length > 0) {
+      const { data: existingMembers, error: existingError } = await supabase
+        .from('SchoolAlertGroupMember')
+        .select('guardianUserId')
+        .eq('groupId', id)
+        .eq('tenantId', tenantId);
+      if (existingError) {
+        throw existingError;
+      }
+      const { toInsert, toDelete } = diffGroupMemberIds(
+        (existingMembers ?? []).map((row) => row.guardianUserId as string),
+        validMembers,
+      );
+
+      if (toDelete.length > 0) {
+        const { error } = await supabase
+          .from('SchoolAlertGroupMember')
+          .delete()
+          .eq('groupId', id)
+          .eq('tenantId', tenantId)
+          .in('guardianUserId', toDelete);
+        if (error) {
+          throw error;
+        }
+      }
+      if (toInsert.length > 0) {
         const { error } = await supabase.from('SchoolAlertGroupMember').insert(
-          memberIds.map((guardianUserId) => ({
+          toInsert.map((guardianUserId) => ({
             id: generateAcadiaId('algm'),
             tenantId,
             groupId: id,
@@ -567,6 +508,31 @@ export function useAlertMutations() {
         throw new Error('Session required.');
       }
       const supabase = requireBrowserClient();
+      const { data: alert, error: fetchError } = await supabase
+        .from('SchoolAlert')
+        .select('id, status')
+        .eq('id', alertId)
+        .eq('tenantId', tenantId)
+        .maybeSingle();
+      if (fetchError || !alert) {
+        throw fetchError ?? new Error('Alert not found.');
+      }
+
+      if (alert.status === 'SENT' || alert.status === 'SCHEDULED') {
+        const { error } = await supabase
+          .from('SchoolAlert')
+          .update({
+            status: 'CANCELLED',
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', alertId)
+          .eq('tenantId', tenantId);
+        if (error) {
+          throw error;
+        }
+        return { cancelled: true };
+      }
+
       const { error } = await supabase
         .from('SchoolAlert')
         .delete()
@@ -575,10 +541,11 @@ export function useAlertMutations() {
       if (error) {
         throw error;
       }
+      return { cancelled: false };
     },
-    onSuccess: () => {
+    onSuccess: ({ cancelled }) => {
       invalidateAlertQueries(queryClient);
-      toast.success('Announcement deleted.');
+      toast.success(cancelled ? 'Announcement cancelled.' : 'Announcement deleted.');
     },
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });

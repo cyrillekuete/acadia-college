@@ -63,6 +63,15 @@ export default function AcademicYearsPage() {
         size: 100,
       },
       {
+        accessorKey: 'isActive',
+        header: ({ column }) => (
+          <DataGridColumnHeader title="Active" visibility column={column} />
+        ),
+        cell: ({ row }) =>
+          row.original.isActive ? formatRecordValue(true) : t('academics.closedYear'),
+        size: 100,
+      },
+      {
         id: 'actions',
         header: '',
         size: 160,

@@ -1,4 +1,5 @@
 import { translate } from '@/lib/acadia/locale';
+import { CUSTOM_DOMAIN_IN_USE_MESSAGE } from '@/lib/acadia/tenant-profile';
 
 function readErrorMessage(error: unknown): string | null {
   if (error instanceof Error && error.message) {
@@ -33,8 +34,39 @@ function readErrorCode(error: unknown): string | null {
 
 function friendlyPostgresMessage(code: string, rawMessage: string): string | null {
   if (code === '23505') {
-    if (rawMessage.includes('Level_tenantId_subSystem_branch_name_key')) {
-      return translate('errors.levelNameExists');
+    if (rawMessage.includes('Class_tenantId_subSystem_branch_name_key')) {
+      return translate('errors.classNameExists');
+    }
+    if (rawMessage.includes('Subject_tenant_year_code_uidx')) {
+      return translate('errors.subjectCodeExists');
+    }
+    if (rawMessage.includes('SubjectAssignment_tenant_subject_staff_year_uidx')) {
+      return translate('errors.subjectTeacherAssigned');
+    }
+    if (rawMessage.includes('SubjectAssignment_one_lead_uidx')) {
+      return translate('errors.subjectLeadExists');
+    }
+    if (
+      rawMessage.includes('SubjectGrouping_tenant_lower_code_uidx') ||
+      rawMessage.includes('SubjectGrouping_tenantId_code_key')
+    ) {
+      return translate('errors.groupingCodeExists');
+    }
+    if (rawMessage.includes('AcademicYear_tenant_current_uidx')) {
+      return translate('errors.currentYearExists');
+    }
+    if (
+      rawMessage.includes('ExamSession_normal_sequence_uidx') ||
+      rawMessage.includes('ExamSession_resit_sequence_uidx') ||
+      rawMessage.includes('ExamSession_major_type_uidx')
+    ) {
+      return translate('errors.examSessionExists');
+    }
+    if (rawMessage.includes('StudentEnrollment_tenant_student_year_enrolled_uidx')) {
+      return translate('errors.studentAlreadyEnrolled');
+    }
+    if (rawMessage.includes('Tenant_customDomain_uidx')) {
+      return CUSTOM_DOMAIN_IN_USE_MESSAGE;
     }
     return translate('errors.duplicateRecord');
   }

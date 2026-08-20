@@ -1,4 +1,60 @@
+import { canManageUsers, canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import { type AcadiaMenuConfig, type AcadiaMenuItem } from './types';
+
+const ACCOUNT_PROFILE: AcadiaMenuItem = {
+  title: 'Profile',
+  titleKey: 'nav.profile',
+  path: '/account/home/user-profile',
+};
+const ACCOUNT_SECURITY: AcadiaMenuItem = {
+  title: 'Security',
+  titleKey: 'nav.security',
+  path: '/user-management/account/security',
+};
+const ACCOUNT_NOTIFICATIONS: AcadiaMenuItem = {
+  title: 'Notifications',
+  titleKey: 'nav.notifications',
+  path: '/account/notifications',
+};
+const ACCOUNT_INSTITUTION: AcadiaMenuItem = {
+  title: 'Institution',
+  titleKey: 'nav.institution',
+  path: '/account/home/company-profile',
+};
+const ACCOUNT_SETTINGS: AcadiaMenuItem = {
+  title: 'Settings',
+  titleKey: 'nav.settings',
+  path: '/account/home/settings-sidebar',
+};
+const ACCOUNT_GET_STARTED: AcadiaMenuItem = {
+  title: 'Get started',
+  titleKey: 'nav.getStarted',
+  path: '/account/home/get-started',
+};
+
+function buildMyAccountMenu(options?: {
+  institution?: boolean;
+  settings?: boolean;
+  getStarted?: boolean;
+}): AcadiaMenuItem {
+  const children: AcadiaMenuItem[] = [ACCOUNT_PROFILE];
+  if (options?.institution) {
+    children.push(ACCOUNT_INSTITUTION);
+  }
+  if (options?.settings) {
+    children.push(ACCOUNT_SETTINGS);
+  }
+  children.push(ACCOUNT_SECURITY, ACCOUNT_NOTIFICATIONS);
+  if (options?.getStarted) {
+    children.push(ACCOUNT_GET_STARTED);
+  }
+  return {
+    title: 'My account',
+    titleKey: 'nav.myAccount',
+    icon: 'setting-2',
+    children,
+  };
+}
 
 export const MENU_ACADIA: AcadiaMenuConfig = [
   {
@@ -117,6 +173,8 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
       { title: 'Expenditures', titleKey: 'nav.expenditures', path: '/finance/expenditures' },
       { title: 'Fee plan setup', titleKey: 'nav.feePlanSetup', path: '/finance/fees/setup' },
       { title: 'Financial reports', titleKey: 'nav.financialReports', path: '/finance/reports' },
+      { title: 'Income & expenses', titleKey: 'nav.ledger', path: '/finance/ledger' },
+      { title: 'Budget', titleKey: 'nav.budget', path: '/finance/budget' },
       { title: 'Scholarships', titleKey: 'nav.scholarships', path: '/finance/scholarships' },
     ],
   },
@@ -158,7 +216,6 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
     children: [
       { title: 'Users', titleKey: 'nav.users', path: '/admin/users' },
       { title: 'Roles', titleKey: 'nav.roles', path: '/admin/roles' },
-      { title: 'Account', titleKey: 'nav.account', path: '/user-management/account' },
       { title: 'Logs', titleKey: 'nav.logs', path: '/admin/logs' },
     ],
   },
@@ -172,19 +229,7 @@ export const MENU_ACADIA: AcadiaMenuConfig = [
       { title: 'API keys', titleKey: 'nav.apiKeys', path: '/account/api-keys' },
     ],
   },
-  {
-    title: 'My account',
-    titleKey: 'nav.myAccount',
-    icon: 'setting-2',
-    children: [
-      { title: 'Profile', titleKey: 'nav.profile', path: '/account/home/user-profile' },
-      { title: 'Institution', titleKey: 'nav.institution', path: '/account/home/company-profile' },
-      { title: 'Settings', titleKey: 'nav.settings', path: '/account/home/settings-sidebar' },
-      { title: 'Notifications', titleKey: 'nav.notifications', path: '/account/notifications' },
-      { title: 'API keys', titleKey: 'nav.apiKeys', path: '/account/api-keys' },
-      { title: 'Get started', titleKey: 'nav.getStarted', path: '/account/home/get-started' },
-    ],
-  },
+  buildMyAccountMenu({ institution: true, settings: true, getStarted: true }),
 ];
 
 const STUDENT_MENU: AcadiaMenuConfig = [
@@ -195,7 +240,7 @@ const STUDENT_MENU: AcadiaMenuConfig = [
   { title: 'Marks', titleKey: 'nav.marks', icon: 'document', path: '/marks' },
   { title: 'Coursework', titleKey: 'nav.coursework', icon: 'clipboard', path: '/coursework' },
   { title: 'Scheme of work', titleKey: 'nav.schemeOfWork', icon: 'book', path: '/scheme-of-work' },
-  { title: 'Fees', titleKey: 'nav.fees', icon: 'wallet', path: '/finance/fees' },
+  { title: 'Fees', titleKey: 'nav.fees', icon: 'wallet', path: '/finance/my-fees' },
   {
     title: 'Messages',
     titleKey: 'nav.messages',
@@ -207,15 +252,7 @@ const STUDENT_MENU: AcadiaMenuConfig = [
   },
   { title: 'Learning materials', titleKey: 'nav.learningMaterials', icon: 'folder', path: '/resources/materials' },
   { title: 'Resource requests', titleKey: 'nav.resourceRequests', icon: 'folder', path: '/resources/requests' },
-  {
-    title: 'My account',
-    titleKey: 'nav.myAccount',
-    icon: 'setting-2',
-    children: [
-      { title: 'Profile', titleKey: 'nav.profile', path: '/account/home/user-profile' },
-      { title: 'Notifications', titleKey: 'nav.notifications', path: '/account/notifications' },
-    ],
-  },
+  buildMyAccountMenu(),
 ];
 
 const STAFF_MENU: AcadiaMenuConfig = [
@@ -240,10 +277,15 @@ const STAFF_MENU: AcadiaMenuConfig = [
     children: [
       { title: 'All marks', titleKey: 'nav.allMarks', path: '/marks' },
       { title: 'Enter marks', titleKey: 'nav.enterMarks', path: '/marks/entry' },
+      { title: 'Grade reports', titleKey: 'nav.gradeReports', path: '/marks/reports' },
     ],
   },
   { title: 'Class report', titleKey: 'nav.classReport', icon: 'file-sheet', path: '/reports/class' },
+  { title: 'Sequence results', titleKey: 'nav.sequenceResults', icon: 'file-sheet', path: '/reports/sequence' },
+  { title: 'Term report cards', titleKey: 'nav.termReportCards', icon: 'file-sheet', path: '/reports/term' },
+  { title: 'Annual summary', titleKey: 'nav.annualSummary', icon: 'file-sheet', path: '/reports/annual' },
   { title: 'Class absences', titleKey: 'nav.classAbsences', icon: 'calendar-tick', path: '/reports/absences' },
+  { title: 'Promotion', titleKey: 'nav.promotion', icon: 'file-sheet', path: '/reports/promotion' },
   { title: 'Coursework', titleKey: 'nav.coursework', icon: 'clipboard', path: '/coursework' },
   { title: 'Scheme of work', titleKey: 'nav.schemeOfWork', icon: 'book', path: '/scheme-of-work' },
   {
@@ -276,15 +318,7 @@ const STAFF_MENU: AcadiaMenuConfig = [
       { title: 'Requests', titleKey: 'nav.requests', path: '/resources/requests' },
     ],
   },
-  {
-    title: 'My account',
-    titleKey: 'nav.myAccount',
-    icon: 'setting-2',
-    children: [
-      { title: 'Profile', titleKey: 'nav.profile', path: '/account/home/user-profile' },
-      { title: 'Notifications', titleKey: 'nav.notifications', path: '/account/notifications' },
-    ],
-  },
+  buildMyAccountMenu(),
 ];
 
 const BURSAR_MENU: AcadiaMenuConfig = [
@@ -300,6 +334,8 @@ const BURSAR_MENU: AcadiaMenuConfig = [
       { title: 'Expenditures', titleKey: 'nav.expenditures', path: '/finance/expenditures' },
       { title: 'Fee plan setup', titleKey: 'nav.feePlanSetup', path: '/finance/fees/setup' },
       { title: 'Financial reports', titleKey: 'nav.financialReports', path: '/finance/reports' },
+      { title: 'Income & expenses', titleKey: 'nav.ledger', path: '/finance/ledger' },
+      { title: 'Budget', titleKey: 'nav.budget', path: '/finance/budget' },
       { title: 'Scholarships', titleKey: 'nav.scholarships', path: '/finance/scholarships' },
     ],
   },
@@ -315,41 +351,77 @@ const BURSAR_MENU: AcadiaMenuConfig = [
   { title: 'Students', titleKey: 'nav.students', icon: 'users', path: '/students' },
   { title: 'Messages', titleKey: 'nav.messages', icon: 'message-text', path: '/messages' },
   { title: 'Announcements', titleKey: 'nav.announcements', icon: 'notification', path: '/announcements' },
-  {
-    title: 'My account',
-    titleKey: 'nav.myAccount',
-    icon: 'setting-2',
-    children: [
-      { title: 'Profile', titleKey: 'nav.profile', path: '/account/home/user-profile' },
-      { title: 'Institution', titleKey: 'nav.institution', path: '/account/home/company-profile' },
-      { title: 'Notifications', titleKey: 'nav.notifications', path: '/account/notifications' },
-    ],
-  },
+  buildMyAccountMenu({ institution: true }),
 ];
 
 const GUARDIAN_MENU: AcadiaMenuConfig = [
   { title: 'Dashboard', titleKey: 'nav.dashboard', icon: 'element-11', path: '/' },
   { title: 'Attendance', titleKey: 'nav.attendance', icon: 'calendar-tick', path: '/attendance' },
   { title: 'Marks', titleKey: 'nav.marks', icon: 'document', path: '/marks' },
-  { title: 'Fees', titleKey: 'nav.fees', icon: 'wallet', path: '/finance/fees' },
+  { title: 'Fees', titleKey: 'nav.fees', icon: 'wallet', path: '/finance/my-fees' },
   { title: 'Messages', titleKey: 'nav.messages', icon: 'message-text', path: '/messages' },
   { title: 'Announcements', titleKey: 'nav.announcements', icon: 'notification', path: '/announcements' },
-  {
-    title: 'My account',
-    titleKey: 'nav.myAccount',
-    icon: 'setting-2',
-    children: [
-      { title: 'Profile', titleKey: 'nav.profile', path: '/account/home/user-profile' },
-      { title: 'Notifications', titleKey: 'nav.notifications', path: '/account/notifications' },
-    ],
-  },
+  buildMyAccountMenu(),
 ];
+
+function filterUserManagementAdminItems(
+  menu: AcadiaMenuConfig,
+  roleSlug: string | null | undefined,
+): AcadiaMenuConfig {
+  return menu
+    .map((item) => {
+      if (item.titleKey !== 'nav.userManagement' || !item.children) {
+        return item;
+      }
+      if (!canManageUsers(roleSlug)) {
+        return null;
+      }
+      return item;
+    })
+    .filter((item): item is AcadiaMenuItem => item != null);
+}
+
+function filterAdministrationModuleItems(
+  menu: AcadiaMenuConfig,
+  roleSlug: string | null | undefined,
+): AcadiaMenuConfig {
+  const canManageAdminOps = canWriteAcademicAdmin(roleSlug);
+  return menu
+    .map((item) => {
+      if (item.titleKey !== 'nav.administration' || item.heading || !item.children) {
+        return item;
+      }
+      const children = item.children.filter((child) => {
+        if (
+          child.path === '/admin/data-retention' ||
+          child.path === '/account/api-keys'
+        ) {
+          return canManageAdminOps;
+        }
+        if (child.path === '/academics/promotion') {
+          return canManageAdminOps;
+        }
+        return true;
+      });
+      if (children.length === 0) {
+        return null;
+      }
+      return { ...item, children };
+    })
+    .filter((item): item is AcadiaMenuItem => item != null);
+}
 
 export function getMenuForRole(roleSlug: string | null | undefined): AcadiaMenuConfig {
   const slug = roleSlug?.toLowerCase() ?? '';
 
+  if (slug === 'bursar') {
+    return BURSAR_MENU.filter((item) => item.path !== '/announcements');
+  }
   if (slug === 'financial-director') {
-    return BURSAR_MENU;
+    return filterAdministrationModuleItems(
+      filterUserManagementAdminItems(MENU_ACADIA, roleSlug),
+      roleSlug,
+    );
   }
   if (slug === 'student') {
     return STUDENT_MENU;
@@ -357,16 +429,20 @@ export function getMenuForRole(roleSlug: string | null | undefined): AcadiaMenuC
   if (slug === 'lecturer' || slug === 'staff' || slug === 'teacher') {
     return STAFF_MENU;
   }
-  if (slug === 'guardian') {
+  if (slug === 'guardian' || slug === 'parent') {
     return GUARDIAN_MENU;
   }
 
-  return MENU_ACADIA;
+  return filterAdministrationModuleItems(
+    filterUserManagementAdminItems(MENU_ACADIA, roleSlug),
+    roleSlug,
+  );
 }
 
 type NavbarRoleKey =
   | 'default'
   | 'financial-director'
+  | 'bursar'
   | 'student'
   | 'staff'
   | 'guardian';
@@ -379,6 +455,7 @@ const NAVBAR_QUICK_LINK_KEYS: Record<NavbarRoleKey, string[]> = {
     'nav.userManagement',
   ],
   'financial-director': ['nav.finance', 'nav.transcripts', 'nav.students', 'nav.messages'],
+  bursar: ['nav.finance', 'nav.transcripts', 'nav.students', 'nav.messages'],
   student: ['nav.timetable', 'nav.marks', 'nav.fees', 'nav.messages'],
   staff: ['nav.students', 'nav.attendance', 'nav.marks', 'nav.exams'],
   guardian: ['nav.attendance', 'nav.marks', 'nav.fees', 'nav.messages'],
@@ -391,6 +468,9 @@ function resolveNavbarRoleKey(
 
   if (slug === 'financial-director') {
     return 'financial-director';
+  }
+  if (slug === 'bursar') {
+    return 'bursar';
   }
   if (slug === 'student') {
     return 'student';

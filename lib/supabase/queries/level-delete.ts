@@ -17,6 +17,7 @@ export type LevelDeleteBlockers = {
   promotionFrom: number;
   promotionTarget: number;
   schemesOfWork: number;
+  timetableSlots: number;
 };
 
 type LevelBlockerCountTable =
@@ -66,6 +67,7 @@ export async function fetchLevelDeleteBlockers(
   const classIds = (classes ?? []).map((row) => row.id as string);
   let classEnrollments = 0;
   let promotionClassRefs = 0;
+  let timetableSlots = 0;
   if (classIds.length > 0) {
     const { count: enrollmentCount, error: enrollmentError } = await supabase
       .from('StudentEnrollment')
@@ -96,6 +98,16 @@ export async function fetchLevelDeleteBlockers(
     }
 
     promotionClassRefs = (fromClassCount ?? 0) + (targetClassCount ?? 0);
+
+    const { count: slotCount, error: slotError } = await supabase
+      .from('TimetableSlot')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenantId', tenantId)
+      .in('classId', classIds);
+    if (slotError) {
+      throwMutationError(slotError);
+    }
+    timetableSlots = slotCount ?? 0;
   }
 
   const [
@@ -133,6 +145,7 @@ export async function fetchLevelDeleteBlockers(
     promotionFrom,
     promotionTarget,
     schemesOfWork,
+    timetableSlots,
   };
 }
 
@@ -145,6 +158,9 @@ export function formatLevelDeleteBlockers(blockers: LevelDeleteBlockers): string
     }
     if (blockers.promotionClassRefs > 0) {
       extras.push(`${blockers.promotionClassRefs} promotion decision(s) tied to those classes`);
+    }
+    if (blockers.timetableSlots > 0) {
+      extras.push(`${blockers.timetableSlots} timetable slot(s) on those classes`);
     }
     lines.push(
       `${blockers.classes} class(es)${extras.length > 0 ? ` (${extras.join('; ')})` : ''}`,
@@ -190,7 +206,8 @@ export function canCascadeDeleteClasses(blockers: LevelDeleteBlockers): boolean 
     blockers.studentProfiles === 0 &&
     blockers.promotionFrom === 0 &&
     blockers.promotionTarget === 0 &&
-    blockers.schemesOfWork === 0
+    blockers.schemesOfWork === 0 &&
+    blockers.timetableSlots === 0
   );
 }
 
@@ -206,7 +223,8 @@ export function hasNonClassBlockers(blockers: LevelDeleteBlockers): boolean {
     blockers.promotionTarget > 0 ||
     blockers.classEnrollments > 0 ||
     blockers.promotionClassRefs > 0 ||
-    blockers.schemesOfWork > 0
+    blockers.schemesOfWork > 0 ||
+    blockers.timetableSlots > 0
   );
 }
 

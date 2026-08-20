@@ -45,6 +45,7 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { getQueryErrorMessage } from '@/lib/acadia/query-errors';
 import { canWriteFinance } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useFinanceYearClosed } from '@/components/acadia/finance/finance-year-lock';
 
 type InstallmentRow = {
   id: string;
@@ -74,6 +75,7 @@ export function FeeAccountInstallments({
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const canManage = canWriteFinance(session?.roleSlug) && !readOnly;
+  const yearClosed = useFinanceYearClosed();
   const { recordFeePayment } = useFinanceMutations();
   const [payingInstallment, setPayingInstallment] =
     useState<PayableInstallment | null>(null);
@@ -374,6 +376,7 @@ function InstallmentsTable({
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={yearClosed}
                   onClick={() => onAddPayment(row.original)}
                 >
                   {t('finance.addPayment')}
@@ -388,7 +391,7 @@ function InstallmentsTable({
         enableSorting: false,
       },
     ];
-  }, [canManage, currency, onAddPayment, t]);
+  }, [canManage, currency, onAddPayment, t, yearClosed]);
 
   const table = useReactTable({
     data,

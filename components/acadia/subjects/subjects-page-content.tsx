@@ -47,5 +47,12 @@ export function SubjectsPageContent({
   if (mode === 'student') {
     return <StudentSubjectsView />;
   }
+  if (mode === 'restricted') {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t('subjects.catalogStaffOnly')}
+      </p>
+    );
+  }
   return <SubjectCatalogView initialSubjects={initialSubjects} />;
 }

@@ -18,7 +18,7 @@ export type SchemeOfWorkStatusValues = z.infer<typeof schemeOfWorkStatusSchema>;
 export const schemeOfWorkTopicSchema = z.object({
   parentTopicId: z.string().trim().optional().or(z.literal('')),
   titleEn: z.string().trim().min(1, 'validation.required.titleEn'),
-  titleFr: z.string().trim().optional().or(z.literal('')),
+  titleFr: z.string().trim().min(1, 'validation.required.titleFr'),
   descriptionEn: z.string().optional().or(z.literal('')),
   descriptionFr: z.string().optional().or(z.literal('')),
 });

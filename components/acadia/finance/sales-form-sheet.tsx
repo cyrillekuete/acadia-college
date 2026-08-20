@@ -44,6 +44,8 @@ import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
 import {
+  canEditSaleAmounts,
+  canEditSaleNotes,
   computeSaleTotalMinor,
   FINANCE_SALE_ITEM_TYPES,
   FINANCE_SALE_STATUSES,
@@ -60,6 +62,7 @@ import {
 import { useTranslation } from '@/hooks/useTranslation';
 
 const SALE_FORM_ID = 'finance-sale-form';
+const WALK_IN_VALUE = '__walk_in__';
 
 const SHEET_CONTENT_CLASS =
   'p-0 gap-0 sm:w-[500px] sm:max-w-none inset-5 start-auto h-auto rounded-lg [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5';
@@ -81,6 +84,8 @@ export function SalesFormSheet({
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const pending = createSale.isPending || updateSale.isPending;
+  const amountsLocked = isEdit && !!record && !canEditSaleAmounts(record.status);
+  const notesLocked = isEdit && !!record && !canEditSaleNotes(record.status);
   const [itemNameTouched, setItemNameTouched] = useState(false);
 
   const form = useForm<FinanceSaleFormValues>({
@@ -145,7 +150,7 @@ export function SalesFormSheet({
     if (record) {
       form.reset({
         academicYearId: activeYearId ?? '',
-        studentProfileId: record.studentProfileId,
+        studentProfileId: record.studentProfileId ?? '',
         itemType: record.itemType,
         itemName: record.itemName,
         quantity: record.quantity,
@@ -227,9 +232,11 @@ export function SalesFormSheet({
                       <FormItem>
                         <FormLabel>{t('finance.selectStudent')}</FormLabel>
                         <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isEdit}
+                          value={field.value || WALK_IN_VALUE}
+                          onValueChange={(value) =>
+                            field.onChange(value === WALK_IN_VALUE ? '' : value)
+                          }
+                          disabled={isEdit && amountsLocked}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -237,6 +244,9 @@ export function SalesFormSheet({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value={WALK_IN_VALUE}>
+                              {t('finance.walkInCustomer')}
+                            </SelectItem>
                             {(studentsQuery.data ?? []).map((student) => (
                               <SelectItem
                                 key={student.studentProfileId}
@@ -260,6 +270,7 @@ export function SalesFormSheet({
                         <FormLabel>{t('finance.itemType')}</FormLabel>
                         <Select
                           value={field.value}
+                          disabled={amountsLocked}
                           onValueChange={(value) => {
                             const itemType = value as FinanceSaleItemType;
                             field.onChange(itemType);
@@ -298,6 +309,7 @@ export function SalesFormSheet({
                         <FormControl>
                           <Input
                             {...field}
+                            disabled={amountsLocked}
                             onChange={(event) => {
                               setItemNameTouched(true);
                               field.onChange(event);
@@ -320,6 +332,7 @@ export function SalesFormSheet({
                             <Input
                               type="number"
                               min={1}
+                              disabled={amountsLocked}
                               value={field.value || ''}
                               onChange={(event) =>
                                 field.onChange(Number.parseInt(event.target.value, 10) || 0)
@@ -340,6 +353,7 @@ export function SalesFormSheet({
                             <Input
                               type="number"
                               min={0}
+                              disabled={amountsLocked}
                               value={field.value ? field.value / 100 : ''}
                               onChange={(event) =>
                                 field.onChange(parseMoneyToMinor(event.target.value))
@@ -366,6 +380,7 @@ export function SalesFormSheet({
                           <DatePickerInput
                             value={field.value ?? ''}
                             onChange={field.onChange}
+                            disabled={amountsLocked}
                           />
                         </FormControl>
                         <FormMessage />
@@ -373,7 +388,7 @@ export function SalesFormSheet({
                     )}
                   />
 
-                  {isEdit ? (
+                  {isEdit && !amountsLocked ? (
                     <FormField
                       control={form.control}
                       name="status"
@@ -410,7 +425,7 @@ export function SalesFormSheet({
                       <FormItem>
                         <FormLabel>{t('common.labels.notes')}</FormLabel>
                         <FormControl>
-                          <Textarea {...field} rows={3} />
+                          <Textarea {...field} rows={3} disabled={notesLocked} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -423,7 +438,7 @@ export function SalesFormSheet({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t('common.buttons.cancel')}
               </Button>
-              <Button type="submit" disabled={pending || !activeYearId}>
+              <Button type="submit" disabled={pending || !activeYearId || notesLocked}>
                 {pending ? <LoaderCircleIcon className="size-4 animate-spin" /> : null}
                 {isEdit ? t('common.buttons.save') : t('finance.addSale')}
               </Button>

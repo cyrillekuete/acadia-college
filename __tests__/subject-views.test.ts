@@ -17,9 +17,10 @@ describe('resolveSubjectsViewMode', () => {
     expect(resolveSubjectsViewMode('lecturer')).toBe('catalog');
   });
 
-  it('routes other roles to catalog mode', () => {
-    expect(resolveSubjectsViewMode('guardian')).toBe('catalog');
-    expect(resolveSubjectsViewMode(null)).toBe('catalog');
+  it('routes guardians to restricted mode', () => {
+    expect(resolveSubjectsViewMode('guardian')).toBe('restricted');
+    expect(resolveSubjectsViewMode('parent')).toBe('restricted');
+    expect(resolveSubjectsViewMode(null)).toBe('restricted');
   });
 });
 
@@ -27,6 +28,7 @@ describe('subjectsViewDescription', () => {
   it('returns a description for each mode', () => {
     expect(subjectsViewDescription('student')).toContain('class');
     expect(subjectsViewDescription('catalog')).toContain('catalog');
+    expect(subjectsViewDescription('restricted')).toContain('staff');
   });
 });
 
@@ -72,6 +74,16 @@ describe('toStudentClassSubjectRow', () => {
       assignedSubBranchIds: null,
     });
     expect(row?.groupingName).toBe('Class group');
+  });
+
+  it('clears grouping when forceUngrouped is set', () => {
+    const row = toStudentClassSubjectRow({
+      subject,
+      classGroupingName: 'Class group',
+      forceUngrouped: true,
+      assignedSubBranchIds: null,
+    });
+    expect(row?.groupingName).toBeNull();
   });
 
   it('falls back to the subject grouping when the class has none', () => {

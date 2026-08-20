@@ -41,9 +41,12 @@ export default function AdminRolesPage() {
       <SupabaseTableList
         table="UserRole"
         title={t('admin.roles')}
-        select="id, slug, name, description, isDefault, isProtected, createdAt"
+        select="id, slug, name, description, isDefault, isProtected, isTrashed, createdAt"
         columns={columns}
         searchKeys={['slug', 'name']}
+        filters={[{ column: 'isTrashed', value: false }]}
+        tenantColumn={null}
+        rowFilter={(row) => row.isTrashed !== true}
       />
     </AcadiaPageShell>
   );

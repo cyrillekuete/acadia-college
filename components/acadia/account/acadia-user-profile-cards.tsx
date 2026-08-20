@@ -48,7 +48,7 @@ export function AcadiaUserProfileCards() {
               },
               {
                 label: 'Email confirmed',
-                value: formatRecordValue(true),
+                value: 'Confirmed on this school (no verification email)',
               },
               {
                 label: 'User ID',

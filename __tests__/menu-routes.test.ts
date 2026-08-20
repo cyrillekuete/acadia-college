@@ -12,6 +12,7 @@ const MENU_ROLES = [
   'financial-director',
   'student',
   'guardian',
+  'parent',
 ] as const;
 
 /** Header / account-chrome links that must resolve after Metronic leftovers were retargeted. */
@@ -105,5 +106,82 @@ describe('menu and chrome routes have pages', () => {
   it('includes the report card templates page under /reports/templates', () => {
     expect(pageRoutes.has('/reports/templates')).toBe(true);
     expect(pageRoutes.has('/reports')).toBe(true);
+  });
+
+  it('maps parent to the guardian menu without Students', () => {
+    const parentPaths = collectMenuPaths(getMenuForRole('parent'));
+    const guardianPaths = collectMenuPaths(getMenuForRole('guardian'));
+    expect(parentPaths).toEqual(guardianPaths);
+    expect(parentPaths).not.toContain('/students');
+  });
+
+  it('includes Grade reports under Marks for teachers', () => {
+    const teacherPaths = collectMenuPaths(getMenuForRole('teacher'));
+    expect(teacherPaths).toContain('/marks/reports');
+    expect(teacherPaths).toContain('/marks/entry');
+  });
+
+  it('hides Users, Roles, and Logs from bursar', () => {
+    const bursarPaths = collectMenuPaths(getMenuForRole('bursar'));
+    expect(bursarPaths).toContain('/user-management/account/security');
+    expect(bursarPaths).not.toContain('/admin/users');
+    expect(bursarPaths).not.toContain('/admin/roles');
+    expect(bursarPaths).not.toContain('/admin/logs');
+    expect(bursarPaths).not.toContain('/admin/data-retention');
+    expect(bursarPaths).not.toContain('/account/api-keys');
+    expect(bursarPaths).not.toContain('/account/home/get-started');
+    expect(bursarPaths).not.toContain('/account/home/settings-sidebar');
+  });
+
+  it('adds Security to every role My Account menu', () => {
+    for (const role of MENU_ROLES) {
+      expect(collectMenuPaths(getMenuForRole(role))).toContain(
+        '/user-management/account/security',
+      );
+    }
+  });
+
+  it('keeps API keys under Administration, not My Account', () => {
+    const admin = getMenuForRole('admin');
+    const myAccount = admin.find((item) => item.titleKey === 'nav.myAccount');
+    const myAccountPaths = collectMenuPaths(myAccount ? [myAccount] : []);
+    expect(myAccountPaths).not.toContain('/account/api-keys');
+    expect(collectMenuPaths(admin)).toContain('/account/api-keys');
+    expect(collectMenuPaths(getMenuForRole('financial-director'))).toContain(
+      '/admin/data-retention',
+    );
+  });
+
+  it('does not give bursar the full admin My Account', () => {
+    const bursar = collectMenuPaths(getMenuForRole('bursar'));
+    const admin = collectMenuPaths(getMenuForRole('admin'));
+    expect(bursar).not.toContain('/academics/years');
+    expect(admin).toContain('/academics/years');
+  });
+
+  it('hides Institution, Settings, and API keys from students', () => {
+    const student = collectMenuPaths(getMenuForRole('student'));
+    expect(student).toContain('/account/home/user-profile');
+    expect(student).toContain('/user-management/account/security');
+    expect(student).toContain('/account/notifications');
+    expect(student).not.toContain('/account/home/company-profile');
+    expect(student).not.toContain('/account/home/settings-sidebar');
+    expect(student).not.toContain('/account/api-keys');
+    expect(student).not.toContain('/admin/users');
+  });
+
+  it('keeps Groups off student and guardian menus', () => {
+    expect(collectMenuPaths(getMenuForRole('student'))).not.toContain(
+      '/messages/groups',
+    );
+    expect(collectMenuPaths(getMenuForRole('guardian'))).not.toContain(
+      '/messages/groups',
+    );
+    expect(collectMenuPaths(getMenuForRole('teacher'))).toContain(
+      '/messages/groups',
+    );
+    expect(collectMenuPaths(getMenuForRole('admin'))).toContain(
+      '/messages/groups',
+    );
   });
 });

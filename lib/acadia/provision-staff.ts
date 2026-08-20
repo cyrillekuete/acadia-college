@@ -20,14 +20,35 @@ export type ProvisionStaffResult =
     }
   | { ok: false; message: string; status: number };
 
-const STAFF_ROLE_SLUGS = ['teacher', 'lecturer', 'staff'] as const;
+export const STAFF_ROLE_SLUGS = ['teacher', 'lecturer', 'staff'] as const;
 
-async function resolveStaffRoleId(
+export type ResolveStaffRoleResult =
+  | { ok: true; roleId: string }
+  | { ok: false; reason: 'invalid' | 'missing' };
+
+export async function resolveStaffRoleId(
   supabase: SupabaseClient,
   preferredRoleId?: string,
-): Promise<string | null> {
-  if (preferredRoleId?.trim()) {
-    return preferredRoleId.trim();
+): Promise<ResolveStaffRoleResult> {
+  const preferred = preferredRoleId?.trim();
+  if (preferred) {
+    const { data, error } = await supabase
+      .from('UserRole')
+      .select('id, slug')
+      .eq('id', preferred)
+      .eq('isTrashed', false)
+      .maybeSingle();
+
+    if (error || !data?.id) {
+      return { ok: false, reason: 'invalid' };
+    }
+
+    const slug = String(data.slug ?? '').toLowerCase();
+    if (!(STAFF_ROLE_SLUGS as readonly string[]).includes(slug)) {
+      return { ok: false, reason: 'invalid' };
+    }
+
+    return { ok: true, roleId: data.id as string };
   }
 
   const { data, error } = await supabase
@@ -37,18 +58,18 @@ async function resolveStaffRoleId(
     .in('slug', [...STAFF_ROLE_SLUGS]);
 
   if (error || !data?.length) {
-    return null;
+    return { ok: false, reason: 'missing' };
   }
 
   const bySlug = new Map(data.map((row) => [row.slug as string, row.id as string]));
   for (const slug of STAFF_ROLE_SLUGS) {
     const id = bySlug.get(slug);
     if (id) {
-      return id;
+      return { ok: true, roleId: id };
     }
   }
 
-  return (data[0]?.id as string) ?? null;
+  return { ok: false, reason: 'missing' };
 }
 
 function emptyToNull(value: string | undefined): string | null {
@@ -56,30 +77,103 @@ function emptyToNull(value: string | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-async function rollbackStaff(
+async function isStaffCodeTaken(
   supabase: SupabaseClient,
+  tenantId: string,
+  staffCode: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('StaffProfile')
+    .select('id')
+    .eq('tenantId', tenantId)
+    .eq('staffCode', staffCode)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+async function resolveUniqueStaffCode(
+  supabase: SupabaseClient,
+  tenantId: string,
+  preferred?: string,
+): Promise<{ ok: true; staffCode: string } | { ok: false; message: string }> {
+  const custom = emptyToNull(preferred);
+  if (custom) {
+    if (await isStaffCodeTaken(supabase, tenantId, custom)) {
+      return {
+        ok: false,
+        message: 'This staff code is already in use.',
+      };
+    }
+    return { ok: true, staffCode: custom };
+  }
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const candidate = generateStaffCode();
+    if (!(await isStaffCodeTaken(supabase, tenantId, candidate))) {
+      return { ok: true, staffCode: candidate };
+    }
+  }
+
+  return {
+    ok: false,
+    message: 'Unable to generate a unique staff code. Try again.',
+  };
+}
+
+async function rollbackStaff(
   admin: ReturnType<typeof createAdminClient>,
   authId: string,
   tenantId: string,
 ) {
-  await supabase
-    .from('StaffClassSubjectAssignment')
-    .delete()
-    .eq('staffProfileId', authId)
-    .eq('tenantId', tenantId);
-  await supabase
-    .from('StaffClassAssignment')
-    .delete()
-    .eq('staffProfileId', authId)
-    .eq('tenantId', tenantId);
-  await supabase
-    .from('SubjectAssignment')
-    .delete()
-    .eq('staffProfileId', authId)
-    .eq('tenantId', tenantId);
-  await supabase.from('StaffProfile').delete().eq('id', authId);
-  await supabase.from('User').delete().eq('id', authId);
-  await admin.auth.admin.deleteUser(authId);
+  const steps: Array<{ label: string; run: () => Promise<{ error: unknown }> }> = [
+    {
+      label: 'StaffClassSubjectAssignment',
+      run: async () =>
+        admin
+          .from('StaffClassSubjectAssignment')
+          .delete()
+          .eq('staffProfileId', authId)
+          .eq('tenantId', tenantId),
+    },
+    {
+      label: 'StaffClassAssignment',
+      run: async () =>
+        admin
+          .from('StaffClassAssignment')
+          .delete()
+          .eq('staffProfileId', authId)
+          .eq('tenantId', tenantId),
+    },
+    {
+      label: 'SubjectAssignment',
+      run: async () =>
+        admin
+          .from('SubjectAssignment')
+          .delete()
+          .eq('staffProfileId', authId)
+          .eq('tenantId', tenantId),
+    },
+    {
+      label: 'StaffProfile',
+      run: async () => admin.from('StaffProfile').delete().eq('id', authId),
+    },
+    {
+      label: 'User',
+      run: async () => admin.from('User').delete().eq('id', authId),
+    },
+  ];
+
+  for (const step of steps) {
+    const { error } = await step.run();
+    if (error) {
+      console.error(`[provision-staff] rollback ${step.label} failed`, error);
+    }
+  }
+
+  const { error: authDeleteError } = await admin.auth.admin.deleteUser(authId);
+  if (authDeleteError) {
+    console.error('[provision-staff] rollback auth user failed', authDeleteError);
+  }
 }
 
 async function insertSubjectAssignments(
@@ -148,42 +242,68 @@ async function insertClassAssignments(
   return { ok: true };
 }
 
-export async function provisionStaff(
+async function isLoginEmailTaken(
   supabase: SupabaseClient,
+  email: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('User')
+    .select('id')
+    .eq('email', email)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+export async function provisionStaff(
+  _sessionClient: SupabaseClient,
   input: StaffCreateInput,
   tenantId: string,
   actorUserId: string,
 ): Promise<ProvisionStaffResult> {
+  // Service-role writes bypass RLS so bursar/FD registry actors can provision
+  // after requireRegistryApi (user-scoped inserts would fail SQL admin checks).
   const admin = createAdminClient();
   const now = new Date().toISOString();
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
-  const staffCode = emptyToNull(input.staffCode) ?? generateStaffCode();
   const temporaryPassword = generateTemporaryPassword();
   const displayName = formatStaffDisplayName(input.title, firstName, lastName);
   const personalEmail = input.personalEmail.trim().toLowerCase();
 
-  const roleId = await resolveStaffRoleId(supabase, input.roleId);
-  if (!roleId) {
+  const roleResult = await resolveStaffRoleId(admin, input.roleId);
+  if (!roleResult.ok) {
+    if (roleResult.reason === 'invalid') {
+      return {
+        ok: false,
+        message: 'Selected role is not a staff or teacher role.',
+        status: 400,
+      };
+    }
     return {
       ok: false,
       message: 'No teacher/staff role is configured. Contact an administrator.',
       status: 500,
     };
   }
+  const roleId = roleResult.roleId;
 
+  const codeResult = await resolveUniqueStaffCode(admin, tenantId, input.staffCode);
+  if (!codeResult.ok) {
+    return { ok: false, message: codeResult.message, status: 400 };
+  }
+  const staffCode = codeResult.staffCode;
+
+  const takenEmails = new Set<string>();
   let loginEmail: string;
   try {
     loginEmail = await resolveStaffSystemEmail({
       firstName,
       lastName,
       isEmailTaken: async (email) => {
-        const { data } = await supabase
-          .from('User')
-          .select('id')
-          .eq('email', email)
-          .limit(1);
-        return (data?.length ?? 0) > 0;
+        if (takenEmails.has(email)) {
+          return true;
+        }
+        return isLoginEmailTaken(admin, email);
       },
     });
   } catch {
@@ -194,25 +314,57 @@ export async function provisionStaff(
     };
   }
 
-  const { data: authData, error: authError } = await admin.auth.admin.createUser({
-    email: loginEmail,
-    password: temporaryPassword,
-    email_confirm: true,
-    user_metadata: { name: displayName },
-  });
+  let authId: string | null = null;
+  for (let emailAttempt = 0; emailAttempt < 2; emailAttempt++) {
+    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+      email: loginEmail,
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: { name: displayName },
+    });
 
-  if (authError || !authData.user) {
-    const message =
+    if (!authError && authData.user) {
+      authId = authData.user.id;
+      break;
+    }
+
+    const alreadyExists =
       authError?.message?.includes('already been registered') ||
-      authError?.message?.includes('already exists')
+      authError?.message?.includes('already exists');
+
+    if (!alreadyExists || emailAttempt === 1) {
+      const message = alreadyExists
         ? 'A user with this login email already exists.'
         : (authError?.message ?? 'Failed to create auth account.');
-    return { ok: false, message, status: 400 };
+      return { ok: false, message, status: 400 };
+    }
+
+    takenEmails.add(loginEmail);
+    try {
+      loginEmail = await resolveStaffSystemEmail({
+        firstName,
+        lastName,
+        isEmailTaken: async (email) => {
+          if (takenEmails.has(email)) {
+            return true;
+          }
+          return isLoginEmailTaken(admin, email);
+        },
+      });
+    } catch {
+      return {
+        ok: false,
+        message: 'Unable to generate a unique login email for this teacher.',
+        status: 400,
+      };
+    }
   }
 
-  const authId = authData.user.id;
+  if (!authId) {
+    return { ok: false, message: 'Failed to create auth account.', status: 400 };
+  }
 
-  const { error: userError } = await supabase.from('User').insert({
+  const { error: userError } = await admin.from('User').insert({
     id: authId,
     email: loginEmail,
     name: displayName,
@@ -236,7 +388,7 @@ export async function provisionStaff(
     };
   }
 
-  const { error: staffError } = await supabase.from('StaffProfile').insert({
+  const { error: staffError } = await admin.from('StaffProfile').insert({
     id: authId,
     userId: authId,
     tenantId,
@@ -273,7 +425,7 @@ export async function provisionStaff(
   });
 
   if (staffError) {
-    await rollbackStaff(supabase, admin, authId, tenantId);
+    await rollbackStaff(admin, authId, tenantId);
     return {
       ok: false,
       message: staffError.message ?? 'Failed to create staff profile.',
@@ -282,7 +434,7 @@ export async function provisionStaff(
   }
 
   const subjectResult = await insertSubjectAssignments(
-    supabase,
+    admin,
     tenantId,
     authId,
     input.academicYearId,
@@ -290,12 +442,12 @@ export async function provisionStaff(
     now,
   );
   if (!subjectResult.ok) {
-    await rollbackStaff(supabase, admin, authId, tenantId);
+    await rollbackStaff(admin, authId, tenantId);
     return { ok: false, message: subjectResult.message, status: 400 };
   }
 
   const classResult = await insertClassAssignments(
-    supabase,
+    admin,
     tenantId,
     authId,
     input.academicYearId,
@@ -303,12 +455,12 @@ export async function provisionStaff(
     now,
   );
   if (!classResult.ok) {
-    await rollbackStaff(supabase, admin, authId, tenantId);
+    await rollbackStaff(admin, authId, tenantId);
     return { ok: false, message: classResult.message, status: 400 };
   }
 
   const classSubjectResult = await insertClassSubjectAssignmentsForStaff(
-    supabase,
+    admin,
     tenantId,
     authId,
     input.academicYearId,
@@ -317,7 +469,7 @@ export async function provisionStaff(
     now,
   );
   if (!classSubjectResult.ok) {
-    await rollbackStaff(supabase, admin, authId, tenantId);
+    await rollbackStaff(admin, authId, tenantId);
     return { ok: false, message: classSubjectResult.message, status: 400 };
   }
 

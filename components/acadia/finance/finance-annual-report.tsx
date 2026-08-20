@@ -13,8 +13,10 @@ import {
 } from '@/components/ui/table';
 import {
   aggregateFinanceSummary,
-  computeFeeAccountTotals,
+  FEE_BUDGET_CATEGORIES,
   formatMoneyMinor,
+  scholarshipMinorFromGrants,
+  totalsFromFeeAccountRecord,
 } from '@/lib/acadia/finance';
 import { ActiveAcademicYearPrintHeader } from '@/components/acadia/academics/active-academic-year-print-header';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
@@ -48,6 +50,8 @@ export function FinanceAnnualReport() {
           .select(
             `
             totalAmountMinor,
+            creditMinor,
+            withdrawnAt,
             StudentFeeInstallment ( amountMinor, status, paidAmountMinor ),
             StudentScholarship ( discountMinor )
           `,
@@ -61,7 +65,7 @@ export function FinanceAnnualReport() {
           .eq('academicYearId', activeYearId!),
         supabase
           .from('FinanceBudgetLine')
-          .select('budgetedMinor')
+          .select('category, budgetedMinor')
           .eq('tenantId', tenantId!)
           .eq('academicYearId', activeYearId!),
         supabase
@@ -70,12 +74,12 @@ export function FinanceAnnualReport() {
           .eq('tenantId', tenantId!)
           .eq('academicYearId', activeYearId!)
           .eq('status', 'COMPLETED'),
-        supabase
-          .from('Expenditure')
-          .select('amountMinor')
-          .eq('tenantId', tenantId!)
-          .eq('academicYearId', activeYearId!)
-          .eq('status', 'PAID'),
+          supabase
+            .from('Expenditure')
+            .select('amountMinor, budgetCategory')
+            .eq('tenantId', tenantId!)
+            .eq('academicYearId', activeYearId!)
+            .eq('status', 'PAID'),
       ]);
       if (accountsError) {
         throw accountsError;
@@ -93,40 +97,67 @@ export function FinanceAnnualReport() {
         throw expendituresError;
       }
 
-      const accountTotals = (accounts ?? []).map((account) => {
-        const installments = (account.StudentFeeInstallment ?? []) as Array<{
-          amountMinor: number;
-          status: string;
-          paidAmountMinor: number | null;
-        }>;
-        const scholarships = (account.StudentScholarship ?? []) as Array<{
-          discountMinor: number;
-        }>;
-        const scholarshipMinor = scholarships.reduce(
-          (s, x) => s + Number(x.discountMinor ?? 0),
+      const accountTotals = (accounts ?? [])
+        .filter((account) => !account.withdrawnAt)
+        .map((account) =>
+          totalsFromFeeAccountRecord({
+            totalAmountMinor: Number(account.totalAmountMinor),
+            creditMinor: account.creditMinor,
+            StudentFeeInstallment: account.StudentFeeInstallment,
+            StudentScholarship: account.StudentScholarship,
+          }),
+        );
+
+      const scholarshipAwarded = (accounts ?? [])
+        .filter((account) => !account.withdrawnAt)
+        .reduce(
+          (sum, account) =>
+            sum + scholarshipMinorFromGrants(account.StudentScholarship),
           0,
         );
-        return computeFeeAccountTotals({
-          totalAmountMinor: Number(account.totalAmountMinor),
-          scholarshipMinor,
-          installments,
-        });
-      });
+
+      const completedSalesMinor = (sales ?? []).reduce(
+        (sum, row) => sum + Number(row.totalMinor ?? 0),
+        0,
+      );
+      const paidExpendituresMinor = (expenditures ?? []).reduce(
+        (sum, row) => sum + Number(row.amountMinor ?? 0),
+        0,
+      );
 
       const summary = aggregateFinanceSummary(
         accountTotals,
         (ledger ?? []) as Array<{ entryType: string; amountMinor: number }>,
         {
-          completedSalesMinor: (sales ?? []).reduce(
-            (sum, row) => sum + Number(row.totalMinor ?? 0),
-            0,
-          ),
-          paidExpendituresMinor: (expenditures ?? []).reduce(
-            (sum, row) => sum + Number(row.amountMinor ?? 0),
-            0,
-          ),
+          completedSalesMinor,
+          paidExpendituresMinor,
         },
       );
+
+      const budgetByCategory = new Map<string, number>();
+      for (const row of budget ?? []) {
+        budgetByCategory.set(
+          String(row.category),
+          Number(row.budgetedMinor ?? 0),
+        );
+      }
+      const actualByCategory = new Map<string, number>();
+      actualByCategory.set('Tuition', summary.totalPaidMinor);
+      actualByCategory.set('Merchandise', completedSalesMinor);
+      actualByCategory.set('Scholarships', scholarshipAwarded);
+      for (const row of expenditures ?? []) {
+        const category = String(row.budgetCategory || 'Other');
+        actualByCategory.set(
+          category,
+          (actualByCategory.get(category) ?? 0) + Number(row.amountMinor ?? 0),
+        );
+      }
+
+      const budgetLines = FEE_BUDGET_CATEGORIES.map((category) => ({
+        category,
+        budgetedMinor: budgetByCategory.get(category) ?? 0,
+        actualMinor: actualByCategory.get(category) ?? 0,
+      })).filter((row) => row.budgetedMinor > 0 || row.actualMinor > 0);
 
       const totalBudgeted = (budget ?? []).reduce(
         (s, row) => s + Number(row.budgetedMinor),
@@ -137,6 +168,8 @@ export function FinanceAnnualReport() {
         yearLabel: activeYear?.label ?? activeYearId!,
         summary,
         totalBudgeted,
+        budgetLines,
+        scholarshipAwarded,
         ledgerCount: ledger?.length ?? 0,
         generatedAt: new Date().toISOString().slice(0, 10),
       };
@@ -196,7 +229,7 @@ export function FinanceAnnualReport() {
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Collections</TableCell>
+                  <TableCell>Fee collections</TableCell>
                   <TableCell className="text-right">
                     {formatMoneyMinor(query.data.summary.totalPaidMinor)}
                   </TableCell>
@@ -208,7 +241,13 @@ export function FinanceAnnualReport() {
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Income</TableCell>
+                  <TableCell>Scholarships awarded</TableCell>
+                  <TableCell className="text-right">
+                    {formatMoneyMinor(query.data.scholarshipAwarded)}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Other income (sales + ledger)</TableCell>
                   <TableCell className="text-right">
                     {formatMoneyMinor(query.data.summary.incomeMinor)}
                   </TableCell>
@@ -220,7 +259,7 @@ export function FinanceAnnualReport() {
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-semibold">Net</TableCell>
+                  <TableCell className="font-semibold">Net (other income − expenses)</TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatMoneyMinor(query.data.summary.netMinor)}
                   </TableCell>
@@ -228,9 +267,21 @@ export function FinanceAnnualReport() {
                 <TableRow>
                   <TableCell>Total budget</TableCell>
                   <TableCell className="text-right">
-                    {formatMoneyMinor(query.data.totalBudgeted)}
+                    {query.data.totalBudgeted > 0
+                      ? formatMoneyMinor(query.data.totalBudgeted)
+                      : 'No budget set'}
                   </TableCell>
                 </TableRow>
+                {query.data.budgetLines.map((row) => (
+                  <TableRow key={row.category}>
+                    <TableCell className="pl-6 text-muted-foreground">
+                      {row.category} (budget / actual)
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMoneyMinor(row.budgetedMinor)} / {formatMoneyMinor(row.actualMinor)}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </CardContent>

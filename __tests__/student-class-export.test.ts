@@ -262,4 +262,25 @@ describe('studentsForClassExport', () => {
 
     expect(rows.map((row) => row.id)).toEqual(['a', 'z']);
   });
+
+  it('excludes withdrawn students unless includeWithdrawn is set', () => {
+    const students = [
+      student({ id: 'active', class_id: 'class-a', enrollment_status: 'active' }),
+      student({
+        id: 'out',
+        class_id: 'class-a',
+        enrollment_status: 'inactive',
+      }),
+    ];
+    expect(
+      studentsForClassExport(students, { id: 'class-a', name: 'Form 5A' }).map(
+        (row) => row.id,
+      ),
+    ).toEqual(['active']);
+    expect(
+      studentsForClassExport(students, { id: 'class-a', name: 'Form 5A' }, true).map(
+        (row) => row.id,
+      ),
+    ).toEqual(['active', 'out']);
+  });
 });

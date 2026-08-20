@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { CLASS_DISCIPLINE_TERMS } from '@/lib/acadia/class-discipline';
 
 const countField = (max: number) =>
   z.coerce.number().int().min(0).max(max);
@@ -14,11 +13,13 @@ export const classDisciplineDraftSchema = z.object({
 export const classDisciplineSaveSchema = z.object({
   academicYearId: z.string().min(1),
   classId: z.string().min(1),
-  termNumber: z.coerce.number().int().min(1).max(3),
+  termNumber: z.coerce.number().int().min(1).max(12),
   rows: z.array(classDisciplineDraftSchema),
 });
 
-export const classDisciplineTermSchema = z.enum(CLASS_DISCIPLINE_TERMS);
+export const classDisciplineTermSchema = z
+  .string()
+  .regex(/^(?:[1-9]|1[0-2])$/, 'Term must be 1–12.');
 
 export type ClassDisciplineDraftValues = z.infer<typeof classDisciplineDraftSchema>;
 export type ClassDisciplineSaveValues = z.infer<typeof classDisciplineSaveSchema>;

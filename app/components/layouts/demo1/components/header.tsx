@@ -7,8 +7,9 @@ import { NotificationsSheet } from '@/partials/topbar/notifications-sheet';
 import { UserDropdownMenu } from '@/partials/topbar/user-dropdown-menu';
 import { Bell, Menu, MessageCircleMore } from 'lucide-react';
 import { AcademicYearSwitcher } from '@/components/acadia/academics/academic-year-switcher';
+import { UserAvatar } from '@/components/acadia/account/user-avatar';
 import { TenantLogo } from '@/components/acadia/tenant-logo';
-import { toAbsoluteUrl } from '@/lib/helpers';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useScrollPosition } from '@/hooks/use-scroll-position';
@@ -27,6 +28,7 @@ import { SidebarMenu } from './sidebar-menu';
 
 export function Header() {
   const [isSidebarSheetOpen, setIsSidebarSheetOpen] = useState(false);
+  const { data: session } = useAcadiaCollegeSession();
 
   const pathname = usePathname();
   const mobileMode = useIsMobile();
@@ -113,11 +115,18 @@ export function Header() {
           </Button>
           <UserDropdownMenu
             trigger={
-              <img
-                className="size-9 rounded-full border-2 border-green-500 shrink-0 cursor-pointer"
-                src={toAbsoluteUrl('/media/avatars/300-2.png')}
-                alt="User Avatar"
-              />
+              <button
+                type="button"
+                className="shrink-0 cursor-pointer rounded-full border-2 border-green-500"
+                aria-label="Account menu"
+              >
+                <UserAvatar
+                  className="size-9"
+                  name={session?.profile?.name}
+                  email={session?.profile?.email ?? session?.authUser?.email}
+                  avatar={session?.profile?.avatar}
+                />
+              </button>
             }
           />
         </div>

@@ -27,6 +27,7 @@ export type ClassSubjectDisplayInput = {
     subBranches: StudentClassSubjectSubBranch[];
   } | null;
   classGroupingName: string | null;
+  forceUngrouped?: boolean;
   assignedSubBranchIds: string[] | null;
 };
 
@@ -39,7 +40,9 @@ export function toStudentClassSubjectRow(
   }
 
   const groupingName =
-    input.classGroupingName?.trim() || subject.groupingName?.trim() || null;
+    input.forceUngrouped
+      ? null
+      : input.classGroupingName?.trim() || subject.groupingName?.trim() || null;
 
   const assignedIds = input.assignedSubBranchIds;
   const subBranches =

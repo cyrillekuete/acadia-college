@@ -12,35 +12,48 @@ import {
 import { useSettings } from '@/providers/settings-provider';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
+import { AccountAccessGate } from '@/components/acadia/account/account-access-gate';
 import { AccountCompanyProfileContent } from '@/app/(protected)/account/home/company-profile/content';
-import { PageNavbar } from '@/app/(protected)/account/page-navbar';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canViewInstitutionProfile, canViewTenantSettings } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AccountCompanyProfilePage() {
   const { settings } = useSettings();
+  const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
+  const canOpenSettings = canViewTenantSettings(session?.roleSlug);
 
   return (
-    <Fragment>
-      <PageNavbar />
-      {settings?.layout === 'demo1' && (
+    <AccountAccessGate allowed={canViewInstitutionProfile(session?.roleSlug)}>
+      <Fragment>
+        {settings?.layout === 'demo1' && (
+          <Container>
+            <Toolbar>
+              <ToolbarHeading>
+                <ToolbarPageTitle />
+                <ToolbarDescription>
+                  {t('account.institutionDescription', {
+                    defaultValue: 'School identity, contact, and branding.',
+                  })}
+                </ToolbarDescription>
+              </ToolbarHeading>
+              {canOpenSettings ? (
+                <ToolbarActions>
+                  <Button variant="outline" asChild>
+                    <Link href="/account/home/settings-sidebar">
+                      {t('nav.settings')}
+                    </Link>
+                  </Button>
+                </ToolbarActions>
+              ) : null}
+            </Toolbar>
+          </Container>
+        )}
         <Container>
-          <Toolbar>
-            <ToolbarHeading>
-              <ToolbarPageTitle />
-              <ToolbarDescription>
-                Acadia College institution profile from Supabase
-              </ToolbarDescription>
-            </ToolbarHeading>
-            <ToolbarActions>
-              <Button variant="outline" asChild>
-                <Link href="/account/home/settings-sidebar">System settings</Link>
-              </Button>
-            </ToolbarActions>
-          </Toolbar>
+          <AccountCompanyProfileContent />
         </Container>
-      )}
-      <Container>
-        <AccountCompanyProfileContent />
-      </Container>
-    </Fragment>
+      </Fragment>
+    </AccountAccessGate>
   );
 }

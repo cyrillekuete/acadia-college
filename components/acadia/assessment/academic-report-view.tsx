@@ -30,12 +30,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  computeStudentSubjectAverages,
-  formatMarkScore,
-  isPassingScore,
-  rankStudents,
-} from '@/lib/acadia/assessment';
+import { formatMarkScore } from '@/lib/acadia/assessment';
+import { buildAcademicReportRankings } from '@/lib/acadia/academic-report';
 import {
   academicReportFiltersSchema,
   type AcademicReportFiltersValues,
@@ -54,24 +50,24 @@ import {
   useSequenceOptions,
 } from '@/hooks/use-assessment-catalog-options';
 import { useLevelsForStream } from '@/hooks/use-enrollment-catalog-options';
-import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
+import {
+  useAcadiaCollegeSession,
+  isAcadiaTenantQueryEnabled,
+} from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
-export type AcademicReportKind =
-  | 'sequence'
-  | 'term'
-  | 'annual'
-  | 'promotion';
+export type AcademicReportKind = 'sequence' | 'term' | 'annual';
 
-const REPORT_TITLES: Record<AcademicReportKind, string> = {
-  sequence: 'Sequence results',
-  term: 'Term report card',
-  annual: 'Annual academic summary',
-  promotion: 'Promotion / admission statement',
+const REPORT_TITLE_KEYS: Record<AcademicReportKind, string> = {
+  sequence: 'marks.reportKind.sequence',
+  term: 'marks.reportKind.term',
+  annual: 'marks.reportKind.annual',
 };
 
 export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -235,45 +231,21 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
         ];
       });
 
-      const averages = computeStudentSubjectAverages(snapshots);
-      const courseCountByStudent = new Map<string, number>();
-      for (const snapshot of snapshots) {
-        const key = `${snapshot.studentProfileId}:${snapshot.subjectId}`;
-        courseCountByStudent.set(key, 1);
-      }
-      const subjectCounts = new Map<string, number>();
-      for (const key of Array.from(courseCountByStudent.keys())) {
-        const studentId = key.split(':')[0];
-        subjectCounts.set(studentId, (subjectCounts.get(studentId) ?? 0) + 1);
-      }
-
-      const ranked = rankStudents(
-        Array.from(averages.entries()).map(([studentProfileId, average]) => ({
-          studentProfileId,
-          average,
-          courseCount: subjectCounts.get(studentProfileId) ?? 0,
-        })),
-      );
-
       const enrollmentByStudent = new Map(
         (enrollments ?? []).map((e) => [
           e.studentProfileId as string,
-          e.StudentProfile,
+          unwrapRelation<{
+            registrationNumber?: string;
+            User?: unknown;
+          }>(e.StudentProfile) ?? undefined,
         ]),
       );
+      const enrolledStudentIds = new Set(enrollmentByStudent.keys());
 
-      return ranked.map((row) => {
-        const profile = unwrapRelation<{
-          registrationNumber?: string;
-          User?: unknown;
-        }>(enrollmentByStudent.get(row.studentProfileId));
-        const user = unwrapRelation<{ name?: string }>(profile?.User);
-        return {
-          ...row,
-          name: user?.name ?? profile?.registrationNumber ?? row.studentProfileId,
-          registrationNumber: profile?.registrationNumber ?? '—',
-          passing: isPassingScore(row.average),
-        };
+      return buildAcademicReportRankings({
+        snapshots,
+        enrolledStudentIds,
+        enrollmentByStudent,
       });
     },
     enabled:
@@ -289,9 +261,18 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
 
   const showTermField = kind === 'term';
   const showSequenceField = kind === 'sequence';
+  const emptyMessage = submitted
+    ? t('marks.reportEmpty')
+    : t('marks.reportPrompt');
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 12mm; }
+          .academic-report-print { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        }
+      `}</style>
       <Form {...form}>
         <form
           onSubmit={onSubmit}
@@ -302,7 +283,7 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
             name="academicYearId"
             render={({ field }) => (
               <FormItem className="min-w-[160px]">
-                <FormLabel>Year</FormLabel>
+                <FormLabel>{t('marks.year')}</FormLabel>
                 <CurrentAcademicYearBadge />
                 <FormControl>
                   <Input type="hidden" {...field} />
@@ -316,11 +297,11 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
             name="subSystem"
             render={({ field }) => (
               <FormItem className="min-w-[180px]">
-                <FormLabel>Sub-system</FormLabel>
+                <FormLabel>{t('marks.subSystem')}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Sub-system" />
+                      <SelectValue placeholder={t('marks.subSystem')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -340,11 +321,11 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
             name="branch"
             render={({ field }) => (
               <FormItem className="min-w-[160px]">
-                <FormLabel>Branch</FormLabel>
+                <FormLabel>{t('marks.branch')}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Branch" />
+                      <SelectValue placeholder={t('marks.branch')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -364,11 +345,11 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
             name="levelId"
             render={({ field }) => (
               <FormItem className="min-w-[140px]">
-                <FormLabel>Level</FormLabel>
+                <FormLabel>{t('marks.level')}</FormLabel>
                 <Select value={field.value} onValueChange={field.onChange}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Level" />
+                      <SelectValue placeholder={t('marks.level')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -389,17 +370,17 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
               name="termId"
               render={({ field }) => (
                 <FormItem className="min-w-[120px]">
-                  <FormLabel>Term</FormLabel>
+                  <FormLabel>{t('marks.term')}</FormLabel>
                   <Select value={field.value ?? ''} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Term" />
+                        <SelectValue placeholder={t('marks.term')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {terms.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          Term {t.number}
+                      {terms.map((term) => (
+                        <SelectItem key={term.id} value={term.id}>
+                          {t('marks.termNumber', { number: term.number })}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -414,11 +395,11 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
               name="sequenceId"
               render={({ field }) => (
                 <FormItem className="min-w-[180px]">
-                  <FormLabel>Sequence</FormLabel>
+                  <FormLabel>{t('marks.sequence')}</FormLabel>
                   <Select value={field.value ?? ''} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sequence" />
+                        <SelectValue placeholder={t('marks.sequence')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -433,39 +414,36 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
               )}
             />
           ) : null}
-          <Button type="submit">Generate</Button>
+          <Button type="submit">{t('marks.generateReport')}</Button>
           <Button type="button" variant="outline" onClick={() => window.print()}>
             <Printer className="size-4 mr-1" />
-            Print
+            {t('common.buttons.print')}
           </Button>
         </form>
       </Form>
 
-      <div className="print:p-8 space-y-4">
+      <div className="academic-report-print print:p-8 space-y-4">
         <div className="text-center">
           <h2 className="text-xl font-semibold">Acadia College</h2>
-          <p className="text-muted-foreground">{REPORT_TITLES[kind]}</p>
+          <p className="text-muted-foreground">{t(REPORT_TITLE_KEYS[kind])}</p>
         </div>
 
         {reportQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">Building report…</p>
+          <p className="text-sm text-muted-foreground">{t('marks.buildingReport')}</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No data for the selected filters. Enter marks and generate again.
-          </p>
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Rank</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Average</TableHead>
-                {kind === 'promotion' ? <TableHead>Decision</TableHead> : null}
+                <TableHead>{t('marks.rank')}</TableHead>
+                <TableHead>{t('marks.student')}</TableHead>
+                <TableHead>{t('marks.average')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
-                <TableRow key={row.studentProfileId}>
+                <TableRow key={row.studentProfileId} className="break-inside-avoid">
                   <TableCell>{row.rank}</TableCell>
                   <TableCell>
                     {row.name}
@@ -474,11 +452,6 @@ export function AcademicReportView({ kind }: { kind: AcademicReportKind }) {
                     </span>
                   </TableCell>
                   <TableCell>{formatMarkScore(row.average)}</TableCell>
-                  {kind === 'promotion' ? (
-                    <TableCell>
-                      {row.passing ? 'Promoted / Admitted' : 'Repeat / Review'}
-                    </TableCell>
-                  ) : null}
                 </TableRow>
               ))}
             </TableBody>

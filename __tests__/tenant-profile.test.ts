@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
+import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
 import {
   buildTenantProfilePatch,
+  CUSTOM_DOMAIN_IN_USE_MESSAGE,
   isTenantProfileField,
   parseTenantProfileField,
+  tenantStatusBadgeVariant,
 } from '@/lib/acadia/tenant-profile';
 
 describe('tenant profile fields', () => {
@@ -57,6 +60,30 @@ describe('tenant profile fields', () => {
     });
   });
 
+  it('validates institution phone with country code and stores E.164', () => {
+    expect(parseTenantProfileField('institutionPhone', '+237 677 123 456')).toEqual({
+      field: 'institutionPhone',
+      value: '+237677123456',
+    });
+    expect(parseTenantProfileField('institutionPhone', '12')).toEqual({
+      error: 'Enter a valid phone number, including country code.',
+    });
+  });
+
+  it('allows empty phone and rejects invalid numbers', () => {
+    expect(parseTenantProfileField('institutionPhone', '')).toEqual({
+      field: 'institutionPhone',
+      value: null,
+    });
+    expect(parseTenantProfileField('institutionPhone', '+237 677 123 456')).toEqual({
+      field: 'institutionPhone',
+      value: '+237677123456',
+    });
+    expect(parseTenantProfileField('institutionPhone', 'abc')).toEqual({
+      error: 'Enter a valid phone number, including country code.',
+    });
+  });
+
   it('builds a single-field patch', () => {
     expect(buildTenantProfilePatch('city', ' Douala ')).toEqual({ city: 'Douala' });
     expect(buildTenantProfilePatch('slug', 'acadia-college')).toEqual({
@@ -72,5 +99,25 @@ describe('tenant profile write access', () => {
     expect(canWriteAcademicAdmin('financial-director')).toBe(true);
     expect(canWriteAcademicAdmin('bursar')).toBe(false);
     expect(canWriteAcademicAdmin('teacher')).toBe(false);
+  });
+});
+
+describe('custom domain uniqueness', () => {
+  it('maps the unique index to a clear message', () => {
+    expect(
+      getMutationErrorMessage({
+        code: '23505',
+        message: 'duplicate key value violates unique constraint "Tenant_customDomain_uidx"',
+      }),
+    ).toBe(CUSTOM_DOMAIN_IN_USE_MESSAGE);
+  });
+});
+
+describe('tenant status badge', () => {
+  it('maps ACTIVE, ONBOARDING, SUSPENDED, and ARCHIVED', () => {
+    expect(tenantStatusBadgeVariant('ACTIVE')).toBe('success');
+    expect(tenantStatusBadgeVariant('ONBOARDING')).toBe('warning');
+    expect(tenantStatusBadgeVariant('SUSPENDED')).toBe('destructive');
+    expect(tenantStatusBadgeVariant('ARCHIVED')).toBe('secondary');
   });
 });

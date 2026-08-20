@@ -4,7 +4,7 @@ import {
   ATTENDANCE_NOTIFICATION_EVENT,
   computeAttendancePercentage,
 } from '@/lib/acadia/attendance';
-import { computeFeeAccountTotals } from '@/lib/acadia/finance';
+import { computeFeeAccountTotals, scholarshipMinorFromGrants } from '@/lib/acadia/finance';
 import {
   countTimetableSlotsForDay,
   getTimetableDayOfWeek,
@@ -21,6 +21,27 @@ import {
 } from '@/lib/supabase/queries/timetable';
 
 type Client = SupabaseClient<Database>;
+
+function mapFeeAccountOutstandingInput(account: {
+  totalAmountMinor: number;
+  creditMinor?: number | null;
+  withdrawnAt?: string | null;
+  StudentFeeInstallment?: Array<{
+    amountMinor: number;
+    status: string;
+    paidAmountMinor?: number | null;
+    dueOn?: string | null;
+  }> | null;
+  StudentScholarship?: Array<{ discountMinor?: number | null }> | null;
+}) {
+  return {
+    totalAmountMinor: Number(account.totalAmountMinor ?? 0),
+    creditMinor: account.creditMinor,
+    withdrawnAt: account.withdrawnAt,
+    scholarships: account.StudentScholarship,
+    installments: account.StudentFeeInstallment ?? [],
+  };
+}
 
 export type StaffDashboardStats = {
   assignedSubjectCount: number;
@@ -112,16 +133,25 @@ export function countPendingMarksFromScope(input: {
 export function sumOutstandingFeeBalances(
   accounts: Array<{
     totalAmountMinor: number;
+    creditMinor?: number | null;
+    withdrawnAt?: string | null;
+    scholarships?: Array<{ discountMinor?: number | null }> | null;
     installments: Array<{
       amountMinor: number;
       status: string;
       paidAmountMinor?: number | null;
+      dueOn?: string | null;
     }>;
   }>,
 ): number {
   return accounts.reduce((sum, account) => {
+    if (account.withdrawnAt) {
+      return sum;
+    }
     const totals = computeFeeAccountTotals({
       totalAmountMinor: account.totalAmountMinor,
+      creditMinor: Number(account.creditMinor ?? 0),
+      scholarshipMinor: scholarshipMinorFromGrants(account.scholarships),
       installments: account.installments,
     });
     return sum + totals.balanceMinor;
@@ -219,7 +249,7 @@ async function fetchStudentFeeBalanceMinor(
   const { data, error } = await supabase
     .from('StudentFeeAccount')
     .select(
-      'totalAmountMinor, StudentFeeInstallment ( amountMinor, status, paidAmountMinor )',
+      'totalAmountMinor, creditMinor, withdrawnAt, StudentFeeInstallment ( amountMinor, status, paidAmountMinor, dueOn ), StudentScholarship ( discountMinor )',
     )
     .eq('tenantId', tenantId)
     .eq('academicYearId', academicYearId)
@@ -229,16 +259,7 @@ async function fetchStudentFeeBalanceMinor(
     throw error;
   }
 
-  return sumOutstandingFeeBalances(
-    (data ?? []).map((account) => ({
-      totalAmountMinor: Number(account.totalAmountMinor ?? 0),
-      installments: (account.StudentFeeInstallment ?? []) as Array<{
-        amountMinor: number;
-        status: string;
-        paidAmountMinor: number | null;
-      }>,
-    })),
-  );
+  return sumOutstandingFeeBalances((data ?? []).map(mapFeeAccountOutstandingInput));
 }
 
 async function fetchLinkedStudentProfileIds(
@@ -273,7 +294,7 @@ async function fetchOutstandingFeesForStudents(
   const { data, error } = await supabase
     .from('StudentFeeAccount')
     .select(
-      'totalAmountMinor, StudentFeeInstallment ( amountMinor, status, paidAmountMinor )',
+      'totalAmountMinor, creditMinor, withdrawnAt, StudentFeeInstallment ( amountMinor, status, paidAmountMinor, dueOn ), StudentScholarship ( discountMinor )',
     )
     .eq('tenantId', tenantId)
     .eq('academicYearId', academicYearId)
@@ -283,16 +304,7 @@ async function fetchOutstandingFeesForStudents(
     throw error;
   }
 
-  return sumOutstandingFeeBalances(
-    (data ?? []).map((account) => ({
-      totalAmountMinor: Number(account.totalAmountMinor ?? 0),
-      installments: (account.StudentFeeInstallment ?? []) as Array<{
-        amountMinor: number;
-        status: string;
-        paidAmountMinor: number | null;
-      }>,
-    })),
-  );
+  return sumOutstandingFeeBalances((data ?? []).map(mapFeeAccountOutstandingInput));
 }
 
 async function fetchRecentMarkCountForStudents(

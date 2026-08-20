@@ -50,6 +50,19 @@ describe('examSessionSchema', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('requires a sequence for NORMAL exams', () => {
+    expect(
+      examSessionSchema.safeParse({
+        academicYearId: 'year-1',
+        subjectId: 'subject-1',
+        termId: 'term-1',
+        type: 'NORMAL',
+        startsOn: '2026-06-01',
+        endsOn: '2026-06-15',
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe('subjectMarkEntrySchema', () => {

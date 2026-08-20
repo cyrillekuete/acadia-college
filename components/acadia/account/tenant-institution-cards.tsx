@@ -11,6 +11,7 @@ import { useTenantProfileMutations } from '@/hooks/use-tenant-profile-mutations'
 import { useTranslation } from '@/hooks/useTranslation';
 import { formatRecordValue } from '@/lib/acadia/record-display';
 import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
+import { tenantStatusBadgeVariant } from '@/lib/acadia/tenant-profile';
 
 export function TenantInstitutionCards() {
   const { t } = useTranslation();
@@ -34,7 +35,7 @@ export function TenantInstitutionCards() {
             title={t('account.generalInfo', { defaultValue: 'General info' })}
             canEdit={canEdit}
             pending={updateField.isPending}
-            onSave={(field, value) => updateField.mutate({ field, value })}
+            onSave={(field, value) => updateField.mutateAsync({ field, value })}
             rows={[
               {
                 key: 'displayNameEn',
@@ -61,7 +62,10 @@ export function TenantInstitutionCards() {
                 key: 'status',
                 label: t('account.status', { defaultValue: 'Status' }),
                 display: (
-                  <Badge variant="success" appearance="light">
+                  <Badge
+                    variant={tenantStatusBadgeVariant(tenant.status)}
+                    appearance="light"
+                  >
                     {tenant.status}
                   </Badge>
                 ),
@@ -92,7 +96,7 @@ export function TenantInstitutionCards() {
             title={t('account.contactAddress', { defaultValue: 'Contact & address' })}
             canEdit={canEdit}
             pending={updateField.isPending}
-            onSave={(field, value) => updateField.mutate({ field, value })}
+            onSave={(field, value) => updateField.mutateAsync({ field, value })}
             rows={[
               {
                 key: 'institutionEmail',
@@ -185,7 +189,7 @@ export function TenantInstitutionCards() {
             title={t('account.branding', { defaultValue: 'Branding' })}
             canEdit={canEdit}
             pending={updateField.isPending}
-            onSave={(field, value) => updateField.mutate({ field, value })}
+            onSave={(field, value) => updateField.mutateAsync({ field, value })}
             rows={[
               {
                 key: 'primaryColor',
@@ -204,27 +208,15 @@ export function TenantInstitutionCards() {
                 inputType: 'color',
               },
               {
-                key: 'logoStorageKey',
-                label: t('account.logoStorageKey', { defaultValue: 'Logo storage key' }),
-                display: formatRecordValue(tenant.logoStorageKey),
-                rawValue: tenant.logoStorageKey,
-                copyable: true,
-              },
-              {
-                key: 'reportCardLogoStorageKey',
-                label: t('account.reportCardLogoStorageKey', {
-                  defaultValue: 'Report card logo storage key',
-                }),
-                display: formatRecordValue(tenant.reportCardLogoStorageKey),
-                rawValue: tenant.reportCardLogoStorageKey,
-                copyable: true,
-              },
-              {
                 key: 'customDomain',
                 label: t('account.customDomain', { defaultValue: 'Custom domain' }),
                 display: formatRecordValue(tenant.customDomain),
                 rawValue: tenant.customDomain,
                 field: 'customDomain',
+                helperText: t('account.customDomainHint', {
+                  defaultValue:
+                    'DNS for this hostname must point at Acadia. Saving the name does not check DNS.',
+                }),
               },
             ]}
           />

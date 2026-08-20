@@ -2,7 +2,7 @@
  * Creates PascalCase User + StudentProfile + StudentEnrollment for the year-scoped registry.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { resolveClassForEnrollment } from '@/lib/acadia/class-assignment';
+import { resolveClassForEnrollment, requireClassIdForEnrollment } from '@/lib/acadia/class-assignment';
 import { ensureStudentFeeAccount } from '@/lib/acadia/fee-account-provision';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { UserStatus } from '@/app/models/user';
@@ -28,7 +28,8 @@ export type ProvisionStudentProfileResult =
       ok: true;
       studentProfileId: string;
       enrollmentId: string;
-      classId: string | null;
+      classId: string;
+      feeWarning?: string;
     }
   | { ok: false; message: string; status: number };
 
@@ -111,8 +112,8 @@ export async function provisionStudentProfileAndEnrollment(
     };
   }
 
-  let classId = input.classId?.trim() || null;
-  if (!classId) {
+  let classId: string;
+  try {
     const resolution = await resolveClassForEnrollment(
       supabase,
       input.tenantId,
@@ -120,9 +121,19 @@ export async function provisionStudentProfileAndEnrollment(
       input.subSystem,
       input.branch,
     );
-    if (resolution.status === 'resolved') {
-      classId = resolution.classId;
-    }
+    classId = requireClassIdForEnrollment(input.classId, resolution);
+  } catch (error) {
+    await supabase
+      .from('StudentProfile')
+      .delete()
+      .eq('id', studentProfileId)
+      .eq('tenantId', input.tenantId);
+    await rollbackPascalUser(supabase, input.authUserId, createdUserRow);
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'A class is required.',
+      status: 400,
+    };
   }
 
   const enrollmentId = generateAcadiaId('enr');
@@ -156,20 +167,20 @@ export async function provisionStudentProfileAndEnrollment(
     };
   }
 
-  if (classId) {
-    const feeResult = await ensureStudentFeeAccount(supabase, {
-      tenantId: input.tenantId,
-      studentProfileId,
-      academicYearId: input.academicYearId,
-      subSystem: input.subSystem,
-      branch: input.branch,
-      studentEnrollmentId: enrollmentId,
-      classId,
-      actorUserId: input.actorUserId,
-    });
-    if (!feeResult.ok && feeResult.reason === 'error') {
-      console.error('[ensureStudentFeeAccount]', feeResult.message);
-    }
+  const feeResult = await ensureStudentFeeAccount(supabase, {
+    tenantId: input.tenantId,
+    studentProfileId,
+    academicYearId: input.academicYearId,
+    subSystem: input.subSystem,
+    branch: input.branch,
+    studentEnrollmentId: enrollmentId,
+    classId,
+    actorUserId: input.actorUserId,
+  });
+  const feeWarning =
+    !feeResult.ok ? feeResult.message : undefined;
+  if (!feeResult.ok && feeResult.reason === 'error') {
+    console.error('[ensureStudentFeeAccount]', feeResult.message);
   }
 
   return {
@@ -177,6 +188,7 @@ export async function provisionStudentProfileAndEnrollment(
     studentProfileId,
     enrollmentId,
     classId,
+    feeWarning,
   };
 }
 

@@ -52,6 +52,23 @@ export function sanitizeReportCardFilenamePart(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80) || 'student';
 }
 
+export function buildReportCardOrderNo(options: {
+  yearLabel: string;
+  matricule: string;
+  term: string | number;
+  studentProfileId?: string;
+}): string {
+  const year = sanitizeReportCardFilenamePart(options.yearLabel);
+  const who =
+    sanitizeReportCardFilenamePart(options.matricule) ||
+    sanitizeReportCardFilenamePart(options.studentProfileId ?? '') ||
+    'student';
+  const termStr = String(options.term);
+  const term =
+    termStr === 'annual' ? 'Annual' : `T${sanitizeReportCardFilenamePart(termStr)}`;
+  return `RC-${year}-${who}-${term}`;
+}
+
 export function buildReportCardPdfFilename(options: {
   studentName: string;
   year: string | number;

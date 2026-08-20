@@ -31,6 +31,7 @@ export type EditableSettingRow = {
   field?: TenantProfileField;
   inputType?: EditableSettingInputType;
   copyable?: boolean;
+  helperText?: string;
 };
 
 export function EditableSettingsCard({
@@ -43,7 +44,7 @@ export function EditableSettingsCard({
   title: string;
   rows: EditableSettingRow[];
   canEdit: boolean;
-  onSave: (field: TenantProfileField, value: string) => void;
+  onSave: (field: TenantProfileField, value: string) => void | Promise<void>;
   pending?: boolean;
 }) {
   const { t } = useTranslation();
@@ -60,7 +61,7 @@ export function EditableSettingsCard({
     setFieldError(null);
   }, [editing]);
 
-  function submitEdit() {
+  async function submitEdit() {
     if (!editing?.field) {
       return;
     }
@@ -69,8 +70,12 @@ export function EditableSettingsCard({
       setFieldError(parsed.error);
       return;
     }
-    onSave(editing.field, draft);
-    setEditing(null);
+    try {
+      await onSave(editing.field, draft);
+      setEditing(null);
+    } catch {
+      // Parent mutation already toasts the failure.
+    }
   }
 
   const toBeSet = t('account.toBeSet', { defaultValue: 'To be set' });
@@ -213,6 +218,9 @@ export function EditableSettingsCard({
                 }}
               />
             )}
+            {editing?.helperText && !fieldError ? (
+              <p className="mt-2 text-sm text-muted-foreground">{editing.helperText}</p>
+            ) : null}
             {fieldError ? (
               <p className="mt-2 text-sm text-destructive">{fieldError}</p>
             ) : null}

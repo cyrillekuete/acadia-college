@@ -1,5 +1,8 @@
 import type { SubjectForClassOption } from '@/hooks/use-subjects-for-class';
 
+export const SUBJECT_DEFAULT_GROUPING = '__subject_default__';
+export const UNGROUPED_GROUPING_OVERRIDE = '__none__';
+
 export type ClassSubjectSelection = {
   subjectId: string;
   subBranchIds: string[] | null;
@@ -17,6 +20,37 @@ const DEFAULT_SELECTION_FIELDS = {
   groupingId: null as string | null,
 };
 
+export function isUngroupedOverride(groupingId: string | null | undefined): boolean {
+  return groupingId === UNGROUPED_GROUPING_OVERRIDE;
+}
+
+export function groupingOverrideToDb(
+  groupingId: string | null,
+  subjectDefaultGroupingId?: string | null,
+): { groupingId: string | null; forceUngrouped: boolean } {
+  if (isUngroupedOverride(groupingId)) {
+    return { groupingId: null, forceUngrouped: true };
+  }
+  if (
+    !groupingId ||
+    groupingId === SUBJECT_DEFAULT_GROUPING ||
+    groupingId === subjectDefaultGroupingId
+  ) {
+    return { groupingId: null, forceUngrouped: false };
+  }
+  return { groupingId, forceUngrouped: false };
+}
+
+export function groupingOverrideFromDb(
+  groupingId: string | null | undefined,
+  forceUngrouped?: boolean | null,
+): string | null {
+  if (forceUngrouped) {
+    return UNGROUPED_GROUPING_OVERRIDE;
+  }
+  return groupingId ?? null;
+}
+
 export function selectionsToSubjectIds(selections: ClassSubjectSelection[]): string[] {
   return selections.map((selection) => selection.subjectId);
 }
@@ -29,6 +63,9 @@ export function resolveEffectiveGrouping(
   selection: Pick<ClassSubjectSelection, 'groupingId'>,
   subjectDefaultGroupingId: string | null | undefined,
 ): string | null {
+  if (isUngroupedOverride(selection.groupingId)) {
+    return null;
+  }
   return selection.groupingId ?? subjectDefaultGroupingId ?? null;
 }
 
@@ -385,7 +422,9 @@ export function formatSelectionLabel(
     label = `${subject.code} (${branchNames.join(', ')})`;
   }
 
-  if (isGroupingOverridden(selection) && groupingNames?.has(selection.groupingId!)) {
+  if (isUngroupedOverride(selection.groupingId)) {
+    label += ' · Ungrouped';
+  } else if (isGroupingOverridden(selection) && groupingNames?.has(selection.groupingId!)) {
     label += ` · ${groupingNames.get(selection.groupingId!)}`;
   }
 
@@ -412,16 +451,33 @@ export function formatAssignmentLabel(
     }
   }
 
-  if (isGroupingOverridden(assignment) && groupingNames?.has(assignment.groupingId!)) {
+  if (isUngroupedOverride(assignment.groupingId)) {
+    label += ' · Ungrouped';
+  } else if (isGroupingOverridden(assignment) && groupingNames?.has(assignment.groupingId!)) {
     label += ` · ${groupingNames.get(assignment.groupingId!)}`;
   }
 
   return label;
 }
 
-export function groupOptionsByGrouping<T extends { groupingId: string | null; groupingNameEn: string | null }>(
-  options: T[],
-): { groupingId: string | null; groupingName: string; options: T[] }[] {
+export function selectAllSubjectSelections(
+  options: { id: string }[],
+  current: ClassSubjectSelection[],
+): ClassSubjectSelection[] {
+  const existing = new Map(current.map((selection) => [selection.subjectId, selection]));
+  return options.map((option) => {
+    const previous = existing.get(option.id);
+    return previous ?? { subjectId: option.id, ...DEFAULT_SELECTION_FIELDS };
+  });
+}
+
+export function groupOptionsByGrouping<
+  T extends {
+    groupingId: string | null;
+    groupingNameEn: string | null;
+    groupingSortOrder?: number | null;
+  },
+>(options: T[]): { groupingId: string | null; groupingName: string; options: T[] }[] {
   const grouped = new Map<string | null, T[]>();
 
   for (const option of options) {
@@ -441,7 +497,14 @@ export function groupOptionsByGrouping<T extends { groupingId: string | null; gr
     result.push({ groupingId, groupingName, options: groupOptions });
   }
 
-  result.sort((a, b) => a.groupingName.localeCompare(b.groupingName));
+  result.sort((a, b) => {
+    const orderA = a.options[0]?.groupingSortOrder ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.options[0]?.groupingSortOrder ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return a.groupingName.localeCompare(b.groupingName);
+  });
 
   const ungrouped = grouped.get(null);
   if (ungrouped?.length) {

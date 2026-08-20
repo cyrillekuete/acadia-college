@@ -1,21 +1,23 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import { I18N_LANGUAGES, Language } from '@/i18n/config';
 import {
-  BetweenHorizontalStart,
-  Coffee,
-  CreditCard,
+  Bell,
+  Building2,
   FileText,
   Globe,
   Moon,
   Settings,
   Shield,
+  Sparkles,
   User,
-  Users,
 } from 'lucide-react';
+import { I18N_LANGUAGES, Language } from '@/i18n/config';
 import { useTheme } from 'next-themes';
+import { UserAvatar } from '@/components/acadia/account/user-avatar';
+import { getMenuForRole } from '@/config/menu.acadia';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useAcadiaSignOut } from '@/hooks/use-acadia-sign-out';
+import { menuItemLabel } from '@/lib/acadia/menu-label';
 import { useLanguage } from '@/providers/i18n-provider';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +36,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 
+const ACCOUNT_ITEM_ICONS: Record<string, typeof User> = {
+  '/account/home/user-profile': User,
+  '/user-management/account/security': Shield,
+  '/account/notifications': Bell,
+  '/account/home/company-profile': Building2,
+  '/account/home/settings-sidebar': Settings,
+  '/account/home/get-started': Sparkles,
+};
+
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const { data: acadiaSession } = useAcadiaCollegeSession();
   const signOut = useAcadiaSignOut();
@@ -47,6 +58,12 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
     '';
   const displayEmail =
     acadiaSession?.profile?.email ?? acadiaSession?.authUser?.email ?? '';
+  const roleName = acadiaSession?.profile?.UserRole?.name;
+
+  const myAccount = getMenuForRole(acadiaSession?.roleSlug).find(
+    (item) => item.titleKey === 'nav.myAccount',
+  );
+  const accountLinks = myAccount?.children ?? [];
 
   const handleLanguage = (lang: Language) => {
     changeLanguage(lang.code);
@@ -60,122 +77,57 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent className="w-64" side="bottom" align="end">
-        {/* Header */}
-        <div className="flex items-center justify-between p-3">
-          <div className="flex items-center gap-2">
-            <img
-              className="w-9 h-9 rounded-full border border-border"
-              src={'/media/avatars/300-2.png'}
-              alt="User avatar"
-            />
-            <div className="flex flex-col">
-              <Link
-                href="/account/home/get-started"
-                className="text-sm text-mono hover:text-primary font-semibold"
-              >
-                {displayName}
-              </Link>
-              <Link
-                href={`mailto:${displayEmail}`}
-                className="text-xs text-muted-foreground hover:text-primary"
-              >
+        <div className="flex items-center gap-2 p-3">
+          <UserAvatar
+            name={displayName}
+            email={displayEmail}
+            avatar={acadiaSession?.profile?.avatar}
+          />
+          <div className="flex min-w-0 flex-col">
+            <Link
+              href="/account/home/user-profile"
+              className="truncate text-sm font-semibold text-mono hover:text-primary"
+            >
+              {displayName || displayEmail}
+            </Link>
+            {displayEmail ? (
+              <span className="truncate text-xs text-muted-foreground">
                 {displayEmail}
-              </Link>
-            </div>
+              </span>
+            ) : null}
+            {roleName ? (
+              <span className="truncate text-xs text-muted-foreground">
+                {roleName}
+              </span>
+            ) : null}
           </div>
-          <Badge variant="primary" appearance="light" size="sm">
-            Pro
-          </Badge>
         </div>
 
         <DropdownMenuSeparator />
 
-        {/* Menu Items */}
-        <DropdownMenuItem asChild>
-          <Link
-            href="/account/home/user-profile"
-            className="flex items-center gap-2"
-          >
-            <User />
-            My Profile
-          </Link>
-        </DropdownMenuItem>
-
-        {/* My Account Submenu */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="flex items-center gap-2">
             <Settings />
-            My Account
+            {t('nav.myAccount')}
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-48">
-            <DropdownMenuItem asChild>
-              <Link
-                href="/account/home/get-started"
-                className="flex items-center gap-2"
-              >
-                <Coffee />
-                Get Started
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href="/account/home/user-profile"
-                className="flex items-center gap-2"
-              >
-                <FileText />
-                My Profile
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href="/finance/fees"
-                className="flex items-center gap-2"
-              >
-                <CreditCard />
-                Billing
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href="/user-management/account/security"
-                className="flex items-center gap-2"
-              >
-                <Shield />
-                Security
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href="/admin/users"
-                className="flex items-center gap-2"
-              >
-                <Users />
-                Members & Roles
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href="/account/home/settings-sidebar"
-                className="flex items-center gap-2"
-              >
-                <BetweenHorizontalStart />
-                Integrations
-              </Link>
-            </DropdownMenuItem>
+          <DropdownMenuSubContent className="w-52">
+            {accountLinks.map((item) => {
+              if (!item.path) {
+                return null;
+              }
+              const Icon = ACCOUNT_ITEM_ICONS[item.path] ?? FileText;
+              return (
+                <DropdownMenuItem key={item.path} asChild>
+                  <Link href={item.path} className="flex items-center gap-2">
+                    <Icon />
+                    {menuItemLabel(item, t)}
+                  </Link>
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        <DropdownMenuItem asChild>
-          <Link
-            href="https://devs.keenthemes.com"
-            className="flex items-center gap-2"
-          >
-            <FileText />
-            Dev Forum
-          </Link>
-        </DropdownMenuItem>
-
-        {/* Language Submenu with Radio Group */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="flex items-center gap-2 [&_[data-slot=dropdown-menu-sub-trigger-indicator]]:hidden hover:[&_[data-slot=badge]]:border-input data-[state=open]:[&_[data-slot=badge]]:border-input">
             <Globe />
@@ -224,14 +176,13 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
 
         <DropdownMenuSeparator />
 
-        {/* Footer */}
         <DropdownMenuItem
           className="flex items-center gap-2"
           onSelect={(event) => event.preventDefault()}
         >
           <Moon />
           <div className="flex items-center gap-2 justify-between grow">
-            Dark Mode
+            {t('account.darkMode', { defaultValue: 'Dark mode' })}
             <Switch
               size="sm"
               checked={theme === 'dark'}
@@ -246,7 +197,7 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
             className="w-full"
             onClick={() => void signOut()}
           >
-            Logout
+            {t('common.buttons.signOut')}
           </Button>
         </div>
       </DropdownMenuContent>

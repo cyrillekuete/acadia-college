@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTeacherTeachingScope } from '@/lib/acadia/staff-class-assignments';
+import { buildTeacherTeachingScope, mergeTeacherClassScope } from '@/lib/acadia/staff-class-assignments';
 
 describe('buildTeacherTeachingScope', () => {
   it('builds class, subject, and pair lists from class-specific assignments', () => {
@@ -91,5 +91,36 @@ describe('buildTeacherTeachingScope', () => {
     expect(scope.pairs).toHaveLength(1);
     expect(scope.classIds).toEqual(['class-a']);
     expect(scope.subjectIds).toEqual(['math']);
+  });
+});
+
+describe('mergeTeacherClassScope', () => {
+  it('unions class-master classes into the teaching scope', () => {
+    const scope = mergeTeacherClassScope(
+      {
+        classIds: ['class-a'],
+        subjectIds: ['math'],
+        pairs: [
+          {
+            classId: 'class-a',
+            subjectId: 'math',
+            className: 'Form 5A',
+            subjectName: 'Mathematics',
+          },
+        ],
+      },
+      [
+        {
+          classId: 'class-c',
+          subjectId: '',
+          className: 'Form 5C',
+          subjectName: '',
+        },
+      ],
+    );
+
+    expect(scope.classIds.sort()).toEqual(['class-a', 'class-c']);
+    expect(scope.pairs).toHaveLength(1);
+    expect(scope.classMaster).toHaveLength(1);
   });
 });

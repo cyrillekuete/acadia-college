@@ -32,6 +32,16 @@ export const studentProfileEditSchema = z.object({
 export type StudentProfileEditValues = z.infer<typeof studentProfileEditSchema>;
 export type StudentProfileEditFormValues = z.input<typeof studentProfileEditSchema>;
 
+export const studentProfileUpdateApiSchema = studentProfileEditSchema
+  .omit({ registrationNumber: true })
+  .extend({
+    academicYearId: z.string().min(1).optional(),
+  });
+
+export type StudentProfileUpdateApiValues = z.infer<
+  typeof studentProfileUpdateApiSchema
+>;
+
 export const studentClassMigrationSchema = z.object({
   subSystem: z.enum(ACADEMIC_SUB_SYSTEMS, {
     required_error: 'validation.required.subSystem',

@@ -2,6 +2,57 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Browser, LaunchOptions, Page, PuppeteerNode } from 'puppeteer-core';
 
+/** Must match the installed `@sparticuz/chromium-min` version. */
+export const CHROMIUM_PACK_VERSION = '149.0.0';
+
+export const PDF_NAVIGATION_TIMEOUT_MESSAGE =
+  'The report card page took too long to open. Try Download PDF again.';
+
+export function resolvePdfNavigationTimeoutMs(
+  nodeEnv = process.env.NODE_ENV,
+): number {
+  return nodeEnv === 'development' ? 180_000 : 90_000;
+}
+
+export function mapPdfGenerationError(error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  const name = error instanceof Error ? error.name : '';
+  if (
+    name === 'TimeoutError' ||
+    message.includes('Navigation timeout') ||
+    message.includes('TimeoutError')
+  ) {
+    return new Error(PDF_NAVIGATION_TIMEOUT_MESSAGE);
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
+export async function warmPdfTargetUrl(options: {
+  targetUrl: string;
+  cookieHeader: string;
+  nodeEnv?: string;
+}): Promise<void> {
+  if ((options.nodeEnv ?? process.env.NODE_ENV) !== 'development') {
+    return;
+  }
+
+  const headers = new Headers();
+  if (options.cookieHeader.trim()) {
+    headers.set('cookie', options.cookieHeader);
+  }
+
+  try {
+    const response = await fetch(options.targetUrl, {
+      headers,
+      cache: 'no-store',
+      redirect: 'manual',
+    });
+    await response.arrayBuffer().catch(() => undefined);
+  } catch {
+    /* Compile may still finish on the later Puppeteer navigation. */
+  }
+}
+
 const DEFAULT_LAUNCH_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
@@ -64,6 +115,16 @@ function resolveChromiumLaunchArgs(chromium: unknown): string[] {
   return [];
 }
 
+export function resolveChromiumPackUrl(options?: {
+  remotePath?: string | null;
+  arch?: string;
+}): string {
+  const fromEnv = options?.remotePath?.trim();
+  if (fromEnv) return fromEnv;
+  const arch = (options?.arch ?? process.arch) === 'arm64' ? 'arm64' : 'x64';
+  return `https://github.com/Sparticuz/chromium/releases/download/v${CHROMIUM_PACK_VERSION}/chromium-v${CHROMIUM_PACK_VERSION}-pack.${arch}.tar`;
+}
+
 async function getPuppeteerLaunchConfig(): Promise<{
   puppeteer: PuppeteerNode;
   launchOptions: LaunchOptions;
@@ -74,14 +135,23 @@ async function getPuppeteerLaunchConfig(): Promise<{
   if (executablePath || isVercel) {
     const [{ default: puppeteer }, { default: chromium }] = await Promise.all([
       import('puppeteer-core'),
-      import('@sparticuz/chromium'),
+      import('@sparticuz/chromium-min'),
     ]);
+    if ('setGraphicsMode' in chromium) {
+      chromium.setGraphicsMode = false;
+    }
     const chromiumArgs = resolveChromiumLaunchArgs(chromium);
-    const resolvedExecutablePath = executablePath || (await chromium.executablePath());
+    const resolvedExecutablePath =
+      executablePath ||
+      (await chromium.executablePath(
+        resolveChromiumPackUrl({
+          remotePath: process.env.CHROMIUM_REMOTE_EXEC_PATH,
+        }),
+      ));
     return {
       puppeteer,
       launchOptions: {
-        headless: true,
+        headless: 'shell',
         executablePath: resolvedExecutablePath,
         args: [...chromiumArgs, ...DEFAULT_LAUNCH_ARGS],
       },
@@ -135,6 +205,12 @@ async function applySessionCookies(
   );
 }
 
+async function yieldToDevServer(): Promise<void> {
+  for (let i = 0; i < 3; i++) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+}
+
 async function describePage(page: Page): Promise<string> {
   try {
     const info = await page.evaluate(() => ({
@@ -154,7 +230,6 @@ async function waitForPdfDocument(page: Page): Promise<void> {
     await page.waitForFunction(
       () =>
         document.querySelector('[data-pdf-ready="true"]') !== null ||
-        document.querySelector('.pdf-report-card') !== null ||
         document.querySelector('#report-card-pdf-error') !== null,
       { timeout: 60_000, polling: 100 },
     );
@@ -178,15 +253,6 @@ async function waitForPdfDocument(page: Page): Promise<void> {
     );
   }
 
-  await page.evaluate(
-    () =>
-      Promise.race([
-        document.fonts.ready.then(() => undefined),
-        new Promise<void>((resolve) => {
-          setTimeout(resolve, 3000);
-        }),
-      ]),
-  );
   await new Promise((resolve) => setTimeout(resolve, 200));
 }
 
@@ -194,7 +260,11 @@ export async function generateReportCardPdfFromUrl(options: {
   targetUrl: string;
   cookieHeader: string;
 }): Promise<Buffer> {
-  const { puppeteer, launchOptions } = await getPuppeteerLaunchConfig();
+  const navigationTimeoutMs = resolvePdfNavigationTimeoutMs();
+  const [{ puppeteer, launchOptions }] = await Promise.all([
+    getPuppeteerLaunchConfig(),
+    warmPdfTargetUrl(options),
+  ]);
 
   let browser: Browser | null = null;
   try {
@@ -212,16 +282,29 @@ export async function generateReportCardPdfFromUrl(options: {
 
     const page = await browser.newPage();
     await page.setViewport({ width: 1200, height: 1600, deviceScaleFactor: 1 });
-    page.setDefaultNavigationTimeout(90_000);
+    page.setDefaultNavigationTimeout(navigationTimeoutMs);
     page.setDefaultTimeout(60_000);
 
     await applySessionCookies(page, options.targetUrl, options.cookieHeader);
+    if (options.cookieHeader.trim()) {
+      await page.setExtraHTTPHeaders({
+        Cookie: options.cookieHeader,
+      });
+    }
 
-    await page.goto(options.targetUrl, {
-      waitUntil: 'domcontentloaded',
-      timeout: 90_000,
-    });
+    await yieldToDevServer();
+    await page.emulateMediaType('print');
 
+    try {
+      await page.goto(options.targetUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: navigationTimeoutMs,
+      });
+    } catch (error) {
+      throw mapPdfGenerationError(error);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
     await waitForPdfDocument(page);
 
     const errorEl = await page.$('#report-card-pdf-error');
@@ -235,6 +318,7 @@ export async function generateReportCardPdfFromUrl(options: {
     const pdfResult = await page.pdf({
       format: 'A4',
       printBackground: true,
+      preferCSSPageSize: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });
 

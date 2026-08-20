@@ -45,6 +45,33 @@ export function classSubjectPairsForSelection(input: {
   return pairs;
 }
 
+/**
+ * After removing class–subject rows, year-level SubjectAssignment rows for
+ * subjects no longer taught in any class should be deleted.
+ */
+export function subjectIdsUnreferencedAfterRemoval(
+  removedSubjectIds: string[],
+  remainingScsaSubjectIds: string[],
+): string[] {
+  const remaining = new Set(uniqueIds(remainingScsaSubjectIds));
+  return uniqueIds(removedSubjectIds).filter((id) => !remaining.has(id));
+}
+
+/** Diff current vs desired subject ids for safer SCSA sync (insert then delete). */
+export function diffAssignmentSubjectIds(
+  existingSubjectIds: string[],
+  desiredSubjectIds: string[],
+): { toInsert: string[]; toDelete: string[] } {
+  const existing = uniqueIds(existingSubjectIds);
+  const desired = uniqueIds(desiredSubjectIds);
+  const existingSet = new Set(existing);
+  const desiredSet = new Set(desired);
+  return {
+    toInsert: desired.filter((id) => !existingSet.has(id)),
+    toDelete: existing.filter((id) => !desiredSet.has(id)),
+  };
+}
+
 export function buildTeacherTeachingScope(rows: Array<{
   classId: string;
   subjectId: string;
@@ -90,4 +117,18 @@ export function buildTeacherTeachingScope(rows: Array<{
   }
 
   return { classIds, subjectIds, pairs };
+}
+
+export function mergeTeacherClassScope<
+  TPair extends { classId: string },
+  TScope extends { classIds: string[] },
+>(subjectScope: TScope, classMaster: TPair[]): TScope & { classMaster: TPair[] } {
+  const classIds = Array.from(
+    new Set([...subjectScope.classIds, ...classMaster.map((row) => row.classId)]),
+  );
+  return {
+    ...subjectScope,
+    classIds,
+    classMaster,
+  };
 }

@@ -26,10 +26,16 @@ export const ACADIA_DEMO_REDIRECTS: AcadiaDemoRedirect[] = [
   { source: '/account/home/settings-modal', destination: '/account/home/settings-sidebar', permanent: false },
   { source: '/account/home/settings-enterprise', destination: '/account/home/settings-sidebar', permanent: false },
   { source: '/network/:path*', destination: '/', permanent: false },
+  { source: '/user-management/users', destination: '/admin/users', permanent: false },
   { source: '/user-management/users/:path*', destination: '/admin/users', permanent: false },
+  { source: '/user-management/roles', destination: '/admin/roles', permanent: false },
   { source: '/user-management/roles/:path*', destination: '/admin/roles', permanent: false },
+  { source: '/user-management/permissions', destination: '/admin/roles', permanent: false },
   { source: '/user-management/permissions/:path*', destination: '/admin/roles', permanent: false },
+  { source: '/user-management/settings', destination: '/account/home/settings-sidebar', permanent: false },
   { source: '/user-management/settings/:path*', destination: '/account/home/settings-sidebar', permanent: false },
+  { source: '/user-management/logs', destination: '/admin/logs', permanent: false },
+  { source: '/user-management/logs/:path*', destination: '/admin/logs', permanent: false },
 ];
 
 const METRONIC_DEMO_LAYOUTS = [

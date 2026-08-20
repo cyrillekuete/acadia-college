@@ -25,8 +25,12 @@ type EnrollmentRow = {
 
 export function StudentFeesPanel({
   studentProfileId,
+  readOnly = false,
+  autoProvision = true,
 }: {
   studentProfileId: string;
+  readOnly?: boolean;
+  autoProvision?: boolean;
 }) {
   const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -36,7 +40,7 @@ export function StudentFeesPanel({
   const { activeYearId, isLoading: yearLoading } = useActiveAcademicYear();
 
   const query = useQuery({
-    queryKey: ['student-fee-account', tenantId, studentProfileId, activeYearId],
+    queryKey: ['student-fee-account', tenantId, studentProfileId, activeYearId, autoProvision],
     queryFn: async () => {
       const supabase = requireBrowserClient();
       const [accountRes, enrollmentRes] = await Promise.all([
@@ -65,7 +69,7 @@ export function StudentFeesPanel({
       const enrollment = enrollmentRes.data as EnrollmentRow | null;
       const classId = enrollment?.classId?.trim() || '';
       let hasFeePlan = false;
-      if (classId) {
+      if (autoProvision && classId) {
         const { data: plan, error: planError } = await supabase
           .from('StreamFeePlanClass')
           .select('id')
@@ -80,7 +84,7 @@ export function StudentFeesPanel({
       }
 
       let accountId = accountRes.data?.id ?? null;
-      if (!accountId && enrollment && hasFeePlan && classId) {
+      if (!accountId && autoProvision && enrollment && hasFeePlan && classId) {
         const result = await ensureStudentFeeAccount(supabase, {
           tenantId: tenantId!,
           studentProfileId,
@@ -129,7 +133,9 @@ export function StudentFeesPanel({
   }
 
   if (query.data?.accountId) {
-    return <FeeAccountInstallments accountId={query.data.accountId} />;
+    return (
+      <FeeAccountInstallments accountId={query.data.accountId} readOnly={readOnly} />
+    );
   }
 
   const classId = query.data?.enrollment?.classId?.trim();
@@ -148,9 +154,11 @@ export function StudentFeesPanel({
         <p className="text-sm text-muted-foreground">
           {t('finance.noFeePlanForClass')}
         </p>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/finance/fees/setup">{t('finance.setupFeePlan')}</Link>
-        </Button>
+        {readOnly ? null : (
+          <Button asChild variant="outline" size="sm">
+            <Link href="/finance/fees/setup">{t('finance.setupFeePlan')}</Link>
+          </Button>
+        )}
       </div>
     );
   }

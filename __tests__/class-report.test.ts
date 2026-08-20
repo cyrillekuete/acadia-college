@@ -15,6 +15,7 @@ import {
   type ReportCardSubjectDef,
 } from '@/lib/acadia/report-card';
 import { decideClassReportAccess } from '@/lib/acadia/report-card-access';
+import { canViewAcademicReports, canViewPromotionStatement } from '@/lib/acadia/reports-access';
 import type { ReportCardBranding } from '@/lib/acadia/report-card-types';
 
 const branding: ReportCardBranding = {
@@ -109,7 +110,7 @@ describe('class-report period parsing', () => {
 
   it('rejects incomplete periods', () => {
     expect(parseClassReportPeriod({ period: 'term' })).toEqual({
-      error: 'Term is required (1, 2, or 3).',
+      error: 'Term is required (1–12).',
     });
     expect(parseClassReportPeriod({ period: 'sequence' })).toEqual({
       error: 'Sequence number is required.',
@@ -267,6 +268,56 @@ describe('buildClassReport', () => {
     expect(report.stats.passPercent).toBe(50);
   });
 
+  it('lists incomplete students separately from unevaluated', () => {
+    const report = buildClassReport(
+      makeBundle({
+        marks: [
+          mark('s1', 'math', 1, 16),
+          mark('s1', 'eng', 1, 12),
+          mark('s2', 'math', 1, 8),
+        ],
+      }),
+      { kind: 'sequence', sequenceNumber: 1 },
+    );
+    expect(report.incomplete.map((row) => row.studentProfileId)).toEqual(['s2']);
+    expect(report.stats.incomplete).toBe(1);
+    expect(report.ranked).toHaveLength(2);
+  });
+
+  it('ignores marks for students who are not on the class roster', () => {
+    const report = buildClassReport(
+      makeBundle({
+        marks: [
+          mark('s1', 'math', 1, 16),
+          mark('s1', 'eng', 1, 12),
+          mark('other-class', 'math', 1, 20),
+          mark('other-class', 'eng', 1, 20),
+        ],
+      }),
+      { kind: 'sequence', sequenceNumber: 1 },
+    );
+    expect(report.ranked.map((row) => row.studentProfileId)).toEqual(['s1']);
+    expect(report.ranked.some((row) => row.studentProfileId === 'other-class')).toBe(
+      false,
+    );
+  });
+
+  it('warns when the class master is missing and reports pass % of class', () => {
+    const report = buildClassReport(makeBundle({ classMaster: '' }), {
+      kind: 'term',
+      term: '1',
+    });
+    expect(report.missingClassMaster).toBe(true);
+    expect(report.stats.passPercentOfClass).toBe(50);
+  });
+
+  it('accepts terms beyond 3', () => {
+    expect(parseClassReportPeriod({ period: 'term', term: '4' })).toEqual({
+      kind: 'term',
+      term: '4',
+    });
+  });
+
   it('returns the full ranked list when the class is smaller than N', () => {
     const bundle = makeBundle();
     const report = buildClassReport(bundle, { kind: 'term', term: '1' }, { topN: 5 });
@@ -376,6 +427,16 @@ describe('class-report access', () => {
   });
 });
 
+describe('reports access', () => {
+  it('lets admins and teaching staff into report screens, not students', () => {
+    expect(canViewAcademicReports('admin')).toBe(true);
+    expect(canViewAcademicReports('teacher')).toBe(true);
+    expect(canViewPromotionStatement('staff')).toBe(true);
+    expect(canViewAcademicReports('student')).toBe(false);
+    expect(canViewPromotionStatement('parent')).toBe(false);
+  });
+});
+
 describe('class-report menu', () => {
   it('adds class report for admins and class masters', () => {
     const adminReports = getMenuForRole('admin').find((item) => item.titleKey === 'nav.reports');
@@ -384,6 +445,16 @@ describe('class-report menu', () => {
       true,
     );
     expect(getMenuForRole('teacher').some((item) => item.path === '/reports/class')).toBe(true);
+    expect(getMenuForRole('teacher').some((item) => item.path === '/reports/sequence')).toBe(
+      true,
+    );
+    expect(getMenuForRole('teacher').some((item) => item.path === '/reports/term')).toBe(true);
+    expect(getMenuForRole('teacher').some((item) => item.path === '/reports/annual')).toBe(
+      true,
+    );
+    expect(getMenuForRole('teacher').some((item) => item.path === '/reports/promotion')).toBe(
+      true,
+    );
     expect(getMenuForRole('teacher').some((item) => item.path === '/reports/absences')).toBe(
       true,
     );

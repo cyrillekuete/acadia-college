@@ -12,15 +12,19 @@ export async function checkRegistryStudentEmail(
   supabase: SupabaseClient,
   tenantId: string,
   email: string,
+  excludeUserId?: string,
 ): Promise<RegistryEmailConflict> {
   const normalized = email.trim().toLowerCase();
 
-  const { data: pascalUser } = await supabase
+  let pascalQuery = supabase
     .from('User')
     .select('id')
     .eq('tenantId', tenantId)
-    .ilike('email', normalized)
-    .maybeSingle();
+    .ilike('email', normalized);
+  if (excludeUserId) {
+    pascalQuery = pascalQuery.neq('id', excludeUserId);
+  }
+  const { data: pascalUser } = await pascalQuery.maybeSingle();
 
   if (pascalUser?.id) {
     return {

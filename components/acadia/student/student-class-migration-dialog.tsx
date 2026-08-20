@@ -260,14 +260,22 @@ export function StudentClassMigrationDialog({
                       name="classId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Class (optional)</FormLabel>
+                          <FormLabel>
+                            {classOptions.length > 1 ? 'Class' : 'Class (optional)'}
+                          </FormLabel>
                           <Select
-                            value={field.value ?? ''}
+                            value={field.value || (classOptions.length === 1 ? classOptions[0]!.id : '')}
                             onValueChange={field.onChange}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Auto-match if unique" />
+                                <SelectValue
+                                  placeholder={
+                                    classOptions.length === 1
+                                      ? 'Auto-match unique class'
+                                      : 'Select a class'
+                                  }
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>

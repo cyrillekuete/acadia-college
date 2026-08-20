@@ -353,7 +353,7 @@ function ClassPerformanceStatistics({ data }: { data: ReportCardData }) {
         />
         <ClassPerformanceStatCell
           value={`${data.stats.passPercent.toFixed(0)}%`}
-          label="Percentage Passed"
+          label="Percentage Passed (of sat)"
           color={green}
           lastRow
         />
@@ -371,6 +371,16 @@ function ClassPerformanceStatistics({ data }: { data: ReportCardData }) {
           lastRow
         />
       </div>
+      <p className="text-[0.55rem] print:text-[7pt] italic px-1 pt-1">
+        Academic pass is ≥ 10/20 among evaluated students
+        {data.stats.evaluated != null
+          ? ` (${data.stats.passed}/${data.stats.evaluated} sat`
+          : ''}
+        {data.stats.passPercentOfClass != null
+          ? `; ${data.stats.passed}/${data.stats.classSize} of class = ${data.stats.passPercentOfClass.toFixed(0)}%`
+          : ''}
+        {data.stats.evaluated != null ? ')' : ''}. Promotion uses the class threshold.
+      </p>
     </div>
   );
 }
@@ -463,7 +473,9 @@ export function ReportCardFooter({
             The Class Master
           </h4>
           <div className="text-left text-sm print:text-xs opacity-70">
-            {data.student.classMaster || ''}
+            {data.student.classMaster || (
+              <span className="italic text-amber-700">Name not set</span>
+            )}
           </div>
           <div className="text-[0.5rem] print:text-[6pt] text-left text-gray-400 mt-0.5 italic">
             Signature
@@ -477,7 +489,9 @@ export function ReportCardFooter({
             The Principal
           </h4>
           <div className="text-left text-sm print:text-xs opacity-70">
-            {data.branding.principalName}
+            {data.branding.principalName || (
+              <span className="italic text-amber-700">Name not set</span>
+            )}
           </div>
           <div className="text-[0.5rem] print:text-[6pt] text-left text-gray-400 mt-0.5 italic">
             Stamp & Signature

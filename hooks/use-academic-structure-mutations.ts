@@ -51,6 +51,28 @@ function invalidateStructureQueries(
   }
 }
 
+async function clearDefaultPromotionTarget(
+  tenantId: string,
+  values: Pick<ClassFormValues, 'levelId' | 'subSystem' | 'branch'>,
+  exceptClassId?: string,
+) {
+  const supabase = requireBrowserClient();
+  let query = supabase
+    .from('Class')
+    .update({ isDefaultPromotionTarget: false })
+    .eq('tenantId', tenantId)
+    .eq('levelId', values.levelId)
+    .eq('subSystem', values.subSystem)
+    .eq('branch', values.branch);
+  if (exceptClassId) {
+    query = query.neq('id', exceptClassId);
+  }
+  const { error } = await query;
+  if (error) {
+    throwMutationError(error);
+  }
+}
+
 async function nextLevelNumber(
   tenantId: string,
   subSystem: string,
@@ -130,6 +152,17 @@ export function useAcademicStructureMutations() {
       if (error) {
         throwMutationError(error);
       }
+      const { error: classSyncError } = await supabase
+        .from('Class')
+        .update({
+          subSystem: values.subSystem,
+          branch: values.branch,
+        })
+        .eq('levelId', id)
+        .eq('tenantId', tenantId);
+      if (classSyncError) {
+        throwMutationError(classSyncError);
+      }
     },
     onSuccess: () => {
       invalidateStructureQueries(queryClient, tenantId);
@@ -176,6 +209,9 @@ export function useAcademicStructureMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      if (values.isDefaultPromotionTarget) {
+        await clearDefaultPromotionTarget(tenantId, values);
+      }
       const classId = generateAcadiaId('cls');
       const now = new Date().toISOString();
       const { error } = await supabase.from('Class').insert({
@@ -187,6 +223,7 @@ export function useAcademicStructureMutations() {
         branch: values.branch,
         staffProfileId: values.staffProfileId?.trim() || null,
         status: values.status,
+        isDefaultPromotionTarget: values.isDefaultPromotionTarget === true,
         createdAt: now,
         updatedAt: now,
       });
@@ -217,6 +254,9 @@ export function useAcademicStructureMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      if (values.isDefaultPromotionTarget) {
+        await clearDefaultPromotionTarget(tenantId, values, id);
+      }
       const { error } = await supabase
         .from('Class')
         .update({
@@ -226,6 +266,7 @@ export function useAcademicStructureMutations() {
           branch: values.branch,
           staffProfileId: values.staffProfileId?.trim() || null,
           status: values.status,
+          isDefaultPromotionTarget: values.isDefaultPromotionTarget === true,
           updatedAt: new Date().toISOString(),
         })
         .eq('id', id)

@@ -85,6 +85,7 @@ describe('report-card template ids', () => {
     expect(reportCardTermFromAcademic(1)).toBe('1');
     expect(reportCardTermFromAcademic(2)).toBe('2');
     expect(reportCardTermFromAcademic(3)).toBe('3');
+    expect(reportCardTermFromAcademic(4)).toBe('4');
     expect(reportCardTermFromAcademic('annual')).toBe('annual');
   });
 
@@ -116,6 +117,14 @@ describe('report-card template ids', () => {
     const annual = sampleReportCardPreviewData('yearSummary');
     expect(annual.templateId).toBe('yearSummary');
     expect(annual.academic.term).toBe('annual');
+    const fiveSeq = sampleReportCardPreviewData('sequence', {
+      structure: { termsPerYear: 3, sequencesPerTerm: 2, sequencesPerYear: 5 },
+    });
+    expect(fiveSeq.sequenceSlots).toEqual([1, 2]);
+    const fiveAnnual = sampleReportCardPreviewData('yearSummary', {
+      structure: { termsPerYear: 3, sequencesPerTerm: 2, sequencesPerYear: 5 },
+    });
+    expect(fiveAnnual.sequenceSlots).toEqual([1, 2, 3, 4, 5]);
   });
 });
 

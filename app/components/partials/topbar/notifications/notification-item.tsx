@@ -18,6 +18,7 @@ import {
 } from '@/lib/acadia/communication';
 import { getUiLocale, localizedText } from '@/lib/acadia/locale';
 import type { AcadiaNotificationRow } from '@/hooks/use-acadia-notifications';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ const EVENT_ICONS = {
   'attendance.absence': ClipboardCheck,
   'announcement.broadcast': FileText,
   'announcement.event': CalendarClock,
+  'alert.sent': Bell,
   'message.received': MessageCircle,
   'marks.published': GraduationCap,
   'fees.overdue': DollarSign,
@@ -38,8 +40,9 @@ export function NotificationItem({
   onOpen: (item: AcadiaNotificationRow, href: string) => void;
 }) {
   const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
   const locale = getUiLocale();
-  const href = notificationHref(item.event, item.data);
+  const href = notificationHref(item.event, item.data, session?.roleSlug);
   const unread = !item.readAt;
   const Icon =
     EVENT_ICONS[item.event as keyof typeof EVENT_ICONS] ?? Bell;

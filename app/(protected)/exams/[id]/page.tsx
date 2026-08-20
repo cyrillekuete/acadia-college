@@ -2,12 +2,15 @@
 
 import { use } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
+import { ExamSessionDangerZone } from '@/components/acadia/assessment/exam-session-danger-zone';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
-import { examSessionTypeLabel } from '@/lib/acadia/assessment';
+import { canEditExamSession } from '@/lib/acadia/assessment';
+import { formatDateOnlyDisplay } from '@/lib/acadia/dates';
 import {
   formatDateTime,
   formatRecordValue,
@@ -19,6 +22,7 @@ import {
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteOperations } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
+import { requireBrowserClient } from '@/lib/supabase/client';
 
 const EXAM_SELECT = `
   id,
@@ -57,11 +61,28 @@ export default function ExamSessionDetailPage({
   const { id } = use(params);
   const { data: session } = useAcadiaCollegeSession();
   const canManage = canWriteOperations(session?.roleSlug);
+  const tenantId = session?.tenantId ?? null;
   const { data, isLoading, isError, error } = useSupabaseRecord<ExamSessionDetail>(
     'ExamSession',
     id,
     EXAM_SELECT,
   );
+  const { data: markCount = 0 } = useQuery({
+    queryKey: ['exam-session-mark-count', tenantId, id],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { count, error: countError } = await supabase
+        .from('SubjectMark')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenantId', tenantId!)
+        .eq('examSessionId', id);
+      if (countError) {
+        throw countError;
+      }
+      return count ?? 0;
+    },
+    enabled: Boolean(tenantId && id && canManage),
+  });
 
   const subject = unwrapRelation<{
     code?: string;
@@ -76,69 +97,84 @@ export default function ExamSessionDetailPage({
   );
 
   const isFinalized = !!data?.finalizedAt;
+  const editable = canEditExamSession(data?.finalizedAt);
   const title = data?.type
-    ? `Exam — ${examSessionTypeLabel(data.type)}`
+    ? `${t('exams.session')} — ${t(`exams.type.${data.type}`, { defaultValue: data.type })}`
     : t('exams.session');
 
   return (
     <RecordDetailShell
       title={title}
-      description="Exam session from Supabase."
+      description={t('exams.description')}
       backHref="/exams"
-      backLabel="Back to exams"
+      backLabel={t('exams.backToExams')}
       isLoading={isLoading}
       isError={isError}
       error={error}
     >
       {data && canManage ? (
         <div className="mb-5 flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" asChild>
-            <Link href={`/exams/${id}/edit`}>Edit</Link>
-          </Button>
+          {editable ? (
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/exams/${id}/edit`}>{t('common.buttons.edit')}</Link>
+            </Button>
+          ) : null}
           <Button size="sm" asChild>
-            <Link href={`/exams/${id}/results`}>Results</Link>
+            <Link href={`/exams/${id}/results`}>{t('exams.resultsTitle')}</Link>
           </Button>
         </div>
       ) : null}
       {data ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2 lg:gap-7.5">
           <RecordDetailCard
-            title="Exam session"
+            title={t('exams.session')}
             fields={[
               {
-                label: 'Type',
-                value: formatRecordValue(examSessionTypeLabel(data.type)),
+                label: t('exams.filterType'),
+                value: formatRecordValue(
+                  t(`exams.type.${data.type}`, { defaultValue: data.type }),
+                ),
               },
-              { label: 'Starts', value: formatDateTime(data.startsOn) },
-              { label: 'Ends', value: formatDateTime(data.endsOn) },
+              { label: t('exams.starts'), value: formatDateOnlyDisplay(data.startsOn) },
+              { label: t('exams.ends'), value: formatDateOnlyDisplay(data.endsOn) },
               {
-                label: 'Finalized',
+                label: t('exams.finalized'),
                 value: (
                   <Badge
                     variant={isFinalized ? 'success' : 'warning'}
                     appearance="light"
                   >
-                    {isFinalized ? 'Yes' : 'Open'}
+                    {isFinalized ? t('exams.finalized') : t('exams.open')}
                   </Badge>
                 ),
               },
-              { label: 'Finalized at', value: formatDateTime(data.finalizedAt) },
-              { label: 'Created', value: formatDateTime(data.createdAt) },
-              { label: 'Updated', value: formatDateTime(data.updatedAt) },
+              { label: t('exams.finalizedOn'), value: formatDateTime(data.finalizedAt) },
+              { label: t('common.labels.created', { defaultValue: 'Created' }), value: formatDateTime(data.createdAt) },
+              { label: t('common.labels.updated', { defaultValue: 'Updated' }), value: formatDateTime(data.updatedAt) },
             ]}
           />
           <RecordDetailCard
-            title="Academic context"
+            title={t('exams.academicContext')}
             fields={[
-              { label: 'Subject', value: formatRecordValue(subject?.nameEn ?? subject?.code) },
+              { label: t('exams.subject'), value: formatRecordValue(subject?.nameEn ?? subject?.code) },
               {
-                label: 'Stream',
+                label: t('catalog.subSystemLabel'),
                 value: streamLabel(subject?.subSystem, subject?.branch),
               },
-              { label: 'Academic year', value: formatRecordValue(year?.label) },
-              { label: 'Term', value: termLabel(term) },
-              { label: 'Sequence', value: sequenceLabel(sequence) },
+              { label: t('exams.academicYear'), value: formatRecordValue(year?.label) },
+              { label: t('exams.term'), value: termLabel(term) },
+              { label: t('exams.sequenceRequired'), value: sequenceLabel(sequence) },
             ]}
+          />
+        </div>
+      ) : null}
+      {data && canManage ? (
+        <div className="mt-5">
+          <ExamSessionDangerZone
+            examSessionId={data.id}
+            finalizedAt={data.finalizedAt}
+            markCount={markCount}
+            isLoading={isLoading}
           />
         </div>
       ) : null}

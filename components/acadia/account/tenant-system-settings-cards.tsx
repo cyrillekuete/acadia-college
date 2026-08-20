@@ -52,6 +52,12 @@ export function TenantSystemSettingsCards() {
               },
             ]}
           />
+          <p className="text-sm text-muted-foreground">
+            {t('account.sessionTimeoutAdminNote', {
+              defaultValue:
+                'Session timeout can be changed only by administrators and registrars.',
+            })}
+          </p>
           <TenantSessionSettingsForm />
           <RecordDetailCard
             title={t('account.academicPolicies')}

@@ -50,6 +50,10 @@ import {
   EMPTY_CATALOG_FILTERS,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
+import {
+  FinanceClosedYearHint,
+  useFinanceYearClosed,
+} from '@/components/acadia/finance/finance-year-lock';
 import { useTranslation } from '@/hooks/useTranslation';
 
 const CLASS_BADGE_LIMIT = 2;
@@ -68,6 +72,7 @@ export function FeePlansPanel() {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const canManage = canWriteFinance(session?.roleSlug);
+  const yearClosed = useFinanceYearClosed();
   const { activeYearId } = useActiveAcademicYear();
   const { deleteStreamFeePlan } = useFinanceMutations();
   const [search, setSearch] = useState('');
@@ -275,6 +280,7 @@ export function FeePlansPanel() {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  disabled={yearClosed}
                   onClick={() => {
                     setEditing(row.original);
                     setFormOpen(true);
@@ -287,6 +293,7 @@ export function FeePlansPanel() {
                   type="button"
                   variant="ghost"
                   size="icon"
+                  disabled={yearClosed}
                   onClick={() => setDeleting(row.original)}
                   aria-label={t('common.buttons.delete')}
                 >
@@ -302,7 +309,7 @@ export function FeePlansPanel() {
         enableHiding: false,
       },
     ],
-    [canManage, openView, t],
+    [canManage, openView, t, yearClosed],
   );
 
   const table = useReactTable({
@@ -327,7 +334,10 @@ export function FeePlansPanel() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-end gap-3">
-          <CurrentAcademicYearBadge label="Year" />
+          <div className="space-y-1">
+            <CurrentAcademicYearBadge label="Year" />
+            <FinanceClosedYearHint />
+          </div>
           <CatalogFilterBar
             filters={catalogFilters}
             onChange={setCatalogFilters}
@@ -337,6 +347,7 @@ export function FeePlansPanel() {
         {canManage ? (
           <Button
             size="sm"
+            disabled={yearClosed}
             onClick={() => {
               setEditing(null);
               setFormOpen(true);

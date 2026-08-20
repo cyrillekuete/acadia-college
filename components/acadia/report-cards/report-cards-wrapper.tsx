@@ -6,6 +6,7 @@ import { useActiveAcademicYear } from '@/components/acadia/academics/academic-ye
 import { ReportCardView } from '@/components/acadia/report-cards/report-card-view';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -14,11 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTermOptions } from '@/hooks/use-academic-calendar-options';
+import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
 import { useClassEnrolledStudents } from '@/hooks/use-class-enrolled-students';
-import { useClassList } from '@/hooks/use-class-list';
+import { useClassReportClassList } from '@/hooks/use-class-report-class-list';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   buildReportCardPdfFilename,
+  fetchClassBulletinsPdfBlob,
   fetchReportCardPdfBlob,
   savePdfBlobToDownloads,
 } from '@/lib/acadia/report-card-pdf-download';
@@ -28,6 +32,16 @@ import { ArrowLeft, Download, FileText, GraduationCap, Search, Users } from '@/l
 
 const SESSION_EXPIRED_MESSAGE =
   'Your session has expired. Please log in again to generate report cards.';
+
+function termOptionLabel(
+  t: (key: string, values?: Record<string, unknown>) => string,
+  termNumber: number,
+): string {
+  if (termNumber === 1) return t('reports.term1');
+  if (termNumber === 2) return t('reports.term2');
+  if (termNumber === 3) return t('reports.term3');
+  return t('reports.termN', { n: termNumber });
+}
 
 export function ReportCardsWrapper({
   defaultTerm = '1',
@@ -40,14 +54,24 @@ export function ReportCardsWrapper({
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [includeWithdrawn, setIncludeWithdrawn] = useState(false);
   const [reportData, setReportData] = useState<ReportCardData | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingClassPdf, setDownloadingClassPdf] = useState(false);
 
-  const { data: classes = [], isLoading: loadingClasses } = useClassList();
-  const { data: students = [], isLoading: loadingStudents } =
-    useClassEnrolledStudents(selectedClass || null);
+  const { data: classes = [], isLoading: loadingClasses } = useClassReportClassList();
+  const { data: students = [], isLoading: loadingStudents } = useClassEnrolledStudents(
+    selectedClass || null,
+    { includeWithdrawn },
+  );
+  const { data: terms = [] } = useTermOptions(activeYearId);
+  const { data: yearStructure } = useAcademicYearStructure(activeYearId ?? null);
+  const termNumbers =
+    terms.length > 0
+      ? terms.map((term) => term.number)
+      : Array.from({ length: yearStructure?.termsPerYear ?? 3 }, (_, index) => index + 1);
 
   const selectedStudent = useMemo(
     () => students.find((student) => student.id === selectedStudentId) ?? null,
@@ -144,6 +168,28 @@ export function ReportCardsWrapper({
     }
   };
 
+  const handleDownloadClassPdf = async () => {
+    if (!selectedClass) return;
+    setDownloadingClassPdf(true);
+    try {
+      const blob = await fetchClassBulletinsPdfBlob({
+        classId: selectedClass,
+        term: selectedTerm,
+        academicYearId: activeYearId ?? undefined,
+        includeWithdrawn,
+      });
+      const className = classes.find((row) => row.id === selectedClass)?.name ?? 'class';
+      savePdfBlobToDownloads(
+        blob,
+        `ClassBulletins_${className}_${selectedTerm}.pdf`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('reports.pdfFailed'));
+    } finally {
+      setDownloadingClassPdf(false);
+    }
+  };
+
   if (selectedStudent && (reportData || loadingReport || error)) {
     return (
       <div className="space-y-4">
@@ -170,9 +216,11 @@ export function ReportCardsWrapper({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">{t('reports.term1')}</SelectItem>
-                <SelectItem value="2">{t('reports.term2')}</SelectItem>
-                <SelectItem value="3">{t('reports.term3')}</SelectItem>
+                {termNumbers.map((termNumber) => (
+                  <SelectItem key={termNumber} value={String(termNumber)}>
+                    {termOptionLabel(t, termNumber)}
+                  </SelectItem>
+                ))}
                 <SelectItem value="annual">{t('reports.annual')}</SelectItem>
               </SelectContent>
             </Select>
@@ -228,13 +276,32 @@ export function ReportCardsWrapper({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1">{t('reports.term1')}</SelectItem>
-              <SelectItem value="2">{t('reports.term2')}</SelectItem>
-              <SelectItem value="3">{t('reports.term3')}</SelectItem>
-              <SelectItem value="annual">{t('reports.annual')}</SelectItem>
+              {termNumbers.map((termNumber) => (
+                <SelectItem key={termNumber} value={String(termNumber)}>
+                  {termOptionLabel(t, termNumber)}
+                </SelectItem>
+              ))}
+              <SelectItem value="annual">{t('reports.annualYearSummaryHint')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        <label className="flex items-center gap-2 pb-1 text-sm">
+          <Checkbox
+            checked={includeWithdrawn}
+            onCheckedChange={(checked) => setIncludeWithdrawn(checked === true)}
+          />
+          {t('reports.includeWithdrawn')}
+        </label>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={!selectedClass || downloadingClassPdf || students.length === 0}
+          onClick={() => void handleDownloadClassPdf()}
+        >
+          <Download className="size-4" />
+          {downloadingClassPdf ? t('reports.generatingPdf') : t('reports.downloadClassPdfs')}
+        </Button>
       </div>
 
       {!selectedClass ? (

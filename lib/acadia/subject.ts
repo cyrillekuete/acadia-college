@@ -19,7 +19,7 @@ export function buildSubjectRow(
     tenantId,
     code: values.code.trim().toUpperCase(),
     nameEn: values.nameEn.trim(),
-    nameFr: values.nameEn.trim(),
+    nameFr: (values.nameFr?.trim() || values.nameEn.trim()),
     credits: DEFAULT_SUBJECT_CREDITS,
     hours: DEFAULT_SUBJECT_HOURS,
     subSystem: values.subSystem,
@@ -50,6 +50,8 @@ export function normalizeGroupingId(groupingId: string | undefined | null): stri
   return trimmed ? trimmed : null;
 }
 
+export const UNGROUPED_SUBJECT_FILTER = '__none__';
+
 export type SubjectStatusFilter = 'active' | 'inactive' | 'all';
 
 export type SubjectListFilters = {
@@ -57,6 +59,7 @@ export type SubjectListFilters = {
   groupingId: string | null;
   levelId: string | null;
   termId: string | null;
+  allYears: boolean;
 };
 
 export const DEFAULT_SUBJECT_LIST_FILTERS: SubjectListFilters = {
@@ -64,6 +67,7 @@ export const DEFAULT_SUBJECT_LIST_FILTERS: SubjectListFilters = {
   groupingId: null,
   levelId: null,
   termId: null,
+  allYears: false,
 };
 
 export function rowMatchesSubjectListFilters(
@@ -82,7 +86,11 @@ export function rowMatchesSubjectListFilters(
   if (filters.status === 'inactive' && !row.deactivatedAt) {
     return false;
   }
-  if (filters.groupingId && row.groupingId !== filters.groupingId) {
+  if (filters.groupingId === UNGROUPED_SUBJECT_FILTER) {
+    if (row.groupingId) {
+      return false;
+    }
+  } else if (filters.groupingId && row.groupingId !== filters.groupingId) {
     return false;
   }
   if (filters.levelId && row.levelId !== filters.levelId) {

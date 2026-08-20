@@ -231,9 +231,9 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 
 | ID | Feature | FR | Status | Route / artifact | Template source | Notes |
 |----|---------|-----|--------|------------------|-----------------|-------|
-| F-108 | Class-based automatic promotion | FR-DM-1 | `done` | `/academics/promotion`, `lib/acadia/promotion.ts` | — | Per-class per-year `ClassPromotionPolicy`; class-scoped marks; pending when incomplete |
-| F-109 | Manual promotion override | FR-DM-2 | `done` | `/academics/promotion` | — | `PromotionAdminPanel`; manual-only classes; year lock after rollover |
-| F-110 | Academic year transition / rollover | FR-DM-3 | `done` | `/academics/years/[id]/rollover` | — | `YearRolloverWizard` |
+| F-108 | Class-based automatic promotion | FR-DM-1 | `done` | `/academics/promotion`, `lib/acadia/promotion.ts` | — | Per-class per-year `ClassPromotionPolicy`; class-scoped marks; pending when incomplete; rollover preflight blocks missing/ambiguous target classes |
+| F-109 | Manual promotion override | FR-DM-2 | `done` | `/academics/promotion` | — | `PromotionAdminPanel`; manual-only classes; year lock via `rolloverCompletedAt` |
+| F-110 | Academic year transition / rollover | FR-DM-3 | `done` | `/academics/years/[id]/rollover` | — | Atomic `acadia_execute_year_rollover` RPC; WITHDRAW closes source enrollment; source year deactivated; fee provision warnings |
 | F-111 | Data archival and retention | FR-DM-4 | `done` | `/admin/data-retention` | — | `TenantDataRetentionPolicy` + archive job |
 
 ### 7J — Communication
@@ -382,6 +382,7 @@ Phases 0–6 delivered **read-only list/detail scaffolds**. Phase 7 implements *
 | 2026-05-19 | — | Phase 7G: attendance sessions, daily marks, reports, analytics, guardian notifications (F-094–F-099) |
 | 2026-08-17 | — | Student fee accounts auto-provisioned from enrollment + class fee plans; class-change rebill carries paid amounts; bulk generate missing accounts |
 | 2026-05-19 | — | Phase 7I: automatic promotion, manual overrides, year rollover, data retention (F-108–F-111) |
+| 2026-08-20 | — | Academic Structure edge cases: atomic year rollover RPC, current-year uniqueness, enrollment windows, term/sequence delete preflight, timetable delete blockers, calendar milestone bounds |
 | 2026-05-19 | — | Phase 7J: messaging, group threads, notifications, preferences, announcements (F-112–F-118) |
 | 2026-08-17 | — | Phase 7J alerts: Pison-style guardian compose, groups, inbox, history (F-118a–F-118d) |
 | 2026-05-19 | — | Phase 7K: learning materials, resource inventory/requests, room usage & maintenance (F-119–F-125) |

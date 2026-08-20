@@ -8,8 +8,8 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import {
-  ChangePasswordSchemaType,
-  getChangePasswordSchema,
+  getSignedInChangePasswordSchema,
+  type SignedInChangePasswordSchemaType,
 } from '@/app/(auth)/forms/change-password-schema';
 import { AccountEmailSchema, AccountEmailSchemaType } from '@/app/(protected)/user-management/account/forms/account-email-schema';
 import { buildPasswordRecoveryRedirectUrl } from '@/lib/auth/app-origin';
@@ -146,23 +146,41 @@ function ChangeEmailDialog({
 function ChangePasswordDialog({
   open,
   onOpenChange,
+  email,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  email: string;
 }) {
-  const form = useForm<ChangePasswordSchemaType>({
-    resolver: zodResolver(getChangePasswordSchema()),
-    defaultValues: { newPassword: '', confirmPassword: '' },
+  const form = useForm<SignedInChangePasswordSchemaType>({
+    resolver: zodResolver(getSignedInChangePasswordSchema()),
+    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
   const mutation = useMutation({
-    mutationFn: async (values: ChangePasswordSchemaType) => {
+    mutationFn: async (values: SignedInChangePasswordSchemaType) => {
+      if (!email) {
+        throw new Error('No email address on this account.');
+      }
       const supabase = requireBrowserClient();
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email,
+        password: values.currentPassword,
+      });
+      if (verifyError) {
+        throw new Error('Current password is incorrect.');
+      }
       const { error } = await supabase.auth.updateUser({
         password: values.newPassword,
       });
       if (error) {
         throw error;
+      }
+      const response = await apiFetch('/api/acadia/account/password-changed', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        // Password is already updated; logging is best-effort.
       }
     },
     onSuccess: () => {
@@ -188,6 +206,19 @@ function ChangePasswordDialog({
             onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
             className="space-y-4"
           >
+            <FormField
+              control={form.control}
+              name="currentPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Current password</FormLabel>
+                  <FormControl>
+                    <Input type="password" autoComplete="current-password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="newPassword"
@@ -329,6 +360,7 @@ export function AccountSecurityPanel() {
   const profile = session?.profile;
   const email = authUser?.email ?? profile?.email ?? '';
   const isProtected = Boolean(profile?.isProtected);
+  const emailVerified = Boolean(authUser?.email_confirmed_at);
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -394,13 +426,20 @@ export function AccountSecurityPanel() {
         </CardHeader>
         <CardContent className="space-y-6">
           <CardDescription>
-            Your primary address for sign-in and account notifications.
+            Your primary address for sign-in and account notifications. Acadia
+            confirms address changes immediately — no verification email is sent.
           </CardDescription>
           <div className="flex items-center gap-2.5 rounded-lg bg-accent/60 p-4 text-sm">
             <span className="font-medium">{email || '—'}</span>
-            <Badge variant="success" appearance="light">
-              Verified
-            </Badge>
+            {emailVerified ? (
+              <Badge variant="success" appearance="light">
+                Verified
+              </Badge>
+            ) : (
+              <Badge variant="secondary" appearance="light">
+                Unverified
+              </Badge>
+            )}
           </div>
           <Button variant="outline" onClick={() => setEmailDialogOpen(true)}>
             Change email
@@ -414,8 +453,8 @@ export function AccountSecurityPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           <CardDescription>
-            Update your password while signed in, or receive a reset link by
-            email.
+            Update your password while signed in. Use the reset link if you cannot
+            remember the current password.
           </CardDescription>
           <div className="flex flex-wrap gap-2.5">
             <Button variant="outline" onClick={() => setPasswordDialogOpen(true)}>
@@ -495,6 +534,7 @@ export function AccountSecurityPanel() {
       <ChangePasswordDialog
         open={passwordDialogOpen}
         onOpenChange={setPasswordDialogOpen}
+        email={email}
       />
       <DeleteAccountDialog
         open={deleteDialogOpen}

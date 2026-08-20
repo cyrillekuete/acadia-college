@@ -4,6 +4,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
+  canManagePromotion,
+  canManageTenantApiKeys,
   canManageUsers,
   canWriteAcademicAdmin,
   isFinancialDirector,
@@ -13,7 +15,7 @@ import {
   createUserSchema,
   tenantSessionSettingsSchema,
 } from '@/lib/acadia/user-schemas';
-import { userStatusLogEvent } from '@/lib/acadia/user-management';
+import { userStatusLogEvent, validateRoleAssignment } from '@/lib/acadia/user-management';
 import { UserStatus } from '@/app/models/user';
 
 describe('canManageUsers', () => {
@@ -52,6 +54,24 @@ describe('canWriteAcademicAdmin', () => {
     expect(canWriteAcademicAdmin('financial-director')).toBe(true);
     expect(canWriteAcademicAdmin('bursar')).toBe(false);
     expect(canWriteAcademicAdmin('teacher')).toBe(false);
+  });
+});
+
+describe('canManagePromotion', () => {
+  it('matches SQL admin-or-registrar and excludes bursar', () => {
+    expect(canManagePromotion('admin')).toBe(true);
+    expect(canManagePromotion('registrar')).toBe(true);
+    expect(canManagePromotion('financial-director')).toBe(true);
+    expect(canManagePromotion('bursar')).toBe(false);
+    expect(canManagePromotion('teacher')).toBe(false);
+  });
+});
+
+describe('canManageTenantApiKeys', () => {
+  it('matches academic admin writes and excludes bursar', () => {
+    expect(canManageTenantApiKeys('admin')).toBe(true);
+    expect(canManageTenantApiKeys('financial-director')).toBe(true);
+    expect(canManageTenantApiKeys('bursar')).toBe(false);
   });
 });
 
@@ -132,5 +152,13 @@ describe('userStatusLogEvent', () => {
     expect(
       userStatusLogEvent(UserStatus.ACTIVE, UserStatus.BLOCKED),
     ).toBe('user.blocked');
+  });
+});
+
+describe('validateRoleAssignment', () => {
+  it('rejects student roles and registrar super-admin assignment', () => {
+    expect(validateRoleAssignment('admin', 'student').ok).toBe(false);
+    expect(validateRoleAssignment('registrar', 'super-admin').ok).toBe(false);
+    expect(validateRoleAssignment('admin', 'registrar').ok).toBe(true);
   });
 });

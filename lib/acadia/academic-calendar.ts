@@ -370,25 +370,11 @@ export async function setCurrentAcademicYear(
   tenantId: string,
   academicYearId: string,
 ): Promise<void> {
-  const now = new Date().toISOString();
-
-  const { error: clearError } = await supabase
-    .from('AcademicYear')
-    .update({ isCurrent: false, updatedAt: now })
-    .eq('tenantId', tenantId)
-    .neq('id', academicYearId);
-
-  if (clearError) {
-    throw clearError;
-  }
-
-  const { error: setError } = await supabase
-    .from('AcademicYear')
-    .update({ isCurrent: true, updatedAt: now })
-    .eq('id', academicYearId)
-    .eq('tenantId', tenantId);
-
-  if (setError) {
-    throw setError;
+  const { error } = await supabase.rpc('acadia_set_current_academic_year', {
+    p_tenant_id: tenantId,
+    p_academic_year_id: academicYearId,
+  });
+  if (error) {
+    throw error;
   }
 }

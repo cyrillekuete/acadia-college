@@ -116,38 +116,13 @@ const authOptions: NextAuthOptions = {
           };
         }
 
-        const defaultRole = await prisma.userRole.findFirst({
-          where: { isDefault: true },
-        });
-
-        if (!defaultRole) {
-          throw new Error(
-            'Default role not found. Unable to create a new user.',
-          );
-        }
-
-        // Create a new user and account
-        const newUser = await prisma.user.create({
-          data: {
-            email: profile.email,
-            name: profile.name,
-            password: '', // No password for OAuth users
-            avatar: profile.picture || null,
-            emailVerifiedAt: new Date(),
-            roleId: defaultRole.id,
-            status: 'ACTIVE',
-          },
-        });
-
-        return {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name || 'Anonymous',
-          status: newUser.status,
-          avatar: newUser.avatar,
-          roleId: newUser.roleId,
-          roleName: defaultRole.name,
-        };
+        throw new Error(
+          JSON.stringify({
+            code: 403,
+            message:
+              'No Acadia account exists for this Google email. Ask an administrator to provision your account.',
+          }),
+        );
       },
     }),
   ],

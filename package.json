@@ -37,7 +37,7 @@
     "@ianvs/prettier-plugin-sort-imports": "^4.6.2",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@remixicon/react": "^4.6.0",
-    "@sparticuz/chromium": "^149.0.0",
+    "@sparticuz/chromium-min": "^149.0.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@tanstack/react-query": "^5.81.5",

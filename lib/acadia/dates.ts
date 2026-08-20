@@ -8,6 +8,15 @@ export function formatLocalDateInputValue(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Display a YYYY-MM-DD value without UTC midnight timezone skew. */
+export function formatDateOnlyDisplay(value: string | null | undefined): string {
+  const parsed = parseLocalDateInputValue(value?.trim().slice(0, 10));
+  if (!parsed) {
+    return '—';
+  }
+  return parsed.toLocaleDateString();
+}
+
 /** Parse YYYY-MM-DD from form state to a local Date (for calendar pickers). */
 export function parseLocalDateInputValue(
   value: string | null | undefined,

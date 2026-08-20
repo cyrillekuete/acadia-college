@@ -118,6 +118,7 @@ const emptyBlockers: LevelDeleteBlockers = {
   promotionFrom: 0,
   promotionTarget: 0,
   schemesOfWork: 0,
+  timetableSlots: 0,
 };
 
 describe('level delete blockers', () => {
@@ -150,12 +151,20 @@ describe('level delete blockers', () => {
     expect(hasNonClassBlockers(blockers)).toBe(true);
     expect(formatLevelDeleteBlockers(blockers)).toContain('2 term record(s)');
   });
+
+  it('blocks cascade when timetable slots reference classes of the level', () => {
+    const blockers = { ...emptyBlockers, classes: 1, timetableSlots: 2 };
+    expect(canCascadeDeleteClasses(blockers)).toBe(false);
+    expect(hasNonClassBlockers(blockers)).toBe(true);
+    expect(formatLevelDeleteBlockers(blockers).join('\n')).toContain('2 timetable slot(s)');
+  });
 });
 
 const emptyClassBlockers: ClassDeleteBlockers = {
   enrollments: 0,
   promotionFrom: 0,
   promotionTarget: 0,
+  timetableSlots: 0,
 };
 
 describe('class delete blockers', () => {
@@ -177,5 +186,11 @@ describe('class delete blockers', () => {
     const blockers = { ...emptyClassBlockers, promotionTarget: 1 };
     expect(hasClassDeleteBlockers(blockers)).toBe(false);
     expect(formatClassDeleteBlockers(blockers).join('\n')).toContain('will be cleared on delete');
+  });
+
+  it('blocks delete when timetable slots reference the class', () => {
+    const blockers = { ...emptyClassBlockers, timetableSlots: 4 };
+    expect(hasClassDeleteBlockers(blockers)).toBe(true);
+    expect(formatClassDeleteBlockers(blockers)).toContain('4 timetable slot(s)');
   });
 });

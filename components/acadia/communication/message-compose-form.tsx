@@ -16,16 +16,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  directMessageSchema,
+  directMessageSchemaForSender,
   type DirectMessageFormValues,
 } from '@/lib/acadia/communication-schemas';
 import { isGuardian } from '@/lib/acadia/roles';
@@ -35,6 +28,7 @@ import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { fetchWhatsAppConfigured } from '@/lib/acadia/whatsapp-request';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useQuery } from '@tanstack/react-query';
+import { TenantUserPicker } from '@/components/acadia/communication/tenant-user-picker';
 
 export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
   const { t } = useTranslation();
@@ -50,7 +44,9 @@ export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
   const whatsappConfigured = whatsappQuery.data === true;
 
   const form = useForm<DirectMessageFormValues>({
-    resolver: zodResolver(directMessageSchema),
+    resolver: zodResolver(
+      directMessageSchemaForSender(session?.profile?.id ?? ''),
+    ),
     defaultValues: {
       recipientUserId: '',
       subjectEn: '',
@@ -80,21 +76,17 @@ export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Recipient</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={usersLoading ? 'Loading…' : 'Select user'} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                      {user.roleSlug ? ` (${user.roleSlug})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <TenantUserPicker
+                  users={users}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  loading={usersLoading}
+                  placeholder={t('communication.selectRecipient')}
+                  searchPlaceholder={t('communication.searchRecipient')}
+                  emptyLabel={t('communication.noUsersFound')}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

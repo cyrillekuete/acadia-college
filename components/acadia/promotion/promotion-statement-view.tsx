@@ -33,7 +33,7 @@ import {
 import { formatMarkScore } from '@/lib/acadia/assessment';
 import { promotionActionLabel } from '@/lib/acadia/promotion';
 import { useAcademicYearOptions } from '@/hooks/use-academic-calendar-options';
-import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
+import { useClassReportClassList } from '@/hooks/use-class-report-class-list';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -55,7 +55,7 @@ export function PromotionStatementView() {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { data: years = [] } = useAcademicYearOptions();
-  const { data: classes = [] } = useClassesForFilters();
+  const { data: classes = [] } = useClassReportClassList();
 
   const form = useForm<StatementFiltersValues>({
     resolver: zodResolver(statementFiltersSchema),
@@ -96,7 +96,8 @@ export function PromotionStatementView() {
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
         Promotion statements reflect stored decisions from Promotion management,
-        including class-specific thresholds and manual overrides.
+        including class-specific thresholds and manual overrides. Academic pass on
+        bulletins is ≥ 10; this statement uses each class policy.
       </p>
 
       <Form {...form}>
@@ -155,6 +156,11 @@ export function PromotionStatementView() {
           <Button type="submit" variant="secondary">
             Generate statement
           </Button>
+          {rows.length > 0 ? (
+            <Button type="button" variant="outline" onClick={() => window.print()}>
+              Print / PDF
+            </Button>
+          ) : null}
         </form>
       </Form>
 
@@ -188,6 +194,7 @@ export function PromotionStatementView() {
                 <TableHead>Recommended</TableHead>
                 <TableHead>Final decision</TableHead>
                 <TableHead>Source</TableHead>
+                <TableHead>Flags</TableHead>
                 <TableHead>Notes</TableHead>
               </TableRow>
             </TableHeader>
@@ -244,6 +251,19 @@ export function PromotionStatementView() {
                         : row.source === 'MANUAL'
                           ? 'Manual'
                           : 'Auto'}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {[
+                        row.isOrphan ? 'Orphan (not currently enrolled)' : null,
+                        row.classChangedSinceCompute ? 'Class changed since compute' : null,
+                        row.policyStaleAt ? 'Policy changed after compute' : null,
+                        row.isPending ? 'Pending (never computed)' : null,
+                        !row.isPending && !row.targetClassId
+                          ? 'Next class unresolved'
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join('; ') || '—'}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {row.notes ?? '—'}

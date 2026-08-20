@@ -1,6 +1,7 @@
 import type { AnnouncementFormValues } from '@/lib/acadia/communication-schemas';
 import { localDateTimeInputToIso } from '@/lib/acadia/dates';
 import type { UiLocale } from '@/lib/acadia/locale';
+import { isGuardian, isStudent } from '@/lib/acadia/roles';
 
 export const MESSAGE_THREAD_KINDS = ['DIRECT', 'GROUP'] as const;
 export type MessageThreadKind = (typeof MESSAGE_THREAD_KINDS)[number];
@@ -257,6 +258,7 @@ export function notificationEventLabel(
 export function notificationHref(
   event: string,
   data?: Record<string, unknown> | null,
+  roleSlug?: string | null,
 ): string {
   if (event === MESSAGE_RECEIVED_EVENT) {
     const threadId =
@@ -276,7 +278,9 @@ export function notificationHref(
     return '/marks';
   }
   if (event === 'fees.overdue') {
-    return '/finance/fees';
+    return isStudent(roleSlug) || isGuardian(roleSlug)
+      ? '/finance/my-fees'
+      : '/finance/fees';
   }
   if (event === ALERT_SENT_NOTIFICATION) {
     return '/announcements';

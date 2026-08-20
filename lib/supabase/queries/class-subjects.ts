@@ -1,14 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
 import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-system';
-import type { SubjectClassAssignment } from '@/lib/acadia/class-subject-selections';
+import {
+  groupingOverrideFromDb,
+  groupingOverrideToDb,
+  type SubjectClassAssignment,
+} from '@/lib/acadia/class-subject-selections';
 import {
   subjectMatchesClass,
   type ClassSubjectEligibilityClass,
   type ClassSubjectEligibilitySubject,
 } from '@/lib/acadia/class-subject-eligibility';
 import { generateAcadiaId } from '@/lib/acadia/ids';
-import { unwrapRelation } from '@/lib/acadia/record-display';
+import { localizedText } from '@/lib/acadia/locale';
 import {
   toStudentClassSubjectRow,
   type StudentClassSubjectRow,
@@ -51,7 +55,7 @@ export async function fetchClassSubjectSelections(
 ): Promise<ClassSubjectSelectionRow[]> {
   const { data: classSubjectRows, error } = await supabase
     .from('ClassSubject')
-    .select('subjectId, groupingId')
+    .select('subjectId, groupingId, forceUngrouped')
     .eq('tenantId', tenantId)
     .eq('classId', classId);
 
@@ -88,7 +92,10 @@ export async function fetchClassSubjectSelections(
     const branches = branchesBySubject.get(subjectId);
     return {
       subjectId,
-      groupingId: (row.groupingId as string | null) ?? null,
+      groupingId: groupingOverrideFromDb(
+        row.groupingId as string | null,
+        Boolean((row as { forceUngrouped?: boolean }).forceUngrouped),
+      ),
       subBranchIds:
         !branches || branches.length === 0 ? null : branches,
     };
@@ -98,6 +105,7 @@ export async function fetchClassSubjectSelections(
 type ClassSubjectDisplayQueryRow = {
   subjectId: string;
   groupingId: string | null;
+  forceUngrouped?: boolean;
   Subject?: unknown;
   ClassGrouping?: unknown;
 };
@@ -114,8 +122,14 @@ type NestedSubjectRow = {
 };
 
 function groupingNameFromRelation(value: unknown): string | null {
-  const grouping = unwrapRelation<{ nameEn?: string | null }>(value);
-  return grouping?.nameEn?.trim() || null;
+  const grouping = unwrapRelation<{ nameEn?: string | null; nameFr?: string | null }>(
+    value,
+  );
+  return (
+    localizedText(grouping?.nameEn, grouping?.nameFr) ||
+    grouping?.nameEn?.trim() ||
+    null
+  );
 }
 
 export async function fetchClassSubjectDisplayRows(
@@ -129,16 +143,17 @@ export async function fetchClassSubjectDisplayRows(
       [
         'subjectId',
         'groupingId',
+        'forceUngrouped',
         embed(
           'Subject',
           FK.ClassSubject_subject,
           [
             'id, code, nameEn, nameFr, coefficient, deactivatedAt',
-            embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn'),
+            embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn, nameFr'),
             'SubjectSubBranch ( id, name, nameFr, sortOrder )',
           ].join(', '),
         ),
-        `ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn')}`,
+        `ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn, nameFr')}`,
       ].join(', '),
     )
     .eq('tenantId', tenantId)
@@ -197,6 +212,7 @@ export async function fetchClassSubjectDisplayRows(
           }
         : null,
       classGroupingName: groupingNameFromRelation(row.ClassGrouping),
+      forceUngrouped: Boolean(row.forceUngrouped),
       assignedSubBranchIds: assignedIds.length > 0 ? assignedIds : null,
     });
     if (mapped) {
@@ -214,7 +230,7 @@ export async function fetchSubjectClassAssignments(
 ): Promise<SubjectClassAssignmentRow[]> {
   const { data: classSubjectRows, error } = await supabase
     .from('ClassSubject')
-    .select('classId, groupingId')
+    .select('classId, groupingId, forceUngrouped')
     .eq('tenantId', tenantId)
     .eq('subjectId', subjectId);
 
@@ -251,7 +267,10 @@ export async function fetchSubjectClassAssignments(
     const branches = branchesByClass.get(classId);
     return {
       classId,
-      groupingId: (row.groupingId as string | null) ?? null,
+      groupingId: groupingOverrideFromDb(
+        row.groupingId as string | null,
+        Boolean((row as { forceUngrouped?: boolean }).forceUngrouped),
+      ),
       subBranchIds:
         !branches || branches.length === 0 ? null : branches,
     };
@@ -316,10 +335,33 @@ async function updateClassSubjectGroupings(
   classId: string,
   selections: ClassSubjectSelectionRow[],
 ): Promise<void> {
+  const subjectIds = [...new Set(selections.map((selection) => selection.subjectId))];
+  const defaults = new Map<string, string | null>();
+  if (subjectIds.length > 0) {
+    const { data, error } = await supabase
+      .from('Subject')
+      .select('id, groupingId')
+      .eq('tenantId', tenantId)
+      .in('id', subjectIds);
+    if (error) {
+      throw error;
+    }
+    for (const row of data ?? []) {
+      defaults.set(row.id as string, (row.groupingId as string | null) ?? null);
+    }
+  }
+
   for (const selection of selections) {
+    const persisted = groupingOverrideToDb(
+      selection.groupingId,
+      defaults.get(selection.subjectId),
+    );
     const { error } = await supabase
       .from('ClassSubject')
-      .update({ groupingId: selection.groupingId })
+      .update({
+        groupingId: persisted.groupingId,
+        forceUngrouped: persisted.forceUngrouped,
+      })
       .eq('tenantId', tenantId)
       .eq('classId', classId)
       .eq('subjectId', selection.subjectId);
@@ -417,6 +459,7 @@ export async function syncSubjectClassAssignments(
         classId,
         subjectId,
         groupingId: null,
+        forceUngrouped: false,
         createdAt: now,
       })),
     );
@@ -425,10 +468,28 @@ export async function syncSubjectClassAssignments(
     }
   }
 
+  const { data: subjectRow, error: subjectError } = await supabase
+    .from('Subject')
+    .select('groupingId')
+    .eq('tenantId', tenantId)
+    .eq('id', subjectId)
+    .maybeSingle();
+  if (subjectError) {
+    throw subjectError;
+  }
+  const subjectDefaultGroupingId = (subjectRow?.groupingId as string | null) ?? null;
+
   for (const assignment of assignments) {
+    const persisted = groupingOverrideToDb(
+      assignment.groupingId,
+      subjectDefaultGroupingId,
+    );
     const { error } = await supabase
       .from('ClassSubject')
-      .update({ groupingId: assignment.groupingId })
+      .update({
+        groupingId: persisted.groupingId,
+        forceUngrouped: persisted.forceUngrouped,
+      })
       .eq('tenantId', tenantId)
       .eq('subjectId', subjectId)
       .eq('classId', assignment.classId);
@@ -623,6 +684,7 @@ export async function bulkAssignClassSubjects(
         classId,
         subjectId,
         groupingId: null,
+        forceUngrouped: false,
         createdAt: now,
       })),
     );

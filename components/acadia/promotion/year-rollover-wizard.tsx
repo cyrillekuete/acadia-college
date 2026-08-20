@@ -43,7 +43,9 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const canManage = canManagePromotion(session?.roleSlug);
-  const { data: years = [] } = useAcademicYearOptions();
+  const { data: years = [] } = useAcademicYearOptions(undefined, {
+    includeInactive: true,
+  });
   const { executeYearRollover } = usePromotionMutations();
 
   const form = useForm<YearRolloverValues>({
@@ -125,10 +127,11 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
   return (
     <div className="max-w-2xl space-y-6">
       <p className="text-sm text-muted-foreground">
-        End-of-year rollover (FR-DM-3) creates enrollments in the target year from
-        saved promotion decisions, provisions the Cameroon calendar if needed, and sets
-        the target year as current. Students with DEFER or WITHDRAW decisions are
-        skipped (no new enrollment); handle them manually after rollover.
+        End-of-year rollover creates enrollments in the target year from saved
+        promotion decisions, closes the source year, withdraws source enrollments
+        that were promoted, repeated, graduated, or withdrawn, and sets the target
+        year as current. DEFER leaves the student enrolled in the source year with
+        no target enrollment. This action cannot be undone.
       </p>
 
       <Alert>

@@ -51,15 +51,29 @@ export async function POST(request: Request) {
     .from('StaffProfile')
     .select('userId, User!StaffProfile_userId_tenantId_fkey ( email )')
     .eq('staffCode', normalizedCode)
-    .limit(1);
-
-  const staffRow = staffRows?.[0] ?? null;
+    .eq('isActive', true)
+    .limit(2);
 
   if (staffError) {
     console.error('[resolve-login] StaffProfile lookup:', staffError.message);
     return NextResponse.json(
       { message: 'Unable to resolve login identifier.' },
       { status: 500 },
+    );
+  }
+
+  if ((staffRows?.length ?? 0) !== 1) {
+    return NextResponse.json(
+      { message: 'Invalid email or Teacher ID.' },
+      { status: 404 },
+    );
+  }
+
+  const staffRow = staffRows?.[0];
+  if (!staffRow) {
+    return NextResponse.json(
+      { message: 'Invalid email or Teacher ID.' },
+      { status: 404 },
     );
   }
 

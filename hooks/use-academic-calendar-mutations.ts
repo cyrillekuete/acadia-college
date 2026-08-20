@@ -7,6 +7,13 @@ import {
   provisionAcademicCalendar,
   setCurrentAcademicYear,
 } from '@/lib/acadia/academic-calendar';
+import {
+  assertAcademicYearUniqueness,
+  assertSequenceBelongsToYear,
+  assertSequenceNumberInTermUnique,
+  findDuplicateMilestoneKind,
+  isDateWithinYearBounds,
+} from '@/lib/acadia/academic-year-guards';
 import type {
   AcademicYearFormValues,
   CalendarMilestoneFormValues,
@@ -18,6 +25,19 @@ import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { catalogTags, dashboardTags } from '@/lib/acadia/cache/tags';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import {
+  buildSequenceDeleteBlockedMessage,
+  buildSequenceLockedMessage,
+  fetchSequenceDeleteBlockers,
+  hasSequenceDeleteBlockers,
+  sequenceHasMarksLock,
+} from '@/lib/supabase/queries/sequence-delete';
+import {
+  buildTermDeleteBlockedMessage,
+  fetchTermDeleteBlockers,
+  hasTermDeleteBlockers,
+  termHasMarksLock,
+} from '@/lib/supabase/queries/term-delete';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -37,6 +57,117 @@ function mutationErrorMessage(error: unknown): string {
 function optionalDateField(value: string | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+async function loadAcademicYearRanges(
+  supabase: ReturnType<typeof requireBrowserClient>,
+  tenantId: string,
+) {
+  const { data, error } = await supabase
+    .from('AcademicYear')
+    .select('id, label, startsOn, endsOn')
+    .eq('tenantId', tenantId);
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    label: row.label as string,
+    startsOn: String(row.startsOn).slice(0, 10),
+    endsOn: String(row.endsOn).slice(0, 10),
+  }));
+}
+
+async function assertMilestoneValidity(
+  supabase: ReturnType<typeof requireBrowserClient>,
+  tenantId: string,
+  values: CalendarMilestoneFormValues,
+  ignoreId?: string,
+) {
+  const { data: year, error: yearError } = await supabase
+    .from('AcademicYear')
+    .select('startsOn, endsOn')
+    .eq('tenantId', tenantId)
+    .eq('id', values.academicYearId)
+    .maybeSingle();
+  if (yearError) {
+    throw yearError;
+  }
+  if (!year) {
+    throw new Error('Academic year not found.');
+  }
+  const startsOn = String(year.startsOn).slice(0, 10);
+  const endsOn = String(year.endsOn).slice(0, 10);
+  if (!isDateWithinYearBounds(values.onDate, startsOn, endsOn)) {
+    throw new Error(
+      `Milestone date ${values.onDate} is outside the academic year (${startsOn}–${endsOn}).`,
+    );
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('AcademicCalendarMilestone')
+    .select('id, kind, termId')
+    .eq('tenantId', tenantId)
+    .eq('academicYearId', values.academicYearId);
+  if (existingError) {
+    throw existingError;
+  }
+  const duplicate = findDuplicateMilestoneKind({
+    kind: values.kind,
+    termId: values.termId,
+    existing: (existing ?? []).map((row) => ({
+      id: row.id as string,
+      kind: row.kind as string,
+      termId: (row.termId as string | null) ?? null,
+    })),
+    ignoreId,
+  });
+  if (duplicate) {
+    throw new Error(`A ${values.kind.replaceAll('_', ' ').toLowerCase()} milestone already exists for this year.`);
+  }
+}
+
+async function assertSequenceMembership(
+  supabase: ReturnType<typeof requireBrowserClient>,
+  tenantId: string,
+  values: SequenceFormValues,
+  ignoreId?: string,
+) {
+  const { data: term, error: termError } = await supabase
+    .from('Term')
+    .select('id, academicYearId')
+    .eq('tenantId', tenantId)
+    .eq('id', values.termId)
+    .maybeSingle();
+  if (termError) {
+    throw termError;
+  }
+  if (!term) {
+    throw new Error('Term not found.');
+  }
+  assertSequenceBelongsToYear({
+    sequenceAcademicYearId: values.academicYearId,
+    termAcademicYearId: term.academicYearId as string,
+  });
+
+  const { data: sequences, error: seqError } = await supabase
+    .from('AcademicSequence')
+    .select('id, termId, numberInTerm')
+    .eq('tenantId', tenantId)
+    .eq('termId', values.termId);
+  if (seqError) {
+    throw seqError;
+  }
+  assertSequenceNumberInTermUnique({
+    termId: values.termId,
+    numberInTerm: values.numberInTerm,
+    existing: (sequences ?? []).map((row) => ({
+      id: row.id as string,
+      termId: row.termId as string,
+      numberInTerm: Number(row.numberInTerm),
+    })),
+    ignoreId,
+  });
 }
 
 function invalidateCalendarQueries(
@@ -77,13 +208,21 @@ export function useAcademicCalendarMutations() {
           values.sequencesPerYear ?? DEFAULT_ACADEMIC_STRUCTURE.sequencesPerYear,
       };
 
+      const existingYears = await loadAcademicYearRanges(supabase, tenantId);
+      assertAcademicYearUniqueness({
+        label: values.label,
+        startsOn: values.startsOn,
+        endsOn: values.endsOn,
+        existing: existingYears,
+      });
+
       const { error } = await supabase.from('AcademicYear').insert({
         id,
         tenantId,
         label: values.label.trim(),
         startsOn: values.startsOn,
         endsOn: values.endsOn,
-        isCurrent: values.isCurrent,
+        isCurrent: false,
         isActive: values.isActive,
         termsPerYear: structure.termsPerYear,
         sequencesPerTerm: structure.sequencesPerTerm,
@@ -126,13 +265,36 @@ export function useAcademicCalendarMutations() {
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
 
+      const { data: currentRow, error: currentError } = await supabase
+        .from('AcademicYear')
+        .select('isCurrent')
+        .eq('id', id)
+        .eq('tenantId', tenantId)
+        .maybeSingle();
+      if (currentError) {
+        throw currentError;
+      }
+      if (currentRow?.isCurrent && !values.isCurrent) {
+        throw new Error(
+          'Turn off current on this year by setting another year as current.',
+        );
+      }
+
+      const existingYears = await loadAcademicYearRanges(supabase, tenantId);
+      assertAcademicYearUniqueness({
+        label: values.label,
+        startsOn: values.startsOn,
+        endsOn: values.endsOn,
+        existing: existingYears,
+        ignoreId: id,
+      });
+
       const { error } = await supabase
         .from('AcademicYear')
         .update({
           label: values.label.trim(),
           startsOn: values.startsOn,
           endsOn: values.endsOn,
-          isCurrent: values.isCurrent,
           isActive: values.isActive,
           termsPerYear: values.termsPerYear,
           sequencesPerTerm: values.sequencesPerTerm,
@@ -242,6 +404,12 @@ export function useAcademicCalendarMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      const blockers = await fetchTermDeleteBlockers(supabase, tenantId, id);
+      if (termHasMarksLock(blockers)) {
+        throw new Error(
+          `This term cannot be remapped because it has ${blockers.marks} mark(s) or ${blockers.finalizedSessions} finalized session(s).`,
+        );
+      }
       const { error } = await supabase
         .from('Term')
         .update({
@@ -268,6 +436,10 @@ export function useAcademicCalendarMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      const blockers = await fetchTermDeleteBlockers(supabase, tenantId, id);
+      if (hasTermDeleteBlockers(blockers)) {
+        throw new Error(buildTermDeleteBlockedMessage(blockers));
+      }
       const { error } = await supabase
         .from('Term')
         .delete()
@@ -290,6 +462,7 @@ export function useAcademicCalendarMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertSequenceMembership(supabase, tenantId, values);
       const { error } = await supabase.from('AcademicSequence').insert({
         id: generateAcadiaId('seq'),
         tenantId,
@@ -321,6 +494,11 @@ export function useAcademicCalendarMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      const blockers = await fetchSequenceDeleteBlockers(supabase, tenantId, id);
+      if (sequenceHasMarksLock(blockers)) {
+        throw new Error(buildSequenceLockedMessage(blockers));
+      }
+      await assertSequenceMembership(supabase, tenantId, values, id);
       const { error } = await supabase
         .from('AcademicSequence')
         .update({
@@ -348,6 +526,10 @@ export function useAcademicCalendarMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      const blockers = await fetchSequenceDeleteBlockers(supabase, tenantId, id);
+      if (hasSequenceDeleteBlockers(blockers)) {
+        throw new Error(buildSequenceDeleteBlockedMessage(blockers));
+      }
       const { error } = await supabase
         .from('AcademicSequence')
         .delete()
@@ -370,6 +552,7 @@ export function useAcademicCalendarMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertMilestoneValidity(supabase, tenantId, values);
       const now = new Date().toISOString();
       const { error } = await supabase.from('AcademicCalendarMilestone').insert({
         id: generateAcadiaId('milestone'),
@@ -405,6 +588,7 @@ export function useAcademicCalendarMutations() {
         throw new Error('Tenant context is required.');
       }
       const supabase = requireBrowserClient();
+      await assertMilestoneValidity(supabase, tenantId, values, id);
       const { error } = await supabase
         .from('AcademicCalendarMilestone')
         .update({

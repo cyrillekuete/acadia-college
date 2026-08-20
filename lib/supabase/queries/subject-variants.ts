@@ -37,7 +37,8 @@ export async function assertNoOverlappingSubjectVariant(
     .eq('tenantId', tenantId)
     .eq('academicYearId', next.academicYearId)
     .eq('subSystem', next.subSystem as AcademicSubSystem)
-    .eq('branch', next.branch as AcademicBranch);
+    .eq('branch', next.branch as AcademicBranch)
+    .is('deactivatedAt', null);
 
   if (error) {
     throw error;

@@ -29,15 +29,16 @@ const STUDENT_PROFILE_SELECT = `
 const CLASS_SUBJECT_SELECT = `
   subjectId,
   groupingId,
+  forceUngrouped,
   ${embed(
     'Subject',
     FK.ClassSubject_subject,
     [
       'id, nameEn, nameFr, code, coefficient, subjectType, hasSubBranches',
-      embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn, sortOrder'),
+      embed('SubjectGrouping', FK.Subject_grouping, 'id, nameEn, nameFr, sortOrder'),
     ].join(', '),
   )},
-  ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn, sortOrder')}
+  ClassGrouping:${embed('SubjectGrouping', FK.ClassSubject_grouping, 'id, nameEn, nameFr, sortOrder')}
 `;
 
 const MARK_SELECT = `
@@ -203,6 +204,7 @@ export async function fetchClassReportBundle(
   const classSubjectRows = (classSubjectResult.data ?? []) as unknown as Array<{
     subjectId: string;
     groupingId: string | null;
+    forceUngrouped?: boolean;
     Subject?: unknown;
     ClassGrouping?: unknown;
   }>;
@@ -222,6 +224,7 @@ export async function fetchClassReportBundle(
     const grouping = resolveReportCardGrouping(
       unwrapRelation<ReportCardGroupingRef>(row.ClassGrouping),
       unwrapRelation<ReportCardGroupingRef>(subject.SubjectGrouping),
+      { forceUngrouped: Boolean(row.forceUngrouped) },
     );
     return [
       {
@@ -233,6 +236,7 @@ export async function fetchClassReportBundle(
         subjectType: subject.subjectType ?? 'OTHERS',
         groupingId: grouping.groupingId,
         groupingLabel: grouping.groupingLabel,
+        groupingLabelFr: grouping.groupingLabelFr,
         groupingSortOrder: grouping.groupingSortOrder,
         requiredSubBranchIds: requiredBySubject.get(subject.id) ?? [],
       },

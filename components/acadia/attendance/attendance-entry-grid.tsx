@@ -33,6 +33,7 @@ import {
 } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { unwrapRelation } from '@/lib/acadia/record-display';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type StudentRow = {
   id: string;
@@ -47,14 +48,15 @@ const DEFAULT_COLUMN_ORDER = ['student', 'status'];
 export function AttendanceEntryGrid({
   attendanceSessionId,
   academicYearId,
-  subjectId,
+  classId,
   readOnly = false,
 }: {
   attendanceSessionId: string;
   academicYearId: string;
-  subjectId: string;
+  classId: string | null;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
@@ -69,18 +71,13 @@ export function AttendanceEntryGrid({
       tenantId,
       attendanceSessionId,
       academicYearId,
-      subjectId,
+      classId,
     ],
     queryFn: async () => {
       const supabase = requireBrowserClient();
 
-      const { data: subject, error: subjectError } = await supabase
-        .from('Subject')
-        .select('subSystem, branch, levelId')
-        .eq('id', subjectId)
-        .single();
-      if (subjectError) {
-        throw subjectError;
+      if (!classId) {
+        return { students: [] as StudentRow[], records: [] };
       }
 
       const { data: enrollments, error: enrollError } = await supabase
@@ -97,9 +94,7 @@ export function AttendanceEntryGrid({
         )
         .eq('tenantId', tenantId!)
         .eq('academicYearId', academicYearId)
-        .eq('subSystem', subject.subSystem)
-        .eq('branch', subject.branch)
-        .eq('levelId', subject.levelId)
+        .eq('classId', classId)
         .eq('status', ATTENDANCE_ROSTER_ENROLLMENT_STATUS);
 
       if (enrollError) {
@@ -132,7 +127,7 @@ export function AttendanceEntryGrid({
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
       !!attendanceSessionId &&
       !!academicYearId &&
-      !!subjectId,
+      !!classId,
   });
 
   useEffect(() => {
@@ -254,6 +249,14 @@ export function AttendanceEntryGrid({
     getCoreRowModel: getCoreRowModel(),
   });
 
+  if (!classId) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t('attendance.assignClassBeforeMarks')}
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <AttendanceDataGrid
@@ -262,7 +265,7 @@ export function AttendanceEntryGrid({
         isLoading={rosterQuery.isLoading}
         isError={rosterQuery.isError}
         error={rosterQuery.error}
-        emptyMessage="No enrolled students on this roster."
+        emptyMessage={t('attendance.emptyRoster')}
         paginate={false}
       />
 
@@ -275,7 +278,7 @@ export function AttendanceEntryGrid({
                 setNotifyGuardians(checked === true)
               }
             />
-            Notify guardians for absences and lateness
+            {t('attendance.notifyGuardians')}
           </label>
           <Button
             type="button"
@@ -285,7 +288,7 @@ export function AttendanceEntryGrid({
             {saveAttendanceEntry.isPending ? (
               <LoaderCircleIcon className="size-4 animate-spin" />
             ) : (
-              'Save attendance'
+              t('attendance.saveAttendance')
             )}
           </Button>
         </div>

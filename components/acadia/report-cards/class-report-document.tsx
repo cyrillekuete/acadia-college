@@ -200,12 +200,25 @@ export function ClassReportDocument({
             </tr>
           </tbody>
         </table>
+        {data.missingClassMaster ? (
+          <p className="text-[0.65rem] print:text-[8pt] rounded border border-amber-400 bg-amber-50 px-2 py-1 text-amber-900">
+            Class master is not set. Official copies should name the maître de classe.
+          </p>
+        ) : null}
+        {data.stats.incomplete > 0 ? (
+          <p className="text-[0.65rem] print:text-[8pt] rounded border border-amber-400 bg-amber-50 px-2 py-1 text-amber-900">
+            Partial averages — {data.stats.incomplete} student
+            {data.stats.incomplete === 1 ? '' : 's'} still missing one or more subjects.
+            Rankings that use those averages are provisional. Promotion stays pending until papers are complete.
+          </p>
+        ) : null}
 
         <table className="text-[0.65rem] print:text-[8pt] text-center">
           <thead>
             <tr className="rc-navy font-semibold uppercase" style={{ backgroundColor: navy, color: white }}>
               <th>Enrolled</th>
               <th>Evaluated</th>
+              <th>Incomplete</th>
               <th>Class avg</th>
               <th>Highest</th>
               <th>Lowest</th>
@@ -215,6 +228,7 @@ export function ClassReportDocument({
             <tr>
               <td>{stats.classSize}</td>
               <td>{stats.evaluated}</td>
+              <td>{stats.incomplete}</td>
               <td>{formatMarkScore(stats.classAvg)}</td>
               <td>{formatMarkScore(stats.maxAvg)}</td>
               <td>{formatMarkScore(stats.minAvg)}</td>
@@ -225,10 +239,11 @@ export function ClassReportDocument({
         <table className="text-[0.65rem] print:text-[8pt] text-center">
           <thead>
             <tr className="rc-navy font-semibold uppercase" style={{ backgroundColor: navy, color: white }}>
-              <th>Passed</th>
-              <th>Pass %</th>
+              <th>Passed (≥10)</th>
+              <th>Pass % of sat</th>
+              <th>Pass % of class</th>
               <th>Failed</th>
-              <th>Fail %</th>
+              <th>Fail % of sat</th>
             </tr>
           </thead>
           <tbody>
@@ -237,6 +252,7 @@ export function ClassReportDocument({
               <td className="font-semibold" style={{ color: REPORT_CARD_THEME.green }}>
                 {formatPercent(stats.passPercent)}
               </td>
+              <td>{formatPercent(stats.passPercentOfClass)}</td>
               <td className="font-semibold" style={{ color: REPORT_CARD_THEME.red }}>{stats.failed}</td>
               <td className="font-semibold" style={{ color: REPORT_CARD_THEME.red }}>
                 {formatPercent(stats.failPercent)}
@@ -244,6 +260,11 @@ export function ClassReportDocument({
             </tr>
           </tbody>
         </table>
+        <p className="text-[0.6rem] print:text-[7pt] italic">
+          Academic pass is ≥ 10/20 among evaluated students ({stats.passed}/{stats.evaluated} sat).
+          Of the class roster that is {stats.passed}/{stats.classSize} ({formatPercent(stats.passPercentOfClass)}).
+          Promotion uses the class threshold, which may differ.
+        </p>
 
         <table className="text-[0.65rem] print:text-[8pt]">
           <tbody>
@@ -302,6 +323,25 @@ export function ClassReportDocument({
             </h2>
             <p className="text-[0.65rem] print:text-[8pt]">
               {data.unevaluated
+                .map((student) =>
+                  student.matricule
+                    ? `${student.name} (${student.matricule})`
+                    : student.name,
+                )
+                .join('; ')}
+            </p>
+          </section>
+        ) : null}
+        {data.incomplete.length > 0 ? (
+          <section>
+            <h2
+              className="text-[0.7rem] print:text-[9pt] font-bold uppercase border-b mb-1"
+              style={{ color: navy, borderColor: navy }}
+            >
+              Incomplete marks ({data.incomplete.length})
+            </h2>
+            <p className="text-[0.65rem] print:text-[8pt]">
+              {data.incomplete
                 .map((student) =>
                   student.matricule
                     ? `${student.name} (${student.matricule})`

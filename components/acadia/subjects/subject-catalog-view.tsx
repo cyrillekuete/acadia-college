@@ -23,15 +23,20 @@ import {
   subSystemLabel,
   type CatalogFilters,
 } from '@/lib/acadia/education-system';
+import { levelLabel } from '@/lib/acadia/record-display';
+import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
+import { useSubjectList, type SubjectListRowView } from '@/hooks/use-subject-list';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import {
   DEFAULT_SUBJECT_LIST_FILTERS,
+  UNGROUPED_SUBJECT_FILTER,
+  rowMatchesSubjectListFilters,
   type SubjectListFilters,
   type SubjectStatusFilter,
 } from '@/lib/acadia/subject';
-import { levelLabel, termLabel } from '@/lib/acadia/record-display';
-import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
-import { useSubjectList, type SubjectListRowView } from '@/hooks/use-subject-list';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useSubjectGroupingMutations } from '@/hooks/use-subject-grouping-mutations';
 
 const ALL = '__all__';
 
@@ -66,6 +71,8 @@ export function SubjectCatalogView({
   initialSubjects?: SubjectListRowView[];
 }) {
   const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
+  const canManage = canWriteAcademicAdmin(session?.roleSlug);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);
@@ -76,23 +83,30 @@ export function SubjectCatalogView({
     null,
   );
   const { data: groupings = [] } = useSubjectGroupingOptions();
-  const { data: subjects = [] } = useSubjectList(catalogFilters, initialSubjects);
+  const { data: subjects = [] } = useSubjectList(catalogFilters, initialSubjects, {
+    allYears: listFilters.allYears,
+  });
+  const { moveSubjectsToGrouping } = useSubjectGroupingMutations();
+  const [moveGroupingId, setMoveGroupingId] = useState(UNGROUPED_SUBJECT_FILTER);
+
+  const filteredSubjects = useMemo(
+    () => subjects.filter((row) => rowMatchesSubjectListFilters(row, listFilters)),
+    [subjects, listFilters],
+  );
 
   const levelOptions = useMemo(() => {
     const map = new Map<string, { id: string; label: string }>();
     for (const row of subjects) {
-      if (row.levelId && !map.has(row.levelId)) {
-        map.set(row.levelId, { id: row.levelId, label: levelLabel(row.Level) });
-      }
-    }
-    return Array.from(map.values());
-  }, [subjects]);
-
-  const termOptions = useMemo(() => {
-    const map = new Map<string, { id: string; label: string }>();
-    for (const row of subjects) {
-      if (row.termId && !map.has(row.termId)) {
-        map.set(row.termId, { id: row.termId, label: termLabel(row.Term) });
+      const ids = row.levelIds?.length ? row.levelIds : row.levelId ? [row.levelId] : [];
+      for (const levelId of ids) {
+        if (map.has(levelId)) {
+          continue;
+        }
+        const junction = row.SubjectLevel?.find((item) => item.levelId === levelId);
+        map.set(levelId, {
+          id: levelId,
+          label: levelLabel(junction?.Level ?? (levelId === row.levelId ? row.Level : null)),
+        });
       }
     }
     return Array.from(map.values());
@@ -104,6 +118,32 @@ export function SubjectCatalogView({
     () => (assignSubject ? resolveSubjectStream(assignSubject) : null),
     [assignSubject],
   );
+  const handleBulkMove = () => {
+    const ids = filteredSubjects.map((row) => row.id);
+    if (ids.length === 0) {
+      return;
+    }
+    const grouping =
+      moveGroupingId === UNGROUPED_SUBJECT_FILTER
+        ? null
+        : groupings.find((item) => item.id === moveGroupingId);
+    const targetName = grouping?.nameEn ?? t('subjects.ungrouped');
+    if (
+      !window.confirm(
+        t('subjects.bulkMoveConfirm', {
+          count: ids.length,
+          grouping: targetName,
+        }),
+      )
+    ) {
+      return;
+    }
+    moveSubjectsToGrouping.mutate({
+      subjectIds: ids,
+      groupingId: grouping?.id ?? null,
+    });
+  };
+
   const handleAssignToClasses = (row: SubjectListRowView) => {
     const { subSystem, branch } = resolveSubjectStream(row);
     if (!subSystem || !branch) {
@@ -156,7 +196,10 @@ export function SubjectCatalogView({
               <SelectValue placeholder="All groupings" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All groupings</SelectItem>
+              <SelectItem value={ALL}>{t('subjects.allGroupings')}</SelectItem>
+              <SelectItem value={UNGROUPED_SUBJECT_FILTER}>
+                {t('subjects.ungrouped')}
+              </SelectItem>
               {groupings.map((grouping) => (
                 <SelectItem key={grouping.id} value={grouping.id}>
                   {grouping.nameEn}
@@ -191,42 +234,63 @@ export function SubjectCatalogView({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            {t('academics.term')}
-          </p>
-          <Select
-            value={listFilters.termId ?? ALL}
-            onValueChange={(value) =>
+        <label className="flex items-center gap-2 pb-1 text-sm">
+          <input
+            type="checkbox"
+            checked={listFilters.allYears}
+            onChange={(event) =>
               setListFilters((current) => ({
                 ...current,
-                termId: value === ALL ? null : value,
+                allYears: event.target.checked,
               }))
             }
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('catalog.allTerms')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>{t('catalog.allTerms')}</SelectItem>
-              {termOptions.map((term) => (
-                <SelectItem key={term.id} value={term.id}>
-                  {term.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          />
+          {t('subjects.allYears')}
+        </label>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Button type="button" size="sm" variant="outline" asChild>
-          <Link href="/subjects/groupings">{t('subjects.manageGroupings')}</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant="outline" asChild>
+            <Link href="/subjects/groupings">{t('subjects.manageGroupings')}</Link>
+          </Button>
+          {canManage ? (
+            <>
+              <Select value={moveGroupingId} onValueChange={setMoveGroupingId}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder={t('subjects.grouping')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNGROUPED_SUBJECT_FILTER}>
+                    {t('subjects.ungrouped')}
+                  </SelectItem>
+                  {groupings.map((grouping) => (
+                    <SelectItem key={grouping.id} value={grouping.id}>
+                      {grouping.nameEn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={
+                  filteredSubjects.length === 0 ||
+                  moveSubjectsToGrouping.isPending
+                }
+                onClick={handleBulkMove}
+              >
+                {t('subjects.bulkMove')}
+              </Button>
+            </>
+          ) : null}
+        </div>
         <AdminToolbar
           className="mb-0"
           addLabel={t('subjects.newTitle')}
           onAdd={() => setSheetOpen(true)}
+          canManage={canManage}
         />
       </div>
 

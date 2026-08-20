@@ -3,6 +3,7 @@ import { AccountEmailSchema } from '@/app/(protected)/user-management/account/fo
 import { acadiaEmailVerifiedAt } from '@/lib/acadia/email-verified';
 import { requireSessionApi } from '@/lib/acadia/require-session-api';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import { EMAIL_ALREADY_EXISTS_MESSAGE } from '@/lib/acadia/user-management';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
@@ -46,24 +47,37 @@ export async function PATCH(request: Request) {
   const userId = auth.ctx.actorUserId;
   const tenantId = auth.ctx.tenantId;
 
+  const { data: clash } = await admin
+    .from('User')
+    .select('id')
+    .eq('email', email)
+    .neq('id', userId)
+    .maybeSingle();
+  if (clash?.id) {
+    return NextResponse.json(
+      { message: EMAIL_ALREADY_EXISTS_MESSAGE },
+      { status: 400 },
+    );
+  }
+
   const revertProfileEmail = async () => {
-    await supabase
+    await admin
       .from('User')
       .update({ email: previousEmail, updatedAt: now })
       .eq('id', userId)
       .eq('tenantId', tenantId);
-    await supabase
+    await admin
       .from('users')
       .update({ email: previousEmail, updated_at: now })
       .eq('id', userId)
       .eq('tenant_id', tenantId);
   };
 
-  const { error: userError } = await supabase
+  const { error: userError } = await admin
     .from('User')
     .update({
       email,
-      emailVerifiedAt: now,
+      emailVerifiedAt: null,
       updatedAt: now,
     })
     .eq('id', userId)
@@ -76,7 +90,7 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const { error: usersError } = await supabase
+  const { error: usersError } = await admin
     .from('users')
     .update({ email, updated_at: now })
     .eq('id', userId)
@@ -92,7 +106,7 @@ export async function PATCH(request: Request) {
 
   const { error: authError } = await admin.auth.admin.updateUserById(userId, {
     email,
-    email_confirm: true,
+    email_confirm: false,
   });
 
   if (authError) {
@@ -107,9 +121,10 @@ export async function PATCH(request: Request) {
 
   await appendSystemLog(supabase, {
     userId,
-    event: 'user.updated',
+    event: 'user.email_changed',
     entityType: 'User',
     entityId: userId,
+    tenantId,
     description: `Email updated to ${email}.`,
   });
 

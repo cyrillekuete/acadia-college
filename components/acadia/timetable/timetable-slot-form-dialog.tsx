@@ -36,15 +36,19 @@ import {
   timetableSlotSchema,
   type TimetableSlotFormValues,
 } from '@/lib/acadia/subject-schemas';
-import { DAY_OF_WEEK_LABELS, minutesToTimeString } from '@/lib/acadia/timetable';
+import { minutesToTimeString } from '@/lib/acadia/timetable';
+import {
+  TIMETABLE_GRID_DAYS,
+  timetableGridDayLabel,
+} from '@/lib/acadia/timetable-grid';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
 import {
   staffDisplayLabel,
   useClassSubjectOptions,
+  useClassSubjectTeacherOptions,
   useRoomOptions,
-  useSubjectTeacherOptions,
 } from '@/hooks/use-subject-catalog-options';
 import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 
@@ -103,7 +107,7 @@ export function TimetableSlotFormDialog({
   const { data: subjects = [], isLoading: subjectsLoading } =
     useClassSubjectOptions(classId);
   const { data: teachers = [], isLoading: teachersLoading } =
-    useSubjectTeacherOptions(subjectId, academicYearId);
+    useClassSubjectTeacherOptions(classId, subjectId, academicYearId);
 
   useEffect(() => {
     if (!open) {
@@ -295,17 +299,19 @@ export function TimetableSlotFormDialog({
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={!subjectId || teachersLoading}
+                        disabled={!classId || !subjectId || teachersLoading}
                       >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue
                               placeholder={
-                                subjectId
-                                  ? teachersLoading
-                                    ? 'Loading teachers…'
-                                    : 'Select teacher'
-                                  : 'Select a subject first'
+                                !classId
+                                  ? 'Select a class first'
+                                  : !subjectId
+                                    ? 'Select a subject first'
+                                    : teachersLoading
+                                      ? 'Loading teachers…'
+                                      : 'Select teacher'
                               }
                             />
                           </SelectTrigger>
@@ -318,9 +324,13 @@ export function TimetableSlotFormDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      {subjectId && !teachersLoading && teachers.length === 0 ? (
+                      {classId &&
+                      subjectId &&
+                      !teachersLoading &&
+                      teachers.length === 0 ? (
                         <FormDescription>
-                          No teachers are assigned to this subject for the active year.
+                          No teachers are assigned to this subject in the selected class
+                          for the active year.
                         </FormDescription>
                       ) : null}
                       <FormMessage />
@@ -371,9 +381,9 @@ export function TimetableSlotFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.entries(DAY_OF_WEEK_LABELS).map(([day, label]) => (
-                          <SelectItem key={day} value={day}>
-                            {label}
+                        {TIMETABLE_GRID_DAYS.map((day) => (
+                          <SelectItem key={day} value={String(day)}>
+                            {timetableGridDayLabel(day)}
                           </SelectItem>
                         ))}
                       </SelectContent>

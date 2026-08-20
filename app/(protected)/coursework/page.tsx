@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { COURSEWORK_TABLE_LAYOUT } from '@/components/acadia/coursework/coursework-table-layout';
@@ -8,12 +9,19 @@ import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { Badge } from '@/components/ui/badge';
 import { DataGridColumnHeader } from '@/components/ui/data-grid-column-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import {
+  isAcadiaTenantQueryEnabled,
+  useAcadiaCollegeSession,
+} from '@/hooks/use-acadia-college-session';
+import { useTranslation } from '@/hooks/useTranslation';
+import { courseworkTaskListFilters } from '@/lib/acadia/coursework';
 import {
   detailLinkColumn,
   nestedFieldColumn,
 } from '@/lib/acadia/list-columns';
 import { formatDateTime, formatRecordValue } from '@/lib/acadia/record-display';
-import { useTranslation } from '@/hooks/useTranslation';
+import { requireBrowserClient } from '@/lib/supabase/client';
 
 type TaskRow = {
   id: string;
@@ -56,6 +64,37 @@ const SUBMISSION_SELECT = `
 
 export default function CourseworkPage() {
   const { t } = useTranslation();
+  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
+  const { activeYearId } = useActiveAcademicYear();
+  const taskFilters = useMemo(
+    () => courseworkTaskListFilters(session?.roleSlug),
+    [session?.roleSlug],
+  );
+
+  const yearTaskIdsQuery = useQuery({
+    queryKey: ['coursework-year-task-ids', tenantId, activeYearId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('CourseworkTask')
+        .select('id')
+        .eq('tenantId', tenantId!)
+        .eq('academicYearId', activeYearId!);
+      if (error) {
+        throw error;
+      }
+      return (data ?? []).map((row) => row.id as string);
+    },
+    enabled:
+      !!activeYearId &&
+      isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
+  });
+
+  const submissionInFilters = useMemo(() => {
+    const ids = yearTaskIdsQuery.data ?? [];
+    return [{ column: 'taskId', values: ids }];
+  }, [yearTaskIdsQuery.data]);
 
   const taskColumns = useMemo<ColumnDef<TaskRow>[]>(
     () => [
@@ -297,6 +336,7 @@ export default function CourseworkPage() {
           select={TASK_SELECT}
           columns={taskColumns}
           searchKeys={['titleEn', 'titleFr']}
+          filters={taskFilters}
           tableLayout={COURSEWORK_TABLE_LAYOUT}
         />
         <SupabaseTableList
@@ -305,6 +345,7 @@ export default function CourseworkPage() {
           select={SUBMISSION_SELECT}
           columns={submissionColumns}
           searchKeys={['status']}
+          inFilters={submissionInFilters}
           tableLayout={COURSEWORK_TABLE_LAYOUT}
         />
       </div>

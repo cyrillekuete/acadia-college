@@ -7,9 +7,9 @@ import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
   aggregateFinanceSummary,
-  computeFeeAccountTotals,
+  countOverdueInstallments,
   formatMoneyMinor,
-  isInstallmentOverdue,
+  totalsFromFeeAccountRecord,
 } from '@/lib/acadia/finance';
 import {
   isAcadiaTenantQueryEnabled,
@@ -42,6 +42,8 @@ export function FinanceSummaryPanel() {
             .select(
               `
               totalAmountMinor,
+              creditMinor,
+              withdrawnAt,
               StudentFeeInstallment ( amountMinor, status, dueOn, paidAmountMinor ),
               StudentScholarship ( discountMinor )
             `,
@@ -79,36 +81,27 @@ export function FinanceSummaryPanel() {
         throw expendituresError;
       }
 
-      const accountTotals = (accounts ?? []).map((account) => {
-        const installments = (account.StudentFeeInstallment ?? []) as Array<{
-          amountMinor: number;
-          status: string;
-          dueOn: string;
-          paidAmountMinor: number | null;
-        }>;
-        const scholarships = (account.StudentScholarship ?? []) as Array<{
-          discountMinor: number;
-        }>;
-        const scholarshipMinor = scholarships.reduce(
-          (s, x) => s + Number(x.discountMinor ?? 0),
-          0,
+      const accountTotals = (accounts ?? [])
+        .filter((account) => !account.withdrawnAt)
+        .map((account) =>
+          totalsFromFeeAccountRecord({
+            totalAmountMinor: Number(account.totalAmountMinor),
+            creditMinor: account.creditMinor,
+            StudentFeeInstallment: account.StudentFeeInstallment,
+            StudentScholarship: account.StudentScholarship,
+          }),
         );
-        return computeFeeAccountTotals({
-          totalAmountMinor: Number(account.totalAmountMinor),
-          scholarshipMinor,
-          installments,
-        });
-      });
 
       let overdueInstallments = 0;
       for (const account of accounts ?? []) {
+        if (account.withdrawnAt) {
+          continue;
+        }
         const installments = (account.StudentFeeInstallment ?? []) as Array<{
           status: string;
           dueOn: string;
         }>;
-        overdueInstallments += installments.filter((i) =>
-          isInstallmentOverdue(i.status, i.dueOn),
-        ).length;
+        overdueInstallments += countOverdueInstallments(installments);
       }
 
       const summary = aggregateFinanceSummary(
@@ -141,10 +134,10 @@ export function FinanceSummaryPanel() {
     return [
       { label: t('finance.feeAccounts'), value: String(s.accounts) },
       { label: t('finance.totalDue'), value: formatMoneyMinor(s.totalDueMinor) },
-      { label: t('finance.collected'), value: formatMoneyMinor(s.totalPaidMinor) },
+      { label: t('finance.feeCollections'), value: formatMoneyMinor(s.totalPaidMinor) },
       { label: t('finance.outstanding'), value: formatMoneyMinor(s.outstandingMinor) },
       { label: t('finance.overdueInstallments'), value: String(s.overdueInstallments) },
-      { label: t('finance.ledgerIncome'), value: formatMoneyMinor(s.incomeMinor) },
+      { label: t('finance.otherIncome'), value: formatMoneyMinor(s.incomeMinor) },
       { label: t('finance.ledgerExpenses'), value: formatMoneyMinor(s.expenseMinor) },
       { label: t('finance.netLedger'), value: formatMoneyMinor(s.netMinor) },
     ];

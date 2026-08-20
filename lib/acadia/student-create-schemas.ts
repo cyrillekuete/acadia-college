@@ -41,7 +41,7 @@ export const studentCreateSchema = z
     class_name: z.string().optional(),
     previous_school: z.string().optional(),
     previous_class: z.string().optional(),
-    is_new_student: z.boolean(),
+    override_enrollment_window: z.boolean().optional(),
     enrollment_date: z.string().optional(),
     matricule_number: z
       .string()

@@ -53,6 +53,7 @@ export type SubjectFormRecord = {
   id: string;
   code: string;
   nameEn: string;
+  nameFr?: string;
   levelIds: string[];
   subSystem: string;
   branch: string;
@@ -91,7 +92,7 @@ export function SubjectForm({
 }) {
   const isEdit = !!record;
   const { createSubject, updateSubject } = useSubjectMutations();
-  const { activeYearId, activeYear } = useActiveAcademicYear();
+  const { activeYearId, activeYear, years } = useActiveAcademicYear();
   const { data: groupings = [], isLoading: groupingsLoading } =
     useSubjectGroupingOptions();
 
@@ -100,6 +101,7 @@ export function SubjectForm({
     defaultValues: {
       code: initialValues?.code ?? '',
       nameEn: initialValues?.nameEn ?? '',
+      nameFr: initialValues?.nameFr ?? '',
       academicYearId: initialValues?.academicYearId ?? '',
       subSystem: initialValues?.subSystem ?? 'ENGLISH',
       branch: initialValues?.branch ?? 'GRAMMAR',
@@ -134,6 +136,7 @@ export function SubjectForm({
     form.reset({
       code: record.code,
       nameEn: record.nameEn,
+      nameFr: record.nameFr ?? '',
       academicYearId: record.academicYearId,
       subSystem: record.subSystem as SubjectFormValues['subSystem'],
       branch: record.branch as SubjectFormValues['branch'],
@@ -152,10 +155,10 @@ export function SubjectForm({
   }, [hasSubBranches, form]);
 
   useEffect(() => {
-    if (activeYearId) {
+    if (!isEdit && activeYearId) {
       form.setValue('academicYearId', activeYearId);
     }
-  }, [activeYearId, form]);
+  }, [activeYearId, form, isEdit]);
 
   useEffect(() => {
     const current = form.getValues('levelIds') ?? [];
@@ -220,9 +223,22 @@ export function SubjectForm({
             name="nameEn"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel>Name (English)</FormLabel>
                 <FormControl>
                   <Input {...field} placeholder="Mathematics" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="nameFr"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name (French)</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Mathématiques" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -253,7 +269,11 @@ export function SubjectForm({
                     <Input
                       readOnly
                       disabled
-                      value={activeYear?.label ?? 'No academic year configured'}
+                      value={
+                        (isEdit
+                          ? years.find((year) => year.id === field.value)?.label
+                          : activeYear?.label) ?? 'No academic year configured'
+                      }
                       className="bg-muted"
                     />
                   </div>
@@ -453,6 +473,16 @@ export function SubjectForm({
                 <Select
                   value={field.value}
                   onValueChange={(v) => {
+                    const currentLevels = form.getValues('levelIds') ?? [];
+                    if (
+                      currentLevels.length > 0 &&
+                      v !== field.value &&
+                      !window.confirm(
+                        'Changing stream clears selected levels that may not apply to the new sub-system. Continue?',
+                      )
+                    ) {
+                      return;
+                    }
                     field.onChange(v);
                     form.setValue('levelIds', []);
                   }}
@@ -483,6 +513,16 @@ export function SubjectForm({
                 <Select
                   value={field.value}
                   onValueChange={(v) => {
+                    const currentLevels = form.getValues('levelIds') ?? [];
+                    if (
+                      currentLevels.length > 0 &&
+                      v !== field.value &&
+                      !window.confirm(
+                        'Changing branch clears selected levels that may not apply to the new stream. Continue?',
+                      )
+                    ) {
+                      return;
+                    }
                     field.onChange(v);
                     form.setValue('levelIds', []);
                   }}
@@ -598,7 +638,7 @@ export function SubjectForm({
 
         {hideActions ? null : (
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={pending || !activeYearId}>
+            <Button type="submit" disabled={pending || (!isEdit && !activeYearId)}>
               {pending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />
               ) : null}

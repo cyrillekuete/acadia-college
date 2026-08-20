@@ -4,6 +4,7 @@ import {
   ACADEMIC_SUB_SYSTEMS,
 } from '@/lib/acadia/education-system';
 import { EXAM_SESSION_TYPES } from '@/lib/acadia/assessment';
+import { requiresSequence } from '@/lib/acadia/exam-session-guards';
 
 const scoreField = z
   .union([z.coerce.number().min(0).max(20), z.literal('')])
@@ -23,6 +24,15 @@ export const examSessionSchema = z
   .refine((data) => data.endsOn >= data.startsOn, {
     message: 'validation.endAfterStart',
     path: ['endsOn'],
+  })
+  .superRefine((data, ctx) => {
+    if (requiresSequence(data.type) && !data.sequenceId?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.required.sequence',
+        path: ['sequenceId'],
+      });
+    }
   });
 
 export type ExamSessionFormValues = z.infer<typeof examSessionSchema>;
@@ -33,6 +43,8 @@ export const subjectMarkEntrySchema = z.object({
   caScore: scoreField,
   examScore: scoreField,
   isResitEligible: z.boolean().optional(),
+  /** Client-loaded updatedAt for optimistic concurrency on save. */
+  expectedUpdatedAt: z.string().nullable().optional(),
 });
 
 export type SubjectMarkEntryValues = z.infer<typeof subjectMarkEntrySchema>;

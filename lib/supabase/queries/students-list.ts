@@ -1,10 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type {
-  StudentEnrollmentStatus,
-  StudentListItem,
-} from '@/lib/acadia/student-list-item';
+import type { StudentListItem } from '@/lib/acadia/student-list-item';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import { isAcadiaEmailVerified } from '@/lib/acadia/email-verified';
+import {
+  collapseEnrollmentsByProfile,
+  mapEnrollmentStatus,
+} from '@/lib/acadia/student-enrollment';
 import {
   loadFeeSummariesForProfiles,
   splitStudentName,
@@ -27,6 +28,20 @@ const ENROLLMENT_LIST_SELECT = `
   Class!StudentEnrollment_classId_tenantId_fkey ( name )
 `;
 
+function collapseListEnrollmentRows(
+  rows: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return collapseEnrollmentsByProfile(
+    rows.map((row) => ({
+      ...row,
+      status: String(row.status ?? ''),
+      createdAt: String(row.createdAt ?? ''),
+      classId: (row.classId as string | null) ?? null,
+      profileId: unwrapRelation<{ id?: string }>(row.StudentProfile)?.id ?? '',
+    })),
+  );
+}
+
 function mapEnrollmentRowsToStudents(
   rows: Array<Record<string, unknown>>,
   feeByProfile: Map<string, { total: number; paid: number; status: string | null }>,
@@ -44,8 +59,10 @@ function mapEnrollmentRowsToStudents(
     const user = unwrapRelation<{ name?: string; email?: string }>(profile?.User);
     const classRow = unwrapRelation<{ name?: string }>(row.Class);
     const { first, last } = splitStudentName(user?.name);
-    const enrollmentStatus: StudentEnrollmentStatus =
-      row.status === 'ENROLLED' ? 'active' : 'inactive';
+    const enrollmentStatus = mapEnrollmentStatus(
+      row.status as string,
+      (row.classId as string | null) ?? null,
+    );
     const fees = profile?.id ? feeByProfile.get(profile.id) : undefined;
 
     return {
@@ -88,9 +105,11 @@ async function fetchStudentsFromEnrollments(
     throw error;
   }
 
-  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const rows = collapseListEnrollmentRows(
+    (data ?? []) as Array<Record<string, unknown>>,
+  );
   const profileIds = rows
-    .map((row) => unwrapRelation<{ id?: string }>(row.StudentProfile)?.id ?? null)
+    .map((row) => row.profileId)
     .filter((id): id is string => !!id);
 
   const feeByProfile = await loadFeeSummariesForProfiles(
@@ -108,26 +127,46 @@ export async function fetchStudentsFromEnrollmentsForClassIds(
   tenantId: string,
   academicYearId: string,
   classIds: string[],
+  options?: { includeWithdrawn?: boolean },
 ): Promise<StudentListItem[]> {
   if (classIds.length === 0) {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('StudentEnrollment')
     .select(ENROLLMENT_LIST_SELECT)
     .eq('tenantId', tenantId)
     .eq('academicYearId', academicYearId)
-    .eq('status', 'ENROLLED')
     .in('classId', classIds)
     .order('createdAt', { ascending: false });
+
+  if (options?.includeWithdrawn) {
+    query = query.in('status', ['ENROLLED', 'WITHDRAWN']);
+  } else {
+    query = query.eq('status', 'ENROLLED');
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
   }
 
   const rows = (data ?? []) as Array<Record<string, unknown>>;
-  const profileIds = rows
+  const collapsed = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const profileId = unwrapRelation<{ id?: string }>(row.StudentProfile)?.id ?? '';
+    if (!profileId) {
+      continue;
+    }
+    const existing = collapsed.get(profileId);
+    if (!existing || (existing.status !== 'ENROLLED' && row.status === 'ENROLLED')) {
+      collapsed.set(profileId, row);
+    }
+  }
+  const uniqueRows = Array.from(collapsed.values());
+  const profileIds = uniqueRows
     .map((row) => unwrapRelation<{ id?: string }>(row.StudentProfile)?.id ?? null)
     .filter((id): id is string => !!id);
 
@@ -138,7 +177,7 @@ export async function fetchStudentsFromEnrollmentsForClassIds(
     profileIds,
   );
 
-  return mapEnrollmentRowsToStudents(rows, feeByProfile);
+  return mapEnrollmentRowsToStudents(uniqueRows, feeByProfile);
 }
 
 /** Students enrolled in the active academic year (single read path). */

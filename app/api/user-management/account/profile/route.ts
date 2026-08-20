@@ -6,6 +6,7 @@ import { TENANT_ASSETS_BUCKET } from '@/lib/supabase/storage';
 import { createClient } from '@/lib/supabase/server';
 import { fetchAcadiaUserProfile } from '@/lib/supabase/queries/user';
 import { AccountProfileSchema } from '@/app/(protected)/user-management/account/forms/account-profile-schema';
+import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 
 function extensionForAvatar(file: File): string {
   const map: Record<string, string> = {
@@ -133,6 +134,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const { first, last } = splitStudentName(name);
+  await supabase
+    .from('StaffProfile')
+    .update({
+      firstName: first,
+      lastName: last,
+      updatedAt: nowIso,
+    })
+    .eq('userId', auth.ctx.actorUserId)
+    .eq('tenantId', auth.ctx.tenantId);
+
   await appendSystemLog(supabase, {
     userId: auth.ctx.actorUserId,
     event: 'user.updated',
@@ -151,9 +163,6 @@ export async function POST(request: NextRequest) {
   }
 
   const accountUser = mapAcadiaProfileToAccountUser(profileResult.profile);
-  if (avatarUrl !== undefined) {
-    accountUser.avatar = avatarUrl;
-  }
 
   return NextResponse.json(accountUser);
 }

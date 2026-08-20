@@ -26,9 +26,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardHeader, CardTable, CardFooter } from '@/components/ui/card';
 import {
-  computeFeeAccountTotals,
+  feeAccountCollectionStatus,
   formatMoneyMinor,
   paymentProgressPercent,
+  totalsFromFeeAccountRecord,
 } from '@/lib/acadia/finance';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -107,6 +108,8 @@ function FeeAccountsTable() {
           id,
           feeCurrency,
           totalAmountMinor,
+          creditMinor,
+          withdrawnAt,
           subSystem,
           branch,
           StudentProfile!StudentFeeAccount_studentProfileId_tenantId_fkey (
@@ -131,21 +134,13 @@ function FeeAccountsTable() {
           paidAmountMinor: number | null;
           dueOn: string;
         }>;
-        const scholarships = (account.StudentScholarship ?? []) as Array<{
-          discountMinor: number;
-        }>;
-        const scholarshipMinor = scholarships.reduce(
-          (s, x) => s + Number(x.discountMinor ?? 0),
-          0,
-        );
-        const totals = computeFeeAccountTotals({
+        const totals = totalsFromFeeAccountRecord({
           totalAmountMinor: Number(account.totalAmountMinor),
-          scholarshipMinor,
-          installments,
+          creditMinor: account.creditMinor,
+          StudentFeeInstallment: installments,
+          StudentScholarship: account.StudentScholarship,
         });
-        const hasOverdue = installments.some(
-          (i) => i.status === 'OVERDUE' || (i.status === 'PENDING' && i.dueOn < new Date().toISOString().slice(0, 10)),
-        );
+        const collection = feeAccountCollectionStatus(totals, installments);
         return {
           id: account.id as string,
           feeCurrency: String(account.feeCurrency ?? 'XAF'),
@@ -153,7 +148,12 @@ function FeeAccountsTable() {
           totalPaidMinor: totals.totalPaidMinor,
           balanceMinor: totals.balanceMinor,
           progress: paymentProgressPercent(totals),
-          paymentStatus: hasOverdue ? 'OVERDUE' : totals.balanceMinor > 0 ? 'PENDING' : 'PAID',
+          paymentStatus:
+            collection === 'overdue'
+              ? 'OVERDUE'
+              : collection === 'paid'
+                ? 'PAID'
+                : 'PENDING',
           subSystem: String(account.subSystem ?? 'ENGLISH'),
           branch: String(account.branch ?? 'GRAMMAR'),
           StudentProfile: account.StudentProfile,
@@ -419,9 +419,11 @@ export default function StudentFeesPage() {
             </Button>
           </>
         ) : null}
-        <Button size="sm" variant="outline" asChild>
-          <Link href="/finance/reports">{t('finance.reportsTitle')}</Link>
-        </Button>
+        {canManage ? (
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/finance/reports">{t('finance.reportsTitle')}</Link>
+          </Button>
+        ) : null}
       </div>
 
       {canManage && missingCount > 0 ? (

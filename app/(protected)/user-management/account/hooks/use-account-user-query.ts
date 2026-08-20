@@ -27,7 +27,7 @@ export function useAccountUserQuery() {
   return useQuery({
     queryKey: ['account-profile'],
     queryFn: fetchAccountUser,
-    staleTime: Infinity,
+    staleTime: 30_000,
     gcTime: 1000 * 60 * 60,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

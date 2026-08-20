@@ -57,6 +57,10 @@ export function TenantSessionSettingsForm() {
         onSubmit={form.handleSubmit((values) => updateSessionSettings.mutate(values))}
         className="grid max-w-md gap-4"
       >
+        <p className="text-sm text-muted-foreground">
+          Administrators and registrars only. Financial directors can edit
+          institution details, but not session timeout.
+        </p>
         <FormField
           control={form.control}
           name="sessionTimeoutMinutes"

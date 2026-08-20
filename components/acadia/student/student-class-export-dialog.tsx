@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogBody,
@@ -88,6 +89,7 @@ export function StudentClassExportDialog({
   open,
   onOpenChange,
   students,
+  filteredStudents,
   classOptions,
   academicYearLabel,
   initialClassId,
@@ -96,6 +98,7 @@ export function StudentClassExportDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   students: StudentListItem[];
+  filteredStudents: StudentListItem[];
   classOptions: StudentClassExportOption[];
   academicYearLabel: string | null;
   initialClassId?: string | null;
@@ -104,11 +107,15 @@ export function StudentClassExportDialog({
   const { t, i18n } = useTranslation();
   const [classId, setClassId] = useState(initialClassId ?? '');
   const [format, setFormat] = useState<StudentClassExportFormat>('csv');
+  const [useCurrentFilters, setUseCurrentFilters] = useState(true);
+  const [includeWithdrawn, setIncludeWithdrawn] = useState(false);
 
   useEffect(() => {
     if (open) {
       setClassId(initialClassId ?? classOptions[0]?.id ?? '');
       setFormat('csv');
+      setUseCurrentFilters(true);
+      setIncludeWithdrawn(false);
     }
   }, [classOptions, initialClassId, open]);
 
@@ -117,6 +124,7 @@ export function StudentClassExportDialog({
     [classId, classOptions],
   );
 
+  const sourceStudents = useCurrentFilters ? filteredStudents : students;
   const canDownload = selectedOption != null;
 
   const handleDownload = () => {
@@ -125,14 +133,19 @@ export function StudentClassExportDialog({
     }
 
     const { labels, formatters } = buildExportI18n(t);
-    const classStudents = studentsForClassExport(students, selectedOption);
+    const classStudents = studentsForClassExport(
+      sourceStudents,
+      selectedOption,
+      includeWithdrawn,
+    );
 
     if (format === 'csv') {
       const csv = buildStudentClassCsv(
-        students,
+        sourceStudents,
         selectedOption,
         labels,
         formatters,
+        includeWithdrawn,
       );
       downloadStudentClassCsv(
         csv,
@@ -225,11 +238,29 @@ export function StudentClassExportDialog({
                       htmlFor="student-class-export-pdf"
                       className="font-normal"
                     >
-                      {t('students.downloadPdf')}
+                      {t('students.downloadPrint')}
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={useCurrentFilters}
+                  onCheckedChange={(checked) =>
+                    setUseCurrentFilters(checked === true)
+                  }
+                />
+                {t('students.useCurrentFilters')}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={includeWithdrawn}
+                  onCheckedChange={(checked) =>
+                    setIncludeWithdrawn(checked === true)
+                  }
+                />
+                {t('students.includeWithdrawn')}
+              </label>
             </>
           )}
         </DialogBody>
@@ -246,7 +277,7 @@ export function StudentClassExportDialog({
             onClick={handleDownload}
             disabled={!canDownload}
           >
-            {t('common.buttons.download')}
+            {format === 'pdf' ? t('common.buttons.print') : t('common.buttons.download')}
           </Button>
         </DialogFooter>
       </DialogContent>

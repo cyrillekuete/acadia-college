@@ -56,8 +56,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { AlertGroupFormValues } from '@/lib/acadia/alert-schemas';
+import { alertSchema } from '@/lib/acadia/alert-schemas';
 import { ALERT_TEMPLATES, type AlertTemplate } from '@/lib/acadia/alert-templates';
 import type { AlertChannel, AlertPriority } from '@/lib/acadia/alerts';
+import {
+  ALERT_HISTORY_PAGE_SIZE,
+  alertRecipientStats,
+  alertWhatsAppStats,
+  chunkIds,
+} from '@/lib/acadia/alerts';
 import { alertChannelLabel } from '@/lib/acadia/alerts';
 import { getUiLocale, localizedText } from '@/lib/acadia/locale';
 import { useAlertMutations } from '@/hooks/use-alert-mutations';
@@ -124,13 +131,13 @@ export function AnnouncementsWorkspace() {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const targetsQuery = useAlertTargets();
-  const { saveAlert, deleteAlert, deleteAlertGroup } = useAlertMutations();
+  const { saveAlert, sendAlertNow, deleteAlert, deleteAlertGroup } = useAlertMutations();
   const groups = targetsQuery.data?.options ?? [];
 
   const [selectedTab, setSelectedTab] = useState('compose');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [alertType, setAlertType] = useState<AlertChannel>('whatsapp');
+  const [alertType, setAlertType] = useState<AlertChannel>('in_app');
   const [priority, setPriority] = useState<AlertPriority>('normal');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -138,12 +145,13 @@ export function AnnouncementsWorkspace() {
   const [scheduledTime, setScheduledTime] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [historyLimit, setHistoryLimit] = useState(ALERT_HISTORY_PAGE_SIZE);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState<string | undefined>();
   const [groupDefaults, setGroupDefaults] = useState<Partial<AlertGroupFormValues>>({});
 
   const historyQuery = useQuery({
-    queryKey: ['school-alerts', 'history', tenantId],
+    queryKey: ['school-alerts', 'history', tenantId, historyLimit],
     queryFn: async (): Promise<HistoryRow[]> => {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
@@ -153,13 +161,53 @@ export function AnnouncementsWorkspace() {
         )
         .eq('tenantId', tenantId!)
         .order('createdAt', { ascending: false })
-        .limit(100);
+        .limit(historyLimit);
       if (error) {
         throw error;
       }
       return (data ?? []) as HistoryRow[];
     },
     enabled: isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
+  });
+
+  const recipientStatsQuery = useQuery({
+    queryKey: [
+      'school-alerts',
+      'recipient-stats',
+      tenantId,
+      (historyQuery.data ?? []).map((row) => row.id).join(','),
+    ],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const ids = (historyQuery.data ?? []).map((row) => row.id);
+      const byAlert = new Map<
+        string,
+        { readAt: string | null; whatsappStatus: string | null }[]
+      >();
+      for (const chunk of chunkIds(ids)) {
+        const { data, error: statsError } = await supabase
+          .from('SchoolAlertRecipient')
+          .select('alertId, readAt, whatsappStatus')
+          .eq('tenantId', tenantId!)
+          .in('alertId', chunk);
+        if (statsError) {
+          throw statsError;
+        }
+        for (const row of data ?? []) {
+          const alertId = row.alertId as string;
+          const list = byAlert.get(alertId) ?? [];
+          list.push({
+            readAt: (row.readAt as string | null) ?? null,
+            whatsappStatus: (row.whatsappStatus as string | null) ?? null,
+          });
+          byAlert.set(alertId, list);
+        }
+      }
+      return byAlert;
+    },
+    enabled:
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
+      (historyQuery.data?.length ?? 0) > 0,
   });
 
   const whatsappQuery = useQuery({
@@ -173,6 +221,8 @@ export function AnnouncementsWorkspace() {
   const isLoading = targetsQuery.isLoading || historyQuery.isLoading;
   const error = targetsQuery.error ?? historyQuery.error;
   const allGuardiansCount = groups.find((group) => group.kind === 'all')?.count ?? 0;
+  const customGroupCount = groups.filter((group) => group.kind === 'group').length;
+  const sentCount = alerts.filter((alert) => alert.status === 'SENT').length;
 
   const filteredAlerts = alerts.filter((alert) => {
     const alertTitle = localizedText(alert.titleEn, alert.titleFr, locale);
@@ -198,12 +248,12 @@ export function AnnouncementsWorkspace() {
   };
 
   const handleSend = async () => {
-    if (!title.trim() || !content.trim()) {
-      toast.error(t('communication.validationTitleContent'));
+    if (scheduledDate && !scheduledTime) {
+      toast.error(t('communication.validationScheduleDateAndTime'));
       return;
     }
-    if (selectedGroups.length === 0) {
-      toast.error(t('communication.validationGroups'));
+    if (!scheduledDate && scheduledTime) {
+      toast.error(t('communication.validationScheduleDateAndTime'));
       return;
     }
 
@@ -211,21 +261,35 @@ export function AnnouncementsWorkspace() {
       scheduledDate && scheduledTime ? `${scheduledDate}T${scheduledTime}` : '';
     const text = title.trim();
     const body = content.trim();
+    const parsed = alertSchema.safeParse({
+      titleEn: text,
+      titleFr: text,
+      bodyEn: body,
+      bodyFr: body,
+      priority,
+      channel: alertType,
+      targetKeys: selectedGroups,
+      scheduledAt,
+      sendNow: !scheduledAt,
+    });
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? 'communication.validationTitleContent';
+      toast.error(t(message, { defaultValue: t('communication.validationTitleContent') }));
+      return;
+    }
+    if (selectedGroups.some((key) => key.startsWith('class:')) && !targetsQuery.data?.hasAcademicYear) {
+      toast.error(t('communication.noActiveYearClassTargets'));
+      return;
+    }
 
     try {
       await saveAlert.mutateAsync({
-        values: {
-          titleEn: text,
-          titleFr: text,
-          bodyEn: body,
-          bodyFr: body,
-          priority,
-          channel: alertType,
-          targetKeys: selectedGroups,
-          scheduledAt,
-          sendNow: !scheduledAt,
-        },
+        values: parsed.data,
         academicYearId: targetsQuery.data?.academicYearId ?? null,
+        teacherScope: {
+          canBroadcastAll: targetsQuery.data?.canBroadcastAll ?? false,
+          allowedClassIds: targetsQuery.data?.allowedClassIds ?? null,
+        },
       });
     } catch {
       return;
@@ -240,8 +304,12 @@ export function AnnouncementsWorkspace() {
     setSelectedTab('history');
   };
 
-  const handleDelete = async (alertId: string) => {
-    if (!window.confirm(t('communication.deleteConfirm'))) {
+  const handleDelete = async (alertId: string, status: string) => {
+    const confirmKey =
+      status === 'SENT' || status === 'SCHEDULED'
+        ? 'communication.cancelConfirm'
+        : 'communication.deleteConfirm';
+    if (!window.confirm(t(confirmKey))) {
       return;
     }
     try {
@@ -362,7 +430,7 @@ export function AnnouncementsWorkspace() {
             <Send className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{alerts.length}</div>
+            <div className="text-2xl font-bold">{sentCount}</div>
             <p className="text-xs text-muted-foreground">
               {t('communication.totalAnnouncementsSent')}
             </p>
@@ -390,8 +458,8 @@ export function AnnouncementsWorkspace() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{groups.length}</div>
-            <p className="text-xs text-muted-foreground">{t('communication.availableGroups')}</p>
+            <div className="text-2xl font-bold">{customGroupCount}</div>
+            <p className="text-xs text-muted-foreground">{t('communication.customGroupsOnly')}</p>
           </CardContent>
         </Card>
       </div>
@@ -447,12 +515,12 @@ export function AnnouncementsWorkspace() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="in_app">
+                            {t('communication.inAppChannel')}
+                          </SelectItem>
                           <SelectItem value="whatsapp">
                             {t('communication.whatsapp')}
                           </SelectItem>
-                          <SelectItem value="sms">{t('communication.smsOnly')}</SelectItem>
-                          <SelectItem value="email">{t('communication.emailOnly')}</SelectItem>
-                          <SelectItem value="both">{t('communication.smsAndEmail')}</SelectItem>
                         </SelectContent>
                       </Select>
                       {alertType === 'whatsapp' && whatsappQuery.isFetched && !whatsappConfigured ? (
@@ -542,9 +610,14 @@ export function AnnouncementsWorkspace() {
               <Card>
                 <CardHeader>
                   <CardTitle>{t('communication.selectGroups')}</CardTitle>
-                  <CardDescription>{t('communication.selectGroupsDescription')}</CardDescription>
-                </CardHeader>
-                <CardContent>
+                    <CardDescription>{t('communication.selectGroupsDescription')}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {!targetsQuery.data?.hasAcademicYear ? (
+                      <p className="mb-3 text-xs text-destructive">
+                        {t('communication.noActiveYearClassTargets')}
+                      </p>
+                    ) : null}
                   {targetsQuery.isLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -733,15 +806,57 @@ export function AnnouncementsWorkspace() {
                                 {new Date(alert.createdAt).toLocaleString()}
                               </span>
                             ) : null}
+                            {(() => {
+                              const rows = recipientStatsQuery.data?.get(alert.id) ?? [];
+                              const read = alertRecipientStats(rows);
+                              const whatsapp = alertWhatsAppStats(rows);
+                              if (read.total === 0) {
+                                return null;
+                              }
+                              return (
+                                <>
+                                  <span>
+                                    {t('communication.readStats', {
+                                      read: read.read,
+                                      total: read.total,
+                                    })}
+                                  </span>
+                                  {alert.channel === 'whatsapp' ? (
+                                    <span>
+                                      {t('communication.whatsappStats', {
+                                        sent: whatsapp.sent,
+                                        failed: whatsapp.failed,
+                                        skipped: whatsapp.skipped,
+                                      })}
+                                    </span>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="flex gap-2">
+                          {alert.status === 'SCHEDULED' || alert.status === 'DRAFT' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={sendAlertNow.isPending}
+                              onClick={() =>
+                                sendAlertNow.mutate({
+                                  alertId: alert.id,
+                                  academicYearId: targetsQuery.data?.academicYearId ?? null,
+                                })
+                              }
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          ) : null}
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              setTitle(alertTitle);
-                              setContent(alertBody);
+                              setTitle(alert.titleEn);
+                              setContent(alert.bodyEn ?? '');
                               setSelectedTab('compose');
                             }}
                           >
@@ -750,7 +865,7 @@ export function AnnouncementsWorkspace() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => void handleDelete(alert.id)}
+                            onClick={() => void handleDelete(alert.id, alert.status)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -760,6 +875,15 @@ export function AnnouncementsWorkspace() {
                   </Card>
                 );
               })}
+              {alerts.length >= historyLimit ? (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setHistoryLimit((current) => current + ALERT_HISTORY_PAGE_SIZE)}
+                >
+                  {t('communication.loadMore')}
+                </Button>
+              ) : null}
             </div>
           )}
         </TabsContent>

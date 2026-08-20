@@ -1,6 +1,7 @@
 'use client';
 
 import { ClassTimetableView } from '@/components/acadia/timetable/class-timetable-view';
+import { GuardianTimetableView } from '@/components/acadia/timetable/guardian-timetable-view';
 import { StudentTimetableView } from '@/components/acadia/timetable/student-timetable-view';
 import { TeacherTimetableView } from '@/components/acadia/timetable/teacher-timetable-view';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,8 @@ export function TimetablePageContent() {
       return <TeacherTimetableView />;
     case 'student':
       return <StudentTimetableView />;
+    case 'guardian':
+      return <GuardianTimetableView />;
     case 'browse':
       return <ClassTimetableView canManage={false} />;
   }

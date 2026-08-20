@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminSchemeCatalog } from '@/hooks/use-scheme-of-work';
-import { filterAdminSchemeCatalog } from '@/lib/acadia/scheme-of-work';
+import { useSchemeOfWorkMutations } from '@/hooks/use-scheme-of-work-mutations';
+import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { previousAcademicYearId, filterAdminSchemeCatalog } from '@/lib/acadia/scheme-of-work';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type CreateTarget = {
@@ -29,6 +31,9 @@ export function AdminSchemeCatalog() {
   const { t } = useTranslation();
   const router = useRouter();
   const { catalog, isLoading, isError } = useAdminSchemeCatalog();
+  const { years, activeYearId } = useActiveAcademicYear();
+  const { copyFromYear } = useSchemeOfWorkMutations();
+  const previousYearId = previousAcademicYearId(years, activeYearId);
   const [query, setQuery] = useState('');
   const [openItems, setOpenItems] = useState<string[]>([]);
   const [expandedInitialized, setExpandedInitialized] = useState(false);
@@ -57,6 +62,25 @@ export function AdminSchemeCatalog() {
 
   return (
     <div className="space-y-4">
+      {previousYearId ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={copyFromYear.isPending}
+            onClick={() => {
+              if (
+                window.confirm(t('schemeOfWork.copyFromPreviousYearConfirm'))
+              ) {
+                copyFromYear.mutate({ sourceYearId: previousYearId });
+              }
+            }}
+          >
+            {t('schemeOfWork.copyFromPreviousYear')}
+          </Button>
+        </div>
+      ) : null}
       <div className="relative">
         <Search className="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2" />
         <Input

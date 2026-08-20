@@ -113,6 +113,7 @@ export function StudentCreateForm() {
       city: '',
       region: '',
       is_new_student: true,
+      override_enrollment_window: false,
       country: DEFAULT_COUNTRY_NAME,
       phone_country: DEFAULT_COUNTRY_NAME,
       parent_phone_country: DEFAULT_COUNTRY_NAME,
@@ -201,6 +202,11 @@ export function StudentCreateForm() {
         studentId: result.studentId,
       }),
     );
+    if (result.feeWarning) {
+      toast.warning(
+        t('students.feeAccountSkipped', { message: result.feeWarning }),
+      );
+    }
     await new Promise<void>((resolve) => {
       window.setTimeout(resolve, CREDENTIALS_DOWNLOAD_NAVIGATION_DELAY_MS);
     });
@@ -622,6 +628,23 @@ export function StudentCreateForm() {
                   </FormControl>
                   <FormLabel className="font-normal leading-none">
                     {t('students.newStudentCheckbox')}
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="override_enrollment_window"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center gap-3 space-y-0 sm:col-span-2 lg:col-span-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value === true}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal leading-none">
+                    {t('students.overrideEnrollmentWindow')}
                   </FormLabel>
                 </FormItem>
               )}

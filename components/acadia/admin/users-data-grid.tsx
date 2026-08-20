@@ -20,6 +20,11 @@ import { useUserRoleOptions } from '@/hooks/use-user-role-options';
 import { useUserManagementMutations } from '@/hooks/use-user-management-mutations';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canManageUsers } from '@/lib/acadia/roles';
+import {
+  canSendAdminPasswordReset,
+  filterDirectoryUserRows,
+  USERS_DIRECTORY_LIST_LIMIT,
+} from '@/lib/acadia/user-management';
 import { UserStatus } from '@/app/models/user';
 import {
   getUserStatusProps,
@@ -60,6 +65,7 @@ const SELECT = `
   createdAt,
   lastSignInAt,
   isProtected,
+  isTrashed,
   roleId,
   UserRole:roleId ( slug, name )
 `;
@@ -72,6 +78,7 @@ type UserRow = {
   createdAt?: string;
   lastSignInAt?: string | null;
   isProtected?: boolean;
+  isTrashed?: boolean;
   roleId?: string;
   UserRole?: unknown;
 } & Record<string, unknown>;
@@ -90,17 +97,26 @@ export function UsersDataGrid() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [includeTrashed, setIncludeTrashed] = useState(false);
 
   const { data: session } = useAcadiaCollegeSession();
   const { setUserStatus, sendPasswordReset } = useUserManagementMutations();
   const canManage = canManageUsers(session?.roleSlug);
-  const { data: roleList = [], isLoading: rolesLoading } = useUserRoleOptions();
+  const { data: roleList = [], isLoading: rolesLoading } = useUserRoleOptions({
+    directoryOnly: true,
+  });
 
   const { data: users = [], isLoading, isError, error } =
-    useSupabaseTableList<UserRow>('User', SELECT);
+    useSupabaseTableList<UserRow>(
+      'User',
+      SELECT,
+      'tenantId',
+      includeTrashed ? undefined : [{ column: 'isTrashed', value: false }],
+      { limit: USERS_DIRECTORY_LIST_LIMIT },
+    );
 
   const filteredUsers = useMemo(() => {
-    let rows = users;
+    let rows = filterDirectoryUserRows(users);
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       rows = rows.filter(
@@ -224,6 +240,29 @@ export function UsersDataGrid() {
                 const email = String(user.email ?? '');
                 const status = String(user.status ?? '');
                 const isProtected = Boolean(user.isProtected);
+                const applyStatus = (
+                  next: (typeof UserStatus)[keyof typeof UserStatus],
+                  confirmLabel?: string,
+                ) => {
+                  if (confirmLabel && !window.confirm(confirmLabel)) {
+                    return;
+                  }
+                  setUserStatus.mutate({
+                    id: String(user.id),
+                    email,
+                    name: String(user.name ?? email),
+                    roleId: String(user.roleId ?? ''),
+                    status: next,
+                    previousStatus: status,
+                    isTrashed:
+                      next === UserStatus.ACTIVE ? false : Boolean(user.isTrashed),
+                  });
+                };
+
+                const canReset = canSendAdminPasswordReset({
+                  status,
+                  isTrashed: Boolean(user.isTrashed),
+                });
 
                 return (
                   <div className="flex justify-end gap-1">
@@ -232,7 +271,7 @@ export function UsersDataGrid() {
                         <Pencil className="size-4" />
                       </Link>
                     </Button>
-                    {!isProtected ? (
+                    {canReset || !isProtected ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" aria-label={t('admin.moreActions')}>
@@ -240,48 +279,39 @@ export function UsersDataGrid() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => sendPasswordReset.mutate(String(user.id))}
-                          >
-                            {t('admin.sendPasswordReset')}
-                          </DropdownMenuItem>
-                          {status !== UserStatus.ACTIVE ? (
+                          {canReset ? (
                             <DropdownMenuItem
-                              onClick={() =>
-                                setUserStatus.mutate({
-                                  id: String(user.id),
-                                  email,
-                                  status: UserStatus.ACTIVE,
-                                  previousStatus: status,
-                                })
-                              }
+                              onClick={() => sendPasswordReset.mutate(String(user.id))}
+                            >
+                              {t('admin.sendPasswordReset')}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {!isProtected && status !== UserStatus.ACTIVE ? (
+                            <DropdownMenuItem
+                              onClick={() => applyStatus(UserStatus.ACTIVE)}
                             >
                               {t('admin.activateAccount')}
                             </DropdownMenuItem>
                           ) : null}
-                          {status === UserStatus.ACTIVE ? (
+                          {!isProtected && status === UserStatus.ACTIVE ? (
                             <DropdownMenuItem
                               onClick={() =>
-                                setUserStatus.mutate({
-                                  id: String(user.id),
-                                  email,
-                                  status: UserStatus.INACTIVE,
-                                  previousStatus: status,
-                                })
+                                applyStatus(
+                                  UserStatus.INACTIVE,
+                                  'Deactivate this account?',
+                                )
                               }
                             >
                               {t('admin.deactivateAccount')}
                             </DropdownMenuItem>
                           ) : null}
-                          {status !== UserStatus.BLOCKED ? (
+                          {!isProtected && status !== UserStatus.BLOCKED ? (
                             <DropdownMenuItem
                               onClick={() =>
-                                setUserStatus.mutate({
-                                  id: String(user.id),
-                                  email,
-                                  status: UserStatus.BLOCKED,
-                                  previousStatus: status,
-                                })
+                                applyStatus(
+                                  UserStatus.BLOCKED,
+                                  'Block this account and sign them out?',
+                                )
                               }
                             >
                               {t('admin.blockAccount')}
@@ -328,13 +358,6 @@ export function UsersDataGrid() {
   });
 
   const DataGridToolbar = () => {
-    const [inputValue, setInputValue] = useState(searchQuery);
-
-    const handleSearch = () => {
-      setSearchQuery(inputValue);
-      setPagination({ ...pagination, pageIndex: 0 });
-    };
-
     return (
       <CardHeader className="flex-col flex-wrap sm:flex-row items-stretch sm:items-center py-5">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
@@ -342,9 +365,11 @@ export function UsersDataGrid() {
             <Search className="size-4 text-muted-foreground absolute start-3 top-1/2 -translate-y-1/2" />
             <Input
               placeholder={t('admin.searchUsers')}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
               disabled={isLoading}
               className="ps-9 w-full sm:w-40 md:w-64"
             />
@@ -355,7 +380,6 @@ export function UsersDataGrid() {
                 className="absolute end-1.5 top-1/2 -translate-y-1/2 h-6 w-6"
                 onClick={() => {
                   setSearchQuery('');
-                  setInputValue('');
                 }}
               >
                 <X />
@@ -402,6 +426,17 @@ export function UsersDataGrid() {
               ))}
             </SelectContent>
           </Select>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={includeTrashed}
+              onChange={(e) => {
+                setIncludeTrashed(e.target.checked);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+            />
+            Include deactivated
+          </label>
         </div>
         {canManage ? (
           <div className="flex items-center justify-end">
@@ -440,6 +475,12 @@ export function UsersDataGrid() {
       >
         <Card>
           <DataGridToolbar />
+          {users.length >= USERS_DIRECTORY_LIST_LIMIT ? (
+            <p className="px-5 pb-2 text-xs text-muted-foreground">
+              Showing the first {USERS_DIRECTORY_LIST_LIMIT} directory accounts.
+              Narrow the search if the person you need is not listed.
+            </p>
+          ) : null}
           <CardTable>
             <ScrollArea>
               <DataGridTable />

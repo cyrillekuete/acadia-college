@@ -7,6 +7,7 @@ import type { AcademicBranch, AcademicSubSystem } from '@/lib/acadia/education-s
 import {
   buildFeeInstallmentRows,
   computeFeeAccountTotals,
+  computeScholarshipDiscountMinor,
   DEFAULT_FEE_CURRENCY,
   formatMoneyMinor,
   parseFeePlanInstallments,
@@ -164,6 +165,234 @@ export function rebillInstallments(input: {
     remainingMinor: Math.max(0, totalDueMinor - appliedPaidMinor),
     installments,
   };
+}
+
+export async function applyFeeAccountRebill(
+  supabase: SupabaseClient,
+  input: {
+    tenantId: string;
+    accountId: string;
+    streamFeePlanId: string;
+    subSystem: string;
+    branch: string;
+    enrollmentId?: string | null;
+    templates: FeeInstallmentTemplateValues[];
+    paidMinor: number;
+    scholarshipMinor: number;
+    nowIso: string;
+    transferNote?: string | null;
+  },
+): Promise<RebillInstallmentsResult> {
+  const rebilled = rebillInstallments({
+    paidMinor: input.paidMinor,
+    scholarshipMinor: input.scholarshipMinor,
+    templates: input.templates,
+    paidAt: input.nowIso,
+  });
+  const rows = buildFeeInstallmentRows(
+    input.templates,
+    input.tenantId,
+    input.accountId,
+    input.nowIso,
+  ).map((row) => {
+    const match = rebilled.installments.find(
+      (item) => item.installmentNumber === row.installmentNumber,
+    );
+    return {
+      ...row,
+      status: match?.status ?? 'PENDING',
+      paidAmountMinor: match?.paidAmountMinor ?? null,
+      paidAt: match?.paidAt ?? null,
+      notes:
+        input.transferNote &&
+        row.installmentNumber === rebilled.installments[0]?.installmentNumber
+          ? input.transferNote
+          : null,
+    };
+  });
+  const { error } = await supabase.rpc('acadia_replace_fee_installments', {
+    p_account_id: input.accountId,
+    p_stream_fee_plan_id: input.streamFeePlanId,
+    p_total_amount_minor: rebilled.totalAmountMinor,
+    p_credit_minor: rebilled.creditMinor,
+    p_sub_system: input.subSystem,
+    p_branch: input.branch,
+    p_enrollment_id: input.enrollmentId ?? '',
+    p_rows: rows,
+  });
+  if (error) {
+    throw error;
+  }
+  return rebilled;
+}
+
+export async function refreshPercentScholarshipDiscounts(
+  supabase: SupabaseClient,
+  input: {
+    tenantId: string;
+    accountId: string;
+    totalAmountMinor: number;
+  },
+): Promise<number> {
+  const { data: grants, error } = await supabase
+    .from('StudentScholarship')
+    .select(
+      `
+      id,
+      discountMinor,
+      createdAt,
+      ScholarshipType!StudentScholarship_scholarshipTypeId_tenantId_fkey (
+        discountKind,
+        percentBps,
+        fixedAmountMinor
+      )
+    `,
+    )
+    .eq('tenantId', input.tenantId)
+    .eq('studentFeeAccountId', input.accountId)
+    .order('createdAt', { ascending: true });
+  if (error) {
+    throw error;
+  }
+
+  let remainingCap = Math.max(0, Math.round(input.totalAmountMinor));
+  let scholarshipMinor = 0;
+  for (const grant of grants ?? []) {
+    const type = unwrapRelation<{
+      discountKind?: string;
+      percentBps?: number | null;
+      fixedAmountMinor?: number | null;
+    }>(grant.ScholarshipType);
+    let next = Math.max(0, Math.round(Number(grant.discountMinor ?? 0)));
+    if (type?.discountKind === 'PERCENT_BPS') {
+      next = computeScholarshipDiscountMinor({
+        discountKind: type.discountKind,
+        percentBps: type.percentBps,
+        fixedAmountMinor: type.fixedAmountMinor,
+        totalAmountMinor: input.totalAmountMinor,
+      });
+    }
+    next = Math.min(next, remainingCap);
+    remainingCap -= next;
+    scholarshipMinor += next;
+    if (next !== Number(grant.discountMinor ?? 0)) {
+      const { error: updateError } = await supabase
+        .from('StudentScholarship')
+        .update({ discountMinor: next })
+        .eq('tenantId', input.tenantId)
+        .eq('id', grant.id);
+      if (updateError) {
+        throw updateError;
+      }
+    }
+  }
+  return scholarshipMinor;
+}
+
+export async function rebillExistingFeeAccountSchedule(
+  supabase: SupabaseClient,
+  input: {
+    tenantId: string;
+    accountId: string;
+    nowIso?: string;
+  },
+): Promise<RebillInstallmentsResult> {
+  const nowIso = input.nowIso ?? new Date().toISOString();
+  const { data: account, error } = await supabase
+    .from('StudentFeeAccount')
+    .select(
+      `
+      id,
+      streamFeePlanId,
+      subSystem,
+      branch,
+      studentEnrollmentId,
+      totalAmountMinor,
+      StudentFeeInstallment (
+        installmentNumber,
+        labelEn,
+        labelFr,
+        amountMinor,
+        dueOn,
+        status,
+        paidAmountMinor
+      )
+    `,
+    )
+    .eq('tenantId', input.tenantId)
+    .eq('id', input.accountId)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  if (!account) {
+    throw new Error('Fee account not found.');
+  }
+
+  let templates = (
+    (account.StudentFeeInstallment ?? []) as Array<{
+      installmentNumber: number;
+      labelEn: string;
+      labelFr: string;
+      amountMinor: number;
+      dueOn: string;
+    }>
+  )
+    .slice()
+    .sort((a, b) => a.installmentNumber - b.installmentNumber)
+    .map((row) => ({
+      installmentNumber: row.installmentNumber,
+      labelEn: row.labelEn,
+      labelFr: row.labelFr,
+      amountMinor: row.amountMinor,
+      dueOn: row.dueOn,
+    }));
+
+  const planId = account.streamFeePlanId
+    ? String(account.streamFeePlanId)
+    : '';
+  if (planId) {
+    const { data: plan, error: planError } = await supabase
+      .from('StreamFeePlan')
+      .select('installments')
+      .eq('tenantId', input.tenantId)
+      .eq('id', planId)
+      .maybeSingle();
+    if (planError) {
+      throw planError;
+    }
+    const fromPlan = parseFeePlanInstallments(plan?.installments);
+    if (fromPlan.length > 0) {
+      templates = fromPlan;
+    }
+  }
+  if (templates.length === 0) {
+    throw new Error('Fee account has no installment schedule to recompute.');
+  }
+
+  const paidMinor = sumPaidFromInstallments(
+    (account.StudentFeeInstallment ?? []) as PaidInstallmentInput[],
+  );
+  const scholarshipMinor = await refreshPercentScholarshipDiscounts(supabase, {
+    tenantId: input.tenantId,
+    accountId: input.accountId,
+    totalAmountMinor: sumInstallmentTemplates(templates),
+  });
+
+  return applyFeeAccountRebill(supabase, {
+    tenantId: input.tenantId,
+    accountId: input.accountId,
+    streamFeePlanId: planId,
+    subSystem: String(account.subSystem),
+    branch: String(account.branch),
+    enrollmentId: account.studentEnrollmentId
+      ? String(account.studentEnrollmentId)
+      : '',
+    templates,
+    paidMinor,
+    scholarshipMinor,
+    nowIso,
+  });
 }
 
 async function findFeeAccountId(
@@ -450,76 +679,29 @@ export async function rebillFeeAccountToClassPlan(
     }
 
     const installments = (account.StudentFeeInstallment ?? []) as PaidInstallmentInput[];
-    const scholarships = (account.StudentScholarship ?? []) as Array<{
-      discountMinor: number;
-    }>;
-    const scholarshipMinor = scholarships.reduce(
-      (sum, row) => sum + Number(row.discountMinor ?? 0),
-      0,
-    );
     const paidMinor = sumPaidFromInstallments(installments);
     const nowIso = new Date().toISOString();
-    const rebilled = rebillInstallments({
+    const scholarshipMinor = await refreshPercentScholarshipDiscounts(supabase, {
+      tenantId: input.tenantId,
+      accountId,
+      totalAmountMinor: plan.totalAmountMinor,
+    });
+    const rebilled = await applyFeeAccountRebill(supabase, {
+      tenantId: input.tenantId,
+      accountId,
+      streamFeePlanId: plan.streamFeePlanId,
+      subSystem: input.subSystem,
+      branch: input.branch,
+      enrollmentId: input.studentEnrollmentId || '',
+      templates: plan.installments,
       paidMinor,
       scholarshipMinor,
-      templates: plan.installments,
-      paidAt: nowIso,
-    });
-
-    const { error: deleteError } = await supabase
-      .from('StudentFeeInstallment')
-      .delete()
-      .eq('tenantId', input.tenantId)
-      .eq('studentFeeAccountId', accountId);
-    if (deleteError) {
-      throw deleteError;
-    }
-
-    const installmentRows = buildFeeInstallmentRows(
-      plan.installments,
-      input.tenantId,
-      accountId,
       nowIso,
-    ).map((row) => {
-      const match = rebilled.installments.find(
-        (item) => item.installmentNumber === row.installmentNumber,
-      );
-      return {
-        ...row,
-        status: match?.status ?? 'PENDING',
-        paidAmountMinor: match?.paidAmountMinor ?? null,
-        paidAt: match?.paidAt ?? null,
-        notes:
-          paidMinor > 0 &&
-          row.installmentNumber === rebilled.installments[0]?.installmentNumber
-            ? `Transferred ${formatMoneyMinor(paidMinor)} from previous class plan.`
-            : null,
-      };
+      transferNote:
+        paidMinor > 0
+          ? `Transferred ${formatMoneyMinor(paidMinor)} from previous class plan.`
+          : null,
     });
-
-    const { error: insertError } = await supabase
-      .from('StudentFeeInstallment')
-      .insert(installmentRows);
-    if (insertError) {
-      throw insertError;
-    }
-
-    const { error: updateError } = await supabase
-      .from('StudentFeeAccount')
-      .update({
-        subSystem: input.subSystem,
-        branch: input.branch,
-        studentEnrollmentId: input.studentEnrollmentId || null,
-        streamFeePlanId: plan.streamFeePlanId,
-        totalAmountMinor: rebilled.totalAmountMinor,
-        creditMinor: rebilled.creditMinor,
-        updatedAt: nowIso,
-      })
-      .eq('id', accountId)
-      .eq('tenantId', input.tenantId);
-    if (updateError) {
-      throw updateError;
-    }
 
     if (input.actorUserId) {
       await appendSystemLog(supabase, {

@@ -1,17 +1,23 @@
 'use client';
 
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
-import { AcademicReportView } from '@/components/acadia/assessment/academic-report-view';
+import { ClassReportWrapper } from '@/components/acadia/report-cards/class-report-wrapper';
+import { ReportsAccessGate } from '@/components/acadia/report-cards/reports-access-gate';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useTranslation } from '@/hooks/useTranslation';
+import { canViewAcademicReports } from '@/lib/acadia/reports-access';
 
 export default function SequenceResultsReportPage() {
   const { t } = useTranslation();
+  const { data: session } = useAcadiaCollegeSession();
   return (
-    <AcadiaPageShell
-      title={t('reports.sequenceTitle')}
-      description="Generate sequence examination results (FR-4.3.1)."
-    >
-      <AcademicReportView kind="sequence" />
-    </AcadiaPageShell>
+    <ReportsAccessGate allowed={canViewAcademicReports(session?.roleSlug)}>
+      <AcadiaPageShell
+        title={t('reports.sequenceTitle')}
+        description={t('reports.sequenceDescription')}
+      >
+        <ClassReportWrapper lockedPeriodKind="sequence" />
+      </AcadiaPageShell>
+    </ReportsAccessGate>
   );
 }

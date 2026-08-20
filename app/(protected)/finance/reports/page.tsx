@@ -20,6 +20,12 @@ export default function FinanceReportsPage() {
         <Button size="sm" variant="outline" asChild>
           <Link href="/finance/reports/annual">{t('finance.annualStatement')}</Link>
         </Button>
+        <Button size="sm" variant="outline" asChild>
+          <Link href="/finance/ledger">{t('finance.ledgerTitle')}</Link>
+        </Button>
+        <Button size="sm" variant="outline" asChild>
+          <Link href="/finance/budget">{t('finance.budgetTitle')}</Link>
+        </Button>
       </div>
       <FinanceSummaryPanel />
     </AcadiaPageShell>

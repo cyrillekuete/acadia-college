@@ -85,28 +85,26 @@ async function fetchStudentClassForAccess(
   let query = supabase
     .from('StudentEnrollment')
     .select(
-      `classId, ${embed('Class', FK.StudentEnrollment_class, 'id, staffProfileId')}`,
+      `classId, status, ${embed('Class', FK.StudentEnrollment_class, 'id, staffProfileId')}`,
     )
     .eq('tenantId', tenantId)
     .eq('studentProfileId', studentProfileId)
-    .eq('academicYearId', academicYearId)
-    .eq('status', 'ENROLLED');
+    .eq('academicYearId', academicYearId);
 
   const requestedClassId = classId?.trim() ?? '';
   if (requestedClassId) {
     query = query.eq('classId', requestedClassId);
   }
 
-  const { data, error } = await query
-    .order('createdAt', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await query.order('createdAt', { ascending: false });
 
   if (error) {
     throw error;
   }
 
-  const row = data as EnrollmentAccessRow | null;
+  const rows = (data ?? []) as Array<EnrollmentAccessRow & { status?: string | null }>;
+  const row =
+    rows.find((entry) => entry.status === 'ENROLLED') ?? rows[0] ?? null;
   const enrolledClassId = row?.classId?.trim() ?? '';
   if (!enrolledClassId) {
     return null;

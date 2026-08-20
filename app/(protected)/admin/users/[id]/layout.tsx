@@ -71,15 +71,21 @@ function mapToUserModel(
     createdAt?: string;
   }>(row.UserRole);
 
-  if (!role) {
-    return null;
-  }
+  const fallbackRole = {
+    id: String(row.roleId ?? ''),
+    slug: '',
+    name: 'Unknown role',
+    isTrashed: false,
+    isProtected: false,
+    isDefault: false,
+    createdAt: new Date(),
+  };
 
   return {
     id: String(row.id),
     email: String(row.email ?? ''),
     name: row.name ? String(row.name) : null,
-    roleId: String(row.roleId ?? role.id),
+    roleId: String(row.roleId ?? role?.id ?? ''),
     status: (row.status as UserStatus) ?? UserStatus.ACTIVE,
     createdAt: new Date(String(row.createdAt ?? Date.now())),
     updatedAt: new Date(String(row.updatedAt ?? Date.now())),
@@ -89,15 +95,17 @@ function mapToUserModel(
     isTrashed: Boolean(row.isTrashed),
     isProtected: Boolean(row.isProtected),
     avatar: row.avatar ? String(row.avatar) : null,
-    role: {
-      id: role.id,
-      slug: role.slug,
-      name: role.name,
-      isTrashed: Boolean(role.isTrashed),
-      isProtected: Boolean(role.isProtected),
-      isDefault: Boolean(role.isDefault),
-      createdAt: new Date(String(role.createdAt ?? Date.now())),
-    },
+    role: role
+      ? {
+          id: role.id,
+          slug: role.slug,
+          name: role.name,
+          isTrashed: Boolean(role.isTrashed),
+          isProtected: Boolean(role.isProtected),
+          isDefault: Boolean(role.isDefault),
+          createdAt: new Date(String(role.createdAt ?? Date.now())),
+        }
+      : fallbackRole,
   };
 }
 
@@ -127,7 +135,7 @@ export default function AdminUserDetailLayout({
       logs: {
         title: 'Activity Logs',
         icon: Activity,
-        path: `/admin/logs?userEmail=`,
+        path: `/admin/logs?entityId=${id}`,
       },
     }),
     [id],
@@ -155,9 +163,7 @@ export default function AdminUserDetailLayout({
   });
 
   const user = mapToUserModel(userRow);
-  const logsPath = user?.email
-    ? `/admin/logs?userEmail=${encodeURIComponent(user.email)}`
-    : `/admin/logs`;
+  const logsPath = `/admin/logs?entityId=${encodeURIComponent(id)}`;
 
   useEffect(() => {
     if (pathname === `/admin/users/${id}`) {

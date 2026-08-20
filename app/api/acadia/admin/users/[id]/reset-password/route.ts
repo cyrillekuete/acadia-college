@@ -3,6 +3,7 @@ import { getAppOrigin } from '@/lib/auth/app-origin';
 import { sendPasswordRecoveryEmail } from '@/lib/auth/password-recovery';
 import { requireAdminApi } from '@/lib/acadia/require-admin-api';
 import { appendSystemLog } from '@/lib/acadia/system-log';
+import { canSendAdminPasswordReset } from '@/lib/acadia/user-management';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
@@ -26,13 +27,26 @@ export async function POST(_request: Request, context: RouteContext) {
 
   const { data: target, error: targetError } = await supabase
     .from('User')
-    .select('id, email, tenantId')
+    .select('id, email, tenantId, status, isTrashed, isProtected')
     .eq('id', targetUserId)
     .eq('tenantId', auth.ctx.tenantId)
     .maybeSingle();
 
   if (targetError || !target?.email) {
     return NextResponse.json({ message: 'User not found.' }, { status: 404 });
+  }
+
+  if (
+    !canSendAdminPasswordReset({
+      status: String(target.status ?? ''),
+      isTrashed: Boolean(target.isTrashed),
+      isProtected: Boolean(target.isProtected),
+    })
+  ) {
+    return NextResponse.json(
+      { message: 'Password reset is not available for this account.' },
+      { status: 400 },
+    );
   }
 
   const admin = createAdminClient();
@@ -55,6 +69,7 @@ export async function POST(_request: Request, context: RouteContext) {
     description: `Password reset email sent to ${target.email}`,
     entityId: targetUserId,
     entityType: 'User',
+    tenantId: auth.ctx.tenantId,
   });
 
   return NextResponse.json({

@@ -11,13 +11,15 @@ import {
 
 const ACTIVITY_EVENTS = [
   'mousedown',
+  'mousemove',
   'keydown',
   'scroll',
   'touchstart',
 ] as const;
 
 /**
- * Signs the user out after tenant-configured idle time (FR-1.2.2).
+ * Best-effort idle sign-out after tenant-configured minutes (FR-1.2.2).
+ * Supabase JWT expiry remains the hard session cap.
  */
 export function SessionTimeoutGuard() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
@@ -44,10 +46,18 @@ export function SessionTimeoutGuard() {
       window.addEventListener(event, touchActivity, { passive: true });
     }
 
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        touchActivity();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       for (const event of ACTIVITY_EVENTS) {
         window.removeEventListener(event, touchActivity);
       }
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [ready, touchActivity]);
 

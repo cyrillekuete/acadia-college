@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -40,6 +40,7 @@ import { useTenantUserOptions } from '@/hooks/use-tenant-user-options';
 import { useAcadiaCollegeSession, isAcadiaTenantQueryEnabled } from '@/hooks/use-acadia-college-session';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { localizedText } from '@/lib/acadia/locale';
+import { matchingGroupThreads } from '@/lib/acadia/messages';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
@@ -62,6 +63,9 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
   });
 
   const groupScope = form.watch('groupScope');
+  const groupScopeId = form.watch('groupScopeId');
+  const subjectEn = form.watch('subjectEn');
+  const [memberSearch, setMemberSearch] = useState('');
 
   const scopeOptionsQuery = useQuery({
     queryKey: ['message-group-scope-options', tenantId, groupScope, t],
@@ -105,6 +109,23 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
     enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 
+  const existingGroupsQuery = useQuery({
+    queryKey: ['message-group-existing', tenantId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('MessageThread')
+        .select('id, subjectEn, groupScope, groupScopeId')
+        .eq('tenantId', tenantId!)
+        .eq('kind', 'GROUP');
+      if (error) {
+        throw error;
+      }
+      return data ?? [];
+    },
+    enabled: isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
+  });
+
   useEffect(() => {
     form.setValue('groupScopeId', '');
   }, [groupScope, form]);
@@ -129,6 +150,28 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
 
   const scopeOptions = scopeOptionsQuery.data ?? [];
 
+  const duplicateGroups = useMemo(
+    () =>
+      matchingGroupThreads(existingGroupsQuery.data ?? [], {
+        subjectEn,
+        groupScope,
+        groupScopeId,
+      }),
+    [existingGroupsQuery.data, subjectEn, groupScope, groupScopeId],
+  );
+
+  const visibleUsers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) {
+      return users;
+    }
+    return users.filter((user) =>
+      `${user.name} ${user.roleSlug ?? ''} ${user.email ?? ''}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [users, memberSearch]);
+
   const memberHint = useMemo(() => {
     if (selectedMembers.length === 0) {
       return t('communication.selectMembers');
@@ -148,6 +191,11 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
               <FormControl>
                 <Input {...field} />
               </FormControl>
+              {duplicateGroups.length > 0 ? (
+                <p className="text-xs text-amber-600">
+                  {t('communication.duplicateGroupWarning')}
+                </p>
+              ) : null}
               <FormMessage />
             </FormItem>
           )}
@@ -176,6 +224,9 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
                 </SelectContent>
               </Select>
               <FormMessage />
+              <p className="text-xs text-muted-foreground">
+                {t('communication.groupScopeHint')}
+              </p>
             </FormItem>
           )}
         />
@@ -208,8 +259,14 @@ export function MessageGroupForm({ onCancelHref }: { onCancelHref: string }) {
         <FormItem>
           <FormLabel>{t('communication.members')}</FormLabel>
           <p className="text-xs text-muted-foreground mb-2">{memberHint}</p>
+          <Input
+            className="mb-2"
+            value={memberSearch}
+            onChange={(event) => setMemberSearch(event.target.value)}
+            placeholder={t('communication.searchMembers')}
+          />
           <div className="max-h-48 overflow-y-auto rounded-md border p-3 space-y-2">
-            {users.map((user) => (
+            {visibleUsers.map((user) => (
               <label key={user.id} className="flex items-center gap-2 text-sm">
                 <Checkbox
                   checked={selectedMembers.includes(user.id)}

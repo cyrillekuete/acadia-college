@@ -13,6 +13,8 @@ export const ATTENDANCE_STATUSES = [
 /** StudentEnrollment.status values that belong on an attendance roster. */
 export const ATTENDANCE_ROSTER_ENROLLMENT_STATUS = 'ENROLLED' as const;
 
+export const ATTENDANCE_ID_CHUNK_SIZE = 100;
+
 export function enrollmentBelongsOnAttendanceRoster(
   status: string | null | undefined,
 ): boolean {
@@ -80,6 +82,13 @@ export function computeAttendancePercentage(
   return Math.round((attended / countable.length) * 1000) / 10;
 }
 
+/** Overall rate across all status marks (weighted), excluding excused. */
+export function computeWeightedAttendancePercentage(
+  statuses: AttendanceStatus[],
+): number | null {
+  return computeAttendancePercentage(statuses);
+}
+
 export function formatAttendancePercentage(
   value: number | null | undefined,
 ): string {
@@ -139,6 +148,7 @@ export type AttendancePatternInsight = {
 const HIGH_ABSENCE_THRESHOLD = 3;
 const FREQUENT_LATE_THRESHOLD = 3;
 const LOW_ATTENDANCE_PERCENT = 75;
+const MIN_SESSIONS_FOR_PATTERNS = 3;
 
 export function detectAttendancePatterns(
   summaries: StudentAttendanceSummary[],
@@ -146,15 +156,21 @@ export function detectAttendancePatterns(
   return summaries
     .map((summary) => {
       const flags: AttendancePatternFlag[] = [];
-      if (summary.absent >= HIGH_ABSENCE_THRESHOLD) {
+      if (
+        summary.sessions >= MIN_SESSIONS_FOR_PATTERNS &&
+        summary.absent >= HIGH_ABSENCE_THRESHOLD
+      ) {
         flags.push('high_absence');
       }
-      if (summary.late >= FREQUENT_LATE_THRESHOLD) {
+      if (
+        summary.sessions >= MIN_SESSIONS_FOR_PATTERNS &&
+        summary.late >= FREQUENT_LATE_THRESHOLD
+      ) {
         flags.push('frequent_late');
       }
       if (
         summary.percentage != null &&
-        summary.sessions >= 3 &&
+        summary.sessions >= MIN_SESSIONS_FOR_PATTERNS &&
         summary.percentage < LOW_ATTENDANCE_PERCENT
       ) {
         flags.push('low_attendance');
@@ -186,6 +202,40 @@ export function patternFlagLabel(flag: AttendancePatternFlag): string {
   }
 }
 
+export function isSessionDateInAcademicYear(
+  sessionDate: string,
+  startsOn: string | null | undefined,
+  endsOn: string | null | undefined,
+): boolean {
+  const date = sessionDate.trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return false;
+  }
+  const start = startsOn?.trim().slice(0, 10);
+  const end = endsOn?.trim().slice(0, 10);
+  if (start && date < start) {
+    return false;
+  }
+  if (end && date > end) {
+    return false;
+  }
+  return true;
+}
+
+export function chunkIds(
+  ids: string[],
+  size: number = ATTENDANCE_ID_CHUNK_SIZE,
+): string[][] {
+  if (ids.length === 0) {
+    return [];
+  }
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    chunks.push(ids.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export function buildAttendanceSessionRow(
   tenantId: string,
   id: string,
@@ -197,6 +247,7 @@ export function buildAttendanceSessionRow(
     id,
     tenantId,
     academicYearId: values.academicYearId,
+    classId: values.classId,
     subjectId: values.subjectId,
     timetableSlotId: values.timetableSlotId?.trim()
       ? values.timetableSlotId
@@ -204,6 +255,24 @@ export function buildAttendanceSessionRow(
     sessionDate: values.sessionDate,
     label: values.label?.trim() ? values.label : null,
     createdByUserId,
+    updatedAt: now,
+  };
+}
+
+/** Update payload without overwriting the original creator. */
+export function buildAttendanceSessionUpdateRow(
+  values: AttendanceSessionFormValues,
+  now: string,
+) {
+  return {
+    academicYearId: values.academicYearId,
+    classId: values.classId,
+    subjectId: values.subjectId,
+    timetableSlotId: values.timetableSlotId?.trim()
+      ? values.timetableSlotId
+      : null,
+    sessionDate: values.sessionDate,
+    label: values.label?.trim() ? values.label : null,
     updatedAt: now,
   };
 }
@@ -227,4 +296,63 @@ export function buildAttendanceRecordRow(
 
 export function shouldNotifyGuardian(status: AttendanceStatus): boolean {
   return status === 'ABSENT' || status === 'LATE';
+}
+
+export function normalizeReportDateRange(
+  fromDate: string,
+  toDate: string,
+): { fromDate: string; toDate: string; inverted: boolean } {
+  const from = fromDate.trim();
+  const to = toDate.trim();
+  if (from && to && from > to) {
+    return { fromDate: to, toDate: from, inverted: true };
+  }
+  return { fromDate: from, toDate: to, inverted: false };
+}
+
+export function buildAttendanceSummaryCsv(
+  rows: Array<{
+    name: string;
+    registrationNumber: string;
+    sessions: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    percentage: number | null;
+  }>,
+): string {
+  const header = [
+    'Name',
+    'Student ID',
+    'Sessions',
+    'Present',
+    'Absent',
+    'Late',
+    'Excused',
+    'Rate',
+  ];
+  const lines = [
+    header.join(','),
+    ...rows.map((row) =>
+      [
+        csvEscape(row.name),
+        csvEscape(row.registrationNumber),
+        String(row.sessions),
+        String(row.present),
+        String(row.absent),
+        String(row.late),
+        String(row.excused),
+        row.percentage == null ? '' : String(row.percentage),
+      ].join(','),
+    ),
+  ];
+  return `${lines.join('\n')}\n`;
+}
+
+function csvEscape(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   classSubjectPairsForSelection,
+  diffAssignmentSubjectIds,
   hasClassTeacherSubjects,
+  subjectIdsUnreferencedAfterRemoval,
   uniqueIds,
   validateSubjectIdsOfferedInClass,
 } from '@/lib/acadia/staff-class-assignments';
@@ -57,6 +59,37 @@ describe('classSubjectPairsForSelection', () => {
 
     expect(remaining).toEqual([{ classId: 'class-b', subjectId: 'english' }]);
     expect(remaining.some((pair) => pair.classId === 'class-a')).toBe(false);
+  });
+
+  it('returns empty when selected classes and subjects have no ClassSubject overlap', () => {
+    expect(
+      classSubjectPairsForSelection({
+        classIds: ['class-a'],
+        subjectIds: ['physics'],
+        offeredPairs: [{ classId: 'class-a', subjectId: 'math' }],
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('subjectIdsUnreferencedAfterRemoval', () => {
+  it('keeps subjects still taught in another class', () => {
+    expect(
+      subjectIdsUnreferencedAfterRemoval(['math', 'english'], ['math']),
+    ).toEqual(['english']);
+  });
+
+  it('marks all removed subjects orphaned when none remain', () => {
+    expect(subjectIdsUnreferencedAfterRemoval(['math'], [])).toEqual(['math']);
+  });
+});
+
+describe('diffAssignmentSubjectIds', () => {
+  it('inserts missing and deletes extras without wiping first', () => {
+    expect(diffAssignmentSubjectIds(['math', 'english'], ['math', 'physics'])).toEqual({
+      toInsert: ['physics'],
+      toDelete: ['english'],
+    });
   });
 });
 

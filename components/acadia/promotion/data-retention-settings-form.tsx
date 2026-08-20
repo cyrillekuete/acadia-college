@@ -15,7 +15,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { DEFAULT_RETENTION_POLICY } from '@/lib/acadia/promotion';
+import {
+  DEFAULT_RETENTION_POLICY,
+  previewRetentionArchive,
+} from '@/lib/acadia/promotion';
 import {
   dataRetentionPolicySchema,
   type DataRetentionPolicyValues,
@@ -59,6 +62,42 @@ export function DataRetentionSettingsForm() {
     ),
   });
 
+  const previewQuery = useQuery({
+    queryKey: ['data-retention-preview', tenantId, policyQuery.dataUpdatedAt],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase.rpc('acadia_run_retention_archive', {
+        p_dry_run: true,
+      });
+      if (error) {
+        throw error;
+      }
+      const result = (data ?? {}) as {
+        archivedEnrollments?: number;
+        deactivated?: number;
+      };
+      return previewRetentionArchive({
+        referenceDate: new Date(),
+        archiveInactiveAfterYears:
+          policyQuery.data?.archiveInactiveAfterYears ??
+          DEFAULT_RETENTION_POLICY.archiveInactiveAfterYears,
+        enrollmentRetentionYears:
+          policyQuery.data?.enrollmentRetentionYears ??
+          DEFAULT_RETENTION_POLICY.enrollmentRetentionYears,
+        inactiveProfileCount: Number(result.deactivated ?? 0),
+        oldEnrollmentCount: Number(result.archivedEnrollments ?? 0),
+      });
+    },
+    enabled:
+      canManage &&
+      isAcadiaTenantQueryEnabled(
+        sessionLoading,
+        sessionError,
+        session,
+        tenantId,
+      ),
+  });
+
   const form = useForm<DataRetentionPolicyValues>({
     resolver: zodResolver(dataRetentionPolicySchema),
     defaultValues: { ...DEFAULT_RETENTION_POLICY },
@@ -94,14 +133,20 @@ export function DataRetentionSettingsForm() {
     <div className="max-w-md space-y-6">
       <p className="text-sm text-muted-foreground">
         Configure how long academic and enrollment records are kept before archival
-        (FR-DM-4). Marks retention is stored for policy reference; the archive job
-        deactivates stale profiles and withdraws old enrollments.
+        (FR-DM-4). Marks retention is stored for policy reference and is not purged
+        by this job. The archive job only deactivates profiles with no current-year
+        enrollment and withdraws enrollments whose academic year ended before the
+        cutoff.
       </p>
 
       {policyQuery.data?.lastArchivalRunAt ? (
         <p className="text-xs text-muted-foreground">
           Last archive run: {formatDateTime(policyQuery.data.lastArchivalRunAt)}
         </p>
+      ) : null}
+
+      {previewQuery.data ? (
+        <p className="text-sm text-muted-foreground">{previewQuery.data.description}</p>
       ) : null}
 
       <Form {...form}>
@@ -159,7 +204,18 @@ export function DataRetentionSettingsForm() {
               type="button"
               variant="outline"
               disabled={runRetentionArchive.isPending}
-              onClick={() => runRetentionArchive.mutate()}
+              onClick={() => {
+                const preview = previewQuery.data;
+                const confirmed = window.confirm(
+                  preview?.description
+                    ? `${preview.description} Continue?`
+                    : 'Run the archive job for stale profiles and old enrollments?',
+                );
+                if (!confirmed) {
+                  return;
+                }
+                runRetentionArchive.mutate({ dryRun: false });
+              }}
             >
               {runRetentionArchive.isPending ? (
                 <LoaderCircleIcon className="size-4 animate-spin" />

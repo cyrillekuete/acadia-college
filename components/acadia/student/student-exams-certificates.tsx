@@ -83,6 +83,8 @@ export function StudentExamsCertificates({
           createdAt,
           termId,
           academicYearId,
+          AcademicYear!Transcript_academicYearId_tenantId_fkey ( label ),
+          Term!Transcript_semesterId_tenantId_fkey ( number ),
           TranscriptVersion!Transcript_currentVersionId_fkey ( issuedAt, status )
         `,
         )
@@ -165,22 +167,42 @@ export function StudentExamsCertificates({
         fields={[
           ...(transcripts.length === 0
             ? [{ label: 'Transcripts', value: 'None issued.' }]
-            : transcripts.map((row, index) => {
+            : transcripts.map((row) => {
                 const version = unwrapRelation<{
                   issuedAt?: string;
                   status?: string;
                 }>(row.TranscriptVersion);
+                const term = unwrapRelation<{ number?: number }>(row.Term);
+                const year = unwrapRelation<{ label?: string }>(row.AcademicYear);
+                const termPart =
+                  term?.number != null ? `Term ${term.number}` : 'Term';
+                const yearPart = year?.label?.trim() || '—';
                 return {
-                  label: `Transcript ${index + 1}`,
+                  label: `${termPart} · ${yearPart}`,
                   value: `${formatRecordValue(version?.status)} · ${formatDateTime(version?.issuedAt)}`,
                 };
               })),
           ...(copyRequests.length === 0
-            ? [{ label: 'Copy requests', value: 'None.' }]
-            : copyRequests.map((row, index) => ({
-                label: `Request ${index + 1}`,
-                value: `${formatRecordValue(row.status)} · ${formatDateTime(row.createdAt as string)}`,
-              }))),
+            ? [{ label: 'Copy requests (all years)', value: 'None.' }]
+            : [
+                ...copyRequests.map((row, index) => ({
+                  label: `Copy request ${index + 1}`,
+                  value: `${formatRecordValue(row.status)} · ${formatDateTime(row.createdAt as string)}`,
+                })),
+                ...(copyRequests.length >= 10
+                  ? [
+                      {
+                        label: 'Copy requests',
+                        value: 'Showing latest 10 across all years.',
+                      },
+                    ]
+                  : [
+                      {
+                        label: 'Copy requests',
+                        value: 'All years.',
+                      },
+                    ]),
+              ]),
         ]}
       />
     </div>

@@ -21,7 +21,6 @@ import {
   fetchStudentSchemeListItems,
   fetchSubjectLevelsForSchemePicker,
   fetchTeacherSchemeListItems,
-  fetchTermsForAcademicYear,
 } from '@/lib/supabase/queries/scheme-of-work';
 import { useSubjectList } from '@/hooks/use-subject-list';
 
@@ -41,22 +40,6 @@ export function useSubjectLevelsForScheme(subjectId: string | null) {
     },
     enabled:
       !!subjectId &&
-      isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
-  });
-}
-
-export function useSchemeTerms(academicYearId: string | null) {
-  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
-  const tenantId = session?.tenantId ?? null;
-
-  return useQuery({
-    queryKey: ['scheme-of-work-terms', tenantId, academicYearId],
-    queryFn: async () => {
-      const supabase = requireBrowserClient();
-      return fetchTermsForAcademicYear(supabase, tenantId!, academicYearId!);
-    },
-    enabled:
-      !!academicYearId &&
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 }

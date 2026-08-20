@@ -7,6 +7,7 @@ import {
   ATTENDANCE_NOTIFICATION_EVENT,
   buildAttendanceRecordRow,
   buildAttendanceSessionRow,
+  buildAttendanceSessionUpdateRow,
   shouldNotifyGuardian,
 } from '@/lib/acadia/attendance';
 import type {
@@ -59,6 +60,7 @@ type NotifyContext = {
   subjectCode: string;
   studentName: string;
   status: string;
+  attendanceSessionId: string;
 };
 
 async function notifyGuardiansForRecords(
@@ -99,9 +101,7 @@ async function notifyGuardiansForRecords(
   }
 
   const guardianIds = Array.from(
-    new Set(
-      Array.from(guardiansByStudent.values()).flat(),
-    ),
+    new Set(Array.from(guardiansByStudent.values()).flat()),
   );
 
   const { data: preferences, error: prefError } = await supabase
@@ -118,6 +118,36 @@ async function notifyGuardiansForRecords(
   const prefByUser = new Map(
     (preferences ?? []).map((p) => [p.userId as string, p.inApp as boolean]),
   );
+
+  const sessionId =
+    contextByStudent.values().next().value?.attendanceSessionId ?? '';
+
+  const existingKeys = new Set<string>();
+  if (sessionId) {
+    const { data: existing } = await supabase
+      .from('Notification')
+      .select('userId, data')
+      .eq('tenantId', tenantId)
+      .eq('event', ATTENDANCE_NOTIFICATION_EVENT)
+      .in('userId', guardianIds);
+
+    for (const row of existing ?? []) {
+      const data = row.data as {
+        attendanceSessionId?: string;
+        studentProfileId?: string;
+        status?: string;
+      } | null;
+      if (
+        data?.attendanceSessionId === sessionId &&
+        data.studentProfileId &&
+        data.status
+      ) {
+        existingKeys.add(
+          `${row.userId as string}:${data.studentProfileId}:${data.status}`,
+        );
+      }
+    }
+  }
 
   const now = new Date().toISOString();
   const rows: {
@@ -146,8 +176,12 @@ async function notifyGuardiansForRecords(
         continue;
       }
 
-      const statusLabel =
-        record.status === 'ABSENT' ? 'absent' : 'late';
+      const dedupeKey = `${guardianUserId}:${record.studentProfileId}:${record.status}`;
+      if (existingKeys.has(dedupeKey)) {
+        continue;
+      }
+
+      const statusLabel = record.status === 'ABSENT' ? 'absent' : 'late';
       rows.push({
         id: generateAcadiaId('notif'),
         tenantId,
@@ -162,9 +196,11 @@ async function notifyGuardiansForRecords(
           status: record.status,
           sessionDate: ctx.sessionDate,
           subjectCode: ctx.subjectCode,
+          attendanceSessionId: ctx.attendanceSessionId,
         },
         createdAt: now,
       });
+      existingKeys.add(dedupeKey);
     }
   }
 
@@ -231,16 +267,31 @@ export function useAttendanceMutations() {
       toast.success('Attendance session created.');
       router.push(`/attendance/sessions/${id}`);
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: (error) => {
+      const message = mutationErrorMessage(error).toLowerCase();
+      if (
+        message.includes('duplicate') ||
+        message.includes('unique') ||
+        message.includes('23505')
+      ) {
+        toast.error(
+          'A session already exists for this class, subject, and date.',
+        );
+        return;
+      }
+      handleMutationError(error);
+    },
   });
 
   const updateAttendanceSession = useMutation({
     mutationFn: async ({
       id,
       values,
+      clearOrphanRecords = false,
     }: {
       id: string;
       values: AttendanceSessionFormValues;
+      clearOrphanRecords?: boolean;
     }) => {
       await ensureAcademicYearWriteAllowed(confirmWrite);
       if (!tenantId) {
@@ -248,18 +299,54 @@ export function useAttendanceMutations() {
       }
       const supabase = requireBrowserClient();
       const now = new Date().toISOString();
-      const row = buildAttendanceSessionRow(
-        tenantId,
-        id,
-        values,
-        actorUserId,
-        now,
-      );
 
+      const { data: existing, error: existingError } = await supabase
+        .from('AttendanceSession')
+        .select('classId, subjectId')
+        .eq('id', id)
+        .eq('tenantId', tenantId)
+        .single();
+      if (existingError) {
+        throw existingError;
+      }
+
+      const scopeChanged =
+        existing.classId !== values.classId ||
+        existing.subjectId !== values.subjectId;
+
+      if (scopeChanged && !clearOrphanRecords) {
+        const { count, error: countError } = await supabase
+          .from('AttendanceRecord')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenantId', tenantId)
+          .eq('attendanceSessionId', id);
+        if (countError) {
+          throw countError;
+        }
+        if ((count ?? 0) > 0) {
+          throw new Error(
+            'This session has attendance marks. Confirm clearing marks before changing class or subject.',
+          );
+        }
+      }
+
+      if (scopeChanged && clearOrphanRecords) {
+        const { error: deleteError } = await supabase
+          .from('AttendanceRecord')
+          .delete()
+          .eq('tenantId', tenantId)
+          .eq('attendanceSessionId', id);
+        if (deleteError) {
+          throw deleteError;
+        }
+      }
+
+      const row = buildAttendanceSessionUpdateRow(values, now);
       const { error } = await supabase
         .from('AttendanceSession')
         .update(row)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenantId', tenantId);
       if (error) {
         throw error;
       }
@@ -277,7 +364,48 @@ export function useAttendanceMutations() {
       invalidateAttendanceQueries(queryClient);
       toast.success('Attendance session updated.');
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: handleMutationError,
+  });
+
+  const deleteAttendanceSession = useMutation({
+    mutationFn: async (id: string) => {
+      await ensureAcademicYearWriteAllowed(confirmWrite);
+      if (!tenantId || !actorUserId) {
+        throw new Error('Tenant and user context are required.');
+      }
+      const supabase = requireBrowserClient();
+
+      const { error: recordsError } = await supabase
+        .from('AttendanceRecord')
+        .delete()
+        .eq('tenantId', tenantId)
+        .eq('attendanceSessionId', id);
+      if (recordsError) {
+        throw recordsError;
+      }
+
+      const { error } = await supabase
+        .from('AttendanceSession')
+        .delete()
+        .eq('id', id)
+        .eq('tenantId', tenantId);
+      if (error) {
+        throw error;
+      }
+
+      await appendSystemLog(supabase, {
+        userId: actorUserId,
+        event: 'attendance_session.deleted',
+        entityId: id,
+        entityType: 'AttendanceSession',
+      });
+    },
+    onSuccess: () => {
+      invalidateAttendanceQueries(queryClient);
+      toast.success('Attendance session deleted.');
+      router.push('/attendance');
+    },
+    onError: handleMutationError,
   });
 
   const saveAttendanceEntry = useMutation({
@@ -294,6 +422,7 @@ export function useAttendanceMutations() {
         .select(
           `
           sessionDate,
+          classId,
           Subject!AttendanceSession_subjectId_tenantId_fkey ( code )
         `,
         )
@@ -302,6 +431,11 @@ export function useAttendanceMutations() {
 
       if (sessionError) {
         throw sessionError;
+      }
+      if (!sessionRow.classId) {
+        throw new Error(
+          'Assign a class to this session before saving attendance marks.',
+        );
       }
 
       const subject = Array.isArray(sessionRow.Subject)
@@ -313,7 +447,9 @@ export function useAttendanceMutations() {
       const studentIds = input.records.map((r) => r.studentProfileId);
       const { data: students, error: studentsError } = await supabase
         .from('StudentProfile')
-        .select('id, registrationNumber, User!StudentProfile_userId_tenantId_fkey ( name )')
+        .select(
+          'id, registrationNumber, User!StudentProfile_userId_tenantId_fkey ( name )',
+        )
         .eq('tenantId', tenantId)
         .in('id', studentIds);
 
@@ -332,43 +468,71 @@ export function useAttendanceMutations() {
         nameByStudent.set(student.id as string, name);
       }
 
-      for (const record of input.records) {
-        const { data: existing, error: fetchError } = await supabase
-          .from('AttendanceRecord')
-          .select('id')
-          .eq('tenantId', tenantId)
-          .eq('attendanceSessionId', input.attendanceSessionId)
-          .eq('studentProfileId', record.studentProfileId)
-          .maybeSingle();
+      const { data: existingRows, error: existingError } = await supabase
+        .from('AttendanceRecord')
+        .select('id, studentProfileId')
+        .eq('tenantId', tenantId)
+        .eq('attendanceSessionId', input.attendanceSessionId)
+        .in('studentProfileId', studentIds);
+      if (existingError) {
+        throw existingError;
+      }
 
-        if (fetchError) {
-          throw fetchError;
+      const existingByStudent = new Map(
+        (existingRows ?? []).map((row) => [
+          row.studentProfileId as string,
+          row.id as string,
+        ]),
+      );
+
+      const upsertRows = input.records.map((record) => {
+        const existingId = existingByStudent.get(record.studentProfileId);
+        return {
+          ...buildAttendanceRecordRow(
+            tenantId,
+            existingId ?? generateAcadiaId('attrec'),
+            input.attendanceSessionId,
+            record,
+            now,
+          ),
+          createdAt: existingId ? undefined : now,
+        };
+      });
+
+      const toInsert = upsertRows
+        .filter((row) => row.createdAt)
+        .map((row) => ({
+          id: row.id,
+          tenantId: row.tenantId,
+          attendanceSessionId: row.attendanceSessionId,
+          studentProfileId: row.studentProfileId,
+          status: row.status,
+          updatedAt: row.updatedAt,
+          createdAt: row.createdAt as string,
+        }));
+      const toUpdate = upsertRows.filter((row) => !row.createdAt);
+
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from('AttendanceRecord').upsert(toInsert, {
+          onConflict: 'tenantId,attendanceSessionId,studentProfileId',
+          ignoreDuplicates: false,
+        });
+        if (error) {
+          throw error;
         }
+      }
 
-        const row = buildAttendanceRecordRow(
-          tenantId,
-          existing?.id ?? generateAcadiaId('attrec'),
-          input.attendanceSessionId,
-          record,
-          now,
-        );
-
-        if (existing?.id) {
-          const { error } = await supabase
-            .from('AttendanceRecord')
-            .update(row)
-            .eq('id', existing.id);
-          if (error) {
-            throw error;
-          }
-        } else {
-          const { error } = await supabase.from('AttendanceRecord').insert({
-            ...row,
-            createdAt: now,
-          });
-          if (error) {
-            throw error;
-          }
+      for (const row of toUpdate) {
+        const { error } = await supabase
+          .from('AttendanceRecord')
+          .update({
+            status: row.status,
+            updatedAt: row.updatedAt,
+          })
+          .eq('id', row.id)
+          .eq('tenantId', tenantId);
+        if (error) {
+          throw error;
         }
       }
 
@@ -390,6 +554,7 @@ export function useAttendanceMutations() {
             studentName:
               nameByStudent.get(record.studentProfileId) ?? 'Student',
             status: record.status,
+            attendanceSessionId: input.attendanceSessionId,
           });
         }
         notified = await notifyGuardiansForRecords(
@@ -405,17 +570,20 @@ export function useAttendanceMutations() {
     onSuccess: (result) => {
       invalidateAttendanceQueries(queryClient);
       if (result.notified > 0) {
-        toast.success(`Attendance saved. ${result.notified} guardian notification(s) sent.`);
+        toast.success(
+          `Attendance saved. ${result.notified} guardian notification(s) sent.`,
+        );
       } else {
         toast.success('Attendance saved.');
       }
     },
-    onError: (error) => toast.error(mutationErrorMessage(error)),
+    onError: handleMutationError,
   });
 
   return {
     createAttendanceSession,
     updateAttendanceSession,
+    deleteAttendanceSession,
     saveAttendanceEntry,
   };
 }

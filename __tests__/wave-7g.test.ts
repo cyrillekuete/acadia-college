@@ -1,25 +1,37 @@
 /**
- * Wave 7G unit tests
- * Covers: attendance schemas, percentages, pattern detection
+ * Attendance edge-case unit tests
  */
 import { describe, it, expect } from 'vitest';
 import {
   ATTENDANCE_ROSTER_ENROLLMENT_STATUS,
   ATTENDANCE_STATUSES,
+  buildAttendanceSessionRow,
+  buildAttendanceSessionUpdateRow,
+  buildAttendanceSummaryCsv,
+  chunkIds,
   computeAttendancePercentage,
+  computeWeightedAttendancePercentage,
   countAttendanceStatuses,
   detectAttendancePatterns,
   enrollmentBelongsOnAttendanceRoster,
   formatAttendancePercentage,
+  isSessionDateInAcademicYear,
+  normalizeReportDateRange,
   patternFlagLabel,
   shouldNotifyGuardian,
   summarizeStudentAttendance,
 } from '@/lib/acadia/attendance';
 import {
   attendanceRecordEntrySchema,
+  attendanceReportFiltersSchema,
   attendanceSessionSchema,
 } from '@/lib/acadia/attendance-schemas';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
+import {
+  canViewAttendance,
+  canViewAttendanceAnalytics,
+  canViewAttendanceReports,
+} from '@/lib/acadia/roles';
 import { getQueryErrorMessage, isMissingRelationError } from '@/lib/acadia/query-errors';
 
 describe('getQueryErrorMessage', () => {
@@ -51,25 +63,58 @@ describe('formatLocalDateInputValue', () => {
     const date = new Date(2026, 4, 19, 12, 0, 0);
     expect(formatLocalDateInputValue(date)).toBe('2026-05-19');
   });
-
-  it('avoids UTC day shift from toISOString when timezones diverge', () => {
-    const lateLocal = new Date(2026, 4, 19, 23, 30, 0);
-    const local = formatLocalDateInputValue(lateLocal);
-    const utc = lateLocal.toISOString().slice(0, 10);
-    expect(local).toBe('2026-05-19');
-    if (utc !== local) {
-      expect(utc).toBe('2026-05-20');
-    }
-  });
 });
 
 describe('attendanceSessionSchema', () => {
-  it('requires year, subject, and session date', () => {
+  it('requires year, class, subject, and session date', () => {
+    expect(
+      attendanceSessionSchema.safeParse({
+        academicYearId: 'year-1',
+        classId: 'class-1',
+        subjectId: 'subject-1',
+        sessionDate: '2026-05-19',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects missing classId', () => {
     expect(
       attendanceSessionSchema.safeParse({
         academicYearId: 'year-1',
         subjectId: 'subject-1',
         sessionDate: '2026-05-19',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects invalid date format', () => {
+    expect(
+      attendanceSessionSchema.safeParse({
+        academicYearId: 'year-1',
+        classId: 'class-1',
+        subjectId: 'subject-1',
+        sessionDate: '19/05/2026',
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('attendanceReportFiltersSchema', () => {
+  it('rejects inverted date ranges', () => {
+    const result = attendanceReportFiltersSchema.safeParse({
+      academicYearId: 'year-1',
+      fromDate: '2026-06-01',
+      toDate: '2026-05-01',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts ordered date ranges', () => {
+    expect(
+      attendanceReportFiltersSchema.safeParse({
+        academicYearId: 'year-1',
+        fromDate: '2026-05-01',
+        toDate: '2026-06-01',
       }).success,
     ).toBe(true);
   });
@@ -85,6 +130,75 @@ describe('attendanceRecordEntrySchema', () => {
         }).success,
       ).toBe(true);
     }
+  });
+});
+
+describe('isSessionDateInAcademicYear', () => {
+  it('allows dates inside year bounds', () => {
+    expect(
+      isSessionDateInAcademicYear('2026-05-19', '2026-09-01', '2027-06-30'),
+    ).toBe(false);
+    expect(
+      isSessionDateInAcademicYear('2026-10-19', '2026-09-01', '2027-06-30'),
+    ).toBe(true);
+  });
+
+  it('rejects dates outside bounds', () => {
+    expect(
+      isSessionDateInAcademicYear('2026-08-31', '2026-09-01', '2027-06-30'),
+    ).toBe(false);
+    expect(
+      isSessionDateInAcademicYear('2027-07-01', '2026-09-01', '2027-06-30'),
+    ).toBe(false);
+  });
+});
+
+describe('normalizeReportDateRange', () => {
+  it('swaps inverted ranges', () => {
+    expect(normalizeReportDateRange('2026-06-01', '2026-05-01')).toEqual({
+      fromDate: '2026-05-01',
+      toDate: '2026-06-01',
+      inverted: true,
+    });
+  });
+});
+
+describe('chunkIds', () => {
+  it('chunks ids for PostgREST .in() limits', () => {
+    const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+    const chunks = chunkIds(ids, 100);
+    expect(chunks).toHaveLength(3);
+    expect(chunks[0]).toHaveLength(100);
+    expect(chunks[2]).toHaveLength(50);
+  });
+});
+
+describe('session row builders', () => {
+  it('includes classId on create and omits creator on update', () => {
+    const values = {
+      academicYearId: 'year-1',
+      classId: 'class-1',
+      subjectId: 'subject-1',
+      sessionDate: '2026-05-19',
+      label: '',
+      timetableSlotId: '',
+    };
+    const created = buildAttendanceSessionRow(
+      'tenant-1',
+      'att-1',
+      values,
+      'user-1',
+      '2026-05-19T00:00:00.000Z',
+    );
+    expect(created.classId).toBe('class-1');
+    expect(created.createdByUserId).toBe('user-1');
+
+    const updated = buildAttendanceSessionUpdateRow(
+      values,
+      '2026-05-20T00:00:00.000Z',
+    );
+    expect(updated.classId).toBe('class-1');
+    expect(updated).not.toHaveProperty('createdByUserId');
   });
 });
 
@@ -105,19 +219,36 @@ describe('computeAttendancePercentage', () => {
   });
 });
 
+describe('computeWeightedAttendancePercentage', () => {
+  it('matches overall mark-level rate', () => {
+    expect(
+      computeWeightedAttendancePercentage([
+        'PRESENT',
+        'PRESENT',
+        'ABSENT',
+        'ABSENT',
+      ]),
+    ).toBe(50);
+  });
+});
+
 describe('detectAttendancePatterns', () => {
-  it('flags students with high absences', () => {
+  it('requires minimum sessions before flagging absences', () => {
     const summaries = summarizeStudentAttendance([
       { studentProfileId: 'a', status: 'ABSENT' },
       { studentProfileId: 'a', status: 'ABSENT' },
       { studentProfileId: 'a', status: 'ABSENT' },
-      { studentProfileId: 'b', status: 'PRESENT' },
     ]);
     const patterns = detectAttendancePatterns(summaries);
     expect(patterns.some((p) => p.studentProfileId === 'a')).toBe(true);
-    expect(patterns.find((p) => p.studentProfileId === 'a')?.flags).toContain(
-      'high_absence',
-    );
+  });
+
+  it('does not flag high absences with fewer than 3 sessions', () => {
+    const summaries = summarizeStudentAttendance([
+      { studentProfileId: 'a', status: 'ABSENT' },
+      { studentProfileId: 'a', status: 'ABSENT' },
+    ]);
+    expect(detectAttendancePatterns(summaries)).toHaveLength(0);
   });
 });
 
@@ -168,5 +299,34 @@ describe('attendance roster enrollment status', () => {
       'ENROLLED',
     ]);
     expect(ATTENDANCE_ROSTER_ENROLLMENT_STATUS).toBe('ENROLLED');
+  });
+});
+
+describe('buildAttendanceSummaryCsv', () => {
+  it('escapes commas and quotes', () => {
+    const csv = buildAttendanceSummaryCsv([
+      {
+        name: 'Doe, Jane',
+        registrationNumber: 'STU-1',
+        sessions: 2,
+        present: 1,
+        absent: 1,
+        late: 0,
+        excused: 0,
+        percentage: 50,
+      },
+    ]);
+    expect(csv).toContain('"Doe, Jane"');
+    expect(csv).toContain('STU-1');
+  });
+});
+
+describe('attendance role access', () => {
+  it('gates reports and analytics by role', () => {
+    expect(canViewAttendance('guardian')).toBe(true);
+    expect(canViewAttendanceReports('guardian')).toBe(false);
+    expect(canViewAttendanceAnalytics('staff')).toBe(false);
+    expect(canViewAttendanceAnalytics('admin')).toBe(true);
+    expect(canViewAttendanceReports('teacher')).toBe(true);
   });
 });

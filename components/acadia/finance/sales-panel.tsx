@@ -12,7 +12,7 @@ import {
   SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { Eye, Pencil, Plus, Search, Trash2 } from '@/lib/icons';
+import { Eye, Pencil, Plus, Search, Trash2, X } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTable, CardTitle } from '@/components/ui/card';
@@ -47,6 +47,9 @@ import { unwrapRelation } from '@/lib/acadia/record-display';
 import { canWriteFinance } from '@/lib/acadia/roles';
 import {
   aggregateSalesStats,
+  canCancelSale,
+  canDeleteSale,
+  canEditSaleNotes,
   FINANCE_SALE_ITEM_TYPES,
   FINANCE_SALE_STATUSES,
   formatMoneyMinor,
@@ -54,6 +57,10 @@ import {
   type FinanceSaleRow,
   type FinanceSaleStatus,
 } from '@/lib/acadia/finance';
+import {
+  FinanceClosedYearHint,
+  useFinanceYearClosed,
+} from '@/components/acadia/finance/finance-year-lock';
 import { useTranslation } from '@/hooks/useTranslation';
 
 function saleStatusVariant(status: string) {
@@ -73,7 +80,8 @@ export function SalesPanel() {
   const tenantId = session?.tenantId ?? null;
   const canManage = canWriteFinance(session?.roleSlug);
   const { activeYearId } = useActiveAcademicYear();
-  const { deleteSale } = useFinanceMutations();
+  const { deleteSale, cancelSale } = useFinanceMutations();
+  const yearClosed = useFinanceYearClosed();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [itemTypeFilter, setItemTypeFilter] = useState('ALL');
@@ -82,6 +90,7 @@ export function SalesPanel() {
   const [editing, setEditing] = useState<FinanceSaleRow | null>(null);
   const [viewing, setViewing] = useState<FinanceSaleRow | null>(null);
   const [deleting, setDeleting] = useState<FinanceSaleRow | null>(null);
+  const [cancelling, setCancelling] = useState<FinanceSaleRow | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -138,7 +147,9 @@ export function SalesPanel() {
         return {
           id: row.id,
           studentProfileId: row.studentProfileId,
-          studentLabel: `${profile?.registrationNumber ?? '—'} — ${user?.name ?? 'Student'}`,
+          studentLabel: row.studentProfileId
+            ? `${profile?.registrationNumber ?? '—'} — ${user?.name ?? 'Student'}`
+            : t('finance.walkInCustomer'),
           itemType: row.itemType as FinanceSaleItemType,
           itemName: row.itemName,
           quantity: Number(row.quantity),
@@ -282,12 +293,13 @@ export function SalesPanel() {
             >
               <Eye className="size-4" />
             </Button>
-            {canManage ? (
+            {canManage && canEditSaleNotes(row.original.status) ? (
               <>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
+                  disabled={yearClosed}
                   onClick={() => {
                     setEditing(row.original);
                     setFormOpen(true);
@@ -296,15 +308,30 @@ export function SalesPanel() {
                 >
                   <Pencil className="size-4" />
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDeleting(row.original)}
-                  aria-label={t('common.buttons.delete')}
-                >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
+                {canDeleteSale(row.original.status) ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={yearClosed}
+                    onClick={() => setDeleting(row.original)}
+                    aria-label={t('common.buttons.delete')}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                ) : null}
+                {canCancelSale(row.original.status) ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={yearClosed}
+                    onClick={() => setCancelling(row.original)}
+                    aria-label={t('finance.cancelSale')}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -315,7 +342,7 @@ export function SalesPanel() {
         enableHiding: false,
       },
     ],
-    [canManage, t],
+    [canManage, t, yearClosed],
   );
 
   const table = useReactTable({
@@ -346,10 +373,14 @@ export function SalesPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <CurrentAcademicYearBadge label="Year" />
+        <div className="space-y-1">
+          <CurrentAcademicYearBadge label="Year" />
+          <FinanceClosedYearHint />
+        </div>
         {canManage ? (
           <Button
             size="sm"
+            disabled={yearClosed}
             onClick={() => {
               setEditing(null);
               setFormOpen(true);
@@ -463,6 +494,29 @@ export function SalesPanel() {
           }
         }}
         record={viewing}
+      />
+      <RegistryDeleteDialog
+        open={cancelling !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelling(null);
+          }
+        }}
+        title={t('finance.cancelSaleTitle')}
+        description={
+          cancelling
+            ? t('finance.cancelSaleDescription')
+            : ''
+        }
+        pending={cancelSale.isPending}
+        onConfirm={() => {
+          if (!cancelling) {
+            return;
+          }
+          cancelSale.mutate(cancelling.id, {
+            onSuccess: () => setCancelling(null),
+          });
+        }}
       />
       <RegistryDeleteDialog
         open={deleting !== null}

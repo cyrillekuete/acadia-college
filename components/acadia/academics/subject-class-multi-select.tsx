@@ -5,18 +5,22 @@ import { ChevronsUpDown, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   type ClassSubjectSelection,
+  SUBJECT_DEFAULT_GROUPING,
+  UNGROUPED_GROUPING_OVERRIDE,
   formatSelectionLabel,
   getSubjectSelection,
   groupOptionsByGrouping,
   isSubjectFullySelected,
   isSubjectPartiallySelected,
   isSubBranchSelected,
+  selectAllSubjectSelections,
   setSelectionGrouping,
   toggleFullSubject,
   toggleSubBranch,
 } from '@/lib/acadia/class-subject-selections';
 import type { SubjectForClassOption } from '@/hooks/use-subjects-for-class';
 import { useSubjectGroupingOptions } from '@/hooks/use-subject-grouping-options';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,8 +39,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const SUBJECT_DEFAULT_GROUPING = '__subject_default__';
 
 type SubjectClassMultiSelectProps = {
   options: SubjectForClassOption[];
@@ -68,6 +70,7 @@ function SubjectGroupingOverride({
   onChange: (groupingId: string | null) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const defaultLabel = subject.groupingNameEn
     ? `Subject default (${subject.groupingNameEn})`
     : 'Subject default (none)';
@@ -90,6 +93,11 @@ function SubjectGroupingOverride({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={SUBJECT_DEFAULT_GROUPING}>{defaultLabel}</SelectItem>
+          {subject.groupingId ? (
+            <SelectItem value={UNGROUPED_GROUPING_OVERRIDE}>
+              {t('subjects.ungrouped')}
+            </SelectItem>
+          ) : null}
           {groupings.map((grouping) => (
             <SelectItem key={grouping.id} value={grouping.id}>
               {grouping.nameEn}
@@ -260,13 +268,7 @@ export function SubjectClassMultiSelect({
   };
 
   const selectAll = () => {
-    onChange(
-      options.map((option) => ({
-        subjectId: option.id,
-        subBranchIds: null,
-        groupingId: null,
-      })),
-    );
+    onChange(selectAllSubjectSelections(options, value));
   };
 
   const clearAll = () => {

@@ -10,6 +10,7 @@ export type ClassListRow = {
   branch: AcademicBranch;
   staffProfileId: string | null;
   status: 'ACTIVE' | 'INACTIVE';
+  isDefaultPromotionTarget: boolean;
   createdAt: string;
   Level?: { name?: string; number?: number } | null;
   StaffProfile?: { User?: { name?: string | null } | null } | null;
@@ -40,6 +41,7 @@ export async function fetchClassList(
       branch,
       staffProfileId,
       status,
+      isDefaultPromotionTarget,
       createdAt,
       Level!Class_levelId_tenantId_fkey ( name, number ),
       StaffProfile!Class_staffProfileId_tenantId_fkey (

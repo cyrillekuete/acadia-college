@@ -24,23 +24,22 @@ export function StudentClassRosterPrint({ job }: { job: StudentClassPrintJob }) 
     { key: 'className', label: job.labels.className },
     { key: 'branch', label: job.labels.branch },
     { key: 'enrollmentStatus', label: job.labels.enrollmentStatus },
-    { key: 'feesStatus', label: job.labels.feesStatus },
-    { key: 'feesAmounts', label: job.labels.feesAmounts },
   ] as const;
 
   return (
-    <div className="hidden print:block print:p-6 print:text-foreground">
+    <div className="hidden print:block print:p-4 print:text-foreground">
+      <style>{`@media print { @page { size: A4 landscape; margin: 12mm; } }`}</style>
       <header className="mb-4 space-y-1">
         <h1 className="text-lg font-semibold">Acadia College</h1>
         <p className="text-sm">
           {job.labels.className}: <strong>{job.className}</strong>
         </p>
         {job.academicYearLabel ? (
-          <p className="text-sm">
-            {job.academicYearLabel}
-          </p>
+          <p className="text-sm">{job.academicYearLabel}</p>
         ) : null}
-        <p className="text-xs text-muted-foreground">{job.generatedLabel}</p>
+        <p className="text-xs text-muted-foreground">
+          {job.generatedLabel} · {job.studentCountLabel}
+        </p>
       </header>
 
       <table className="w-full border-collapse text-xs">
@@ -68,9 +67,12 @@ export function StudentClassRosterPrint({ job }: { job: StudentClassPrintJob }) 
             </tr>
           ) : (
             job.rows.map((row, index) => (
-              <tr key={`${row.studentId}-${index}`}>
+              <tr key={`${row.studentId}-${index}`} className="break-inside-avoid">
                 {columns.map((column) => (
-                  <td key={column.key} className="border border-border px-2 py-1.5">
+                  <td
+                    key={column.key}
+                    className="max-w-[10rem] break-all border border-border px-2 py-1.5"
+                  >
                     {row[column.key] || '—'}
                   </td>
                 ))}
@@ -79,8 +81,6 @@ export function StudentClassRosterPrint({ job }: { job: StudentClassPrintJob }) 
           )}
         </tbody>
       </table>
-
-      <p className="mt-3 text-xs">{job.studentCountLabel}</p>
     </div>
   );
 }

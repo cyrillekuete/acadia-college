@@ -110,6 +110,18 @@ describe('subjectSchema', () => {
       expect(result.data.subBranches[0]?.id).toBe('org');
     }
   });
+
+  it('rejects duplicate sub-branch names', () => {
+    const result = subjectSchema.safeParse({
+      ...baseSubjectValues,
+      hasSubBranches: true,
+      subBranches: [
+        { name: 'Pure Maths', hasCustomCoefficient: false },
+        { name: 'pure maths', hasCustomCoefficient: false },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('planSubjectSubBranchSync', () => {
@@ -288,6 +300,21 @@ describe('timetableSlotSchema', () => {
       }).success,
     ).toBe(true);
   });
+
+  it('rejects Sunday and other out-of-grid days', () => {
+    expect(
+      timetableSlotSchema.safeParse({
+        academicYearId: 'year-1',
+        classId: 'class-1',
+        subjectId: 'subject-1',
+        staffProfileId: 'staff-1',
+        roomId: 'room-1',
+        dayOfWeek: 7,
+        startTime: '08:00',
+        endTime: '09:30',
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe('subjectMaterialSchema', () => {
@@ -364,5 +391,10 @@ describe('timetable helpers', () => {
     expect(formatTimeRange(480, 540)).toBe('08:00 – 09:00');
     expect(dayOfWeekLabel(3)).toBe('Wednesday');
     expect(dayOfWeekLabel(undefined)).toBe('—');
+  });
+
+  it('rejects invalid time strings', () => {
+    expect(() => timeStringToMinutes('99:00')).toThrow('Invalid time value.');
+    expect(() => timeStringToMinutes('08:99')).toThrow('Invalid time value.');
   });
 });

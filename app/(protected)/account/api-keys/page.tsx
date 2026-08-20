@@ -1,40 +1,34 @@
 'use client';
 
 import { Fragment } from 'react';
-import Link from 'next/link';
 import {
   Toolbar,
-  ToolbarActions,
   ToolbarDescription,
   ToolbarHeading,
   ToolbarPageTitle,
 } from '@/partials/common/toolbar';
 import { useSettings } from '@/providers/settings-provider';
-import { Button } from '@/components/ui/button';
 import { Container } from '@/components/common/container';
 import { AccountApiKeysContent } from '@/app/(protected)/account/api-keys/content';
-import { PageNavbar } from '@/app/(protected)/account/page-navbar';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function AccountApiKeysPage() {
   const { settings } = useSettings();
+  const { t } = useTranslation();
 
   return (
     <Fragment>
-      <PageNavbar />
       {settings?.layout === 'demo1' && (
         <Container>
           <Toolbar>
             <ToolbarHeading>
               <ToolbarPageTitle />
               <ToolbarDescription>
-                Central Hub for Personal Customization
+                {t('account.apiKeysDescription', {
+                  defaultValue: 'Manage tenant API keys for trusted integrations.',
+                })}
               </ToolbarDescription>
             </ToolbarHeading>
-            <ToolbarActions>
-              <Button variant="outline" asChild>
-                <Link href="#">Privacy Settings</Link>
-              </Button>
-            </ToolbarActions>
           </Toolbar>
         </Container>
       )}

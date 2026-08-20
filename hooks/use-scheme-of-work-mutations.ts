@@ -5,12 +5,13 @@ import { toast } from 'sonner';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
-import { canWriteOperations, canWriteRegistry } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin, canWriteOperations } from '@/lib/acadia/roles';
 import type { SchemeOfWorkStatus } from '@/lib/acadia/scheme-of-work';
 import { nextTopicSortOrder } from '@/lib/acadia/scheme-of-work';
 import type { SchemeOfWorkTopicFormValues } from '@/lib/acadia/scheme-of-work-schemas';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import {
+  copySchemesOfWork,
   deleteSchemeTopic,
   fetchSchemeDetailById,
   fetchSchemeTopics,
@@ -54,7 +55,7 @@ export function useSchemeOfWorkMutations() {
       if (!tenantId || !activeYearId) {
         throw new Error('Missing tenant or academic year.');
       }
-      if (!canWriteRegistry(roleSlug)) {
+      if (!canWriteAcademicAdmin(roleSlug)) {
         throw new Error('You do not have permission to edit schemes of work.');
       }
       const supabase = requireBrowserClient();
@@ -77,7 +78,7 @@ export function useSchemeOfWorkMutations() {
       if (!tenantId) {
         throw new Error('Missing tenant.');
       }
-      if (!canWriteRegistry(roleSlug)) {
+      if (!canWriteAcademicAdmin(roleSlug)) {
         throw new Error('You do not have permission to publish schemes of work.');
       }
       const supabase = requireBrowserClient();
@@ -105,7 +106,7 @@ export function useSchemeOfWorkMutations() {
       if (!tenantId) {
         throw new Error('Missing tenant.');
       }
-      if (!canWriteRegistry(roleSlug)) {
+      if (!canWriteAcademicAdmin(roleSlug)) {
         throw new Error('You do not have permission to edit topics.');
       }
       const supabase = requireBrowserClient();
@@ -144,7 +145,7 @@ export function useSchemeOfWorkMutations() {
       if (!tenantId) {
         throw new Error('Missing tenant.');
       }
-      if (!canWriteRegistry(roleSlug)) {
+      if (!canWriteAcademicAdmin(roleSlug)) {
         throw new Error('You do not have permission to delete topics.');
       }
       const supabase = requireBrowserClient();
@@ -164,7 +165,7 @@ export function useSchemeOfWorkMutations() {
       if (!tenantId) {
         throw new Error('Missing tenant.');
       }
-      if (!canWriteRegistry(roleSlug)) {
+      if (!canWriteAcademicAdmin(roleSlug)) {
         throw new Error('You do not have permission to reorder topics.');
       }
       const supabase = requireBrowserClient();
@@ -183,6 +184,7 @@ export function useSchemeOfWorkMutations() {
       topicId: string;
       classId: string;
       subjectId: string;
+      schemeAcademicYearId: string;
       completed: boolean;
     }) => {
       if (!tenantId || !activeYearId) {
@@ -190,6 +192,9 @@ export function useSchemeOfWorkMutations() {
       }
       if (!canWriteOperations(roleSlug)) {
         throw new Error('You do not have permission to update coverage.');
+      }
+      if (input.schemeAcademicYearId !== activeYearId) {
+        throw new Error('Switch to this scheme’s academic year before updating coverage.');
       }
       const supabase = requireBrowserClient();
       if (staffProfileId) {
@@ -201,10 +206,10 @@ export function useSchemeOfWorkMutations() {
           input.classId,
           input.subjectId,
         );
-        if (!allowed && !canWriteRegistry(roleSlug)) {
+        if (!allowed && !canWriteAcademicAdmin(roleSlug)) {
           throw new Error('You can only mark topics for classes you teach.');
         }
-      } else if (!canWriteRegistry(roleSlug)) {
+      } else if (!canWriteAcademicAdmin(roleSlug)) {
         throw new Error('You can only mark topics for classes you teach.');
       }
 
@@ -223,6 +228,39 @@ export function useSchemeOfWorkMutations() {
     },
   });
 
+  const copyFromYear = useMutation({
+    mutationFn: async (input: {
+      sourceYearId: string;
+      sourceSchemeId?: string | null;
+    }) => {
+      if (!tenantId || !activeYearId) {
+        throw new Error('Missing tenant or academic year.');
+      }
+      if (!canWriteAcademicAdmin(roleSlug)) {
+        throw new Error('You do not have permission to copy schemes of work.');
+      }
+      const supabase = requireBrowserClient();
+      return copySchemesOfWork(
+        supabase,
+        tenantId,
+        input.sourceYearId,
+        activeYearId,
+        input.sourceSchemeId,
+      );
+    },
+    onSuccess: (count) => {
+      invalidateSchemeQueries(queryClient);
+      toast.success(
+        count > 0
+          ? `Copied ${count} scheme${count === 1 ? '' : 's'} from the previous year.`
+          : 'No schemes were copied. Matching schemes already exist this year.',
+      );
+    },
+    onError: (error) => {
+      toast.error(mutationErrorMessage(error));
+    },
+  });
+
   return {
     openOrCreateScheme,
     setSchemeStatus,
@@ -230,5 +268,6 @@ export function useSchemeOfWorkMutations() {
     removeTopic,
     moveTopic,
     setTopicProgress,
+    copyFromYear,
   };
 }

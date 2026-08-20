@@ -17,6 +17,7 @@ import {
   whatsappTemplateLanguage,
   WHATSAPP_TEMPLATE_PARAM_MAX,
 } from '@/lib/acadia/whatsapp';
+import { shouldSkipWhatsAppRecipient } from '@/lib/acadia/alerts';
 import { parseWhatsAppLanguage } from '@/lib/acadia/whatsapp-dispatch';
 import { formatWhatsAppSendToast } from '@/lib/acadia/whatsapp-types';
 
@@ -177,5 +178,10 @@ describe('WhatsApp send toast', () => {
     expect(formatWhatsAppSendToast({ sent: 4, failed: 1, skipped: 2 })).toBe(
       'Sent to 4 parent(s) on WhatsApp. 2 had no number. 1 failed.',
     );
+  });
+
+  it('does not resend already delivered WhatsApp alerts', () => {
+    expect(shouldSkipWhatsAppRecipient('sent')).toBe(true);
+    expect(shouldSkipWhatsAppRecipient('queued')).toBe(false);
   });
 });

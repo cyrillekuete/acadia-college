@@ -6,6 +6,10 @@ import type {
 import { isAcadiaEmailVerified } from '@/lib/acadia/email-verified';
 import { unwrapRelation } from '@/lib/acadia/record-display';
 import {
+  mapEnrollmentStatus,
+  pickPreferredEnrollment,
+} from '@/lib/acadia/student-enrollment';
+import {
   loadFeeSummaryForProfile,
   resolveStudentProfileId,
   splitStudentName,
@@ -81,7 +85,7 @@ async function fetchFromStudentProfile(
   let enrollmentDate = new Date().toISOString();
 
   if (academicYearId) {
-    const { data: enrollment, error: enrollmentError } = await supabase
+    const { data: enrollments, error: enrollmentError } = await supabase
       .from('StudentEnrollment')
       .select(
         `
@@ -94,21 +98,28 @@ async function fetchFromStudentProfile(
       .eq('tenantId', tenantId)
       .eq('studentProfileId', profileId)
       .eq('academicYearId', academicYearId)
-      .order('createdAt', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('createdAt', { ascending: false });
 
     if (enrollmentError) {
       throw enrollmentError;
     }
 
+    const enrollment = pickPreferredEnrollment(
+      (enrollments ?? []) as Array<{
+        status: string;
+        createdAt: string;
+        classId: string | null;
+        Class?: unknown;
+      }>,
+    );
+
     if (enrollment) {
-      enrollmentStatus =
-        enrollment.status === 'ENROLLED'
-          ? 'active'
-          : ('inactive' as StudentEnrollmentStatus);
+      enrollmentStatus = mapEnrollmentStatus(
+        enrollment.status,
+        enrollment.classId,
+      );
       enrollmentDate = new Date(enrollment.createdAt as string).toISOString();
-      classId = (enrollment.classId as string | null) ?? null;
+      classId = enrollment.classId ?? null;
       const classRow = unwrapRelation<{ name?: string }>(enrollment.Class);
       className = classRow?.name ?? '—';
     }

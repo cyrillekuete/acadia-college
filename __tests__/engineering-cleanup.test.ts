@@ -58,6 +58,31 @@ describe('ACADIA_DEMO_REDIRECTS', () => {
       destination: '/admin/users',
       permanent: false,
     });
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/user-management/users',
+      destination: '/admin/users',
+      permanent: false,
+    });
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/user-management/roles',
+      destination: '/admin/roles',
+      permanent: false,
+    });
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/user-management/permissions',
+      destination: '/admin/roles',
+      permanent: false,
+    });
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/user-management/settings',
+      destination: '/account/home/settings-sidebar',
+      permanent: false,
+    });
+    expect(ACADIA_DEMO_REDIRECTS).toContainEqual({
+      source: '/user-management/logs',
+      destination: '/admin/logs',
+      permanent: false,
+    });
   });
 });
 
@@ -176,5 +201,44 @@ describe('mapAcadiaProfileToAccountUser', () => {
     expect(user.email).toBe('admin@acadia-college.edu');
     expect(user.role.slug).toBe('administrator');
     expect(user.isProtected).toBe(true);
+  });
+});
+
+describe('subjects module write gates', () => {
+  it('keeps the stored academic year when editing a subject', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'components/acadia/subjects/subject-form.tsx'),
+      'utf8',
+    );
+    expect(source).toMatch(/if \(!isEdit && activeYearId\)/);
+    expect(source).toMatch(/form\.setValue\('academicYearId', activeYearId\)/);
+  });
+
+  it('gates catalog, groupings, and scheme writes with academic admin', () => {
+    const catalog = readFileSync(
+      join(process.cwd(), 'components/acadia/subjects/subject-catalog-view.tsx'),
+      'utf8',
+    );
+    const groupings = readFileSync(
+      join(process.cwd(), 'app/(protected)/subjects/groupings/page.tsx'),
+      'utf8',
+    );
+    const schemes = readFileSync(
+      join(process.cwd(), 'components/acadia/scheme-of-work/scheme-of-work-page.tsx'),
+      'utf8',
+    );
+    expect(catalog).toMatch(/canWriteAcademicAdmin/);
+    expect(catalog).not.toMatch(/canWriteRegistry/);
+    expect(groupings).toMatch(/canWriteAcademicAdmin/);
+    expect(schemes).toMatch(/canWriteAcademicAdmin/);
+    expect(schemes).not.toMatch(/canWriteRegistry/);
+  });
+
+  it('excludes deactivated subjects from variant overlap queries', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'lib/supabase/queries/subject-variants.ts'),
+      'utf8',
+    );
+    expect(source).toMatch(/\.is\('deactivatedAt', null\)/);
   });
 });

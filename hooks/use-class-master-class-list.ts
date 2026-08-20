@@ -10,7 +10,7 @@ import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
 import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchClassList, type ClassListRow } from '@/lib/supabase/queries/class-list';
-import { fetchClassMasterClassIds } from '@/lib/supabase/queries/class-discipline';
+import { fetchClassMasterAccessibleClassIds } from '@/lib/supabase/queries/class-report';
 
 export function useClassMasterClassList() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
@@ -39,7 +39,12 @@ export function useClassMasterClassList() {
         return classes;
       }
       const allowed = new Set(
-        await fetchClassMasterClassIds(supabase, tenantId!, staffProfileId!),
+        await fetchClassMasterAccessibleClassIds(
+          supabase,
+          tenantId!,
+          activeYearId!,
+          staffProfileId!,
+        ),
       );
       return classes.filter((row) => allowed.has(row.id));
     },

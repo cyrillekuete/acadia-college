@@ -57,6 +57,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   columns,
   select = '*',
   searchKeys = [],
+  searchFn,
   rowFilter,
   toolbarExtra,
   tenantColumn = 'tenantId',
@@ -64,15 +65,21 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   inFilters: inFiltersProp,
   scopeByAcademicYear = false,
   tableLayout = METRONIC_RESIZABLE_TABLE_LAYOUT,
+  order,
+  limit = 200,
+  truncatedLabel,
+  emptyMessage,
+  or,
 }: {
   table: string;
   title: string;
   columns: ColumnDef<T>[];
   select?: string;
   searchKeys?: (keyof T)[];
+  searchFn?: (row: T, query: string) => boolean;
   rowFilter?: (row: T) => boolean;
   toolbarExtra?: ReactNode;
-  tenantColumn?: string;
+  tenantColumn?: string | null;
   /** Extra Supabase `.eq` filters applied server-side. */
   filters?: ColumnFilter[];
   /** Supabase `.in` filters (e.g. examSessionId for year-scoped marks). */
@@ -80,6 +87,12 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
   /** When true, automatically filters by `academicYearId` from the global year context. */
   scopeByAcademicYear?: boolean;
   tableLayout?: DataGridProps<T>['tableLayout'];
+  order?: { column: string; ascending?: boolean };
+  limit?: number;
+  truncatedLabel?: string;
+  emptyMessage?: ReactNode | string;
+  /** PostgREST `.or()` filter string. */
+  or?: string;
 }) {
   const yearScope = useAcademicYearTableFilters(table);
   const mergedFilters = useMemo(() => {
@@ -98,6 +111,9 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
     {
       enabled: scopeByAcademicYear ? yearScope.isReady : true,
       inFilters: inFiltersProp,
+      order,
+      limit,
+      or,
     },
   );
   const [search, setSearch] = useState('');
@@ -113,10 +129,16 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
 
   const filtered = useMemo(() => {
     const rows = rowFilter ? data.filter(rowFilter) : data;
-    if (!search.trim() || searchKeys.length === 0) {
+    const q = search.trim().toLowerCase();
+    if (!q) {
       return rows;
     }
-    const q = search.toLowerCase();
+    if (searchFn) {
+      return rows.filter((row) => searchFn(row, q));
+    }
+    if (searchKeys.length === 0) {
+      return rows;
+    }
     return rows.filter((row) =>
       searchKeys.some((key) =>
         String(row[key] ?? '')
@@ -124,7 +146,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
           .includes(q),
       ),
     );
-  }, [data, search, searchKeys, rowFilter]);
+  }, [data, search, searchKeys, searchFn, rowFilter]);
 
   const tableInstance = useReactTable({
     data: filtered,
@@ -145,7 +167,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
       {toolbarExtra ? <div className="px-5 pt-4">{toolbarExtra}</div> : null}
       <CardHeader className="flex flex-row items-center justify-between gap-3 py-4">
         <h3 className="text-sm font-medium">{title}</h3>
-        {searchKeys.length > 0 ? (
+        {searchKeys.length > 0 || searchFn ? (
           <InputWrapper className="w-full max-w-xs">
             <Search className="size-4 shrink-0 text-muted-foreground" />
             <Input
@@ -161,6 +183,7 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
         recordCount={filtered.length}
         isLoading={isLoading || waitingForYear}
         tableLayout={tableLayout}
+        emptyMessage={emptyMessage}
       >
         <CardTable>
           <ScrollArea>
@@ -180,7 +203,10 @@ export function SupabaseTableList<T extends Record<string, unknown>>({
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </CardTable>
-        <CardFooter>
+        <CardFooter className="flex flex-col items-stretch gap-2">
+          {data.length === limit && truncatedLabel ? (
+            <p className="text-xs text-muted-foreground">{truncatedLabel}</p>
+          ) : null}
           <DataGridPagination />
         </CardFooter>
       </DataGrid>

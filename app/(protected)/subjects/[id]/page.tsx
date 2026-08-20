@@ -19,7 +19,8 @@ import { useSubjectMutations } from '@/hooks/use-subject-mutations';
 import { useSubjectSiblings } from '@/hooks/use-subject-siblings';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canEditSubject } from '@/lib/acadia/subject';
-import { canWriteRegistry, isStudent } from '@/lib/acadia/roles';
+import { canManageCourseworkMaterials } from '@/lib/acadia/coursework';
+import { canWriteAcademicAdmin, isStudent } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   parseAcademicBranch,
@@ -103,7 +104,8 @@ export default function SubjectDetailPage({
   const { id } = use(params);
   const [slotDialogOpen, setSlotDialogOpen] = useState(false);
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteAcademicAdmin(session?.roleSlug);
+  const canManageMaterials = canManageCourseworkMaterials(session?.roleSlug);
   const studentView = isStudent(session?.roleSlug);
   const { reactivateSubject } = useSubjectMutations();
 
@@ -303,7 +305,10 @@ export default function SubjectDetailPage({
           ) : null}
 
           <TabsContent value="materials">
-            <SubjectMaterialsPanel subjectId={id} canManage={canManage} />
+            <SubjectMaterialsPanel
+              subjectId={id}
+              canManage={canManageMaterials && isActive}
+            />
           </TabsContent>
 
           <TabsContent value="scheme">

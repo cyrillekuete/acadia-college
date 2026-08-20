@@ -22,9 +22,9 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { METRONIC_RESIZABLE_TABLE_LAYOUT } from '@/components/acadia/resizable-table-layout';
 import {
-  computeFeeAccountTotals,
+  countOverdueInstallments,
   formatMoneyMinor,
-  isInstallmentOverdue,
+  totalsFromFeeAccountRecord,
 } from '@/lib/acadia/finance';
 import { FeeStatusBadge } from '@/components/acadia/finance/fee-status-badge';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
@@ -64,6 +64,8 @@ export function FeeOutstandingPanel() {
           id,
           feeCurrency,
           totalAmountMinor,
+          creditMinor,
+          withdrawnAt,
           StudentProfile!StudentFeeAccount_studentProfileId_tenantId_fkey (
             registrationNumber,
             User!StudentProfile_userId_tenantId_fkey ( name )
@@ -91,19 +93,13 @@ export function FeeOutstandingPanel() {
           dueOn: string;
           paidAmountMinor: number | null;
         }>;
-        const scholarships = (account.StudentScholarship ?? []) as Array<{
-          discountMinor: number;
-        }>;
-        const scholarshipMinor = scholarships.reduce(
-          (s, x) => s + Number(x.discountMinor ?? 0),
-          0,
-        );
-        const totals = computeFeeAccountTotals({
+        const totals = totalsFromFeeAccountRecord({
           totalAmountMinor: Number(account.totalAmountMinor),
-          scholarshipMinor,
-          installments,
+          creditMinor: account.creditMinor,
+          StudentFeeInstallment: installments,
+          StudentScholarship: account.StudentScholarship,
         });
-        if (totals.balanceMinor <= 0) {
+        if (totals.balanceMinor <= 0 || account.withdrawnAt) {
           continue;
         }
         const profile = unwrapRelation<{
@@ -111,9 +107,7 @@ export function FeeOutstandingPanel() {
           User?: unknown;
         }>(account.StudentProfile);
         const user = unwrapRelation<{ name?: string }>(profile?.User);
-        const overdueCount = installments.filter((i) =>
-          isInstallmentOverdue(i.status, i.dueOn),
-        ).length;
+        const overdueCount = countOverdueInstallments(installments);
         const pendingDue = installments
           .filter((i) => i.status !== 'PAID' && i.status !== 'WAIVED')
           .map((i) => i.dueOn)

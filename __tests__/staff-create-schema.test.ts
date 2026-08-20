@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { staffCreateSchema } from '@/lib/acadia/staff-create-schemas';
+import {
+  staffCreateSchema,
+  staffUpdateSchema,
+} from '@/lib/acadia/staff-create-schemas';
 
 const basePayload = {
   title: 'Mr' as const,
@@ -15,6 +18,21 @@ const basePayload = {
   employmentType: 'FULL_TIME' as const,
   emergencyContactPhoneCountry: 'Cameroon',
   emergencyContactPhone: '',
+  isActive: true,
+};
+
+const updatePayload = {
+  title: 'Mr' as const,
+  firstName: 'Paul',
+  lastName: 'Mbarga',
+  personalEmail: 'paul.mbarga@example.com',
+  phoneCountry: 'Cameroon',
+  phone: '612345678',
+  employmentType: 'FULL_TIME' as const,
+  emergencyContactPhoneCountry: 'Cameroon',
+  emergencyContactPhone: '',
+  officePhoneCountry: 'Cameroon',
+  officePhone: '',
   isActive: true,
 };
 
@@ -71,6 +89,23 @@ describe('staffCreateSchema', () => {
       ...basePayload,
       academicYearId: '',
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('staffUpdateSchema', () => {
+  it('accepts a valid admin update payload', () => {
+    const result = staffUpdateSchema.safeParse(updatePayload);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.phone).toMatch(/^\+/);
+      expect(result.data.isActive).toBe(true);
+    }
+  });
+
+  it('requires isActive', () => {
+    const withoutActive = { ...updatePayload, isActive: undefined };
+    const result = staffUpdateSchema.safeParse(withoutActive);
     expect(result.success).toBe(false);
   });
 });

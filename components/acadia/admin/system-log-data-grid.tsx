@@ -14,7 +14,6 @@ import {
 import {
   FileDown,
   Filter,
-  NotepadText,
   Search,
   Settings2,
   ShieldAlert,
@@ -22,6 +21,10 @@ import {
   X,
 } from 'lucide-react';
 import { formatDateTime, unwrapRelation } from '@/lib/acadia/record-display';
+import {
+  matchesUserActivityLog,
+  userActivityLogOrFilter,
+} from '@/lib/acadia/user-management';
 import { useSupabaseTableList } from '@/hooks/use-supabase-table-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,7 +50,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
 
 const SELECT = `
   id,
@@ -57,6 +59,7 @@ const SELECT = `
   userId,
   entityType,
   entityId,
+  tenantId,
   User:userId ( email, name, tenantId )
 `;
 
@@ -135,13 +138,59 @@ function mapLogRow(row: SystemLogRow): LogDisplayRow {
   };
 }
 
+function csvEscape(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function downloadCsv(rows: LogDisplayRow[]): void {
+  const header = [
+    'createdAt',
+    'event',
+    'description',
+    'actor',
+    'entityType',
+    'entityId',
+    'severity',
+  ];
+  const lines = [
+    header.join(','),
+    ...rows.map((row) =>
+      [
+        csvEscape(String(row.createdAt ?? '')),
+        csvEscape(row.eventType.label),
+        csvEscape(row.actionTaken),
+        csvEscape(row.actorLabel),
+        csvEscape(String(row.entityType ?? '')),
+        csvEscape(String(row.entityId ?? '')),
+        csvEscape(row.severity.label),
+      ].join(','),
+    ),
+  ];
+  const blob = new Blob([lines.join('\n')], {
+    type: 'text/csv;charset=utf-8;',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `system-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function SystemLogDataGrid({
   userEmailFilter,
   entityIdFilter,
+  subjectUserId,
   entityTypes,
 }: {
   userEmailFilter?: string;
   entityIdFilter?: string;
+  subjectUserId?: string;
   entityTypes?: string[];
 }) {
   const [pagination, setPagination] = useState<PaginationState>({
@@ -153,13 +202,26 @@ export function SystemLogDataGrid({
   ]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverities, setSelectedSeverities] = useState<string[]>([]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [eventQuery, setEventQuery] = useState('');
+
+  const activityUserId = (subjectUserId ?? entityIdFilter)?.trim();
+  const eventEq = eventQuery.trim();
 
   const { data: logs = [], isLoading, isError, error } =
     useSupabaseTableList<SystemLogRow>(
       'SystemLog',
       SELECT,
-      // SystemLog has no tenantId column; tenant isolation is via the actor User.
-      'User.tenantId',
+      'tenantId',
+      eventEq ? [{ column: 'event', value: eventEq }] : undefined,
+      {
+        or: activityUserId ? userActivityLogOrFilter(activityUserId) : undefined,
+        order: { column: 'createdAt', ascending: false },
+        limit: 2000,
+        gte: dateFrom ? [{ column: 'createdAt', value: `${dateFrom}T00:00:00.000Z` }] : undefined,
+        lte: dateTo ? [{ column: 'createdAt', value: `${dateTo}T23:59:59.999Z` }] : undefined,
+      },
     );
 
   const displayRows = useMemo(() => {
@@ -170,9 +232,9 @@ export function SystemLogDataGrid({
         row.actorLabel.toLowerCase().includes(emailQ),
       );
     }
-    const entityId = entityIdFilter?.trim();
-    if (entityId) {
-      rows = rows.filter((row) => String(row.entityId ?? '') === entityId);
+    const subjectId = activityUserId;
+    if (subjectId) {
+      rows = rows.filter((row) => matchesUserActivityLog(row, subjectId));
     }
     if (entityTypes?.length) {
       const allowed = new Set(entityTypes);
@@ -181,7 +243,7 @@ export function SystemLogDataGrid({
       );
     }
     return rows;
-  }, [logs, userEmailFilter, entityIdFilter, entityTypes]);
+  }, [logs, userEmailFilter, activityUserId, entityTypes]);
 
   const filteredData = useMemo(() => {
     return displayRows.filter((item) => {
@@ -308,17 +370,6 @@ export function SystemLogDataGrid({
         enableSorting: true,
         size: 110,
       },
-      {
-        id: 'actions',
-        header: () => '',
-        cell: () => (
-          <Button variant="ghost">
-            <NotepadText />
-          </Button>
-        ),
-        enableSorting: false,
-        size: 70,
-      },
     ],
     [],
   );
@@ -344,11 +395,11 @@ export function SystemLogDataGrid({
     return (
       <CardToolbar>
         <div className="flex flex-wrap items-center gap-2.5">
-          <Label htmlFor="push-alerts" className="text-sm">
-            Push Alerts
-          </Label>
-          <Switch size="sm" id="push-alerts" defaultChecked />
-          <Button variant="outline" disabled>
+          <Button
+            variant="outline"
+            disabled={filteredData.length === 0}
+            onClick={() => downloadCsv(filteredData)}
+          >
             <FileDown />
             Export
           </Button>
@@ -409,6 +460,26 @@ export function SystemLogDataGrid({
                   </Button>
                 )}
               </div>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-36"
+                aria-label="From date"
+              />
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-36"
+                aria-label="To date"
+              />
+              <Input
+                placeholder="Event"
+                value={eventQuery}
+                onChange={(e) => setEventQuery(e.target.value)}
+                className="w-40"
+              />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline">

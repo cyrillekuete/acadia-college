@@ -51,7 +51,9 @@ export function UserFormDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { createUser } = useUserManagementMutations();
-  const { data: roles = [], isLoading: rolesLoading } = useUserRoleOptions();
+  const { data: roles = [], isLoading: rolesLoading } = useUserRoleOptions({
+    directoryOnly: true,
+  });
 
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserSchema),

@@ -12,6 +12,7 @@ export type SubjectGroupingOption = {
   nameEn: string;
   nameFr: string;
   code: string | null;
+  sortOrder: number;
 };
 
 export function useSubjectGroupingOptions() {
@@ -24,7 +25,7 @@ export function useSubjectGroupingOptions() {
       const supabase = requireBrowserClient();
       const { data, error } = await supabase
         .from('SubjectGrouping')
-        .select('id, nameEn, nameFr, code')
+        .select('id, nameEn, nameFr, code, sortOrder')
         .eq('tenantId', tenantId!)
         .order('sortOrder', { ascending: true })
         .order('nameEn', { ascending: true });

@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import { MessageGroupForm } from '@/components/acadia/communication/message-group-form';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,9 @@ import { SupabaseTableList } from '@/components/acadia/supabase-table-list';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { threadSubjectDisplay, messageGroupScopeLabel } from '@/lib/acadia/communication';
+import { MESSAGE_INBOX_LIMIT } from '@/lib/acadia/messages';
+import { canManageMessageGroups } from '@/lib/acadia/roles';
+import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type GroupThreadRow = {
@@ -15,6 +20,7 @@ type GroupThreadRow = {
   subjectEn?: string | null;
   subjectFr?: string | null;
   groupScope?: string | null;
+  groupScopeId?: string | null;
   updatedAt: string;
 } & Record<string, unknown>;
 
@@ -48,6 +54,20 @@ const columns: ColumnDef<GroupThreadRow>[] = [
 
 export default function MessageGroupsPage() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { data: session, isLoading } = useAcadiaCollegeSession();
+  const canManage = canManageMessageGroups(session?.roleSlug);
+
+  useEffect(() => {
+    if (!isLoading && !canManage) {
+      router.replace('/messages');
+    }
+  }, [isLoading, canManage, router]);
+
+  if (isLoading || !canManage) {
+    return null;
+  }
+
   return (
     <AcadiaPageShell
       title={t('communication.groupsTitle')}
@@ -69,10 +89,14 @@ export default function MessageGroupsPage() {
           <SupabaseTableList
             table="MessageThread"
             title={t('communication.groupThreads')}
-            select="id, kind, subjectEn, subjectFr, groupScope, updatedAt"
+            select="id, kind, subjectEn, subjectFr, groupScope, groupScopeId, updatedAt"
             columns={columns}
-            searchKeys={['subjectEn']}
-            rowFilter={(row) => row.kind === 'GROUP'}
+            searchKeys={['subjectEn', 'subjectFr']}
+            filters={[{ column: 'kind', value: 'GROUP' }]}
+            order={{ column: 'updatedAt', ascending: false }}
+            limit={MESSAGE_INBOX_LIMIT}
+            truncatedLabel={t('communication.inboxTruncated')}
+            emptyMessage={t('communication.emptyGroups')}
           />
         </div>
       </div>

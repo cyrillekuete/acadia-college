@@ -26,6 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -66,6 +67,7 @@ type ClassRow = {
   branch: ClassFormValues['branch'];
   staffProfileId?: string | null;
   status: ClassFormValues['status'];
+  isDefaultPromotionTarget?: boolean;
 };
 
 export function ClassFormDialog({
@@ -99,6 +101,7 @@ export function ClassFormDialog({
       branch: defaultFilters?.branch ?? 'GRAMMAR',
       staffProfileId: '',
       status: 'ACTIVE',
+      isDefaultPromotionTarget: false,
       subjectSelections: [],
     },
   });
@@ -148,6 +151,7 @@ export function ClassFormDialog({
           branch: record.branch,
           staffProfileId: record.staffProfileId ?? '',
           status: record.status,
+          isDefaultPromotionTarget: Boolean(record.isDefaultPromotionTarget),
           subjectSelections: assignedSelections,
         });
       } else {
@@ -158,6 +162,7 @@ export function ClassFormDialog({
           branch: defaultFilters?.branch ?? 'GRAMMAR',
           staffProfileId: '',
           status: 'ACTIVE',
+          isDefaultPromotionTarget: false,
           subjectSelections: [],
         });
       }
@@ -402,6 +407,23 @@ export function ClassFormDialog({
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="isDefaultPromotionTarget"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between gap-3 rounded-lg border p-3">
+                    <div>
+                      <FormLabel>{t('academics.defaultPromotionClass')}</FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        {t('academics.defaultPromotionClassHint')}
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value === true} onCheckedChange={field.onChange} />
+                    </FormControl>
                   </FormItem>
                 )}
               />

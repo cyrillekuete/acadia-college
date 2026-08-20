@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AcadiaPageShell } from '@/components/acadia/page-shell';
 import type { SubjectType } from '@/lib/acadia/subject-catalog';
 import { canEditSubject } from '@/lib/acadia/subject';
-import { canWriteRegistry } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useSupabaseRecord } from '@/hooks/use-supabase-record';
 import { unwrapRelation } from '@/lib/acadia/record-display';
@@ -76,7 +76,7 @@ export default function EditSubjectPage({
   const { id } = use(params);
   const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteAcademicAdmin(session?.roleSlug);
   const { data, isLoading, isError, error } = useSupabaseRecord<SubjectEditDetail>(
     'Subject',
     id,
@@ -105,6 +105,7 @@ export default function EditSubjectPage({
           id: data.id,
           code: data.code,
           nameEn: data.nameEn,
+          nameFr: data.nameFr,
           levelIds,
           subSystem: data.subSystem,
           branch: data.branch,
@@ -152,11 +153,18 @@ export default function EditSubjectPage({
             <SubjectForm record={record} onCancelHref={`/subjects/${id}`} />
           </CardContent>
         </Card>
-      ) : data ? (
+      ) : data && data.deactivatedAt ? (
         <p className="text-sm text-muted-foreground">
           Deactivated subjects cannot be edited.
         </p>
-      ) : null}
+      ) : data ? (
+        <p className="text-sm text-muted-foreground">
+          This subject is missing a sub-system, branch, or academic year, so it
+          cannot be edited until those fields are repaired.
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Subject not found.</p>
+      )}
     </AcadiaPageShell>
   );
 }

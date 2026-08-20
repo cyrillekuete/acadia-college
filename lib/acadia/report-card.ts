@@ -16,9 +16,11 @@ import {
 import { branchLabel } from '@/lib/acadia/education-system';
 import {
   calculateGrade,
+  buildReportCardOrderNo,
   getGradeRemarks,
   hasGceSubjectCode,
 } from '@/lib/acadia/report-card-grading';
+import { computeYearAverageForPromotionFromMarks } from '@/lib/acadia/promotion';
 import {
   isYearSummaryTerm,
   REPORT_CARD_CATEGORIES,
@@ -33,6 +35,7 @@ import {
 export type ReportCardGroupingRef = {
   id?: string | null;
   nameEn?: string | null;
+  nameFr?: string | null;
   sortOrder?: number | null;
 };
 
@@ -45,6 +48,7 @@ export type ReportCardSubjectDef = {
   subjectType: string;
   groupingId?: string | null;
   groupingLabel?: string | null;
+  groupingLabelFr?: string | null;
   groupingSortOrder?: number | null;
   requiredSubBranchIds: string[];
 };
@@ -92,6 +96,8 @@ export type ReportCardBundle = {
   marks: ReportCardMarkRow[];
   branding: ReportCardBranding;
   disciplineByTerm?: ClassDisciplineRow[];
+  preferFrenchNames?: boolean;
+  transferredFrom?: { className: string; enrolledAt?: string | null } | null;
 };
 
 export function subjectTypeToCategory(subjectType: string | null | undefined): ReportCardCategory {
@@ -108,7 +114,7 @@ export function subjectTypeToCategory(subjectType: string | null | undefined): R
 }
 
 export function getSequenceSlotsForTerm(
-  term: 1 | 2 | 3,
+  term: number,
   structure: AcademicYearStructure = DEFAULT_ACADEMIC_STRUCTURE,
 ): number[] {
   const { termNumberBySequence } = buildSequenceDistribution(structure);
@@ -180,17 +186,21 @@ export function buildSubjectSequenceScores(
   }
 
   const termAverages: NonNullable<SubjectGrade['termAverages']> = {};
-  const term1 = averageScores(termScores.get(1) ?? []);
-  const term2 = averageScores(termScores.get(2) ?? []);
-  const term3 = averageScores(termScores.get(3) ?? []);
-  if (term1 != null) termAverages.term1 = term1;
-  if (term2 != null) termAverages.term2 = term2;
-  if (term3 != null) termAverages.term3 = term3;
+  for (const [termNumber, scores] of termScores.entries()) {
+    const avg = averageScores(scores);
+    if (avg != null) {
+      termAverages[`term${termNumber}`] = avg;
+    }
+  }
+  const orderedTermAverages = Array.from(
+    { length: structure.termsPerYear },
+    (_, index) => termAverages[`term${index + 1}`],
+  );
 
   return {
     sequences,
     termAverages,
-    annualAverage: averageScores([term1, term2, term3]),
+    annualAverage: averageScores(orderedTermAverages),
   };
 }
 
@@ -204,13 +214,21 @@ function activeSubjectAverage(
   if (isYearSummaryTerm(term)) {
     return subject.annualAverage ?? subject.termAverage ?? null;
   }
+  const termKey = `term${term}`;
+  const fromMap = subject.termAverages?.[termKey];
+  if (typeof fromMap === 'number') {
+    return fromMap;
+  }
   if (term === '1') {
-    return subject.termAverages?.term1 ?? subject.term1 ?? subject.termAverage ?? null;
+    return subject.term1 ?? subject.termAverage ?? null;
   }
   if (term === '2') {
-    return subject.termAverages?.term2 ?? subject.term2 ?? subject.termAverage ?? null;
+    return subject.term2 ?? subject.termAverage ?? null;
   }
-  return subject.termAverages?.term3 ?? subject.term3 ?? subject.termAverage ?? null;
+  if (term === '3') {
+    return subject.term3 ?? subject.termAverage ?? null;
+  }
+  return subject.termAverage ?? null;
 }
 
 export function computeWeightedTotals(
@@ -265,6 +283,7 @@ function toSubjectGrade(
   scores: ReturnType<typeof buildSubjectSequenceScores>,
   term: ReportCardTerm,
   rank?: number,
+  preferFrench = false,
 ): SubjectGrade {
   const activeAvg = activeSubjectAverage(
     { termAverages: scores.termAverages, annualAverage: scores.annualAverage ?? undefined },
@@ -275,9 +294,12 @@ function toSubjectGrade(
   const coefficient = hasMark ? planned : 0;
   const grade = hasMark ? calculateGrade(activeAvg) : '';
   const remarks = hasMark ? getGradeRemarks(grade) : '';
+  const subjectName = preferFrench
+    ? subject.nameFr?.trim() || subject.nameEn
+    : subject.nameEn;
 
   return {
-    subjectName: subject.nameEn,
+    subjectName,
     subjectId: subject.subjectId,
     code: subject.code,
     coefficient,
@@ -286,7 +308,9 @@ function toSubjectGrade(
     coefEligible: hasMark,
     category: subjectTypeToCategory(subject.subjectType),
     groupingId: subject.groupingId?.trim() || undefined,
-    groupingLabel: subject.groupingLabel?.trim() || undefined,
+    groupingLabel: preferFrench
+      ? subject.groupingLabelFr?.trim() || subject.groupingLabel?.trim() || undefined
+      : subject.groupingLabel?.trim() || subject.groupingLabelFr?.trim() || undefined,
     groupingSortOrder:
       typeof subject.groupingSortOrder === 'number' ? subject.groupingSortOrder : undefined,
     sequences: scores.sequences,
@@ -359,7 +383,12 @@ export function buildReportCardData(
     cohortIds.push(bundle.student.studentProfileId);
   }
 
-  const periodTerms: ReportCardTerm[] = ['1', '2', '3', 'annual'];
+  const periodTerms: ReportCardTerm[] = [
+    ...Array.from({ length: Math.max(structure.termsPerYear, 3) }, (_, index) =>
+      String(index + 1),
+    ),
+    'annual',
+  ];
   const averagesByPeriod = new Map<ReportCardTerm, Map<string, number>>();
   for (const period of periodTerms) {
     const map = new Map<string, number>();
@@ -423,6 +452,7 @@ export function buildReportCardData(
         buildSubjectSequenceScores(studentMarks, subject, structure),
         term,
         subjectRanks.get(subject.subjectId),
+        bundle.preferFrenchNames === true,
       ),
     )
     .sort(compareReportCardSubjects);
@@ -446,6 +476,26 @@ export function buildReportCardData(
     term === 'annual'
       ? Array.from({ length: structure.sequencesPerYear }, (_, index) => index + 1)
       : getSequenceSlotsForTerm(reportCardTermNumber(term), structure);
+  const missingSubjectCount = subjects.filter((subject) => !subject.hasMark).length;
+  const scoredSubjectCount = subjects.length - missingSubjectCount;
+  const marksStatus =
+    subjects.length === 0 || scoredSubjectCount === 0
+      ? 'unevaluated'
+      : missingSubjectCount > 0
+        ? 'incomplete'
+        : 'complete';
+  const promotion = computeYearAverageForPromotionFromMarks(
+    bundle.marks,
+    studentId,
+    bundle.subjects.map((subject) => ({
+      subjectId: subject.subjectId,
+      subBranchIds: subject.requiredSubBranchIds,
+    })),
+    structure,
+  );
+  const missingSignatures: Array<'classMaster' | 'principal'> = [];
+  if (!bundle.classMaster.trim()) missingSignatures.push('classMaster');
+  if (!bundle.branding.principalName.trim()) missingSignatures.push('principal');
 
   return {
     student: {
@@ -467,7 +517,12 @@ export function buildReportCardData(
     academic: {
       year: bundle.academicYearLabel,
       term: academicTerm,
-      orderNo: `REF-${new Date().getFullYear()}`,
+      orderNo: buildReportCardOrderNo({
+        yearLabel: bundle.academicYearLabel,
+        matricule: bundle.student.matricule,
+        term,
+        studentProfileId: studentId,
+      }),
     },
     subjects,
     totals,
@@ -475,20 +530,33 @@ export function buildReportCardData(
       term1: averagesByPeriod.get('1')?.get(studentId),
       term2: averagesByPeriod.get('2')?.get(studentId),
       term3: averagesByPeriod.get('3')?.get(studentId),
+      termAverages: Object.fromEntries(
+        Array.from({ length: structure.termsPerYear }, (_, index) => {
+          const key = String(index + 1);
+          return [key, averagesByPeriod.get(key)?.get(studentId)] as const;
+        }).filter((entry): entry is [string, number] => typeof entry[1] === 'number'),
+      ),
       annualAvg: averagesByPeriod.get('annual')?.get(studentId),
       rank1: ranksByPeriod.get('1')?.get(studentId),
       rank2: ranksByPeriod.get('2')?.get(studentId),
       rank3: ranksByPeriod.get('3')?.get(studentId),
       rank: ranksByPeriod.get(term)?.get(studentId),
+      promotionAvg: promotion.average,
+      promotionStatus: promotion.status,
     },
     stats: {
       classSize: bundle.classSize,
+      evaluated: evaluatedCount,
+      unevaluated: Math.max(0, bundle.classSize - evaluatedCount),
       maxAvg: evaluatedCount ? Math.max(...values) : 0,
       minAvg: evaluatedCount ? Math.min(...values) : 0,
       passed: passedCount,
       failed: failedCount,
       passPercent: evaluatedCount ? round2((passedCount / evaluatedCount) * 100) : 0,
       failPercent: evaluatedCount ? round2((failedCount / evaluatedCount) * 100) : 0,
+      passPercentOfClass: bundle.classSize
+        ? round2((passedCount / bundle.classSize) * 100)
+        : 0,
       classAvg: averageScores(values) ?? 0,
       ...gce,
     },
@@ -496,6 +564,11 @@ export function buildReportCardData(
     branding: bundle.branding,
     watermarkUrl: bundle.branding.logoUrl ?? undefined,
     sequenceSlots,
+    termSlots: Array.from({ length: structure.termsPerYear }, (_, index) => index + 1),
+    preferFrenchNames: bundle.preferFrenchNames === true,
+    transferredFrom: bundle.transferredFrom ?? null,
+    marksStatus: { status: marksStatus, missingSubjectCount },
+    missingSignatures,
   };
 }
 
@@ -546,17 +619,29 @@ export function categoryRemarkName(category: string | undefined): string {
 export function resolveReportCardGrouping(
   classGrouping?: ReportCardGroupingRef | null,
   subjectGrouping?: ReportCardGroupingRef | null,
+  options?: { forceUngrouped?: boolean },
 ): {
   groupingId: string | null;
   groupingLabel: string | null;
+  groupingLabelFr: string | null;
   groupingSortOrder: number | null;
 } {
+  if (options?.forceUngrouped) {
+    return {
+      groupingId: null,
+      groupingLabel: null,
+      groupingLabelFr: null,
+      groupingSortOrder: null,
+    };
+  }
   const grouping = classGrouping ?? subjectGrouping;
-  const groupingLabel = grouping?.nameEn?.trim() || null;
+  const groupingLabel = grouping?.nameEn?.trim() || grouping?.nameFr?.trim() || null;
+  const groupingLabelFr = grouping?.nameFr?.trim() || grouping?.nameEn?.trim() || null;
   const groupingId = grouping?.id?.trim() || null;
   return {
     groupingId,
     groupingLabel,
+    groupingLabelFr,
     groupingSortOrder: typeof grouping?.sortOrder === 'number' ? grouping.sortOrder : null,
   };
 }
@@ -565,13 +650,19 @@ function hasConfiguredGrouping(subject: Pick<SubjectGrade, 'groupingId' | 'group
   return Boolean(subject.groupingId || subject.groupingLabel?.trim());
 }
 
-export function reportCardSubjectGroupKey(subject: SubjectGrade): string {
+export function reportCardSubjectGroupKey(
+  subject: SubjectGrade,
+  useUngroupedFallback = false,
+): string {
   if (subject.groupingId) {
     return `g:${subject.groupingId}`;
   }
   const label = subject.groupingLabel?.trim();
   if (label) {
     return `l:${label.toLowerCase()}`;
+  }
+  if (useUngroupedFallback) {
+    return 'ungrouped';
   }
   return `c:${subject.category ?? 'others'}`;
 }
@@ -615,9 +706,10 @@ export function compareReportCardSubjects(a: SubjectGrade, b: SubjectGrade): num
 
 export function groupSubjectsForReportCard(subjects: SubjectGrade[]): ReportCardSubjectGroup[] {
   const groups = new Map<string, ReportCardSubjectGroup>();
+  const anyConfigured = subjects.some((subject) => hasConfiguredGrouping(subject));
 
   for (const subject of subjects) {
-    const key = reportCardSubjectGroupKey(subject);
+    const key = reportCardSubjectGroupKey(subject, anyConfigured);
     const existing = groups.get(key);
     if (existing) {
       existing.subjects.push(subject);
@@ -625,15 +717,22 @@ export function groupSubjectsForReportCard(subjects: SubjectGrade[]): ReportCard
     }
 
     const configured = hasConfiguredGrouping(subject);
+    const ungroupedFallback = anyConfigured && !configured;
     const label = configured
       ? subject.groupingLabel?.trim() || categoryFullLabel(subject.category)
-      : categoryFullLabel(subject.category);
+      : ungroupedFallback
+        ? 'Ungrouped'
+        : categoryFullLabel(subject.category);
     const shortLabel = configured
       ? subject.groupingLabel?.trim() || categoryShortLabel(subject.category)
-      : categoryShortLabel(subject.category);
+      : ungroupedFallback
+        ? 'Ungrouped'
+        : categoryShortLabel(subject.category);
     const remarkSource = configured
       ? subject.groupingLabel?.trim() || categoryRemarkName(subject.category)
-      : categoryRemarkName(subject.category);
+      : ungroupedFallback
+        ? 'ungrouped'
+        : categoryRemarkName(subject.category);
 
     groups.set(key, {
       key,

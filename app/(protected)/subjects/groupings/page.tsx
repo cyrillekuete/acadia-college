@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useSubjectGroupingList } from '@/hooks/use-subject-grouping-list';
 import { useSubjectGroupingMutations } from '@/hooks/use-subject-grouping-mutations';
-import { isAdmin } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function SubjectGroupingsPage() {
@@ -24,7 +24,7 @@ export default function SubjectGroupingsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<SubjectGroupingRow | null>(null);
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = isAdmin(session?.roleSlug);
+  const canManage = canWriteAcademicAdmin(session?.roleSlug);
   const { deleteGrouping } = useSubjectGroupingMutations();
   const { data = [], isLoading, isError, error } = useSubjectGroupingList();
 
@@ -69,11 +69,25 @@ export default function SubjectGroupingsPage() {
           setDialogOpen(true);
         }}
         onDelete={(row) => {
-          const count = row.subjectCount;
-          const unlinkNote =
-            count > 0
-              ? ` ${t('subjects.unlinkSubjectsNote', { count })}`
-              : '';
+          const parts: string[] = [];
+          if (row.subjectCount > 0) {
+            parts.push(t('subjects.unlinkSubjectsNote', { count: row.subjectCount }));
+          }
+          if (row.inactiveSubjectCount > 0) {
+            parts.push(
+              t('subjects.unlinkInactiveSubjectsNote', {
+                count: row.inactiveSubjectCount,
+              }),
+            );
+          }
+          if (row.classOverrideCount > 0) {
+            parts.push(
+              t('subjects.unlinkClassOverridesNote', {
+                count: row.classOverrideCount,
+              }),
+            );
+          }
+          const unlinkNote = parts.length > 0 ? ` ${parts.join(' ')}` : '';
           if (
             window.confirm(
               `${t('subjects.deleteGroupingConfirm', { name: row.nameEn })}${unlinkNote}`,

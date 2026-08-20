@@ -10,10 +10,15 @@ export default function AdminLogsPage() {
   const searchParams = useSearchParams();
   const userEmailFilter =
     searchParams.get('userEmail') ?? searchParams.get('email') ?? undefined;
+  const entityIdFilter =
+    searchParams.get('entityId') ?? searchParams.get('userId') ?? undefined;
 
   return (
     <AdminManagementPageShell title={t('admin.logs')} breadcrumbPage={t('admin.logs')}>
-      <SystemLogDataGrid userEmailFilter={userEmailFilter ?? undefined} />
+      <SystemLogDataGrid
+        userEmailFilter={userEmailFilter ?? undefined}
+        entityIdFilter={entityIdFilter ?? undefined}
+      />
     </AdminManagementPageShell>
   );
 }

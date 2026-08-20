@@ -28,6 +28,7 @@ import { NotificationItem } from './notifications/notification-item';
 const ANNOUNCEMENT_EVENTS = new Set([
   'announcement.broadcast',
   'announcement.event',
+  'alert.sent',
 ]);
 
 function filterNotifications(

@@ -6,6 +6,7 @@ import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
+import { useActiveYearTimetablePublish } from '@/hooks/use-timetable-publish';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import {
   fetchTimetableSlotsForClass,
@@ -32,6 +33,7 @@ function useTimetableSlotsBase(
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
+  const { canView, isLoading: publishLoading } = useActiveYearTimetablePublish();
   const extraEnabled = options?.enabled ?? true;
 
   return useQuery({
@@ -39,8 +41,10 @@ function useTimetableSlotsBase(
     queryFn,
     enabled:
       extraEnabled &&
+      canView &&
       !!entityId &&
       !!activeYearId &&
+      !publishLoading &&
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
   });
 }

@@ -55,7 +55,28 @@ export function formatMoneyMinor(
 }
 
 export function parseMoneyToMinor(input: string): number {
-  const normalized = input.replace(/[^\d.,-]/g, '').replace(',', '.');
+  const stripped = input.replace(/[^\d.,-]/g, '');
+  if (!stripped || stripped === '-' || stripped === '.' || stripped === ',') {
+    return 0;
+  }
+  const lastComma = stripped.lastIndexOf(',');
+  const lastDot = stripped.lastIndexOf('.');
+  const lastSep = Math.max(lastComma, lastDot);
+  let normalized: string;
+  if (lastSep >= 0) {
+    const fraction = stripped.slice(lastSep + 1).replace(/\D/g, '');
+    const hasBoth = lastComma >= 0 && lastDot >= 0;
+    const isDecimal =
+      hasBoth || (fraction.length > 0 && fraction.length <= 2);
+    if (isDecimal) {
+      const intPart = stripped.slice(0, lastSep).replace(/[.,]/g, '');
+      normalized = `${intPart}.${fraction}`;
+    } else {
+      normalized = stripped.replace(/[.,]/g, '');
+    }
+  } else {
+    normalized = stripped;
+  }
   const value = Number.parseFloat(normalized);
   if (!Number.isFinite(value)) {
     return 0;
@@ -80,7 +101,54 @@ export type FeeAccountTotals = {
   scholarshipMinor: number;
   balanceMinor: number;
   creditMinor?: number;
+  waivedMinor?: number;
 };
+
+export type FeeInstallmentTotalsInput = {
+  amountMinor: number;
+  status: string;
+  paidAmountMinor?: number | null;
+  dueOn?: string | null;
+};
+
+export function scholarshipMinorFromGrants(
+  grants: Array<{ discountMinor?: number | null }> | null | undefined,
+): number {
+  return Math.max(
+    0,
+    (grants ?? []).reduce(
+      (sum, row) => sum + Number(row.discountMinor ?? 0),
+      0,
+    ),
+  );
+}
+
+export function computeScholarshipDiscountMinor(input: {
+  discountKind: string;
+  percentBps?: number | null;
+  fixedAmountMinor?: number | null;
+  totalAmountMinor: number;
+}): number {
+  const total = Math.max(0, Math.round(input.totalAmountMinor));
+  if (input.discountKind === 'PERCENT_BPS') {
+    const bps = Math.max(0, Math.round(input.percentBps ?? 0));
+    return Math.round((total * bps) / 10_000);
+  }
+  return Math.max(0, Math.round(input.fixedAmountMinor ?? 0));
+}
+
+export function capScholarshipStack(
+  discountMinors: number[],
+  totalAmountMinor: number,
+  waivedMinor = 0,
+): number {
+  const assessed = Math.max(0, Math.round(totalAmountMinor) - Math.max(0, waivedMinor));
+  const sum = discountMinors.reduce(
+    (total, value) => total + Math.max(0, Math.round(value)),
+    0,
+  );
+  return Math.min(assessed, sum);
+}
 
 export function sumInstallmentTemplates(
   installments: FeeInstallmentTemplateValues[],
@@ -100,9 +168,16 @@ export function splitTuitionIntoDefaultInstallments(
   totalMinor: number,
 ): [number, number, number] {
   const total = Number.isFinite(totalMinor) ? Math.max(0, Math.trunc(totalMinor)) : 0;
-  const first = Math.floor(total * DEFAULT_FEE_INSTALLMENT_SPLIT_RATIOS[0]);
-  const second = Math.floor(total * DEFAULT_FEE_INSTALLMENT_SPLIT_RATIOS[1]);
-  const third = total - first - second;
+  if (total < 3) {
+    return [total, 0, 0];
+  }
+  let first = Math.max(1, Math.floor(total * DEFAULT_FEE_INSTALLMENT_SPLIT_RATIOS[0]));
+  let second = Math.max(1, Math.floor(total * DEFAULT_FEE_INSTALLMENT_SPLIT_RATIOS[1]));
+  let third = total - first - second;
+  if (third < 1) {
+    first = Math.max(1, first + third - 1);
+    third = total - first - second;
+  }
   return [first, second, third];
 }
 
@@ -120,18 +195,24 @@ export function applyDefaultFeeInstallmentSplit(
   current: Array<Pick<FeeInstallmentTemplateValues, 'labelEn' | 'labelFr' | 'dueOn'>>,
   amounts: readonly [number, number, number],
 ): FeeInstallmentTemplateValues[] {
-  const keepLabels = current.length === amounts.length;
-  return amounts.map((amountMinor, index) => {
+  const positive = amounts
+    .map((amountMinor, index) => ({ amountMinor, index }))
+    .filter((row) => row.amountMinor > 0);
+  const rows =
+    positive.length > 0 ? positive : [{ amountMinor: 0, index: 0 }];
+  const keepLabels =
+    current.length === amounts.length || current.length === rows.length;
+  return rows.map((row, index) => {
     const labels =
-      DEFAULT_FEE_INSTALLMENT_LABELS[index] ?? DEFAULT_FEE_INSTALLMENT_LABELS[0];
-    const existing = current[index];
+      DEFAULT_FEE_INSTALLMENT_LABELS[row.index] ?? DEFAULT_FEE_INSTALLMENT_LABELS[0];
+    const existing = current[row.index] ?? current[index];
     return {
       installmentNumber: index + 1,
       labelEn:
         keepLabels && existing?.labelEn ? existing.labelEn : labels.labelEn,
       labelFr:
         keepLabels && existing?.labelFr ? existing.labelFr : labels.labelFr,
-      amountMinor,
+      amountMinor: row.amountMinor,
       dueOn: existing?.dueOn ?? '',
     };
   });
@@ -277,32 +358,103 @@ export function computeFeeAccountTotals(input: {
   totalAmountMinor: number;
   scholarshipMinor?: number;
   creditMinor?: number;
-  installments: Array<{
-    amountMinor: number;
-    status: string;
-    paidAmountMinor?: number | null;
-  }>;
+  installments: FeeInstallmentTotalsInput[];
 }): FeeAccountTotals {
-  const scholarshipMinor = input.scholarshipMinor ?? 0;
-  const creditMinor = Math.max(0, input.creditMinor ?? 0);
-  const totalDueMinor = Math.max(0, input.totalAmountMinor - scholarshipMinor);
+  const creditMinor = Math.max(0, Math.round(input.creditMinor ?? 0));
+  let waivedMinor = 0;
   let totalPaidMinor = 0;
   for (const inst of input.installments) {
+    if (inst.status === 'WAIVED') {
+      waivedMinor += Math.max(0, inst.amountMinor);
+      continue;
+    }
     if (inst.status === 'PAID') {
       totalPaidMinor += inst.paidAmountMinor ?? inst.amountMinor;
-    } else if (inst.status === 'WAIVED') {
-      continue;
     } else if (inst.paidAmountMinor) {
       totalPaidMinor += inst.paidAmountMinor;
     }
   }
+  waivedMinor = Math.max(0, Math.round(waivedMinor));
+  totalPaidMinor = Math.max(0, Math.round(totalPaidMinor));
+  const assessedMinor = Math.max(
+    0,
+    Math.round(input.totalAmountMinor) - waivedMinor,
+  );
+  const scholarshipMinor = Math.min(
+    assessedMinor,
+    Math.max(0, Math.round(input.scholarshipMinor ?? 0)),
+  );
+  const totalDueMinor = Math.max(0, assessedMinor - scholarshipMinor);
   return {
     totalDueMinor,
     totalPaidMinor,
     scholarshipMinor,
+    waivedMinor,
     creditMinor,
     balanceMinor: Math.max(0, totalDueMinor - totalPaidMinor - creditMinor),
   };
+}
+
+export function totalsFromFeeAccountRecord(account: {
+  totalAmountMinor: number;
+  creditMinor?: number | null;
+  StudentFeeInstallment?: FeeInstallmentTotalsInput[] | null;
+  StudentScholarship?: Array<{ discountMinor?: number | null }> | null;
+}): FeeAccountTotals {
+  return computeFeeAccountTotals({
+    totalAmountMinor: Number(account.totalAmountMinor),
+    creditMinor: Number(account.creditMinor ?? 0),
+    scholarshipMinor: scholarshipMinorFromGrants(account.StudentScholarship),
+    installments: account.StudentFeeInstallment ?? [],
+  });
+}
+
+export function countOverdueInstallments(
+  installments: Array<{ status: string; dueOn?: string | null }>,
+  today = new Date(),
+): number {
+  return installments.filter((row) =>
+    isInstallmentOverdue(row.status, row.dueOn ?? '', today),
+  ).length;
+}
+
+export function feeAccountCollectionStatus(
+  totals: FeeAccountTotals,
+  installments: Array<{ status: string; dueOn?: string | null }>,
+  today = new Date(),
+): 'paid' | 'overdue' | 'partial' | 'pending' | null {
+  if (
+    totals.totalDueMinor <= 0 &&
+    totals.totalPaidMinor <= 0 &&
+    (totals.scholarshipMinor ?? 0) <= 0 &&
+    (totals.waivedMinor ?? 0) <= 0
+  ) {
+    return null;
+  }
+  if (totals.balanceMinor <= 0) {
+    return 'paid';
+  }
+  if (countOverdueInstallments(installments, today) > 0) {
+    return 'overdue';
+  }
+  if (totals.totalPaidMinor > 0) {
+    return 'partial';
+  }
+  return 'pending';
+}
+
+export function isFinanceYearClosed(
+  year?: { isActive?: boolean | null } | null,
+): boolean {
+  return year?.isActive === false;
+}
+
+export function assertFinanceYearWritable(
+  year?: { isActive?: boolean | null } | null,
+): void {
+  if (isFinanceYearClosed(year)) {
+    throw new Error('This academic year is closed.');
+  }
 }
 
 export function isInstallmentOverdue(
@@ -535,7 +687,7 @@ export function aggregateFinanceSummary(
     accounts: accounts.length,
     totalDueMinor,
     totalPaidMinor,
-    outstandingMinor: Math.max(0, totalDueMinor - totalPaidMinor),
+    outstandingMinor: accounts.reduce((sum, account) => sum + account.balanceMinor, 0),
     overdueInstallments: 0,
     incomeMinor,
     expenseMinor,
@@ -631,6 +783,30 @@ export function computeSaleTotalMinor(
   return Math.max(0, Math.round(quantity) * Math.round(unitPriceMinor));
 }
 
+export function canEditSaleAmounts(status: string): boolean {
+  return status === 'PENDING';
+}
+
+export function canEditSaleNotes(status: string): boolean {
+  return status !== 'CANCELLED';
+}
+
+export function canDeleteSale(status: string): boolean {
+  return status === 'PENDING';
+}
+
+export function canCancelSale(status: string): boolean {
+  return status === 'COMPLETED' || status === 'PENDING';
+}
+
+export function canRejectExpenditure(status: string): boolean {
+  return status === 'PENDING' || status === 'APPROVED';
+}
+
+export function canReopenExpenditure(status: string): boolean {
+  return status === 'REJECTED';
+}
+
 export function canApproveExpenditure(status: string): boolean {
   return status === 'PENDING';
 }
@@ -648,7 +824,7 @@ export function canDeleteExpenditure(status: string): boolean {
 }
 
 export function nextExpenditureStatus(
-  action: 'approve' | 'pay',
+  action: 'approve' | 'pay' | 'reject' | 'reopen',
   status: string,
 ): ExpenditureStatus | null {
   if (action === 'approve' && canApproveExpenditure(status)) {
@@ -657,12 +833,18 @@ export function nextExpenditureStatus(
   if (action === 'pay' && canMarkExpenditurePaid(status)) {
     return 'PAID';
   }
+  if (action === 'reject' && canRejectExpenditure(status)) {
+    return 'REJECTED';
+  }
+  if (action === 'reopen' && canReopenExpenditure(status)) {
+    return 'PENDING';
+  }
   return null;
 }
 
 export type FinanceSaleRow = {
   id: string;
-  studentProfileId: string;
+  studentProfileId: string | null;
   studentLabel: string;
   itemType: FinanceSaleItemType;
   itemName: string;
@@ -682,7 +864,7 @@ export type ExpenditureRow = {
   amountMinor: number;
   currency: string;
   paymentMethod: FinancePaymentMethod | null;
-  paymentDate: string;
+  paymentDate: string | null;
   vendor: string;
   vendorContact: string | null;
   receiptNumber: string | null;

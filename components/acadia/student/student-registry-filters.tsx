@@ -24,9 +24,11 @@ import {
   STUDENT_QUICK_FILTERS,
   studentRegistryHasActiveFilters,
   type StudentQuickFilterId,
+  type StudentRegistryClassOption,
   type StudentRegistryFilters,
   type StudentRegistrySubjectOption,
 } from '@/lib/acadia/student-registry';
+import { UNASSIGNED_CLASS_FILTER } from '@/lib/acadia/student-enrollment';
 import { StudentEnrollmentStatusProps } from '@/components/acadia/student/student-list-status';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -47,13 +49,15 @@ export function StudentRegistryFiltersPanel({
   classOptions,
   feesStatusOptions,
   subjectOptions = [],
+  hasUnassignedClass = false,
 }: {
   mode?: 'admin' | 'teacher';
   filters: StudentRegistryFilters;
   onChange: (filters: StudentRegistryFilters) => void;
-  classOptions: string[];
+  classOptions: StudentRegistryClassOption[];
   feesStatusOptions: string[];
   subjectOptions?: StudentRegistrySubjectOption[];
+  hasUnassignedClass?: boolean;
 }) {
   const { t } = useTranslation();
   const quickFilters: RegistryQuickFilter[] = (
@@ -175,11 +179,11 @@ export function StudentRegistryFiltersPanel({
 
         <FilterField label={t('students.class')} className="min-w-[10rem] flex-1">
           <Select
-            value={filters.className ?? ALL}
+            value={filters.classId ?? ALL}
             onValueChange={(value) =>
               onChange({
                 ...filters,
-                className: value === ALL ? null : value,
+                classId: value === ALL ? null : value,
               })
             }
           >
@@ -188,9 +192,14 @@ export function StudentRegistryFiltersPanel({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>{t('students.allClasses')}</SelectItem>
-              {classOptions.map((className) => (
-                <SelectItem key={className} value={className}>
-                  {className}
+              {hasUnassignedClass ? (
+                <SelectItem value={UNASSIGNED_CLASS_FILTER}>
+                  {t('students.unassignedClass')}
+                </SelectItem>
+              ) : null}
+              {classOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.name}
                 </SelectItem>
               ))}
             </SelectContent>

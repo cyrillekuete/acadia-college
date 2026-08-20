@@ -35,7 +35,9 @@ export default function StudentDetailPage() {
           ) : null}
         </>
       ) : null}
-      <StudentDangerZone student={student} isLoading={isLoading} />
+      {canEdit ? (
+        <StudentDangerZone student={student} isLoading={isLoading} />
+      ) : null}
     </div>
   );
 }

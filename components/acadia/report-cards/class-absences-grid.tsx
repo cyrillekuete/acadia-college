@@ -21,21 +21,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
+import { useTermOptions } from '@/hooks/use-academic-calendar-options';
 import { useClassDisciplineMutations } from '@/hooks/use-class-discipline-mutations';
 import { useClassMasterClassList } from '@/hooks/use-class-master-class-list';
+import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
-  CLASS_DISCIPLINE_TERMS,
-  classDisciplineRosterQueryKey,
-  normalizeDisciplineCount,
   parseClassDisciplineTerm,
   type ClassDisciplineDraft,
   type ClassDisciplineStudent,
   type ClassDisciplineTerm,
+  canWriteClassDiscipline,
+  classDisciplineRosterQueryKey,
+  normalizeDisciplineCount,
 } from '@/lib/acadia/class-discipline';
 import { GraduationCap, LoaderCircleIcon } from '@/lib/icons';
 import { requireBrowserClient } from '@/lib/supabase/client';
@@ -57,8 +59,10 @@ export function ClassAbsencesGrid() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
+  const { data: linked } = useLinkedAcadiaProfile();
   const { activeYearId } = useActiveAcademicYear();
   const { data: classes = [], isLoading: loadingClasses } = useClassMasterClassList();
+  const { data: terms = [] } = useTermOptions(activeYearId);
   const { saveClassDiscipline } = useClassDisciplineMutations();
 
   const [selectedClass, setSelectedClass] = useState('');
@@ -135,7 +139,7 @@ export function ClassAbsencesGrid() {
   };
 
   const handleSave = async () => {
-    if (!activeYearId || !selectedClass) {
+    if (!activeYearId || !selectedClass || !canWrite) {
       return;
     }
     await saveClassDiscipline.mutateAsync({
@@ -147,6 +151,14 @@ export function ClassAbsencesGrid() {
   };
 
   const students = rosterQuery.data?.students ?? [];
+  const selectedClassRow = classes.find((row) => row.id === selectedClass);
+  const canWrite = canWriteClassDiscipline({
+    roleSlug: session?.roleSlug ?? '',
+    staffProfileId: linked?.staffProfileId,
+    classMasterStaffProfileId: selectedClassRow?.staffProfileId,
+  });
+  const termNumbers =
+    terms.length > 0 ? terms.map((term) => term.number) : [1, 2, 3];
 
   const columns = useMemo<ColumnDef<ClassDisciplineStudent>[]>(
     () => [
@@ -181,6 +193,7 @@ export function ClassAbsencesGrid() {
             max={999}
             step={1}
             className="w-24"
+            disabled={!canWrite}
             value={drafts[row.original.studentProfileId]?.absenceHours ?? 0}
             onChange={(event) =>
               updateDraft(
@@ -212,6 +225,7 @@ export function ClassAbsencesGrid() {
             max={99}
             step={1}
             className="w-24"
+            disabled={!canWrite}
             value={drafts[row.original.studentProfileId]?.suspensions ?? 0}
             onChange={(event) =>
               updateDraft(
@@ -243,6 +257,7 @@ export function ClassAbsencesGrid() {
             max={99}
             step={1}
             className="w-24"
+            disabled={!canWrite}
             value={drafts[row.original.studentProfileId]?.warnings ?? 0}
             onChange={(event) =>
               updateDraft(
@@ -258,7 +273,7 @@ export function ClassAbsencesGrid() {
         enableSorting: false,
       },
     ],
-    [drafts, t],
+    [drafts, t, canWrite],
   );
 
   const table = useReactTable({
@@ -287,6 +302,12 @@ export function ClassAbsencesGrid() {
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        {t('reports.absencesDisciplineNote')}{' '}
+        <a href="/attendance/reports" className="text-primary hover:underline">
+          {t('reports.absencesAttendanceLink')}
+        </a>
+      </p>
       <div className="flex flex-wrap items-end gap-4">
         <CurrentAcademicYearBadge label={t('students.academicYear')} />
         <div className="min-w-[200px]">
@@ -320,9 +341,15 @@ export function ClassAbsencesGrid() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {CLASS_DISCIPLINE_TERMS.map((term) => (
-                <SelectItem key={term} value={term}>
-                  {t(`reports.term${term}`)}
+              {termNumbers.map((termNumber) => (
+                <SelectItem key={termNumber} value={String(termNumber)}>
+                  {termNumber === 1
+                    ? t('reports.term1')
+                    : termNumber === 2
+                      ? t('reports.term2')
+                      : termNumber === 3
+                        ? t('reports.term3')
+                        : t('reports.termN', { n: termNumber })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -333,7 +360,8 @@ export function ClassAbsencesGrid() {
           disabled={
             saveClassDiscipline.isPending ||
             students.length === 0 ||
-            !selectedClass
+            !selectedClass ||
+            !canWrite
           }
           onClick={() => void handleSave()}
         >

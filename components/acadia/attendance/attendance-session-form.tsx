@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { LoaderCircleIcon } from '@/lib/icons';
@@ -27,12 +28,18 @@ import {
   attendanceSessionSchema,
   type AttendanceSessionFormValues,
 } from '@/lib/acadia/attendance-schemas';
+import { isSessionDateInAcademicYear } from '@/lib/acadia/attendance';
 import { formatLocalDateInputValue } from '@/lib/acadia/dates';
 import { CurrentAcademicYearBadge } from '@/components/acadia/academics/current-academic-year-badge';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
-import { useSubjectOptions } from '@/hooks/use-subject-catalog-options';
+import { useClassesForFilters } from '@/hooks/use-enrollment-catalog-options';
 import { useAttendanceMutations } from '@/hooks/use-attendance-mutations';
 import { useTranslation } from '@/hooks/useTranslation';
+import {
+  isAcadiaTenantQueryEnabled,
+  useAcadiaCollegeSession,
+} from '@/hooks/use-acadia-college-session';
+import { requireBrowserClient } from '@/lib/supabase/client';
 
 export type AttendanceSessionFormRecord = AttendanceSessionFormValues & {
   id: string;
@@ -59,12 +66,18 @@ export function AttendanceSessionForm({
   const isEdit = !!record;
   const { createAttendanceSession, updateAttendanceSession } =
     useAttendanceMutations();
-  const { activeYearId } = useActiveAcademicYear();
+  const { activeYearId, activeYear } = useActiveAcademicYear();
+  const { data: session, isLoading: sessionLoading, isError: sessionError } =
+    useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
+  const { data: classes = [] } = useClassesForFilters();
+  const [clearOrphans, setClearOrphans] = useState(false);
 
   const form = useForm<AttendanceSessionFormValues>({
     resolver: zodResolver(attendanceSessionSchema),
     defaultValues: {
       academicYearId: '',
+      classId: '',
       subjectId: '',
       sessionDate: formatLocalDateInputValue(),
       label: '',
@@ -73,7 +86,82 @@ export function AttendanceSessionForm({
   });
 
   const academicYearId = form.watch('academicYearId') || activeYearId || '';
-  const { data: subjects = [] } = useSubjectOptions(academicYearId);
+  const classId = form.watch('classId');
+
+  const yearBoundsQuery = useQuery({
+    queryKey: ['attendance-year-bounds', tenantId, academicYearId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('AcademicYear')
+        .select('startsOn, endsOn')
+        .eq('tenantId', tenantId!)
+        .eq('id', academicYearId)
+        .single();
+      if (error) {
+        throw error;
+      }
+      return {
+        startsOn: (data.startsOn as string | null) ?? null,
+        endsOn: (data.endsOn as string | null) ?? null,
+      };
+    },
+    enabled:
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
+      !!academicYearId,
+  });
+
+  const subjectsForClassQuery = useQuery({
+    queryKey: ['attendance-subjects-for-class', tenantId, classId, academicYearId],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('ClassSubject')
+        .select(
+          `
+          subjectId,
+          Subject!ClassSubject_subjectId_tenantId_fkey (
+            id,
+            code,
+            nameEn,
+            academicYearId,
+            deactivatedAt
+          )
+        `,
+        )
+        .eq('tenantId', tenantId!)
+        .eq('classId', classId);
+      if (error) {
+        throw error;
+      }
+      return (data ?? [])
+        .map((row) => {
+          const subject = Array.isArray(row.Subject) ? row.Subject[0] : row.Subject;
+          if (!subject || subject.deactivatedAt) {
+            return null;
+          }
+          if (
+            subject.academicYearId &&
+            academicYearId &&
+            subject.academicYearId !== academicYearId
+          ) {
+            return null;
+          }
+          return {
+            id: subject.id as string,
+            code: subject.code as string,
+            nameEn: subject.nameEn as string,
+          };
+        })
+        .filter((row): row is { id: string; code: string; nameEn: string } => row != null)
+        .sort((a, b) => a.code.localeCompare(b.code));
+    },
+    enabled:
+      isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId) &&
+      !!classId,
+  });
+
+  const subjects = subjectsForClassQuery.data ?? [];
 
   useEffect(() => {
     if (!record) {
@@ -81,6 +169,7 @@ export function AttendanceSessionForm({
     }
     form.reset({
       academicYearId: record.academicYearId,
+      classId: record.classId,
       subjectId: record.subjectId,
       sessionDate: record.sessionDate,
       label: record.label ?? '',
@@ -94,12 +183,76 @@ export function AttendanceSessionForm({
     }
   }, [record, activeYearId, form]);
 
+  useEffect(() => {
+    const currentSubject = form.getValues('subjectId');
+    if (currentSubject && subjects.length > 0) {
+      if (!subjects.some((s) => s.id === currentSubject)) {
+        form.setValue('subjectId', '');
+      }
+    }
+  }, [subjects, form]);
+
+  const yearBoundsLabel = useMemo(() => {
+    const starts = yearBoundsQuery.data?.startsOn;
+    const ends = yearBoundsQuery.data?.endsOn;
+    if (!starts && !ends) {
+      return null;
+    }
+    return t('exams.datesOutsideYear', {
+      startsOn: starts ?? '—',
+      endsOn: ends ?? '—',
+    });
+  }, [t, yearBoundsQuery.data]);
+
   const onSubmit = form.handleSubmit(async (values) => {
-    if (isEdit && record) {
-      await updateAttendanceSession.mutateAsync({ id: record.id, values });
+    const bounds = yearBoundsQuery.data;
+    if (
+      bounds &&
+      !isSessionDateInAcademicYear(values.sessionDate, bounds.startsOn, bounds.endsOn)
+    ) {
+      form.setError('sessionDate', {
+        message: yearBoundsLabel ?? t('exams.datesOutsideYear', {
+          startsOn: bounds.startsOn ?? '—',
+          endsOn: bounds.endsOn ?? '—',
+        }),
+      });
       return;
     }
-    await createAttendanceSession.mutateAsync(values);
+
+    if (isEdit && record) {
+      const scopeChanged =
+        record.classId !== values.classId || record.subjectId !== values.subjectId;
+      if (scopeChanged && !clearOrphans) {
+        const confirmed = window.confirm(
+          t('attendance.confirmClearMarksOnScopeChange'),
+        );
+        if (!confirmed) {
+          return;
+        }
+        setClearOrphans(true);
+        try {
+          await updateAttendanceSession.mutateAsync({
+            id: record.id,
+            values,
+            clearOrphanRecords: true,
+          });
+        } finally {
+          setClearOrphans(false);
+        }
+        return;
+      }
+      await updateAttendanceSession.mutateAsync({
+        id: record.id,
+        values,
+        clearOrphanRecords: clearOrphans,
+      });
+      return;
+    }
+    try {
+      await createAttendanceSession.mutateAsync(values);
+    } catch {
+      // Error toast handled by mutation onError
+    }
   });
 
   const pending =
@@ -133,6 +286,38 @@ export function AttendanceSessionForm({
 
         <FormField
           control={form.control}
+          name="classId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('students.class')}</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  form.setValue('subjectId', '');
+                }}
+                disabled={!academicYearId}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('attendance.selectClass')} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {classes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="subjectId"
           render={({ field }) => (
             <FormItem>
@@ -140,7 +325,7 @@ export function AttendanceSessionForm({
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
-                disabled={!academicYearId}
+                disabled={!classId || subjectsForClassQuery.isLoading}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -148,11 +333,17 @@ export function AttendanceSessionForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {subjects.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.code} — {c.nameEn}
+                  {subjects.length === 0 ? (
+                    <SelectItem value="__none" disabled>
+                      {t('attendance.noSubjectsForClass')}
                     </SelectItem>
-                  ))}
+                  ) : (
+                    subjects.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.code} — {c.nameEn}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -172,6 +363,14 @@ export function AttendanceSessionForm({
                   onChange={field.onChange}
                 />
               </FormControl>
+              {activeYear?.label ? (
+                <p className="text-xs text-muted-foreground">
+                  {activeYear.label}
+                  {yearBoundsQuery.data?.startsOn && yearBoundsQuery.data?.endsOn
+                    ? ` (${yearBoundsQuery.data.startsOn} – ${yearBoundsQuery.data.endsOn})`
+                    : null}
+                </p>
+              ) : null}
               <FormMessage />
             </FormItem>
           )}

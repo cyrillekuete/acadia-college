@@ -16,6 +16,13 @@ export const directMessageSchema = z.object({
 
 export type DirectMessageFormValues = z.infer<typeof directMessageSchema>;
 
+export function directMessageSchemaForSender(senderUserId: string) {
+  return directMessageSchema.refine(
+    (values) => values.recipientUserId !== senderUserId,
+    { message: 'validation.cannotMessageSelf', path: ['recipientUserId'] },
+  );
+}
+
 export const messageReplySchema = z.object({
   body: z.string().min(1, 'validation.required.message').max(10000),
 });
@@ -63,6 +70,18 @@ export const announcementSchema = z
         code: z.ZodIssueCode.custom,
         message: 'validation.required.eventStart',
         path: ['eventStartsAt'],
+      });
+    }
+    if (
+      values.kind === 'EVENT' &&
+      values.eventStartsAt &&
+      values.eventEndsAt &&
+      values.eventEndsAt < values.eventStartsAt
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.eventEndAfterStart',
+        path: ['eventEndsAt'],
       });
     }
     if (!values.publishNow && !values.publishAt) {

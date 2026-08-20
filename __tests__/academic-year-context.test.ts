@@ -12,8 +12,8 @@ import {
 import type { AcademicYearOption } from '@/hooks/use-academic-calendar-options';
 
 const YEARS: AcademicYearOption[] = [
-  { id: 'year-2026', label: '2026–2027', isCurrent: true, timetablePublishedAt: null },
-  { id: 'year-2025', label: '2025–2026', isCurrent: false, timetablePublishedAt: null },
+  { id: 'year-2026', label: '2026–2027', isCurrent: true, isActive: true, timetablePublishedAt: null },
+  { id: 'year-2025', label: '2025–2026', isCurrent: false, isActive: true, timetablePublishedAt: null },
 ];
 
 describe('AcademicYear setup status', () => {

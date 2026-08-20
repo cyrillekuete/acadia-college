@@ -1,6 +1,6 @@
-import { canWriteRegistry, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
+import { canWriteRegistry, isGuardian, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
 
-export type TimetableViewMode = 'admin' | 'teacher' | 'student' | 'browse';
+export type TimetableViewMode = 'admin' | 'teacher' | 'student' | 'guardian' | 'browse';
 
 export function resolveTimetableViewMode(
   roleSlug: string | null | undefined,
@@ -10,6 +10,9 @@ export function resolveTimetableViewMode(
   }
   if (isStudent(roleSlug)) {
     return 'student';
+  }
+  if (isGuardian(roleSlug)) {
+    return 'guardian';
   }
   if (isStaffOrTeacher(roleSlug)) {
     return 'teacher';
@@ -25,6 +28,8 @@ export function timetableViewDescription(mode: TimetableViewMode): string {
       return 'Your teaching schedule across all assigned classes.';
     case 'student':
       return 'Your class timetable for the active academic year.';
+    case 'guardian':
+      return 'Weekly timetables for your linked students.';
     case 'browse':
       return 'Browse weekly timetables by class.';
   }

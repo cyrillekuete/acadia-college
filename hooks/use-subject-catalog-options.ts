@@ -177,6 +177,71 @@ export function useClassSubjectOptions(classId: string | null | undefined) {
   });
 }
 
+export function useClassSubjectTeacherOptions(
+  classId: string | null | undefined,
+  subjectId: string | null | undefined,
+  academicYearId: string | null | undefined,
+) {
+  const { data: session, isLoading, isError } = useAcadiaCollegeSession();
+  const tenantId = session?.tenantId ?? null;
+  const resolvedClassId = classId?.trim() ?? '';
+  const resolvedSubjectId = subjectId?.trim() ?? '';
+  const resolvedYearId = academicYearId?.trim() ?? '';
+
+  return useQuery({
+    queryKey: [
+      'class-subject-teacher-options',
+      tenantId,
+      resolvedClassId,
+      resolvedSubjectId,
+      resolvedYearId,
+    ],
+    queryFn: async () => {
+      const supabase = requireBrowserClient();
+      const { data, error } = await supabase
+        .from('StaffClassSubjectAssignment')
+        .select(
+          `
+          staffProfileId,
+          StaffProfile!StaffClassSubjectAssignment_staffProfileId_tenantId_fkey ( id, staffCode, User!StaffProfile_userId_tenantId_fkey ( name ) )
+        `,
+        )
+        .eq('tenantId', tenantId!)
+        .eq('classId', resolvedClassId)
+        .eq('subjectId', resolvedSubjectId)
+        .eq('academicYearId', resolvedYearId);
+
+      if (error) {
+        throw error;
+      }
+
+      const options: StaffOption[] = [];
+      for (const row of data ?? []) {
+        const staff = Array.isArray(row.StaffProfile)
+          ? row.StaffProfile[0]
+          : row.StaffProfile;
+        if (!staff?.id) {
+          continue;
+        }
+        options.push({
+          id: staff.id as string,
+          staffCode: (staff.staffCode as string | null) ?? null,
+          User: staff.User as StaffOption['User'],
+        });
+      }
+
+      return options.sort((a, b) =>
+        staffDisplayLabel(a).localeCompare(staffDisplayLabel(b)),
+      );
+    },
+    enabled:
+      resolvedClassId.length > 0 &&
+      resolvedSubjectId.length > 0 &&
+      resolvedYearId.length > 0 &&
+      isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId),
+  });
+}
+
 export function useSubjectTeacherOptions(
   subjectId: string | null | undefined,
   academicYearId: string | null | undefined,

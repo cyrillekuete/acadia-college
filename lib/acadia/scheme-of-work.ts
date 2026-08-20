@@ -1,4 +1,5 @@
 import { localizedText } from '@/lib/acadia/locale';
+import { isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
 
 export const SCHEME_OF_WORK_STATUSES = ['DRAFT', 'PUBLISHED'] as const;
 export type SchemeOfWorkStatus = (typeof SCHEME_OF_WORK_STATUSES)[number];
@@ -226,8 +227,70 @@ export function topicCheckState(
   return false;
 }
 
-export function canViewPublishedSchemeOnly(isAdmin: boolean): boolean {
-  return !isAdmin;
+export function canViewPublishedSchemeOnly(isAcademicAdmin: boolean): boolean {
+  return !isAcademicAdmin;
+}
+
+export function schemeShouldBlockProgressWrites(input: {
+  schemeAcademicYearId: string;
+  activeYearId: string | null | undefined;
+  status: SchemeOfWorkStatus;
+}): boolean {
+  if (input.status !== 'PUBLISHED') {
+    return true;
+  }
+  if (!input.activeYearId) {
+    return true;
+  }
+  return input.schemeAcademicYearId !== input.activeYearId;
+}
+
+export function canPublishScheme(topicCount: number): boolean {
+  return topicCount > 0;
+}
+
+export function previousAcademicYearId(
+  years: Array<{ id: string }>,
+  activeYearId: string | null | undefined,
+): string | null {
+  if (!activeYearId) {
+    return null;
+  }
+  const index = years.findIndex((year) => year.id === activeYearId);
+  if (index < 0 || index + 1 >= years.length) {
+    return null;
+  }
+  return years[index + 1]?.id ?? null;
+}
+
+export function resolveAllowedSchemeClassId(input: {
+  requestedClassId: string | null | undefined;
+  roleSlug: string | null | undefined;
+  studentClassId: string | null | undefined;
+  teacherClassIds: string[];
+  isAcademicAdmin: boolean;
+}): string | null {
+  const requested = input.requestedClassId?.trim() || null;
+  if (input.isAcademicAdmin) {
+    return requested;
+  }
+  if (isStudent(input.roleSlug)) {
+    const enrolled = input.studentClassId?.trim() || null;
+    if (!enrolled) {
+      return null;
+    }
+    if (!requested || requested === enrolled) {
+      return enrolled;
+    }
+    return null;
+  }
+  if (isStaffOrTeacher(input.roleSlug)) {
+    if (!requested) {
+      return null;
+    }
+    return input.teacherClassIds.includes(requested) ? requested : null;
+  }
+  return null;
 }
 
 export function buildAdminSchemeCatalog(

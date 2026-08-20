@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { AcadiaUserProfile } from '@/lib/supabase/queries/user';
 import { User, UserStatus } from '@/app/models/user';
+import { resolveUserAvatarUrl } from '@/lib/supabase/storage';
 
 const DEPRECATED_MESSAGE =
   'This Metronic user-management API is deprecated. Use Acadia Supabase routes under /api/acadia instead.';
@@ -11,6 +12,10 @@ export function deprecatedUserManagementResponse(): NextResponse {
 
 export function deprecatedUserManagementHandler(): NextResponse {
   return deprecatedUserManagementResponse();
+}
+
+function resolveAccountAvatar(avatar: string | null | undefined): string | null {
+  return resolveUserAvatarUrl(avatar);
 }
 
 function parseProfileTimestamp(value: string | undefined): Date {
@@ -36,7 +41,7 @@ export function mapAcadiaProfileToAccountUser(profile: AcadiaUserProfile): User 
     updatedAt: parseProfileTimestamp(profile.updatedAt),
     isTrashed: profile.isTrashed,
     isProtected: Boolean(profile.isProtected),
-    avatar: null,
+    avatar: resolveAccountAvatar(profile.avatar),
     role: {
       id: role?.id ?? profile.roleId,
       slug: role?.slug ?? 'user',

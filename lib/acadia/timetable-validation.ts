@@ -113,6 +113,21 @@ export function formatTimetableConflictMessage(
   }
 }
 
+export function formatTimetableConflictMessages(
+  conflicts: TimetableSlotConflict[],
+): string {
+  const seen = new Set<TimetableSlotConflictKind>();
+  const messages: string[] = [];
+  for (const conflict of conflicts) {
+    if (seen.has(conflict.kind)) {
+      continue;
+    }
+    seen.add(conflict.kind);
+    messages.push(formatTimetableConflictMessage(conflict));
+  }
+  return messages.join(' ');
+}
+
 export function normalizeTimetableClassId(
   classId: string | null | undefined,
 ): string | null {

@@ -39,7 +39,7 @@ export const EMPTY_STAFF_REGISTRY_FILTERS: StaffRegistryFilters = {
   query: '',
   subSystem: null,
   subjectName: null,
-  activeStatus: null,
+  activeStatus: 'active',
   quickFilter: null,
 };
 
@@ -93,7 +93,7 @@ export function staffRegistryHasActiveFilters(filters: StaffRegistryFilters): bo
     filters.query.trim().length > 0 ||
     filters.subSystem != null ||
     filters.subjectName != null ||
-    filters.activeStatus != null ||
+    (filters.activeStatus != null && filters.activeStatus !== 'active') ||
     filters.quickFilter != null
   );
 }

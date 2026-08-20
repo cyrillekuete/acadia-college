@@ -4,26 +4,37 @@ import { alertSchema, alertGroupSchema } from '@/lib/acadia/alert-schemas';
 import { ALERT_TEMPLATES, alertTemplateById } from '@/lib/acadia/alert-templates';
 import {
   alertRecipientStats,
+  alertScheduleIssue,
   alertTargetKey,
+  alertTargetsNeedAcademicYear,
   deriveAlertStatusOnSave,
+  eligibleGuardianLinks,
+  filterAlertTargetsForTeacherScope,
+  isAlertVisibleToGuardian,
   parseAlertTargetKey,
   parseAlertTargetKeys,
+  recipientsForSendNow,
   resolveAlertRecipients,
+  shouldSkipWhatsAppRecipient,
 } from '@/lib/acadia/alerts';
 import { notificationHref } from '@/lib/acadia/communication';
-import { canManageAlerts } from '@/lib/acadia/roles';
+import { canBroadcastAllGuardians, canManageAlerts } from '@/lib/acadia/roles';
 import { isoToLocalDateTimeInputValue } from '@/lib/acadia/dates';
 
 describe('canManageAlerts', () => {
   it('allows admins and teachers', () => {
     expect(canManageAlerts('admin')).toBe(true);
     expect(canManageAlerts('teacher')).toBe(true);
-    expect(canManageAlerts('bursar')).toBe(true);
+    expect(canManageAlerts('financial-director')).toBe(true);
+    expect(canBroadcastAllGuardians('admin')).toBe(true);
+    expect(canBroadcastAllGuardians('teacher')).toBe(false);
   });
 
-  it('denies students and guardians', () => {
+  it('denies students, guardians, and bursar', () => {
     expect(canManageAlerts('student')).toBe(false);
     expect(canManageAlerts('guardian')).toBe(false);
+    expect(canManageAlerts('bursar')).toBe(false);
+    expect(canBroadcastAllGuardians('bursar')).toBe(false);
   });
 });
 
@@ -88,6 +99,32 @@ describe('alert lifecycle and schemas', () => {
       'SCHEDULED',
     );
     expect(deriveAlertStatusOnSave({ sendNow: false, scheduledAt: '' })).toBe('DRAFT');
+  });
+
+  it('rejects past and incomplete schedules', () => {
+    expect(alertScheduleIssue({ sendNow: true, scheduledAt: '' })).toBeNull();
+    expect(alertScheduleIssue({ sendNow: false, scheduledAt: '' })).toBe(
+      'validation.publishOrSchedule',
+    );
+    expect(alertScheduleIssue({ sendNow: false, scheduledAt: '2026-05-19' })).toBe(
+      'validation.scheduleDateAndTime',
+    );
+    const past = isoToLocalDateTimeInputValue(
+      new Date(Date.now() - 86_400_000).toISOString(),
+    );
+    expect(alertScheduleIssue({ sendNow: false, scheduledAt: past })).toBe(
+      'validation.scheduleInFuture',
+    );
+    expect(
+      alertSchema.safeParse({
+        titleEn: 'Fee reminder',
+        titleFr: 'Rappel de frais',
+        priority: 'high',
+        channel: 'email',
+        targetKeys: ['all'],
+        sendNow: true,
+      }).success,
+    ).toBe(false);
   });
 
   it('counts read and unread recipients', () => {
@@ -161,9 +198,73 @@ describe('alert templates and menu', () => {
       false,
     );
     expect(getMenuForRole('student').some((item) => item.path === '/alerts')).toBe(false);
+    expect(getMenuForRole('bursar').some((item) => item.path === '/announcements')).toBe(
+      false,
+    );
   });
 
   it('links the header notification to announcements', () => {
     expect(notificationHref('alert.sent', { alertId: 'alrt-9' })).toBe('/announcements');
+  });
+});
+
+describe('guardian inbox visibility', () => {
+  it('shows sent alerts only', () => {
+    expect(isAlertVisibleToGuardian('SENT')).toBe(true);
+    expect(isAlertVisibleToGuardian('SCHEDULED')).toBe(false);
+    expect(isAlertVisibleToGuardian('DRAFT')).toBe(false);
+    expect(isAlertVisibleToGuardian('CANCELLED')).toBe(false);
+  });
+});
+
+describe('eligibleGuardianLinks', () => {
+  const links = [
+    { guardianUserId: 'g1', studentProfileId: 's1' },
+    { guardianUserId: 'g2', studentProfileId: 's2' },
+    { guardianUserId: 'g3', studentProfileId: 's3' },
+  ];
+
+  it('excludes withdrawn students and inactive guardians from all/class targeting', () => {
+    const eligible = eligibleGuardianLinks(links, {
+      activeGuardianIds: new Set(['g1', 'g2']),
+      enrolledStudentIds: new Set(['s1']),
+      activeStudentIds: new Set(['s1', 's2']),
+    });
+    expect(eligible).toEqual([{ guardianUserId: 'g1', studentProfileId: 's1' }]);
+  });
+});
+
+describe('send now and teacher scope', () => {
+  it('never expands empty recipients to all guardians', () => {
+    expect(() =>
+      recipientsForSendNow({ existing: [], resolvedFromTargets: [] }),
+    ).toThrow('No guardians to notify.');
+    expect(
+      recipientsForSendNow({
+        existing: [{ guardianUserId: 'g1', studentProfileIds: ['s1'] }],
+        resolvedFromTargets: [],
+      }),
+    ).toEqual([{ guardianUserId: 'g1', studentProfileIds: ['s1'] }]);
+  });
+
+  it('strips school-wide and out-of-scope class targets for teachers', () => {
+    expect(
+      filterAlertTargetsForTeacherScope(
+        [{ kind: 'all' }, { kind: 'class', classId: 'c1' }, { kind: 'class', classId: 'c2' }],
+        { canBroadcastAll: false, allowedClassIds: ['c1'] },
+      ),
+    ).toEqual([{ kind: 'class', classId: 'c1' }]);
+    expect(alertTargetsNeedAcademicYear([{ kind: 'group', groupId: 'g1' }])).toBe(false);
+    expect(alertTargetsNeedAcademicYear([{ kind: 'class', classId: 'c1' }])).toBe(true);
+  });
+});
+
+describe('WhatsApp skip', () => {
+  it('skips recipients already marked sent, delivered, or read', () => {
+    expect(shouldSkipWhatsAppRecipient('sent')).toBe(true);
+    expect(shouldSkipWhatsAppRecipient('delivered')).toBe(true);
+    expect(shouldSkipWhatsAppRecipient('read')).toBe(true);
+    expect(shouldSkipWhatsAppRecipient('failed')).toBe(false);
+    expect(shouldSkipWhatsAppRecipient(null)).toBe(false);
   });
 });

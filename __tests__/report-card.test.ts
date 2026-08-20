@@ -19,7 +19,9 @@ import {
 } from '@/lib/acadia/report-card-access';
 import {
   buildReportCardPdfFilename,
+  buildReportCardOrderNo,
   calculateGrade,
+  formatReportMark,
   getGradeRemarks,
   hasGceSubjectCode,
   isNegativeRemark,
@@ -185,6 +187,7 @@ describe('report-card subject groupings', () => {
     ).toEqual({
       groupingId: 'class-g',
       groupingLabel: 'Other Subjects',
+      groupingLabelFr: 'Other Subjects',
       groupingSortOrder: 2,
     });
   });
@@ -199,6 +202,7 @@ describe('report-card subject groupings', () => {
     ).toEqual({
       groupingId: 'subj-g',
       groupingLabel: 'Languages',
+      groupingLabelFr: 'Languages',
       groupingSortOrder: 0,
     });
   });
@@ -247,6 +251,36 @@ describe('report-card subject groupings', () => {
       { subjectName: 'English', coefficient: 3, category: 'languages' },
     ]);
     expect(groups.map((group) => group.shortLabel)).toEqual(['LANGUAGES', 'OTHER SUBJECTS']);
+  });
+
+  it('treats forceUngrouped as no grouping', () => {
+    expect(
+      resolveReportCardGrouping(
+        { id: 'class-g', nameEn: 'Other Subjects', sortOrder: 2 },
+        { id: 'subj-g', nameEn: 'Core', sortOrder: 1 },
+        { forceUngrouped: true },
+      ),
+    ).toEqual({
+      groupingId: null,
+      groupingLabel: null,
+      groupingLabelFr: null,
+      groupingSortOrder: null,
+    });
+  });
+
+  it('uses an ungrouped bucket when mixed with configured groupings', () => {
+    const groups = groupSubjectsForReportCard([
+      {
+        subjectName: 'English',
+        coefficient: 3,
+        category: 'languages',
+        groupingId: 'lang',
+        groupingLabel: 'Languages',
+        groupingSortOrder: 1,
+      },
+      { subjectName: 'Math', coefficient: 4, category: 'others' },
+    ]);
+    expect(groups.map((group) => group.label)).toEqual(['Languages', 'Ungrouped']);
   });
 });
 
@@ -494,6 +528,66 @@ describe('buildReportCardData', () => {
       suspensions: 1,
       warnings: 1,
     });
+  });
+});
+
+describe('report-card notices and references', () => {
+  it('prints 0/20 instead of a dash', () => {
+    expect(formatReportMark(0)).toBe('0.0');
+    expect(formatReportMark(null)).toBe('-');
+  });
+
+  it('builds a unique order number per student and term', () => {
+    const ada = buildReportCardOrderNo({
+      yearLabel: '2025/2026',
+      matricule: 'AC-001',
+      term: '1',
+    });
+    const alan = buildReportCardOrderNo({
+      yearLabel: '2025/2026',
+      matricule: 'AC-002',
+      term: '1',
+    });
+    expect(ada).toBe('RC-2025_2026-AC-001-T1');
+    expect(ada).not.toBe(alan);
+  });
+
+  it('uses French subject names and notes a class transfer', () => {
+    const bundle: ReportCardBundle = {
+      student: {
+        studentProfileId: 's1',
+        name: 'Ada Lovelace',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        matricule: 'AC-001',
+        sex: 'F',
+        dob: '01/01/2010',
+        pob: '—',
+        speciality: 'Grammar',
+      },
+      classId: 'c1',
+      className: 'Form 5 A',
+      classMaster: '',
+      classSize: 1,
+      academicYearLabel: '2025/2026',
+      structure: {
+        termsPerYear: 3,
+        sequencesPerTerm: 2,
+        sequencesPerYear: 6,
+      },
+      subjects: [{ ...math, nameFr: 'Mathématiques' }],
+      marks: [mark('s1', 'math', 1, 0)],
+      branding: { ...branding, principalName: '' },
+      preferFrenchNames: true,
+      transferredFrom: { className: 'Form 5 B', enrolledAt: '2026-01-15' },
+    };
+    const card = buildReportCardData(bundle, '1');
+    expect(card.subjects[0]?.subjectName).toBe('Mathématiques');
+    expect(card.transferredFrom?.className).toBe('Form 5 B');
+    expect(card.marksStatus?.status).toBe('complete');
+    expect(card.missingSignatures).toEqual(['classMaster', 'principal']);
+    expect(card.academic.orderNo).toContain('AC-001');
+    expect(card.subjects[0]?.termAverage).toBe(0);
   });
 });
 

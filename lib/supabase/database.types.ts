@@ -169,6 +169,7 @@ export type Database = {
           termsPerYear: number
           timetablePublishedAt: string | null
           timetablePublishedByUserId: string | null
+          rolloverCompletedAt: string | null
           updatedAt: string
         }
         Insert: {
@@ -179,7 +180,7 @@ export type Database = {
           id: string
           isActive?: boolean
           isCurrent?: boolean
-          label: string
+          label?: string
           sequencesPerTerm?: number
           sequencesPerYear?: number
           startsOn: string
@@ -187,6 +188,7 @@ export type Database = {
           termsPerYear?: number
           timetablePublishedAt?: string | null
           timetablePublishedByUserId?: string | null
+          rolloverCompletedAt?: string | null
           updatedAt: string
         }
         Update: {
@@ -205,6 +207,7 @@ export type Database = {
           termsPerYear?: number
           timetablePublishedAt?: string | null
           timetablePublishedByUserId?: string | null
+          rolloverCompletedAt?: string | null
           updatedAt?: string
         }
         Relationships: [
@@ -332,6 +335,7 @@ export type Database = {
       AttendanceSession: {
         Row: {
           academicYearId: string
+          classId: string | null
           createdAt: string
           createdByUserId: string | null
           id: string
@@ -344,6 +348,7 @@ export type Database = {
         }
         Insert: {
           academicYearId: string
+          classId?: string | null
           createdAt?: string
           createdByUserId?: string | null
           id: string
@@ -356,6 +361,7 @@ export type Database = {
         }
         Update: {
           academicYearId?: string
+          classId?: string | null
           createdAt?: string
           createdByUserId?: string | null
           id?: string
@@ -373,6 +379,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "AcademicYear"
             referencedColumns: ["id", "tenantId"]
+          },
+          {
+            foreignKeyName: "AttendanceSession_classId_tenantId_fkey"
+            columns: ["tenantId", "classId"]
+            isOneToOne: false
+            referencedRelation: "Class"
+            referencedColumns: ["tenantId", "id"]
           },
           {
             foreignKeyName: "AttendanceSession_createdByUserId_fkey"
@@ -409,6 +422,7 @@ export type Database = {
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt: string
           id: string
+          isDefaultPromotionTarget: boolean
           levelId: string
           name: string
           staffProfileId: string | null
@@ -421,6 +435,7 @@ export type Database = {
           branch: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id: string
+          isDefaultPromotionTarget?: boolean
           levelId: string
           name: string
           staffProfileId?: string | null
@@ -433,6 +448,7 @@ export type Database = {
           branch?: Database["public"]["Enums"]["AcademicBranch"]
           createdAt?: string
           id?: string
+          isDefaultPromotionTarget?: boolean
           levelId?: string
           name?: string
           staffProfileId?: string | null
@@ -631,6 +647,7 @@ export type Database = {
         Row: {
           classId: string
           createdAt: string
+          forceUngrouped: boolean
           groupingId: string | null
           id: string
           subjectId: string
@@ -639,6 +656,7 @@ export type Database = {
         Insert: {
           classId: string
           createdAt?: string
+          forceUngrouped?: boolean
           groupingId?: string | null
           id: string
           subjectId: string
@@ -647,6 +665,7 @@ export type Database = {
         Update: {
           classId?: string
           createdAt?: string
+          forceUngrouped?: boolean
           groupingId?: string | null
           id?: string
           subjectId?: string
@@ -1038,7 +1057,7 @@ export type Database = {
           id: string
           invoiceNumber: string | null
           notes: string | null
-          paymentDate: string
+          paymentDate: string | null
           paymentMethod: Database["public"]["Enums"]["FinancePaymentMethod"] | null
           receiptNumber: string | null
           status: Database["public"]["Enums"]["ExpenditureStatus"]
@@ -1063,7 +1082,7 @@ export type Database = {
           id: string
           invoiceNumber?: string | null
           notes?: string | null
-          paymentDate: string
+          paymentDate?: string | null
           paymentMethod?: Database["public"]["Enums"]["FinancePaymentMethod"] | null
           receiptNumber?: string | null
           status?: Database["public"]["Enums"]["ExpenditureStatus"]
@@ -1340,7 +1359,7 @@ export type Database = {
           quantity: number
           saleDate: string
           status: Database["public"]["Enums"]["FinanceSaleStatus"]
-          studentProfileId: string
+          studentProfileId: string | null
           tenantId: string
           totalMinor: number
           unitPriceMinor: number
@@ -1357,7 +1376,7 @@ export type Database = {
           quantity: number
           saleDate: string
           status?: Database["public"]["Enums"]["FinanceSaleStatus"]
-          studentProfileId: string
+          studentProfileId?: string | null
           tenantId: string
           totalMinor: number
           unitPriceMinor: number
@@ -1374,7 +1393,7 @@ export type Database = {
           quantity?: number
           saleDate?: string
           status?: Database["public"]["Enums"]["FinanceSaleStatus"]
-          studentProfileId?: string
+          studentProfileId?: string | null
           tenantId?: string
           totalMinor?: number
           unitPriceMinor?: number
@@ -2562,6 +2581,7 @@ export type Database = {
       }
       SchoolAlert: {
         Row: {
+          academicYearId: string | null
           bodyEn: string | null
           bodyFr: string | null
           channel: Database["public"]["Enums"]["SchoolAlertChannel"]
@@ -2572,12 +2592,14 @@ export type Database = {
           scheduledAt: string | null
           sentAt: string | null
           status: Database["public"]["Enums"]["SchoolAlertStatus"]
+          targetKeys: string[]
           tenantId: string
           titleEn: string
           titleFr: string
           updatedAt: string
         }
         Insert: {
+          academicYearId?: string | null
           bodyEn?: string | null
           bodyFr?: string | null
           channel?: Database["public"]["Enums"]["SchoolAlertChannel"]
@@ -2588,12 +2610,14 @@ export type Database = {
           scheduledAt?: string | null
           sentAt?: string | null
           status?: Database["public"]["Enums"]["SchoolAlertStatus"]
+          targetKeys?: string[]
           tenantId: string
           titleEn: string
           titleFr: string
           updatedAt: string
         }
         Update: {
+          academicYearId?: string | null
           bodyEn?: string | null
           bodyFr?: string | null
           channel?: Database["public"]["Enums"]["SchoolAlertChannel"]
@@ -2604,12 +2628,20 @@ export type Database = {
           scheduledAt?: string | null
           sentAt?: string | null
           status?: Database["public"]["Enums"]["SchoolAlertStatus"]
+          targetKeys?: string[]
           tenantId?: string
           titleEn?: string
           titleFr?: string
           updatedAt?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "SchoolAlert_academicYearId_tenantId_fkey"
+            columns: ["tenantId", "academicYearId"]
+            isOneToOne: false
+            referencedRelation: "AcademicYear"
+            referencedColumns: ["tenantId", "id"]
+          },
           {
             foreignKeyName: "SchoolAlert_createdByUserId_fkey"
             columns: ["createdByUserId"]
@@ -3404,6 +3436,7 @@ export type Database = {
           tenantId: string
           totalAmountMinor: number
           updatedAt: string
+          withdrawnAt: string | null
         }
         Insert: {
           academicYearId: string
@@ -3419,6 +3452,7 @@ export type Database = {
           tenantId: string
           totalAmountMinor: number
           updatedAt: string
+          withdrawnAt?: string | null
         }
         Update: {
           academicYearId?: string
@@ -3434,6 +3468,7 @@ export type Database = {
           tenantId?: string
           totalAmountMinor?: number
           updatedAt?: string
+          withdrawnAt?: string | null
         }
         Relationships: [
           {
@@ -4654,6 +4689,7 @@ export type Database = {
           id: string
           ipAddress: string | null
           meta: string | null
+          tenantId: string | null
           userId: string
         }
         Insert: {
@@ -4665,6 +4701,7 @@ export type Database = {
           id: string
           ipAddress?: string | null
           meta?: string | null
+          tenantId?: string | null
           userId: string
         }
         Update: {
@@ -4676,9 +4713,17 @@ export type Database = {
           id?: string
           ipAddress?: string | null
           meta?: string | null
+          tenantId?: string | null
           userId?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "SystemLog_tenantId_fkey"
+            columns: ["tenantId"]
+            isOneToOne: false
+            referencedRelation: "Tenant"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "SystemLog_userId_fkey"
             columns: ["userId"]
@@ -5806,6 +5851,47 @@ export type Database = {
     }
     Functions: {
       acadia_can_manage_users: { Args: never; Returns: boolean }
+      acadia_is_active_manager_account: {
+        Args: {
+          role_id: string
+          status: Database["public"]["Enums"]["UserStatus"]
+          is_trashed: boolean
+        }
+        Returns: boolean
+      }
+      acadia_can_mark_scheme_progress: {
+        Args: {
+          p_academic_year_id: string
+          p_class_id: string
+          p_subject_id: string
+        }
+        Returns: boolean
+      }
+      acadia_can_view_scheme_progress: {
+        Args: { p_academic_year_id: string; p_class_id: string }
+        Returns: boolean
+      }
+      acadia_copy_schemes_of_work: {
+        Args: {
+          p_source_scheme_id?: string | null
+          p_source_year_id: string
+          p_target_year_id: string
+          p_tenant_id: string
+        }
+        Returns: number
+      }
+      acadia_apply_fee_installment_updates: {
+        Args: { p_account_id: string; p_updates: Json }
+        Returns: undefined
+      }
+      acadia_assert_finance_year_open: {
+        Args: { p_academic_year_id: string }
+        Returns: undefined
+      }
+      acadia_can_read_student_finance: {
+        Args: { p_academic_year_id: string; p_student_profile_id: string }
+        Returns: boolean
+      }
       acadia_count_missing_fee_accounts: {
         Args: { p_academic_year_id: string; p_class_id?: string | null }
         Returns: number
@@ -5816,11 +5902,160 @@ export type Database = {
       acadia_current_tenant_id: { Args: never; Returns: string }
       acadia_is_admin: { Args: never; Returns: boolean }
       acadia_is_admin_or_registrar: { Args: never; Returns: boolean }
+      acadia_is_linked_guardian_of: {
+        Args: { p_student_profile_id: string }
+        Returns: boolean
+      }
+      acadia_is_registry_admin: { Args: never; Returns: boolean }
+      acadia_is_registry_writer: { Args: never; Returns: boolean }
       acadia_is_staff_or_teacher: { Args: never; Returns: boolean }
       acadia_is_student: { Args: never; Returns: boolean }
+      acadia_migrate_student_class: {
+        Args: {
+          p_academic_year_id: string
+          p_branch: Database["public"]["Enums"]["AcademicBranch"]
+          p_class_id: string
+          p_level_id: string
+          p_profile_id: string
+          p_sub_system: Database["public"]["Enums"]["AcademicSubSystem"]
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      acadia_can_manage_message_groups: { Args: never; Returns: boolean }
+      acadia_is_thread_member: {
+        Args: { p_tenant_id: string; p_thread_id: string }
+        Returns: boolean
+      }
+      acadia_create_direct_message: {
+        Args: {
+          p_body: string
+          p_recipient_user_id: string
+          p_subject_en: string
+          p_subject_fr: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      acadia_create_group_thread: {
+        Args: {
+          p_body: string
+          p_group_scope: Database["public"]["Enums"]["MessageGroupScope"]
+          p_group_scope_id: string
+          p_member_user_ids: string[]
+          p_subject_en: string
+          p_subject_fr: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      acadia_reply_to_thread: {
+        Args: {
+          p_body: string
+          p_subject: string
+          p_tenant_id: string
+          p_thread_id: string
+        }
+        Returns: Json
+      }
+      acadia_notify_message_recipients: {
+        Args: {
+          p_sender_name: string
+          p_sender_user_id: string
+          p_subject: string
+          p_tenant_id: string
+          p_thread_id: string
+        }
+        Returns: number
+      }
+      acadia_mark_thread_read: {
+        Args: { p_tenant_id: string; p_thread_id: string }
+        Returns: undefined
+      }
+      acadia_update_group_members: {
+        Args: {
+          p_add_user_ids: string[]
+          p_remove_user_ids: string[]
+          p_tenant_id: string
+          p_thread_id: string
+        }
+        Returns: Json
+      }
+      acadia_set_current_academic_year: {
+        Args: { p_academic_year_id: string; p_tenant_id: string }
+        Returns: undefined
+      }
+      acadia_execute_year_rollover: {
+        Args: {
+          p_items: Json
+          p_source_year_id: string
+          p_target_year_id: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      acadia_run_retention_archive: {
+        Args: { p_dry_run?: boolean }
+        Returns: Json
+      }
+      acadia_teacher_assigned_to_class: {
+        Args: { p_academic_year_id: string; p_class_id: string }
+        Returns: boolean
+      }
+      acadia_write_timetable_slot: {
+        Args: {
+          p_academic_year_id: string
+          p_class_id: string
+          p_day_of_week: number
+          p_end_minutes: number
+          p_exclude_slot_id: string | null
+          p_room_id: string
+          p_slot_id: string
+          p_staff_profile_id: string
+          p_start_minutes: number
+          p_subject_id: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      acadia_replace_fee_installments: {
+        Args: {
+          p_account_id: string
+          p_branch: string
+          p_credit_minor: number
+          p_enrollment_id: string
+          p_rows: Json
+          p_stream_fee_plan_id: string
+          p_sub_system: string
+          p_total_amount_minor: number
+        }
+        Returns: undefined
+      }
       acadia_provision_missing_fee_accounts: {
         Args: { p_academic_year_id: string; p_class_id?: string | null }
         Returns: number
+      }
+      acadia_reorder_scheme_topics: {
+        Args: { p_tenant_id: string; p_topic_ids: string[] }
+        Returns: undefined
+      }
+      acadia_save_subject: {
+        Args: {
+          p_payload: Json
+          p_subject_id?: string | null
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      acadia_set_scheme_topic_progress: {
+        Args: {
+          p_class_id: string
+          p_completed: boolean
+          p_staff_profile_id?: string | null
+          p_tenant_id: string
+          p_topic_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
