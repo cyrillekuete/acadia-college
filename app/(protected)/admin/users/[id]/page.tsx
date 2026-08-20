@@ -66,7 +66,7 @@ export default function AdminUserDetailPage() {
       isAcadiaTenantQueryEnabled(sessionLoading, sessionError, session, tenantId),
   });
 
-  const role = unwrapRelation(user?.UserRole);
+  const role = unwrapRelation<{ slug?: string; name?: string }>(user?.UserRole);
 
   return (
     <AccountDataState

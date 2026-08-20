@@ -71,7 +71,13 @@ export function SubjectTimetablePanel({
       if (error) {
         throw error;
       }
-      return data ?? [];
+      return (data ?? []) as Array<
+        TimetableSlotRecord & {
+          Room?: unknown;
+          StaffProfile?: unknown;
+          Class?: unknown;
+        }
+      >;
     },
     enabled: isAcadiaTenantQueryEnabled(
       sessionLoading,

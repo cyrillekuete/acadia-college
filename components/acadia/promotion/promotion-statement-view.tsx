@@ -255,7 +255,10 @@ export function PromotionStatementView() {
                     <TableCell className="text-xs">
                       {[
                         row.isOrphan ? 'Orphan (not currently enrolled)' : null,
-                        row.classChangedSinceCompute ? 'Class changed since compute' : null,
+                        'classChangedSinceCompute' in row &&
+                        row.classChangedSinceCompute
+                          ? 'Class changed since compute'
+                          : null,
                         row.policyStaleAt ? 'Policy changed after compute' : null,
                         row.isPending ? 'Pending (never computed)' : null,
                         !row.isPending && !row.targetClassId

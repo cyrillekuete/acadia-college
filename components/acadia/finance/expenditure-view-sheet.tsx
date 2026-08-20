@@ -94,7 +94,10 @@ export function ExpenditureViewSheet({
                   label={t('finance.vendorContact')}
                   value={record.vendorContact?.trim() || '—'}
                 />
-                <Detail label={t('finance.paymentDate')} value={record.paymentDate} />
+                <Detail
+                  label={t('finance.paymentDate')}
+                  value={record.paymentDate ?? '—'}
+                />
                 <Detail
                   label={t('finance.receiptNumber')}
                   value={record.receiptNumber?.trim() || '—'}

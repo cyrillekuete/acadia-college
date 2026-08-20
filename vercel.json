@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/acadia/alerts/dispatch",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }

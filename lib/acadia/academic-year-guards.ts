@@ -36,7 +36,7 @@ export function findOverlappingAcademicYear(
 
 export function findDuplicateAcademicYearLabel(
   label: string,
-  existing: Array<{ id?: string; label: string }>,
+  existing: Array<{ id?: string; label?: string }>,
   ignoreId?: string | null,
 ): { id?: string; label: string } | null {
   const normalized = label.trim().toLowerCase();
@@ -48,9 +48,9 @@ export function findDuplicateAcademicYearLabel(
       if (ignoreId && year.id === ignoreId) {
         return false;
       }
-      return year.label.trim().toLowerCase() === normalized;
-    }) ?? null
-  );
+      return (year.label ?? '').trim().toLowerCase() === normalized;
+    }) as { id?: string; label: string } | undefined
+  ) ?? null;
 }
 
 export function assertAcademicYearUniqueness(input: {

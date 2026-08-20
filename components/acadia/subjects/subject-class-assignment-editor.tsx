@@ -51,7 +51,7 @@ export function assignmentsFromClassOptions(
 }
 
 export function SubjectClassAssignmentEditor({
-  subjectDefaultGroupingId: _subjectDefaultGroupingId,
+  subjectDefaultGroupingId,
   subjectDefaultGroupingName,
   subBranches,
   classOptions,

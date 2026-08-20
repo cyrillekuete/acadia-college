@@ -23,7 +23,9 @@ export type AlertAudienceBundle = {
 
 async function selectInChunks<T>(
   ids: string[],
-  fetchChunk: (chunk: string[]) => Promise<{ data: T[] | null; error: { message: string } | null }>,
+  fetchChunk: (
+    chunk: string[],
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
 ): Promise<T[]> {
   const rows: T[] = [];
   for (const chunk of chunkIds(ids)) {

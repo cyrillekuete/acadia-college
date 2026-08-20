@@ -13,6 +13,7 @@ import {
 } from '@/lib/acadia/class-subject-eligibility';
 import { generateAcadiaId } from '@/lib/acadia/ids';
 import { localizedText } from '@/lib/acadia/locale';
+import { unwrapRelation } from '@/lib/acadia/record-display';
 import {
   toStudentClassSubjectRow,
   type StudentClassSubjectRow,
