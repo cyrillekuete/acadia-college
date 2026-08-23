@@ -18,7 +18,11 @@ import {
   WHATSAPP_TEMPLATE_PARAM_MAX,
 } from '@/lib/acadia/whatsapp';
 import { shouldSkipWhatsAppRecipient } from '@/lib/acadia/alerts';
-import { parseWhatsAppLanguage } from '@/lib/acadia/whatsapp-dispatch';
+import { canSendWhatsAppMessages } from '@/lib/acadia/roles';
+import {
+  assertWhatsAppMessageDispatch,
+  parseWhatsAppLanguage,
+} from '@/lib/acadia/whatsapp-dispatch';
 import { formatWhatsAppSendToast } from '@/lib/acadia/whatsapp-types';
 
 describe('ALERT_CHANNELS', () => {
@@ -183,5 +187,59 @@ describe('WhatsApp send toast', () => {
   it('does not resend already delivered WhatsApp alerts', () => {
     expect(shouldSkipWhatsAppRecipient('sent')).toBe(true);
     expect(shouldSkipWhatsAppRecipient('queued')).toBe(false);
+  });
+});
+
+describe('canSendWhatsAppMessages', () => {
+  it('allows staff and administrators only', () => {
+    expect(canSendWhatsAppMessages('admin')).toBe(true);
+    expect(canSendWhatsAppMessages('teacher')).toBe(true);
+    expect(canSendWhatsAppMessages('bursar')).toBe(true);
+    expect(canSendWhatsAppMessages('student')).toBe(false);
+    expect(canSendWhatsAppMessages('guardian')).toBe(false);
+    expect(canSendWhatsAppMessages('parent')).toBe(false);
+  });
+
+  it('gates the 1:1 WhatsApp API on staff permission', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/api/acadia/whatsapp/messages/route.ts'),
+      'utf8',
+    );
+    expect(source).toMatch(/canSendWhatsAppMessages/);
+    expect(source).toMatch(/status: 403/);
+  });
+});
+
+describe('assertWhatsAppMessageDispatch', () => {
+  const allowed = {
+    actorUserId: 'staff-1',
+    senderUserId: 'staff-1',
+    recipientIsGuardian: true,
+    recipientIsThreadMember: true,
+  };
+
+  it('allows the sender to WhatsApp a parent in the thread', () => {
+    expect(() => assertWhatsAppMessageDispatch(allowed)).not.toThrow();
+  });
+
+  it('rejects sending for someone else\'s message', () => {
+    expect(() =>
+      assertWhatsAppMessageDispatch({ ...allowed, actorUserId: 'student-1' }),
+    ).toThrow('You can only send WhatsApp for your own messages.');
+  });
+
+  it('rejects non-parent recipients', () => {
+    expect(() =>
+      assertWhatsAppMessageDispatch({ ...allowed, recipientIsGuardian: false }),
+    ).toThrow('WhatsApp can only be sent to parents.');
+  });
+
+  it('rejects a parent who is not in the conversation', () => {
+    expect(() =>
+      assertWhatsAppMessageDispatch({
+        ...allowed,
+        recipientIsThreadMember: false,
+      }),
+    ).toThrow('Recipient is not in this conversation.');
   });
 });

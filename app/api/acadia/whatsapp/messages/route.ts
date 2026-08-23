@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { canSendWhatsAppMessages } from '@/lib/acadia/roles';
 import { requireSessionApi } from '@/lib/acadia/require-session-api';
 import { isAdminClientConfigured, createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -11,6 +12,12 @@ export async function POST(request: Request) {
   const auth = await requireSessionApi();
   if (!auth.ok) {
     return NextResponse.json({ message: auth.message }, { status: auth.status });
+  }
+  if (!canSendWhatsAppMessages(auth.ctx.roleSlug)) {
+    return NextResponse.json(
+      { message: 'You do not have permission to send WhatsApp messages.' },
+      { status: 403 },
+    );
   }
   if (!isAdminClientConfigured()) {
     return NextResponse.json(

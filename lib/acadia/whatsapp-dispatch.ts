@@ -20,6 +20,24 @@ export function parseWhatsAppLanguage(raw: unknown): UiLocale {
   return raw === 'fr' ? 'fr' : 'en';
 }
 
+/** Shared preconditions for 1:1 WhatsApp dispatch. Throws on violation. */
+export function assertWhatsAppMessageDispatch(input: {
+  actorUserId: string;
+  senderUserId: string;
+  recipientIsGuardian: boolean;
+  recipientIsThreadMember: boolean;
+}): void {
+  if (input.senderUserId !== input.actorUserId) {
+    throw new Error('You can only send WhatsApp for your own messages.');
+  }
+  if (!input.recipientIsGuardian) {
+    throw new Error('WhatsApp can only be sent to parents.');
+  }
+  if (!input.recipientIsThreadMember) {
+    throw new Error('Recipient is not in this conversation.');
+  }
+}
+
 export async function lookupUserPhones(
   admin: SupabaseClient,
   userIds: readonly string[],
@@ -184,10 +202,6 @@ export async function dispatchMessageWhatsApp(
   if (!message) {
     throw new Error('Message not found.');
   }
-  if (message.senderUserId !== input.actorUserId) {
-    throw new Error('You can only send WhatsApp for your own messages.');
-  }
-
   const { data: recipient, error: recipientError } = await admin
     .from('User')
     .select('id, roleId')
@@ -210,9 +224,24 @@ export async function dispatchMessageWhatsApp(
   if (roleError) {
     throw roleError;
   }
-  if (!isGuardian(roleRow?.slug)) {
-    throw new Error('WhatsApp can only be sent to parents.');
+
+  const { data: member, error: memberError } = await admin
+    .from('MessageThreadMember')
+    .select('id')
+    .eq('threadId', message.threadId)
+    .eq('tenantId', input.tenantId)
+    .eq('userId', input.recipientUserId)
+    .maybeSingle();
+  if (memberError) {
+    throw memberError;
   }
+
+  assertWhatsAppMessageDispatch({
+    actorUserId: input.actorUserId,
+    senderUserId: String(message.senderUserId ?? ''),
+    recipientIsGuardian: isGuardian(roleRow?.slug),
+    recipientIsThreadMember: Boolean(member?.id),
+  });
 
   const { data: thread } = await admin
     .from('MessageThread')
