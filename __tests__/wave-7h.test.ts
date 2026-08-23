@@ -41,6 +41,7 @@ import {
 } from '@/lib/acadia/finance-schemas';
 import {
   ensureStudentFeeAccount,
+  paidMinorForRebill,
   rebillInstallments,
 } from '@/lib/acadia/fee-account-provision';
 import { formatMoney } from '@/i18n/format';
@@ -878,6 +879,59 @@ describe('rebillInstallments', () => {
     expect(result.creditMinor).toBe(100000);
     expect(result.appliedPaidMinor).toBe(300000);
     expect(result.installments.every((row) => row.status === 'PAID')).toBe(true);
+  });
+
+  it('carries stored credit so a later class transfer does not wipe prepaid cash', () => {
+    const cheaperPlanPaid = rebillInstallments({
+      paidMinor: 300000,
+      templates: [
+        {
+          installmentNumber: 1,
+          labelEn: 'A',
+          labelFr: 'A',
+          amountMinor: 100000,
+          dueOn: '2026-10-01',
+        },
+        {
+          installmentNumber: 2,
+          labelEn: 'B',
+          labelFr: 'B',
+          amountMinor: 100000,
+          dueOn: '2027-01-01',
+        },
+      ],
+    });
+    expect(cheaperPlanPaid.appliedPaidMinor).toBe(200000);
+    expect(cheaperPlanPaid.creditMinor).toBe(100000);
+
+    const carried = paidMinorForRebill({
+      installments: cheaperPlanPaid.installments.map((row) => ({
+        amountMinor: row.amountMinor,
+        status: row.status,
+        paidAmountMinor: row.paidAmountMinor,
+      })),
+      creditMinor: cheaperPlanPaid.creditMinor,
+    });
+    expect(carried).toBe(300000);
+
+    const restored = rebillInstallments({
+      paidMinor: carried,
+      templates: threeInstallments,
+    });
+    expect(restored.remainingMinor).toBe(0);
+    expect(restored.creditMinor).toBe(0);
+    expect(restored.appliedPaidMinor).toBe(300000);
+  });
+
+  it('treats missing credit as installment receipts only', () => {
+    expect(
+      paidMinorForRebill({
+        installments: [
+          { amountMinor: 100000, status: 'PAID', paidAmountMinor: 100000 },
+        ],
+        creditMinor: null,
+      }),
+    ).toBe(100000);
   });
 
   it('reduces remaining due by scholarships after rebill', () => {

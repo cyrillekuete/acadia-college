@@ -118,6 +118,19 @@ export function sumPaidFromInstallments(
 }
 
 /**
+ * Cash already on the account for a rebill: installment receipts plus stored
+ * credit. Credit is the leftover from a previous cheaper plan and is not kept
+ * on installment rows, so omitting it wipes prepaid overpayment.
+ */
+export function paidMinorForRebill(input: {
+  installments: PaidInstallmentInput[];
+  creditMinor?: number | null;
+}): number {
+  const storedCredit = Math.max(0, Math.round(Number(input.creditMinor ?? 0)));
+  return sumPaidFromInstallments(input.installments) + storedCredit;
+}
+
+/**
  * Rebuilds a fee schedule from a class plan and waterfalls money already paid
  * onto the new installments. Remaining due = new plan total − scholarships − paid.
  */
@@ -635,6 +648,7 @@ export async function rebillFeeAccountToClassPlan(
         `
         id,
         totalAmountMinor,
+        creditMinor,
         streamFeePlanId,
         StudentFeeInstallment ( amountMinor, status, paidAmountMinor ),
         StudentScholarship ( discountMinor )
@@ -679,7 +693,10 @@ export async function rebillFeeAccountToClassPlan(
     }
 
     const installments = (account.StudentFeeInstallment ?? []) as PaidInstallmentInput[];
-    const paidMinor = sumPaidFromInstallments(installments);
+    const paidMinor = paidMinorForRebill({
+      installments,
+      creditMinor: (account as { creditMinor?: number | null }).creditMinor,
+    });
     const nowIso = new Date().toISOString();
     const scholarshipMinor = await refreshPercentScholarshipDiscounts(supabase, {
       tenantId: input.tenantId,
