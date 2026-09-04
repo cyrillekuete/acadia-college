@@ -3,7 +3,7 @@
 import { BookOpen, FileText, LogIn, MoreHorizontal } from '@/lib/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { timeAgo } from '@/lib/helpers';
+import { timeAgo, toAbsoluteUrl } from '@/lib/helpers';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import {
   fetchAdminRecentActivities,
@@ -70,7 +70,14 @@ export function AdminRecentActivities({
         {activitiesLoading ? (
           <p className="text-sm text-muted-foreground">Loading activities…</p>
         ) : activities.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No recent activity yet.</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+            <img
+              src={toAbsoluteUrl('/media/illustrations/empty-recent-activities.png')}
+              alt=""
+              className="max-h-[180px] w-auto rounded-md"
+            />
+            <p className="text-sm text-muted-foreground">No recent activity yet.</p>
+          </div>
         ) : (
           <ul className="divide-y divide-border">
             {activities.map((item) => (

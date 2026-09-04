@@ -433,7 +433,7 @@ export default function StudentFeesPage() {
       ) : null}
 
       <Tabs value={tab} onValueChange={setTab} className="print:hidden">
-        <TabsList>
+        <TabsList className="w-fit">
           <TabsTrigger value="accounts">All accounts</TabsTrigger>
           <TabsTrigger value="outstanding">Outstanding</TabsTrigger>
           <TabsTrigger value="plans">{t('finance.setupTitle')}</TabsTrigger>

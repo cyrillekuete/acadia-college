@@ -44,6 +44,7 @@ import { DataGridPagination } from '@/components/ui/data-grid-pagination';
 import { DataGridTable } from '@/components/ui/data-grid-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import {
   Popover,
   PopoverContent,
@@ -460,19 +461,19 @@ export function SystemLogDataGrid({
                   </Button>
                 )}
               </div>
-              <Input
-                type="date"
+              <DatePickerInput
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={setDateFrom}
                 className="w-36"
-                aria-label="From date"
+                id="system-log-date-from"
+                placeholder="From"
               />
-              <Input
-                type="date"
+              <DatePickerInput
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={setDateTo}
                 className="w-36"
-                aria-label="To date"
+                id="system-log-date-to"
+                placeholder="To"
               />
               <Input
                 placeholder="Event"

@@ -6,7 +6,6 @@ import { useAcademicYearContext } from '@/components/acadia/academics/academic-y
 import { useAcademicYearStructure } from '@/hooks/use-academic-year-structure';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatRecordValue } from '@/lib/acadia/record-display';
 
 export function AdminAcademicYearCard() {
   const {
@@ -68,11 +67,6 @@ export function AdminAcademicYearCard() {
           <CalendarCheck className="size-5" />
           Academic year
         </CardTitle>
-        <CardDescription>
-          Current (live): {formatRecordValue(currentYear.label)} ·{' '}
-          {formatRecordValue(currentYear.startsOn)} –{' '}
-          {formatRecordValue(currentYear.endsOn)}
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {activeYearId && activeYear && !isViewingCurrentYear ? (
@@ -80,12 +74,7 @@ export function AdminAcademicYearCard() {
             Viewing <strong>{activeYear.label}</strong> in the app (use the header
             selector to switch years).
           </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            The app is showing data for the current academic year. Use the header
-            selector to view historical years (e.g. for transcripts).
-          </p>
-        )}
+        ) : null}
         {structureLoading ? (
           <p className="text-sm text-muted-foreground">Loading structure…</p>
         ) : (

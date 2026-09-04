@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { BarChart3, BookOpen, CalendarCheck, LayoutGrid, Plus, UserPlus } from '@/lib/icons';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -51,7 +51,6 @@ export function AdminQuickActions() {
     <Card className="h-full">
       <CardHeader>
         <CardTitle>{t('admin.quickActions')}</CardTitle>
-        <CardDescription>{t('admin.quickActionsDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2.5">
         {ACTIONS.map(({ labelKey, href, icon: Icon }) => (

@@ -164,7 +164,7 @@ describe('User.email uniqueness', () => {
     const sql = readFileSync(
       join(
         process.cwd(),
-        'supabase/migrations/20260820210000_user_management_edge_cases.sql',
+        'supabase/migrations/20260820210400_user_management_edge_cases.sql',
       ),
       'utf8',
     );

@@ -292,7 +292,7 @@ export function PromotionAdminPanel() {
 
   return (
     <Tabs defaultValue="policies" className="space-y-6">
-      <TabsList>
+      <TabsList className="w-fit">
         <TabsTrigger value="policies">{t('academics.classPolicies')}</TabsTrigger>
         <TabsTrigger value="compute">{t('academics.computeDecisions')}</TabsTrigger>
       </TabsList>

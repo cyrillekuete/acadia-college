@@ -59,10 +59,7 @@ export function AdminDashboardView({
   });
 
   return (
-    <AcadiaPageShell
-      title={t('admin.dashboardTitle')}
-      description="Welcome to Acadia College. Overview of students, staff, classes, and finance."
-    >
+    <AcadiaPageShell title={t('admin.dashboardTitle')}>
       <div className="space-y-7.5">
         <AdminAcademicYearCard />
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">

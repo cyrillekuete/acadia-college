@@ -349,7 +349,7 @@ describe('transcripts RLS migration', () => {
       process.cwd(),
       'supabase',
       'migrations',
-      '20260820210000_transcripts_edge_cases.sql',
+      '20260820210300_transcripts_edge_cases.sql',
     ),
     'utf8',
   );

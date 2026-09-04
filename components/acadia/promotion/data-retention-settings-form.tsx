@@ -145,6 +145,12 @@ export function DataRetentionSettingsForm() {
         </p>
       ) : null}
 
+      {previewQuery.isError ? (
+        <p className="text-sm text-destructive">
+          {getQueryErrorMessage(previewQuery.error)}
+        </p>
+      ) : null}
+
       {previewQuery.data ? (
         <p className="text-sm text-muted-foreground">{previewQuery.data.description}</p>
       ) : null}

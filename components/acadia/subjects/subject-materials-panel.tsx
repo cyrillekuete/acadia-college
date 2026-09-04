@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
+import { TimePickerInput } from '@/components/acadia/forms/time-picker-input';
 import {
   subjectMaterialSchema,
   type SubjectMaterialFormValues,
@@ -302,15 +304,40 @@ export function SubjectMaterialsPanel({
               <FormField
                 control={form.control}
                 name="dueAt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('coursework.due')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="datetime-local" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const datePart = field.value?.slice(0, 10) ?? '';
+                  const timePart =
+                    field.value?.length >= 16
+                      ? field.value.slice(11, 16)
+                      : '';
+                  const setDueAt = (date: string, time: string) => {
+                    if (!date) {
+                      field.onChange('');
+                      return;
+                    }
+                    field.onChange(`${date}T${time || '00:00'}`);
+                  };
+                  return (
+                    <FormItem>
+                      <FormLabel>{t('coursework.due')}</FormLabel>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <FormControl>
+                          <DatePickerInput
+                            value={datePart}
+                            onChange={(value) => setDueAt(value, timePart)}
+                            placeholder="Pick a date"
+                          />
+                        </FormControl>
+                        <TimePickerInput
+                          value={timePart}
+                          onChange={(value) => setDueAt(datePart, value)}
+                          disabled={!datePart}
+                        />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               <FormField
                 control={form.control}

@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
 import { toast } from 'sonner';
 import { useTenantApiKeyMutations } from '@/hooks/use-tenant-api-key-mutations';
 import {
@@ -116,7 +117,11 @@ export function TenantApiKeyCreateDialog({
                     <FormItem>
                       <FormLabel>Expires (optional)</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <DatePickerInput
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                          placeholder="Pick a date"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
