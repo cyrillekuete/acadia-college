@@ -38,6 +38,8 @@ import { Download, GraduationCap } from '@/lib/icons';
 const SESSION_EXPIRED_MESSAGE =
   'Your session has expired. Please log in again to generate class reports.';
 
+type TermReportPeriod = Extract<ClassReportPeriod, { kind: 'term' }>;
+
 function termOptionLabel(
   t: (key: string, values?: Record<string, unknown>) => string,
   termNumber: number,
@@ -83,7 +85,10 @@ export function ClassReportWrapper({
       return { kind: 'annual' };
     }
     if (periodKind === 'term') {
-      return { kind: 'term', term: selectedTerm };
+      const term = Number(selectedTerm);
+      return Number.isInteger(term) && term >= 1
+        ? { kind: 'term', term: String(term) as TermReportPeriod['term'] }
+        : null;
     }
     const sequenceNumber = Number(selectedSequence);
     if (!Number.isInteger(sequenceNumber) || sequenceNumber < 1) {

@@ -1,6 +1,6 @@
 import type { AcadiaUserProfile } from '@/lib/supabase/queries/user';
 
-type UsersTableRow = {
+export type UsersTableRow = {
   id: unknown;
   email?: unknown;
   name?: unknown;

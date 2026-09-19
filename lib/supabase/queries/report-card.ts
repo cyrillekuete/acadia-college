@@ -143,7 +143,7 @@ export async function fetchReportCardBundle(
     'createdAt',
     { ascending: false },
   );
-  const yearEnrollments = (yearEnrollmentRows ?? []) as Array<{
+  const yearEnrollments = (yearEnrollmentRows ?? []) as unknown as Array<{
     classId: string | null;
     status: string | null;
     createdAt: string | null;

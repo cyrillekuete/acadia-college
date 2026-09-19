@@ -116,6 +116,28 @@ export const staffCreateSchema = z
 export type StaffCreateInput = z.infer<typeof staffCreateSchema>;
 export type StaffCreateFormValues = z.input<typeof staffCreateSchema>;
 
+/** Fields validated when leaving each wizard step (1-based). Step 5 is optional — not used for trigger. */
+export const STAFF_CREATE_STEP_FIELDS: Record<number, (keyof StaffCreateFormValues)[]> = {
+  1: ['title', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'nationality', 'idNumber'],
+  2: ['personalEmail', 'phoneCountry', 'phone'],
+  3: ['address', 'city', 'region', 'qualifications', 'teachingExperience'],
+  4: [
+    'subSystem',
+    'subjectIds',
+    'classIds',
+    'academicYearId',
+    'employmentType',
+    'hireDate',
+    'monthlySalary',
+  ],
+  5: [
+    'emergencyContactName',
+    'emergencyContactRelationship',
+    'emergencyContactPhoneCountry',
+    'emergencyContactPhone',
+  ],
+};
+
 /** Admin PATCH body for staff profile (HR fields + active flag). */
 export const staffUpdateSchema = z
   .object({

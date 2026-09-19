@@ -102,7 +102,9 @@ async function fetchStudentClassForAccess(
     throw error;
   }
 
-  const rows = (data ?? []) as Array<EnrollmentAccessRow & { status?: string | null }>;
+  const rows = (data ?? []) as unknown as Array<
+    EnrollmentAccessRow & { status?: string | null }
+  >;
   const row =
     rows.find((entry) => entry.status === 'ENROLLED') ?? rows[0] ?? null;
   const enrolledClassId = row?.classId?.trim() ?? '';

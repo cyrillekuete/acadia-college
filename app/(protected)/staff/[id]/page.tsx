@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { use } from 'react';
+import { use, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RecordDetailCard } from '@/components/acadia/record-detail-card';
 import { RecordDetailShell } from '@/components/acadia/record-detail-shell';
 import { StaffDangerZone } from '@/components/acadia/staff/staff-danger-zone';
 import { StaffTeachingAssignmentsPanel } from '@/components/acadia/staff/staff-teaching-assignments-panel';
-import { useSupabaseRecord } from '@/hooks/use-supabase-record';
+import { useStaffDetailQuery } from '@/hooks/use-staff-detail-query';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
 import { staffEmploymentLabel } from '@/lib/acadia/staff-registry';
@@ -21,80 +22,23 @@ import {
 } from '@/lib/acadia/record-display';
 import { useTranslation } from '@/hooks/useTranslation';
 
-const STAFF_SELECT = `
-  id,
-  staffCode,
-  title,
-  firstName,
-  lastName,
-  personalEmail,
-  phone,
-  address,
-  city,
-  region,
-  qualifications,
-  teachingExperience,
-  subSystem,
-  employmentType,
-  hireDate,
-  monthlySalary,
-  emergencyContactName,
-  emergencyContactRelationship,
-  emergencyContactPhone,
-  officeRoom,
-  officePhone,
-  bio,
-  isActive,
-  createdAt,
-  updatedAt,
-  User!StaffProfile_userId_tenantId_fkey ( id, email, name, status, country, timezone, lastSignInAt ),
-  Department!StaffProfile_departmentId_tenantId_fkey ( code, nameEn, nameFr )
-`;
-
-type StaffDetail = {
-  id: string;
-  staffCode: string | null;
-  title: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  personalEmail: string | null;
-  phone: string | null;
-  address: string | null;
-  city: string | null;
-  region: string | null;
-  qualifications: string | null;
-  teachingExperience: string | null;
-  subSystem: string | null;
-  employmentType: string;
-  hireDate: string | null;
-  monthlySalary: number | null;
-  emergencyContactName: string | null;
-  emergencyContactRelationship: string | null;
-  emergencyContactPhone: string | null;
-  officeRoom: string | null;
-  officePhone: string | null;
-  bio: string | null;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  User: unknown;
-  Department: unknown;
-};
-
 export default function StaffDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
   const canEdit = canWriteRegistry(session?.roleSlug);
-  const { data, isLoading, isError, error } = useSupabaseRecord<StaffDetail>(
-    'StaffProfile',
-    id,
-    STAFF_SELECT,
-  );
+  const { data, isLoading, isError, error } = useStaffDetailQuery(id);
+
+  useEffect(() => {
+    if (data?.id && data.id !== id) {
+      router.replace(`/staff/${data.id}`);
+    }
+  }, [data?.id, id, router]);
 
   const user = unwrapRelation<{
     email?: string;

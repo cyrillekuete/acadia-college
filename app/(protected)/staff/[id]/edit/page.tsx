@@ -1,68 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { use } from 'react';
+import { use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { MoveLeft } from '@/lib/icons';
 import { Button } from '@/components/ui/button';
 import { StaffEditForm } from '@/components/acadia/staff/staff-edit-form';
-import { useSupabaseRecord } from '@/hooks/use-supabase-record';
+import { useStaffDetailQuery } from '@/hooks/use-staff-detail-query';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { canWriteRegistry } from '@/lib/acadia/roles';
 import { useTranslation } from '@/hooks/useTranslation';
-
-const STAFF_EDIT_SELECT = `
-  id,
-  staffCode,
-  title,
-  firstName,
-  lastName,
-  personalEmail,
-  phone,
-  address,
-  city,
-  region,
-  qualifications,
-  teachingExperience,
-  employmentType,
-  hireDate,
-  monthlySalary,
-  emergencyContactName,
-  emergencyContactRelationship,
-  emergencyContactPhone,
-  bio,
-  officeRoom,
-  officePhone,
-  departmentId,
-  isActive
-`;
-
-type StaffEditRow = {
-  id: string;
-  staffCode: string | null;
-  title: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  personalEmail: string | null;
-  phone: string | null;
-  address: string | null;
-  city: string | null;
-  region: string | null;
-  qualifications: string | null;
-  teachingExperience: string | null;
-  employmentType: string;
-  hireDate: string | null;
-  monthlySalary: number | null;
-  emergencyContactName: string | null;
-  emergencyContactRelationship: string | null;
-  emergencyContactPhone: string | null;
-  bio: string | null;
-  officeRoom: string | null;
-  officePhone: string | null;
-  departmentId: string | null;
-  isActive: boolean;
-};
 
 export default function StaffEditPage({
   params,
@@ -74,17 +21,19 @@ export default function StaffEditPage({
   const router = useRouter();
   const { data: session } = useAcadiaCollegeSession();
   const canEdit = canWriteRegistry(session?.roleSlug);
-  const { data, isLoading, isError, error } = useSupabaseRecord<StaffEditRow>(
-    'StaffProfile',
-    id,
-    STAFF_EDIT_SELECT,
-  );
+  const { data, isLoading, isError, error } = useStaffDetailQuery(id);
 
   useEffect(() => {
     if (!canEdit && session) {
-      router.replace(`/staff/${id}`);
+      router.replace(`/staff/${data?.id ?? id}`);
     }
-  }, [canEdit, session, router, id]);
+  }, [canEdit, session, router, id, data?.id]);
+
+  useEffect(() => {
+    if (data?.id && data.id !== id) {
+      router.replace(`/staff/${data.id}/edit`);
+    }
+  }, [data?.id, id, router]);
 
   if (!canEdit) {
     return null;
@@ -105,7 +54,7 @@ export default function StaffEditPage({
   return (
     <div className="space-y-6">
       <Button variant="outline" size="sm" asChild>
-        <Link href={`/staff/${id}`}>
+        <Link href={`/staff/${data.id}`}>
           <MoveLeft className="size-4" />
           {t('staff.backToProfile')}
         </Link>

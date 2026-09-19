@@ -135,3 +135,54 @@ export const studentCreateSchema = z
 
 export type StudentCreateInput = z.infer<typeof studentCreateSchema>;
 export type StudentCreateFormValues = z.input<typeof studentCreateSchema>;
+
+/** Fields validated when leaving each wizard step (1-based). Step 5 is optional — not used for trigger. */
+export const STUDENT_CREATE_STEP_FIELDS: Record<
+  number,
+  (keyof StudentCreateFormValues)[]
+> = {
+  1: [
+    'first_name',
+    'last_name',
+    'middle_name',
+    'date_of_birth',
+    'gender',
+    'place_of_birth',
+    'nationality',
+    'religion',
+  ],
+  2: ['email', 'phone_country', 'phone', 'address', 'country', 'city', 'region'],
+  3: [
+    'subsystem',
+    'branch',
+    'academic_year',
+    'academic_year_id',
+    'level_id',
+    'class_id',
+    'class_name',
+    'previous_school',
+    'previous_class',
+    'override_enrollment_window',
+    'is_new_student',
+    'enrollment_date',
+    'matricule_number',
+  ],
+  4: [
+    'parent_name',
+    'parent_email',
+    'parent_phone_country',
+    'parent_phone',
+    'parent_address',
+    'parent_occupation',
+    'parent_relationship',
+  ],
+  5: [
+    'emergency_contact_name',
+    'emergency_contact_phone_country',
+    'emergency_contact_phone',
+    'emergency_contact_relationship',
+    'blood_group',
+    'allergies',
+    'medical_conditions',
+  ],
+};

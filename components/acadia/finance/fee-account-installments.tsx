@@ -241,6 +241,7 @@ function InstallmentsTable({
   onAddPayment: (installment: PayableInstallment) => void;
 }) {
   const { t } = useTranslation();
+  const yearClosed = useFinanceYearClosed();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,

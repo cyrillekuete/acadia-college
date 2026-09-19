@@ -1,5 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { mergeDualTableUserProfile } from '@/lib/acadia/user-profile-merge';
+import {
+  mergeDualTableUserProfile,
+  type UsersTableRow,
+} from '@/lib/acadia/user-profile-merge';
 
 export type AcadiaUserProfile = {
   id: string;
@@ -60,7 +63,7 @@ export async function fetchAcadiaUserProfile(
   }
 
   if (newRow) {
-    const row = newRow as Record<string, unknown>;
+    const row = newRow as unknown as UsersTableRow;
     const roleSlug = String(row.role ?? '');
     const [{ data: legacy }, { data: roleBySlug }] = await Promise.all([
       supabase

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,8 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  RegistryCreateWizardShell,
+  StepperContent,
+} from '@/components/acadia/registry/registry-create-wizard-shell';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +35,7 @@ import { CityAutocomplete } from '@/components/acadia/location/city-autocomplete
 import { RegionSelect } from '@/components/acadia/location/region-select';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import {
+  STAFF_CREATE_STEP_FIELDS,
   staffCreateSchema,
   type StaffCreateInput,
   type StaffCreateFormValues,
@@ -247,26 +250,104 @@ export function StaffCreateForm() {
 
   const noActiveYear = !activeYearId;
 
+  const [activeStep, setActiveStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  const stepCount = 5;
+
+  const wizardSteps = useMemo(
+    () => [
+      {
+        id: 1,
+        title: t('staff.personalInfo'),
+        description: t('staff.createWizard.step1Description'),
+        panelTitle: t('staff.createWizard.step1PanelTitle'),
+        panelDescription: t('staff.createWizard.step1PanelDescription'),
+      },
+      {
+        id: 2,
+        title: t('staff.contactDetails'),
+        description: t('staff.createWizard.step2Description'),
+        panelTitle: t('staff.createWizard.step2PanelTitle'),
+        panelDescription: t('staff.createWizard.step2PanelDescription'),
+      },
+      {
+        id: 3,
+        title: t('staff.addressQualifications'),
+        description: t('staff.createWizard.step3Description'),
+        panelTitle: t('staff.createWizard.step3PanelTitle'),
+        panelDescription: t('staff.createWizard.step3PanelDescription'),
+      },
+      {
+        id: 4,
+        title: t('staff.teachingAssignment'),
+        description: t('staff.createWizard.step4Description'),
+        panelTitle: t('staff.createWizard.step4PanelTitle'),
+        panelDescription: t('staff.createWizard.step4PanelDescription'),
+      },
+      {
+        id: 5,
+        title: t('staff.emergencyContact'),
+        description: t('staff.createWizard.step5Description'),
+        panelTitle: t('staff.createWizard.step5PanelTitle'),
+        panelDescription: t('staff.createWizard.step5PanelDescription'),
+      },
+    ],
+    [t],
+  );
+
+  async function handleContinue() {
+    const fields = STAFF_CREATE_STEP_FIELDS[activeStep];
+    if (fields?.length) {
+      const ok = await form.trigger(fields);
+      if (!ok) {
+        const firstInvalid = fields.find((name) => form.getFieldState(name).invalid);
+        if (firstInvalid) {
+          form.setFocus(firstInvalid);
+        }
+        return;
+      }
+    }
+    const next = Math.min(stepCount, activeStep + 1);
+    setActiveStep(next);
+    setMaxStepReached((prev) => Math.max(prev, next));
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {noActiveYear ? (
-          <p className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {t('staff.noActiveYearBanner')}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {t('staff.assignmentsApplyTo', {
-              year: activeYear?.label ?? activeYearId,
-            })}
-          </p>
-        )}
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <RegistryCreateWizardShell
+          steps={wizardSteps}
+          activeStep={activeStep}
+          maxStepReached={maxStepReached}
+          onStepChange={setActiveStep}
+          backHref="/staff"
+          backToListLabel={t('staff.createWizard.backToStaff')}
+          stepBackLabel={t('common.buttons.back')}
+          cancelLabel={t('common.buttons.cancel')}
+          continueLabel={t('staff.createWizard.continue')}
+          submitLabel={
+            mutation.isPending ? t('common.messages.creating') : t('staff.createTeacher')
+          }
+          onBack={() => setActiveStep((s) => Math.max(1, s - 1))}
+          onContinue={() => void handleContinue()}
+          onCancel={() => router.push('/staff')}
+          isLastStep={activeStep === stepCount}
+          isSubmitting={mutation.isPending}
+          submitDisabled={noActiveYear}
+        >
+          {noActiveYear ? (
+            <p className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {t('staff.noActiveYearBanner')}
+            </p>
+          ) : activeStep === 4 ? (
+            <p className="text-sm text-muted-foreground">
+              {t('staff.assignmentsApplyTo', {
+                year: activeYear?.label ?? activeYearId,
+              })}
+            </p>
+          ) : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('staff.personalInfo')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          <StepperContent value={1} className="space-y-6">
             <div className={ROW_4}>
             <FormField
               control={form.control}
@@ -404,14 +485,9 @@ export function StaffCreateForm() {
               )}
             />
             </div>
-          </CardContent>
-        </Card>
+          </StepperContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('staff.contactDetails')}</CardTitle>
-          </CardHeader>
-          <CardContent className={GRID}>
+          <StepperContent value={2} className={GRID}>
             <FormField
               control={form.control}
               name="personalEmail"
@@ -440,14 +516,9 @@ export function StaffCreateForm() {
               hideCountry
               className="sm:col-span-2 lg:col-span-1"
             />
-          </CardContent>
-        </Card>
+          </StepperContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('staff.addressQualifications')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <StepperContent value={3} className="space-y-4">
             <div className={ROW_3}>
               <FormField
                 control={form.control}
@@ -532,14 +603,9 @@ export function StaffCreateForm() {
                 )}
               />
             </div>
-          </CardContent>
-        </Card>
+          </StepperContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('staff.teachingAssignment')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          <StepperContent value={4} className="space-y-6">
             <div className={ROW_4}>
               <FormField
                 control={form.control}
@@ -680,79 +746,57 @@ export function StaffCreateForm() {
                 )}
               />
             </div>
+          </StepperContent>
 
-            <Separator />
+          <StepperContent value={5} className={GRID}>
+            <FormField
+              control={form.control}
+              name="emergencyContactName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('common.labels.name')}</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <div>
-              <p className="mb-3 text-sm font-medium">{t('staff.emergencyContact')}</p>
-              <div className={GRID}>
-                <FormField
-                  control={form.control}
-                  name="emergencyContactName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('common.labels.name')}</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <FormField
+              control={form.control}
+              name="emergencyContactRelationship"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('common.labels.relationship')}</FormLabel>
+                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('students.selectRelationship')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {RELATIONSHIP_OPTIONS.map((rel) => (
+                        <SelectItem key={rel.value} value={rel.value}>
+                          {t(`staff.relationship.${rel.value}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <FormField
-                  control={form.control}
-                  name="emergencyContactRelationship"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('common.labels.relationship')}</FormLabel>
-                      <Select
-                        value={field.value ?? ''}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('students.selectRelationship')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {RELATIONSHIP_OPTIONS.map((rel) => (
-                            <SelectItem key={rel.value} value={rel.value}>
-                              {t(`staff.relationship.${rel.value}`)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <PhoneFormFields
-                  control={form.control}
-                  countryName="emergencyContactPhoneCountry"
-                  phoneName="emergencyContactPhone"
-                  phoneLabel={t('staff.contactPhone')}
-                  hideCountry
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex items-center justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/staff')}
-            disabled={mutation.isPending}
-          >
-            {t('common.buttons.cancel')}
-          </Button>
-          <Button type="submit" disabled={mutation.isPending || noActiveYear}>
-            {mutation.isPending ? t('common.messages.creating') : t('staff.createTeacher')}
-          </Button>
-        </div>
+            <PhoneFormFields
+              control={form.control}
+              countryName="emergencyContactPhoneCountry"
+              phoneName="emergencyContactPhone"
+              phoneLabel={t('staff.contactPhone')}
+              hideCountry
+            />
+          </StepperContent>
+        </RegistryCreateWizardShell>
       </form>
     </Form>
   );

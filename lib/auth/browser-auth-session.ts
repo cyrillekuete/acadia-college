@@ -1,10 +1,13 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { getSupabaseUserOrClearStaleSession } from '@/lib/auth/stale-session';
-import { createClientOrNull, createSignInClient } from '@/lib/supabase/client';
+import { createClientOrNull } from '@/lib/supabase/client';
 
 /**
- * Resolves the current Supabase Auth user in the browser, checking the default
- * client plus both remember-me storage backends (localStorage / sessionStorage).
+ * Resolves the current Supabase Auth user in the browser.
+ *
+ * Sign-in sessions live entirely in the shared cookie jar — “Remember me”
+ * only controls cookie lifetime, not storage backend — so the default
+ * client sees every session.
  */
 export async function getBrowserAuthSession(): Promise<{
   user: User;
@@ -14,26 +17,15 @@ export async function getBrowserAuthSession(): Promise<{
     return null;
   }
 
-  const clients: SupabaseClient[] = [];
-  const defaultClient = createClientOrNull();
-  if (defaultClient) clients.push(defaultClient);
+  const supabase = createClientOrNull();
+  if (!supabase) {
+    return null;
+  }
 
-  const remembered = createSignInClient(true);
-  if (remembered) clients.push(remembered);
+  const user = await getSupabaseUserOrClearStaleSession(supabase);
 
-  const sessionOnly = createSignInClient(false);
-  if (sessionOnly) clients.push(sessionOnly);
-
-  const seen = new Set<SupabaseClient>();
-  for (const supabase of clients) {
-    if (seen.has(supabase)) continue;
-    seen.add(supabase);
-
-    const user = await getSupabaseUserOrClearStaleSession(supabase);
-
-    if (user) {
-      return { user, supabase };
-    }
+  if (user) {
+    return { user, supabase };
   }
 
   return null;

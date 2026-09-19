@@ -96,7 +96,8 @@ async function fetchClassMasterScope(
     throw error;
   }
 
-  return ((data ?? []) as Array<{ classId: string; Class?: unknown }>).map((row) => {
+  return ((data ?? []) as unknown as Array<{ classId: string; Class?: unknown }>).map(
+    (row) => {
     const classRow = unwrapRelation<{ name?: string }>(row.Class);
     return {
       classId: row.classId,

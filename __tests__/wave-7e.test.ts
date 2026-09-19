@@ -211,6 +211,7 @@ describe('rowMatchesSubjectListFilters', () => {
         groupingId: null,
         levelId: null,
         termId: null,
+        allYears: false,
       }),
     ).toBe(true);
     expect(
@@ -221,6 +222,7 @@ describe('rowMatchesSubjectListFilters', () => {
           groupingId: null,
           levelId: null,
           termId: null,
+          allYears: false,
         },
       ),
     ).toBe(false);
@@ -233,6 +235,7 @@ describe('rowMatchesSubjectListFilters', () => {
         groupingId: 'grp-1',
         levelId: 'level-1',
         termId: 'term-1',
+        allYears: false,
       }),
     ).toBe(true);
     expect(
@@ -241,6 +244,7 @@ describe('rowMatchesSubjectListFilters', () => {
         groupingId: 'grp-2',
         levelId: null,
         termId: null,
+        allYears: false,
       }),
     ).toBe(false);
   });
@@ -254,6 +258,7 @@ describe('rowMatchesSubjectListFilters', () => {
           groupingId: null,
           levelId: null,
           termId: 'term-1',
+          allYears: false,
         },
       ),
     ).toBe(true);

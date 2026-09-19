@@ -89,7 +89,7 @@ export function Header() {
 
         {/* HeaderTopbar */}
         <div className="flex items-center gap-3">
-          <AcademicYearSwitcher />
+          {!mobileMode && <AcademicYearSwitcher />}
           <NotificationsSheet
             trigger={
               <Button

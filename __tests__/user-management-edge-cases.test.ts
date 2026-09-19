@@ -23,7 +23,9 @@ const managers = (overrides: Partial<ManagerAccount>[] = []): ManagerAccount[] =
     { id: 'admin-1', status: UserStatus.ACTIVE, isTrashed: false, roleSlug: 'admin' },
     { id: 'reg-1', status: UserStatus.ACTIVE, isTrashed: false, roleSlug: 'registrar' },
   ];
-  return overrides.length ? [...base, ...overrides] : base;
+  return overrides.length
+    ? [...base, ...(overrides as ManagerAccount[])]
+    : base;
 };
 
 describe('last-manager lockout', () => {

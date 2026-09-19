@@ -18,6 +18,11 @@ import {
   getSupabaseUserOrClearStaleSession,
   isStaleRefreshTokenError,
 } from '@/lib/auth/stale-session';
+import {
+  resolveRememberMeMarker,
+  resolveSignInCookieMaxAge,
+  shouldPersistSessionCookie,
+} from '@/lib/supabase/remember-me';
 import type { AcadiaUserProfile } from '@/lib/supabase/queries/user';
 
 function activeProfile(
@@ -244,6 +249,44 @@ describe('password recovery callback helpers', () => {
     expect(getAuthCallbackErrorMessage('recovery_exchange')).toContain(
       'reset link',
     );
+  });
+});
+
+describe('remember-me cookie policy', () => {
+  it('keeps persistent maxAge when remember me is checked', () => {
+    expect(
+      resolveSignInCookieMaxAge(true, 'token-value', { maxAge: 34560000 }),
+    ).toBe(34560000);
+  });
+
+  it('returns undefined (session cookie) when remember me is unchecked', () => {
+    expect(
+      resolveSignInCookieMaxAge(false, 'token-value', { maxAge: 34560000 }),
+    ).toBeUndefined();
+  });
+
+  it('always preserves removals so sign-out still deletes cookies', () => {
+    expect(resolveSignInCookieMaxAge(true, '', { maxAge: 34560000 })).toBe(0);
+    expect(resolveSignInCookieMaxAge(false, '', { maxAge: 34560000 })).toBe(0);
+    expect(
+      resolveSignInCookieMaxAge(true, 'token-value', { maxAge: 0 }),
+    ).toBe(0);
+    expect(
+      resolveSignInCookieMaxAge(false, 'token-value', { maxAge: 0 }),
+    ).toBe(0);
+  });
+
+  it('persists sessions only for the checked remember-me marker', () => {
+    expect(shouldPersistSessionCookie('1')).toBe(true);
+    expect(shouldPersistSessionCookie('0')).toBe(false);
+    expect(shouldPersistSessionCookie(null)).toBe(false);
+    expect(shouldPersistSessionCookie(undefined)).toBe(false);
+  });
+
+  it('resolves the marker from a tri-state choice (null = unknown)', () => {
+    expect(resolveRememberMeMarker(true)).toBe('1');
+    expect(resolveRememberMeMarker(false)).toBe('0');
+    expect(resolveRememberMeMarker(null)).toBeNull();
   });
 });
 

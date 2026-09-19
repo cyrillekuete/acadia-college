@@ -170,19 +170,22 @@ export async function fetchLinkedStudentsForGuardian(
     { classId: string | null; className: string | null }
   >();
 
+  const enrollmentRows = (enrollments ?? []) as unknown as Array<{
+    studentProfileId: string;
+    classId: string | null;
+    createdAt: string;
+    Class?: unknown;
+  }>;
+
   for (const studentProfileId of studentProfileIds) {
-    const rows = (enrollments ?? []).filter(
+    const rows = enrollmentRows.filter(
       (row) => row.studentProfileId === studentProfileId,
-    ) as Array<{
-      classId: string | null;
-      createdAt: string;
-      Class?: unknown;
-    }>;
+    );
     const classId = pickPreferredEnrolledClassId(rows);
     const row = rows.find((entry) => entry.classId === classId) ?? rows[0];
     const classRow = unwrapRelation<{ name?: string }>(row?.Class);
     enrollmentByStudent.set(studentProfileId, {
-      classId,
+      classId: classId ?? null,
       className: classRow?.name?.trim() ?? null,
     });
   }

@@ -72,7 +72,9 @@ export function missingSubjectsForPeriod(
     } else if (period.kind === 'annual') {
       average = scores.annualAverage;
     } else {
-      average = termScore(scores, parseReportCardTerm(period.term));
+      const term = parseReportCardTerm(period.term);
+      average =
+        term === 'annual' ? scores.annualAverage : termScore(scores, term);
     }
     if (average == null) {
       missingSubjectIds.push(subject.subjectId);

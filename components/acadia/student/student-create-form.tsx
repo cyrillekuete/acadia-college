@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ComponentProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,11 +28,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  RegistryCreateWizardShell,
+  StepperContent,
+} from '@/components/acadia/registry/registry-create-wizard-shell';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { studentCreateSchema, type StudentCreateInput, type StudentCreateFormValues } from '@/lib/acadia/student-create-schemas';
+import {
+  STUDENT_CREATE_STEP_FIELDS,
+  studentCreateSchema,
+  type StudentCreateInput,
+  type StudentCreateFormValues,
+} from '@/lib/acadia/student-create-schemas';
 import { useStudentCreateMutation } from '@/hooks/use-student-create-mutation';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import {
@@ -213,16 +220,91 @@ export function StudentCreateForm() {
     router.push(`/students/${result.studentProfileId}`);
   }
 
+  const [activeStep, setActiveStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  const stepCount = 5;
+
+  const wizardSteps = useMemo(
+    () => [
+      {
+        id: 1,
+        title: t('students.identity'),
+        description: t('students.createWizard.step1Description'),
+        panelTitle: t('students.createWizard.step1PanelTitle'),
+        panelDescription: t('students.createWizard.step1PanelDescription'),
+      },
+      {
+        id: 2,
+        title: t('students.contactInfo'),
+        description: t('students.createWizard.step2Description'),
+        panelTitle: t('students.createWizard.step2PanelTitle'),
+        panelDescription: t('students.createWizard.step2PanelDescription'),
+      },
+      {
+        id: 3,
+        title: t('students.academicInfo'),
+        description: t('students.createWizard.step3Description'),
+        panelTitle: t('students.createWizard.step3PanelTitle'),
+        panelDescription: t('students.createWizard.step3PanelDescription'),
+      },
+      {
+        id: 4,
+        title: t('students.parentGuardian'),
+        description: t('students.createWizard.step4Description'),
+        panelTitle: t('students.createWizard.step4PanelTitle'),
+        panelDescription: t('students.createWizard.step4PanelDescription'),
+      },
+      {
+        id: 5,
+        title: t('students.emergencyMedical'),
+        description: t('students.createWizard.step5Description'),
+        panelTitle: t('students.createWizard.step5PanelTitle'),
+        panelDescription: t('students.createWizard.step5PanelDescription'),
+      },
+    ],
+    [t],
+  );
+
+  async function handleContinue() {
+    const fields = STUDENT_CREATE_STEP_FIELDS[activeStep];
+    if (fields?.length) {
+      const ok = await form.trigger(fields);
+      if (!ok) {
+        const firstInvalid = fields.find((name) => form.getFieldState(name).invalid);
+        if (firstInvalid) {
+          form.setFocus(firstInvalid);
+        }
+        return;
+      }
+    }
+    const next = Math.min(stepCount, activeStep + 1);
+    setActiveStep(next);
+    setMaxStepReached((prev) => Math.max(prev, next));
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-
-        {/* ── Section 1: Identity ─────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('students.identity')}</CardTitle>
-          </CardHeader>
-          <CardContent className={SECTION_GRID}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <RegistryCreateWizardShell
+          steps={wizardSteps}
+          activeStep={activeStep}
+          maxStepReached={maxStepReached}
+          onStepChange={setActiveStep}
+          backHref="/students"
+          backToListLabel={t('students.createWizard.backToStudents')}
+          stepBackLabel={t('common.buttons.back')}
+          cancelLabel={t('common.buttons.cancel')}
+          continueLabel={t('students.createWizard.continue')}
+          submitLabel={
+            mutation.isPending ? t('common.messages.creating') : t('students.createStudent')
+          }
+          onBack={() => setActiveStep((s) => Math.max(1, s - 1))}
+          onContinue={() => void handleContinue()}
+          onCancel={() => router.push('/students')}
+          isLastStep={activeStep === stepCount}
+          isSubmitting={mutation.isPending}
+        >
+          <StepperContent value={1} className={SECTION_GRID}>
             <FormField control={form.control} name="first_name" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>{t('students.firstName')} <span className="text-destructive">*</span></StudentFieldLabel>
@@ -321,15 +403,9 @@ export function StudentCreateForm() {
                 </StudentFieldControl>
               </StudentFieldItem>
             )} />
-          </CardContent>
-        </Card>
+          </StepperContent>
 
-        {/* ── Section 2: Contact ──────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('students.contactInfo')}</CardTitle>
-          </CardHeader>
-          <CardContent className={SECTION_GRID}>
+          <StepperContent value={2} className={SECTION_GRID}>
             <FormField control={form.control} name="email" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.email')} <span className="text-destructive">*</span></StudentFieldLabel>
@@ -434,15 +510,9 @@ export function StudentCreateForm() {
                 </StudentFieldControl>
               </StudentFieldItem>
             )} />
-          </CardContent>
-        </Card>
+          </StepperContent>
 
-        {/* ── Section 3: Academic ─────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('students.academicInfo')}</CardTitle>
-          </CardHeader>
-          <CardContent className={SECTION_GRID}>
+          <StepperContent value={3} className={SECTION_GRID}>
             <FormField control={form.control} name="subsystem" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>{t('catalog.subSystemLabel')}</StudentFieldLabel>
@@ -649,15 +719,9 @@ export function StudentCreateForm() {
                 </FormItem>
               )}
             />
-          </CardContent>
-        </Card>
+          </StepperContent>
 
-        {/* ── Section 4: Parent / Guardian ────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('students.parentGuardian')}</CardTitle>
-          </CardHeader>
-          <CardContent className={ROW_GRID_2}>
+          <StepperContent value={4} className={ROW_GRID_2}>
             <FormField control={form.control} name="parent_name" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.fullName')} <span className="text-destructive">*</span></StudentFieldLabel>
@@ -767,15 +831,9 @@ export function StudentCreateForm() {
                 </StudentFieldControl>
               </StudentFieldItem>
             )} />
-          </CardContent>
-        </Card>
+          </StepperContent>
 
-        {/* ── Section 5: Emergency / Medical (optional) ───────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('students.emergencyMedical')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <StepperContent value={5} className="space-y-4">
             <div className={ROW_GRID_2}>
               <FormField control={form.control} name="emergency_contact_name" render={({ field }) => (
                 <StudentFieldItem>
@@ -856,23 +914,8 @@ export function StudentCreateForm() {
                 </StudentFieldItem>
               )} />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Actions ─────────────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/students')}
-            disabled={mutation.isPending}
-          >
-            {t('common.buttons.cancel')}
-          </Button>
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? t('common.messages.creating') : t('students.createStudent')}
-          </Button>
-        </div>
+          </StepperContent>
+        </RegistryCreateWizardShell>
       </form>
     </Form>
   );

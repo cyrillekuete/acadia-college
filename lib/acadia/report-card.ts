@@ -384,8 +384,9 @@ export function buildReportCardData(
   }
 
   const periodTerms: ReportCardTerm[] = [
-    ...Array.from({ length: Math.max(structure.termsPerYear, 3) }, (_, index) =>
-      String(index + 1),
+    ...Array.from(
+      { length: Math.max(structure.termsPerYear, 3) },
+      (_, index) => String(index + 1) as ReportCardTerm,
     ),
     'annual',
   ];
@@ -531,15 +532,17 @@ export function buildReportCardData(
       term2: averagesByPeriod.get('2')?.get(studentId),
       term3: averagesByPeriod.get('3')?.get(studentId),
       termAverages: Object.fromEntries(
-        Array.from({ length: structure.termsPerYear }, (_, index) => {
-          const key = String(index + 1);
+        (Array.from({ length: structure.termsPerYear }, (_, index) => {
+          const key = String(index + 1) as ReportCardTerm;
           return [key, averagesByPeriod.get(key)?.get(studentId)] as const;
-        }).filter((entry): entry is [string, number] => typeof entry[1] === 'number'),
+        }).filter((entry): entry is [ReportCardTerm, number] =>
+          typeof entry[1] === 'number',
+        ) as [ReportCardTerm, number][]),
       ),
       annualAvg: averagesByPeriod.get('annual')?.get(studentId),
-      rank1: ranksByPeriod.get('1')?.get(studentId),
-      rank2: ranksByPeriod.get('2')?.get(studentId),
-      rank3: ranksByPeriod.get('3')?.get(studentId),
+      rank1: ranksByPeriod.get('1' as ReportCardTerm)?.get(studentId),
+      rank2: ranksByPeriod.get('2' as ReportCardTerm)?.get(studentId),
+      rank3: ranksByPeriod.get('3' as ReportCardTerm)?.get(studentId),
       rank: ranksByPeriod.get(term)?.get(studentId),
       promotionAvg: promotion.average,
       promotionStatus: promotion.status,

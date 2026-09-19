@@ -10,6 +10,7 @@ import {
 import { getSafeRedirectPath } from '@/lib/auth/safe-redirect-path';
 import { getSupabaseUserOrClearStaleSession } from '@/lib/auth/stale-session';
 import { getSupabaseEnvOrNull } from '@/lib/supabase/env';
+import { REMEMBER_ME_COOKIE, shouldPersistSessionCookie } from '@/lib/supabase/remember-me';
 
 export async function updateSession(request: NextRequest) {
   const env = getSupabaseEnvOrNull();
@@ -18,6 +19,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   let supabaseResponse = NextResponse.next({ request });
+
+  const rememberMe = shouldPersistSessionCookie(
+    request.cookies.get(REMEMBER_ME_COOKIE)?.value,
+  );
 
   const supabase = createServerClient(env.url, env.key, {
     cookies: {
@@ -29,9 +34,15 @@ export async function updateSession(request: NextRequest) {
           request.cookies.set(name, value),
         );
         supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options),
-        );
+        cookiesToSet.forEach(({ name, value, options }) => {
+          // Removals must stay removals so sign-out and chunk cleanup work.
+          let maxAge: number | undefined = options.maxAge;
+          if (value && options.maxAge !== 0 && !rememberMe) {
+            // Session cookie: no Max-Age, cleared when the browser closes.
+            maxAge = undefined;
+          }
+          supabaseResponse.cookies.set(name, value, { ...options, maxAge });
+        });
       },
     },
   });
