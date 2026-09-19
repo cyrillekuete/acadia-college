@@ -52,7 +52,7 @@ export async function updateStaffProfile(
       title: values.title,
       firstName,
       lastName,
-      personalEmail: values.personalEmail.trim().toLowerCase(),
+      personalEmail: emptyToNull(values.personalEmail.trim().toLowerCase()),
       phone: emptyToNull(values.phone),
       address: emptyToNull(values.address),
       city: emptyToNull(values.city),

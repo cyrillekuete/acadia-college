@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -181,7 +181,15 @@ export function StudentCreateForm() {
     }
   }, [catalogSubSystem, catalogBranch, levels, form]);
 
+  const [activeStep, setActiveStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  const stepCount = 5;
+
   async function onSubmit(values: StudentCreateInput) {
+    if (activeStep !== stepCount) {
+      return;
+    }
+
     const result = await mutation.mutateAsync(values).catch((err: Error) => {
       toast.error(err.message ?? t('students.createFailed'));
       return null;
@@ -219,10 +227,6 @@ export function StudentCreateForm() {
     });
     router.push(`/students/${result.studentProfileId}`);
   }
-
-  const [activeStep, setActiveStep] = useState(1);
-  const [maxStepReached, setMaxStepReached] = useState(1);
-  const stepCount = 5;
 
   const wizardSteps = useMemo(
     () => [
@@ -282,9 +286,18 @@ export function StudentCreateForm() {
     setMaxStepReached((prev) => Math.max(prev, next));
   }
 
+  function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    if (activeStep !== stepCount) {
+      event.preventDefault();
+      void handleContinue();
+      return;
+    }
+    void form.handleSubmit(onSubmit)(event);
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={handleFormSubmit}>
         <RegistryCreateWizardShell
           steps={wizardSteps}
           activeStep={activeStep}

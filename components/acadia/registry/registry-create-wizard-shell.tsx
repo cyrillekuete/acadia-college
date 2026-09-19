@@ -101,7 +101,7 @@ export function RegistryCreateWizardShell({
             return (
               <StepperItem key={step.id} step={step.id} className="not-last:flex-none items-stretch justify-start">
                 <StepperTrigger
-                  disabled={isFuture}
+                  disabled={isFuture || isSubmitting}
                   className={cn(
                     'w-full items-start gap-3 rounded-lg px-2 py-3 text-start transition-colors',
                     activeStep === step.id && 'bg-background/80 shadow-sm',
@@ -133,12 +133,12 @@ export function RegistryCreateWizardShell({
 
         <StepperPanel className="min-w-0 flex-1">
           <Card className="border-border/60 shadow-sm">
-            <CardHeader className="space-y-1.5 pb-4">
+            <CardHeader className="space-y-1.5 py-4">
               <CardTitle className="text-xl">{current?.panelTitle}</CardTitle>
               <CardDescription>{current?.panelDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">{children}</CardContent>
-            <CardFooter className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <CardFooter className="flex flex-col-reverse gap-3 border-t py-6 sm:flex-row sm:items-center sm:justify-between">
               <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
                 {cancelLabel}
               </Button>

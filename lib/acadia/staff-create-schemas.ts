@@ -45,10 +45,10 @@ export const staffCreateSchema = z
     nationality: z.string().max(80).optional().or(z.literal('')),
     idNumber: z.string().max(80).optional().or(z.literal('')),
 
-    personalEmail: z
-      .string()
-      .email('validation.email')
-      .max(200),
+    personalEmail: z.union([
+      z.literal(''),
+      z.string().email('validation.email').max(200),
+    ]),
     phoneCountry: phoneCountryField(),
     phone: phoneNationalField(true, 'validation.required.phone'),
 
@@ -61,6 +61,7 @@ export const staffCreateSchema = z
     subSystem: z.enum(ACADEMIC_SUB_SYSTEMS),
     subjectIds: z.array(z.string()).default([]),
     classIds: z.array(z.string()).default([]),
+    classMasterClassIds: z.array(z.string()).default([]),
     academicYearId: z.string().min(1, 'validation.required.activeAcademicYear'),
 
     employmentType: staffEmploymentTypeEnum,
@@ -94,6 +95,18 @@ export const staffCreateSchema = z
       },
       ctx,
     );
+
+    const teachingClassIds = new Set(data.classIds ?? []);
+    for (const classId of data.classMasterClassIds ?? []) {
+      if (!teachingClassIds.has(classId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['classMasterClassIds'],
+          message: 'validation.classMasterMustTeach',
+        });
+        break;
+      }
+    }
   })
   .transform((data) => {
     const {
@@ -106,6 +119,7 @@ export const staffCreateSchema = z
       ...rest,
       subjectIds: rest.subjectIds ?? [],
       classIds: rest.classIds ?? [],
+      classMasterClassIds: rest.classMasterClassIds ?? [],
       monthlySalary:
         rest.monthlySalary === undefined || Number.isNaN(rest.monthlySalary)
           ? undefined
@@ -125,6 +139,7 @@ export const STAFF_CREATE_STEP_FIELDS: Record<number, (keyof StaffCreateFormValu
     'subSystem',
     'subjectIds',
     'classIds',
+    'classMasterClassIds',
     'academicYearId',
     'employmentType',
     'hireDate',
@@ -144,7 +159,10 @@ export const staffUpdateSchema = z
     title: staffTitleEnum,
     firstName: z.string().min(1, 'validation.required.firstName').max(80),
     lastName: z.string().min(1, 'validation.required.lastName').max(80),
-    personalEmail: z.string().email('validation.email').max(200),
+    personalEmail: z.union([
+      z.literal(''),
+      z.string().email('validation.email').max(200),
+    ]),
     phoneCountry: phoneCountryField(),
     phone: phoneNationalField(true, 'validation.required.phone'),
     address: z.string().max(500).optional().or(z.literal('')),

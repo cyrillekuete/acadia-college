@@ -267,6 +267,7 @@ function StepperTrigger({ asChild = false, className, children, tabIndex, ...pro
       onKeyDown={handleKeyDown}
       disabled={isDisabled}
       {...props}
+      type="button"
     >
       {children}
     </button>

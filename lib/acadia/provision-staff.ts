@@ -127,6 +127,15 @@ async function rollbackStaff(
 ) {
   const steps: Array<{ label: string; run: () => Promise<{ error: unknown }> }> = [
     {
+      label: 'Class.staffProfileId',
+      run: async () =>
+        admin
+          .from('Class')
+          .update({ staffProfileId: null })
+          .eq('staffProfileId', authId)
+          .eq('tenantId', tenantId),
+    },
+    {
       label: 'StaffClassSubjectAssignment',
       run: async () =>
         admin
@@ -242,6 +251,32 @@ async function insertClassAssignments(
   return { ok: true };
 }
 
+async function assignClassMasters(
+  supabase: SupabaseClient,
+  tenantId: string,
+  staffProfileId: string,
+  classMasterClassIds: string[],
+  now: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (classMasterClassIds.length === 0) {
+    return { ok: true };
+  }
+
+  const { error } = await supabase
+    .from('Class')
+    .update({ staffProfileId, updatedAt: now })
+    .in('id', classMasterClassIds)
+    .eq('tenantId', tenantId);
+
+  if (error) {
+    return {
+      ok: false,
+      message: error.message ?? 'Failed to assign class master.',
+    };
+  }
+  return { ok: true };
+}
+
 async function isLoginEmailTaken(
   supabase: SupabaseClient,
   email: string,
@@ -268,7 +303,7 @@ export async function provisionStaff(
   const lastName = input.lastName.trim();
   const temporaryPassword = generateTemporaryPassword();
   const displayName = formatStaffDisplayName(input.title, firstName, lastName);
-  const personalEmail = input.personalEmail.trim().toLowerCase();
+  const personalEmail = emptyToNull(input.personalEmail.trim().toLowerCase());
 
   const roleResult = await resolveStaffRoleId(admin, input.roleId);
   if (!roleResult.ok) {
@@ -471,6 +506,18 @@ export async function provisionStaff(
   if (!classSubjectResult.ok) {
     await rollbackStaff(admin, authId, tenantId);
     return { ok: false, message: classSubjectResult.message, status: 400 };
+  }
+
+  const classMasterResult = await assignClassMasters(
+    admin,
+    tenantId,
+    authId,
+    input.classMasterClassIds,
+    now,
+  );
+  if (!classMasterResult.ok) {
+    await rollbackStaff(admin, authId, tenantId);
+    return { ok: false, message: classMasterResult.message, status: 400 };
   }
 
   return {

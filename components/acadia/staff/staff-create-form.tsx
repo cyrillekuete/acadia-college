@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -158,6 +158,7 @@ export function StaffCreateForm() {
       subSystem: 'ENGLISH',
       subjectIds: [],
       classIds: [],
+      classMasterClassIds: [],
       academicYearId: '',
       hireDate: '',
       staffCode: '',
@@ -167,6 +168,7 @@ export function StaffCreateForm() {
   });
 
   const watchedSubSystem = form.watch('subSystem') as AcademicSubSystem;
+  const watchedClassIds = form.watch('classIds') ?? [];
   const { data: allSubjects = [] } = useSubjectOptions(activeYearId);
   const { data: classOptions = [] } = useClassesForFilters({
     subSystem: watchedSubSystem,
@@ -195,6 +197,11 @@ export function StaffCreateForm() {
     [classOptions],
   );
 
+  const classMasterOptions = useMemo(() => {
+    const selected = new Set(watchedClassIds);
+    return classSelectOptions.filter((option) => selected.has(option.id));
+  }, [classSelectOptions, watchedClassIds]);
+
   useEffect(() => {
     if (defaultRoleId) {
       form.setValue('roleId', defaultRoleId, { shouldDirty: false });
@@ -210,9 +217,27 @@ export function StaffCreateForm() {
   useEffect(() => {
     form.setValue('subjectIds', [], { shouldDirty: true });
     form.setValue('classIds', [], { shouldDirty: true });
+    form.setValue('classMasterClassIds', [], { shouldDirty: true });
   }, [watchedSubSystem, form]);
 
+  useEffect(() => {
+    const teaching = new Set(watchedClassIds);
+    const current = form.getValues('classMasterClassIds') ?? [];
+    const next = current.filter((id) => teaching.has(id));
+    if (next.length !== current.length) {
+      form.setValue('classMasterClassIds', next, { shouldDirty: true });
+    }
+  }, [watchedClassIds, form]);
+
+  const [activeStep, setActiveStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  const stepCount = 5;
+
   async function onSubmit(values: StaffCreateInput) {
+    if (activeStep !== stepCount) {
+      return;
+    }
+
     if (!activeYearId) {
       toast.error(t('staff.noActiveYear'));
       return;
@@ -249,10 +274,6 @@ export function StaffCreateForm() {
   }
 
   const noActiveYear = !activeYearId;
-
-  const [activeStep, setActiveStep] = useState(1);
-  const [maxStepReached, setMaxStepReached] = useState(1);
-  const stepCount = 5;
 
   const wizardSteps = useMemo(
     () => [
@@ -312,9 +333,18 @@ export function StaffCreateForm() {
     setMaxStepReached((prev) => Math.max(prev, next));
   }
 
+  function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    if (activeStep !== stepCount) {
+      event.preventDefault();
+      void handleContinue();
+      return;
+    }
+    void form.handleSubmit(onSubmit)(event);
+  }
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={handleFormSubmit}>
         <RegistryCreateWizardShell
           steps={wizardSteps}
           activeStep={activeStep}
@@ -493,9 +523,7 @@ export function StaffCreateForm() {
               name="personalEmail"
               render={({ field }) => (
                 <FormItem className="sm:col-span-2">
-                  <FormLabel>
-                    {t('staff.emailAddress')} <span className="text-destructive">*</span>
-                  </FormLabel>
+                  <FormLabel>{t('staff.emailAddress')}</FormLabel>
                   <FormControl>
                     <Input type="email" {...field} />
                   </FormControl>
@@ -746,6 +774,27 @@ export function StaffCreateForm() {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="classMasterClassIds"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('staff.classMasterOf')}</FormLabel>
+                  <FormDescription>
+                    {t('staff.classMasterOfHint')}
+                  </FormDescription>
+                  <CheckboxMultiSelect
+                    options={classMasterOptions}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    disabled={noActiveYear || classMasterOptions.length === 0}
+                    emptyMessage={t('staff.selectClassesToTeachFirst')}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </StepperContent>
 
           <StepperContent value={5} className={GRID}>

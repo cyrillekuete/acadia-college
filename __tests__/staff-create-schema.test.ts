@@ -14,6 +14,7 @@ const basePayload = {
   subSystem: 'ENGLISH' as const,
   subjectIds: [] as string[],
   classIds: [] as string[],
+  classMasterClassIds: [] as string[],
   academicYearId: 'year-1',
   employmentType: 'FULL_TIME' as const,
   emergencyContactPhoneCountry: 'Cameroon',
@@ -57,7 +58,15 @@ describe('staffCreateSchema', () => {
     }
   });
 
-  it('requires a valid personal email', () => {
+  it('allows an empty personal email', () => {
+    const result = staffCreateSchema.safeParse({
+      ...basePayload,
+      personalEmail: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid personal email when provided', () => {
     const result = staffCreateSchema.safeParse({
       ...basePayload,
       personalEmail: 'not-an-email',
@@ -90,6 +99,34 @@ describe('staffCreateSchema', () => {
       academicYearId: '',
     });
     expect(result.success).toBe(false);
+  });
+
+  it('accepts class master ids that are a subset of classes to teach', () => {
+    const result = staffCreateSchema.safeParse({
+      ...basePayload,
+      classIds: ['class-a', 'class-b'],
+      classMasterClassIds: ['class-a', 'class-b'],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.classMasterClassIds).toEqual(['class-a', 'class-b']);
+    }
+  });
+
+  it('rejects class master ids not in classes to teach', () => {
+    const result = staffCreateSchema.safeParse({
+      ...basePayload,
+      classIds: ['class-a'],
+      classMasterClassIds: ['class-a', 'class-other'],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some(
+          (i) => i.message === 'validation.classMasterMustTeach',
+        ),
+      ).toBe(true);
+    }
   });
 });
 
