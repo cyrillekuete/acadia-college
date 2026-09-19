@@ -135,7 +135,6 @@ export async function provisionStudentAndParent(
     student_id: studentId,
     first_name: input.first_name.trim(),
     last_name: input.last_name.trim(),
-    middle_name: input.middle_name?.trim() ?? null,
     email: studentEmail,
     phone: input.phone ?? null,
     date_of_birth: input.date_of_birth ?? null,

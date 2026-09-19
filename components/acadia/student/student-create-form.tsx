@@ -108,7 +108,6 @@ export function StudentCreateForm() {
     defaultValues: {
       first_name: '',
       last_name: '',
-      middle_name: '',
       date_of_birth: '',
       gender: undefined,
       place_of_birth: '',
@@ -331,16 +330,6 @@ export function StudentCreateForm() {
             <FormField control={form.control} name="last_name" render={({ field }) => (
               <StudentFieldItem>
                 <StudentFieldLabel>{t('students.lastName')} <span className="text-destructive">*</span></StudentFieldLabel>
-                <StudentFieldControl>
-                  <FormControl><Input className="w-full" {...field} /></FormControl>
-                  <FormMessage />
-                </StudentFieldControl>
-              </StudentFieldItem>
-            )} />
-
-            <FormField control={form.control} name="middle_name" render={({ field }) => (
-              <StudentFieldItem>
-                <StudentFieldLabel>{t('students.middleName')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" {...field} /></FormControl>
                   <FormMessage />

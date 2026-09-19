@@ -15,7 +15,6 @@ export const studentCreateSchema = z
     // Identity
     first_name: z.string().min(1, 'validation.required.firstName'),
     last_name: z.string().min(1, 'validation.required.lastName'),
-    middle_name: z.string().optional(),
     date_of_birth: z.string().optional(),
     gender: genderEnum.optional(),
     place_of_birth: z.string().optional(),
@@ -144,7 +143,6 @@ export const STUDENT_CREATE_STEP_FIELDS: Record<
   1: [
     'first_name',
     'last_name',
-    'middle_name',
     'date_of_birth',
     'gender',
     'place_of_birth',
