@@ -45,7 +45,7 @@ export function RegionSelect({
 
   return (
     <Select
-      value={value || undefined}
+      value={value ?? ''}
       onValueChange={onValueChange}
       disabled={isDisabled}
     >

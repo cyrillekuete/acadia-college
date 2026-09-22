@@ -24,7 +24,7 @@ export function CameroonRegionSelect({
   className,
 }: CameroonRegionSelectProps) {
   return (
-    <Select value={value || undefined} onValueChange={onValueChange} disabled={disabled}>
+    <Select value={value ?? ''} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className={cn('w-full', className)}>
         <SelectValue placeholder="Select region" />
       </SelectTrigger>

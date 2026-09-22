@@ -28,6 +28,105 @@ export function pickGuardianRoleId(
   return null;
 }
 
+const GUARDIAN_ROLE_OR_FILTER = GUARDIAN_ROLE_SLUGS.map(
+  (slug) => `slug.ilike.${slug}`,
+).join(',');
+
+const PARENT_ROLE_DESCRIPTION =
+  'Parent or guardian linked to one or more students.';
+
+export type EnsureGuardianRoleResult =
+  | { ok: true; roleId: string }
+  | { ok: false; message: string; status: number };
+
+async function readActiveGuardianRoles(
+  admin: SupabaseClient,
+  match: 'exact' | 'insensitive',
+): Promise<
+  | { ok: true; roles: GuardianRoleRow[] }
+  | { ok: false; message: string }
+> {
+  const query = admin
+    .from('UserRole')
+    .select('id, slug')
+    .eq('isTrashed', false);
+
+  const { data, error } =
+    match === 'exact'
+      ? await query.in('slug', [...GUARDIAN_ROLE_SLUGS])
+      : await query.or(GUARDIAN_ROLE_OR_FILTER);
+
+  if (error) {
+    return {
+      ok: false,
+      message: error.message ?? 'Failed to look up parent role.',
+    };
+  }
+
+  return { ok: true, roles: (data ?? []) as GuardianRoleRow[] };
+}
+
+/**
+ * Resolves the parent/guardian role, creating a protected `parent` role when
+ * the catalog was seeded without one.
+ */
+export async function ensureGuardianRoleId(
+  admin: SupabaseClient,
+): Promise<EnsureGuardianRoleResult> {
+  const exact = await readActiveGuardianRoles(admin, 'exact');
+  if (!exact.ok) {
+    return { ok: false, message: exact.message, status: 500 };
+  }
+
+  const exactId = pickGuardianRoleId(exact.roles);
+  if (exactId) {
+    return { ok: true, roleId: exactId };
+  }
+
+  const insensitive = await readActiveGuardianRoles(admin, 'insensitive');
+  if (!insensitive.ok) {
+    return { ok: false, message: insensitive.message, status: 500 };
+  }
+
+  const insensitiveId = pickGuardianRoleId(insensitive.roles);
+  if (insensitiveId) {
+    return { ok: true, roleId: insensitiveId };
+  }
+
+  const roleId = crypto.randomUUID();
+  const { error: insertError } = await admin.from('UserRole').insert({
+    id: roleId,
+    slug: 'parent',
+    name: 'Parent',
+    description: PARENT_ROLE_DESCRIPTION,
+    isTrashed: false,
+    isProtected: true,
+    isDefault: false,
+  });
+
+  if (!insertError) {
+    const confirmed = await readActiveGuardianRoles(admin, 'exact');
+    if (confirmed.ok) {
+      return { ok: true, roleId: pickGuardianRoleId(confirmed.roles) ?? roleId };
+    }
+    return { ok: true, roleId };
+  }
+
+  const raced = await readActiveGuardianRoles(admin, 'insensitive');
+  if (raced.ok) {
+    const racedId = pickGuardianRoleId(raced.roles);
+    if (racedId) {
+      return { ok: true, roleId: racedId };
+    }
+  }
+
+  return {
+    ok: false,
+    message: insertError.message ?? 'Parent/guardian role is not configured.',
+    status: 500,
+  };
+}
+
 export type GuardianUserInsert = {
   id: string;
   email: string;
@@ -117,30 +216,16 @@ export async function provisionGuardianProfileAndLink(
 ): Promise<ProvisionGuardianResult> {
   const now = new Date().toISOString();
 
-  const { data: roles, error: roleError } = await admin
-    .from('UserRole')
-    .select('id, slug')
-    .eq('isTrashed', false)
-    .in('slug', [...GUARDIAN_ROLE_SLUGS]);
-
-  if (roleError) {
+  const role = await ensureGuardianRoleId(admin);
+  if (!role.ok) {
     return {
       ok: false,
-      message: roleError.message ?? 'Failed to look up parent role.',
-      status: 500,
+      message: role.message,
+      status: role.status,
       createdUser: false,
     };
   }
-
-  const roleId = pickGuardianRoleId((roles ?? []) as GuardianRoleRow[]);
-  if (!roleId) {
-    return {
-      ok: false,
-      message: 'Parent/guardian role is not configured.',
-      status: 500,
-      createdUser: false,
-    };
-  }
+  const roleId = role.roleId;
 
   const { data: existingUser, error: existingUserError } = await admin
     .from('User')
