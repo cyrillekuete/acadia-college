@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRegistryApi } from '@/lib/acadia/require-registry-api';
 import { deactivateStaffProfile } from '@/lib/acadia/staff-lifecycle';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
+import { resolveStaffProfileId } from '@/lib/supabase/queries/staff-detail';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -24,9 +25,18 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   const admin = createAdminClient();
+  const resolvedId = await resolveStaffProfileId(
+    admin,
+    auth.ctx.tenantId,
+    profileId.trim(),
+  );
+  if (!resolvedId) {
+    return NextResponse.json({ message: 'Staff profile not found.' }, { status: 404 });
+  }
+
   const result = await deactivateStaffProfile(admin, {
     tenantId: auth.ctx.tenantId,
-    profileId: profileId.trim(),
+    profileId: resolvedId,
     actorUserId: auth.ctx.actorUserId,
   });
 

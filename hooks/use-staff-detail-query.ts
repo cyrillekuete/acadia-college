@@ -1,7 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchStaffDetail } from '@/lib/supabase/queries/staff-detail';
+import {
+  fetchStaffDetail,
+  StaffDetailNotFoundError,
+} from '@/lib/supabase/queries/staff-detail';
 import {
   isAcadiaTenantQueryEnabled,
   useAcadiaCollegeSession,
@@ -19,10 +22,13 @@ export function useStaffDetailQuery(staffId: string | undefined) {
       const supabase = requireBrowserClient();
       const detail = await fetchStaffDetail(supabase, tenantId!, staffId!);
       if (!detail) {
-        throw new Error('Staff not found.');
+        throw new StaffDetailNotFoundError();
       }
       return detail;
     },
+    meta: { suppressGlobalError: true },
+    retry: (failureCount, error) =>
+      !(error instanceof StaffDetailNotFoundError) && failureCount < 2,
     enabled:
       isAcadiaTenantQueryEnabled(sessionLoading, isError, session, tenantId) &&
       !!staffId,

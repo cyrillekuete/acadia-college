@@ -1,5 +1,4 @@
 'use client';
-'use client';
 
 import { ReactNode, useState } from 'react';
 import { RiErrorWarningFill } from '@remixicon/react';
@@ -11,12 +10,23 @@ import {
 import { toast } from 'sonner';
 import { Alert, AlertIcon, AlertTitle } from '@/components/ui/alert';
 
+declare module '@tanstack/react-query' {
+  interface Register {
+    queryMeta: {
+      suppressGlobalError?: boolean;
+    };
+  }
+}
+
 const QueryProvider = ({ children }: { children: ReactNode }) => {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         queryCache: new QueryCache({
-          onError: (error) => {
+          onError: (error, query) => {
+            if (query.meta?.suppressGlobalError) {
+              return;
+            }
             const message =
               error.message || 'Something went wrong. Please try again.';
 

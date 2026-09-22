@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+.cursor
+.agents
+**/*.md
+!README.md
+terminals
+coverage
+.vscode
+*.log
+npm-debug.log*
+.DS_Store

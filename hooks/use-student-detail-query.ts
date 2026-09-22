@@ -30,6 +30,7 @@ export function useStudentDetailQuery(studentId: string | undefined) {
       }
       return detail;
     },
+    meta: { suppressGlobalError: true },
     enabled:
       isAcadiaTenantQueryEnabled(sessionLoading, isError, session, tenantId) &&
       !!studentId,

@@ -13,6 +13,7 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { useAcadiaSignOut } from '@/hooks/use-acadia-sign-out';
+import { useInvalidateTenantScopedQueries } from '@/hooks/use-invalidate-tenant-queries';
 import { AcademicYearGate } from '@/components/acadia/academics/academic-year-gate';
 import { AcademicYearProvider } from '@/components/acadia/academics/academic-year-provider';
 import { StaffOnboardingGate } from '@/components/acadia/staff/staff-onboarding-gate';
@@ -31,6 +32,7 @@ export default function ProtectedLayout({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const signOut = useAcadiaSignOut();
+  useInvalidateTenantScopedQueries(session?.tenantId);
 
   const isAuthenticated = isAcadiaSessionReady(isLoading, isError, session);
   const mustSignOutForGate =

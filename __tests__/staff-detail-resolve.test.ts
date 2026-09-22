@@ -284,6 +284,27 @@ function detailClient(profile: StaffDetailRecord): SupabaseClient {
 }
 
 describe('fetchStaffDetail', () => {
+  it('loads the profile for the id the staff list navigates to', async () => {
+    const result = await fetchStaffDetail(
+      detailClient(PROFILE),
+      'tenant-1',
+      PROFILE.id,
+    );
+
+    expect(result?.id).toBe(PROFILE.id);
+    expect(result?.staffCode).toBe(PROFILE.staffCode);
+  });
+
+  it('returns null when the list id is outside the caller tenant', async () => {
+    const result = await fetchStaffDetail(
+      detailClient(PROFILE),
+      'other-tenant',
+      PROFILE.id,
+    );
+
+    expect(result).toBeNull();
+  });
+
   it('returns the staff row when User and Department are missing', async () => {
     const result = await fetchStaffDetail(
       detailClient(PROFILE),

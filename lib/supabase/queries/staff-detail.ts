@@ -34,6 +34,14 @@ export const STAFF_DETAIL_SELECT = `
 const STAFF_USER_SELECT =
   'id, email, name, status, country, timezone, lastSignInAt';
 
+/** Thrown when no StaffProfile matches the identifier in the caller's tenant. */
+export class StaffDetailNotFoundError extends Error {
+  constructor() {
+    super('Staff not found.');
+    this.name = 'StaffDetailNotFoundError';
+  }
+}
+
 const STAFF_DEPARTMENT_SELECT = 'code, nameEn, nameFr';
 
 export type StaffDetailRecord = {

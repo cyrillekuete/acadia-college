@@ -69,7 +69,7 @@ export async function fetchAcadiaUserProfile(
       supabase
         .from('User')
         .select(
-          'roleId, isTrashed, isProtected, avatar, UserRole(id, slug, name, isTrashed, createdAt, isProtected, isDefault)',
+          'tenantId, roleId, isTrashed, isProtected, avatar, UserRole(id, slug, name, isTrashed, createdAt, isProtected, isDefault)',
         )
         .eq('id', userId)
         .maybeSingle(),

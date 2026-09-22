@@ -3,6 +3,7 @@ import { requireRegistryApi } from '@/lib/acadia/require-registry-api';
 import { staffUpdateSchema } from '@/lib/acadia/staff-create-schemas';
 import { updateStaffProfile } from '@/lib/acadia/staff-lifecycle';
 import { createAdminClient, isAdminClientConfigured } from '@/lib/supabase/admin';
+import { resolveStaffProfileId } from '@/lib/supabase/queries/staff-detail';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -44,9 +45,18 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const admin = createAdminClient();
+  const resolvedId = await resolveStaffProfileId(
+    admin,
+    auth.ctx.tenantId,
+    profileId.trim(),
+  );
+  if (!resolvedId) {
+    return NextResponse.json({ message: 'Staff profile not found.' }, { status: 404 });
+  }
+
   const result = await updateStaffProfile(admin, {
     tenantId: auth.ctx.tenantId,
-    profileId: profileId.trim(),
+    profileId: resolvedId,
     actorUserId: auth.ctx.actorUserId,
     values: parsed.data,
   });

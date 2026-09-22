@@ -13,12 +13,42 @@ export type UsersTableRow = {
 };
 
 type LegacyUserRow = {
+  tenantId?: unknown;
   roleId?: unknown;
   isTrashed?: unknown;
   isProtected?: unknown;
   avatar?: unknown;
   UserRole?: AcadiaUserProfile['UserRole'] | AcadiaUserProfile['UserRole'][] | null;
 };
+
+function nonEmptyString(value: unknown): string | null {
+  if (value == null) return null;
+  const text = String(value).trim();
+  return text ? text : null;
+}
+
+/**
+ * Session tenant must match RLS `acadia_current_tenant_id()`.
+ * Legacy `"User"."tenantId"` wins when set; otherwise `users.tenant_id`.
+ */
+export function preferredTenantId(
+  legacyTenant: unknown,
+  usersTenant: unknown,
+): string | null {
+  const legacy = nonEmptyString(legacyTenant);
+  const users = nonEmptyString(usersTenant);
+  if (
+    process.env.NODE_ENV === 'development' &&
+    legacy &&
+    users &&
+    legacy !== users
+  ) {
+    console.warn(
+      'Acadia tenant mismatch: preferring legacy User.tenantId over users.tenant_id',
+    );
+  }
+  return legacy ?? users;
+}
 
 function asString(value: unknown, fallback = ''): string {
   return value != null ? String(value) : fallback;
@@ -60,7 +90,7 @@ export function mergeDualTableUserProfile(
     id: asString(usersRow.id),
     email: asString(usersRow.email),
     name: usersRow.name != null ? String(usersRow.name) : null,
-    tenantId: usersRow.tenant_id != null ? String(usersRow.tenant_id) : null,
+    tenantId: preferredTenantId(legacy?.tenantId, usersRow.tenant_id),
     status: asString(usersRow.status, 'active').toUpperCase(),
     roleId: roleId || asString(legacy?.roleId),
     isTrashed: Boolean(legacy?.isTrashed),

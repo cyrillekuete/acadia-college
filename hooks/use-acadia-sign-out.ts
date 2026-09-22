@@ -16,6 +16,8 @@ export function useAcadiaSignOut() {
       await supabase.auth.signOut();
     }
     queryClient.removeQueries({ queryKey: ['acadia-college-session'] });
+    queryClient.removeQueries({ queryKey: ['staff-list'] });
+    queryClient.removeQueries({ queryKey: ['staff-detail'] });
     router.push(SIGN_IN_PATH);
     router.refresh();
   }, [queryClient, router]);
