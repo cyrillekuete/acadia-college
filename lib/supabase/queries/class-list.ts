@@ -77,8 +77,11 @@ export async function fetchClassList(
 
   let enrollmentQuery = supabase
     .from('StudentEnrollment')
-    .select('classId')
+    .select(
+      'classId, StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey!inner(deletedAt)',
+    )
     .eq('tenantId', tenantId)
+    .is('StudentProfile.deletedAt', null)
     .in('classId', classIds);
   if (academicYearId) {
     enrollmentQuery = enrollmentQuery.eq('academicYearId', academicYearId);

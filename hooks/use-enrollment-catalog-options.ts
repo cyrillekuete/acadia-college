@@ -112,6 +112,7 @@ export function useStudentProfileOptions(search?: string) {
         .select('id, registrationNumber, User!StudentProfile_userId_tenantId_fkey ( name, email )')
         .eq('tenantId', tenantId!)
         .eq('isActive', true)
+        .is('deletedAt', null)
         .order('registrationNumber', { ascending: true })
         .limit(50);
       if (search?.trim()) {

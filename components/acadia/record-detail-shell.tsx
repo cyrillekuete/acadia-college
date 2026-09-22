@@ -22,6 +22,7 @@ export function RecordDetailShell({
   description,
   backHref,
   backLabel,
+  actions,
   isLoading,
   isError,
   error,
@@ -31,6 +32,7 @@ export function RecordDetailShell({
   description?: string;
   backHref: string;
   backLabel: string;
+  actions?: ReactNode;
   isLoading: boolean;
   isError: boolean;
   error: unknown;
@@ -38,13 +40,14 @@ export function RecordDetailShell({
 }) {
   return (
     <AcadiaPageShell title={title} description={description}>
-      <div className="mb-5">
+      <div className="mb-5 flex items-center justify-between gap-2">
         <Button variant="outline" size="sm" asChild>
           <Link href={backHref}>
             <ArrowLeft className="size-4" />
             {backLabel}
           </Link>
         </Button>
+        {actions}
       </div>
       {isLoading ? (
         <Skeleton className="h-64 w-full" />

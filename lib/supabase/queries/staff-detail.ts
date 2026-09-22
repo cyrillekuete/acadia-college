@@ -26,6 +26,7 @@ export const STAFF_DETAIL_SELECT = `
   officePhone,
   bio,
   isActive,
+  deletedAt,
   createdAt,
   updatedAt,
   departmentId
@@ -69,6 +70,7 @@ export type StaffDetailRecord = {
   officePhone: string | null;
   bio: string | null;
   isActive: boolean;
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
   departmentId: string | null;

@@ -320,12 +320,14 @@ export function StudentCreateForm() {
   }
 
   function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (activeStep !== stepCount) {
-      event.preventDefault();
       void handleContinue();
-      return;
     }
-    void form.handleSubmit(onSubmit, onInvalid)(event);
+  }
+
+  function handleCreateClick() {
+    void form.handleSubmit(onSubmit, onInvalid)();
   }
 
   return (
@@ -346,6 +348,7 @@ export function StudentCreateForm() {
           }
           onBack={() => setActiveStep((s) => Math.max(1, s - 1))}
           onContinue={() => void handleContinue()}
+          onSubmitClick={handleCreateClick}
           onCancel={() => router.push('/students')}
           isLastStep={activeStep === stepCount}
           isSubmitting={mutation.isPending}

@@ -145,6 +145,7 @@ export async function fetchStaffList(
     .from('StaffProfile')
     .select(STAFF_LIST_SELECT)
     .eq('tenantId', tenantId)
+    .is('deletedAt', null)
     .order('createdAt', { ascending: false });
 
   if (error) {
@@ -152,6 +153,49 @@ export async function fetchStaffList(
   }
 
   return (data ?? []).map((row) => mapRow(row as StaffListDbRow, academicYearId));
+}
+
+export type DeletedStaffRow = {
+  id: string;
+  name: string;
+  staffCode: string | null;
+  deletedAt: string;
+};
+
+export async function fetchDeletedStaff(
+  supabase: SupabaseClient,
+  tenantId: string,
+): Promise<DeletedStaffRow[]> {
+  const { data, error } = await supabase
+    .from('StaffProfile')
+    .select(
+      `
+      id,
+      staffCode,
+      deletedAt,
+      firstName,
+      lastName,
+      User!StaffProfile_userId_tenantId_fkey ( name )
+    `,
+    )
+    .eq('tenantId', tenantId)
+    .not('deletedAt', 'is', null)
+    .order('deletedAt', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => {
+    const user = unwrapRelation<{ name?: string | null }>(row.User);
+    const fallback = [row.firstName, row.lastName].filter(Boolean).join(' ');
+    return {
+      id: row.id,
+      name: user?.name?.trim() || fallback || row.staffCode || 'Staff member',
+      staffCode: row.staffCode,
+      deletedAt: row.deletedAt as string,
+    };
+  });
 }
 
 export type DepartmentOption = { id: string; name: string };

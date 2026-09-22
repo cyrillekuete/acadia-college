@@ -19,6 +19,7 @@
     "supabase:repair-history": "node scripts/supabase-repair-history.mjs",
     "supabase:migration:list": "supabase migration list --linked",
     "supabase:types": "supabase gen types typescript --linked > lib/supabase/database.types.ts",
+    "docker:install": "docker compose run --rm app npm install --force",
     "docker:dev": "docker compose up --build",
     "docker:dev:detach": "docker compose up --build -d",
     "docker:down": "docker compose down"

@@ -11,6 +11,7 @@ import { useActiveAcademicYear } from '@/components/acadia/academics/academic-ye
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { classListTags, studentListTags } from '@/lib/acadia/cache/tags';
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function mutationErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -69,6 +70,7 @@ export function useStudentMutations() {
   const { activeYearId } = useActiveAcademicYear();
   const tenantId = session?.tenantId ?? null;
   const canWrite = canWriteRegistry(session?.roleSlug);
+  const { t } = useTranslation();
 
   const updateStudentProfile = useMutation({
     mutationFn: async ({
@@ -187,9 +189,69 @@ export function useStudentMutations() {
     onError: (error) => toast.error(mutationErrorMessage(error)),
   });
 
+  const runStudentDeletion = (path: 'delete' | 'restore' | 'purge') => {
+    return async ({ profileId }: { profileId: string }) => {
+      if (!canWrite) {
+        throw new Error('You do not have permission to modify registry records.');
+      }
+      const res = await fetch(`/api/acadia/students/${profileId}/${path}`, {
+        method: 'POST',
+      });
+      const json = (await res.json().catch(() => null)) as {
+        message?: string;
+        authWarning?: string;
+      } | null;
+      if (!res.ok) {
+        throw new Error(json?.message || `Request failed (${res.status}).`);
+      }
+      return json;
+    };
+  };
+
+  const softDeleteStudent = useMutation({
+    mutationFn: runStudentDeletion('delete'),
+    onSuccess: (data, variables) => {
+      invalidateStudentQueries(queryClient, tenantId, variables.profileId, activeYearId);
+      void queryClient.invalidateQueries({ queryKey: ['deleted-students'] });
+      if (data?.authWarning) {
+        toast.warning(data.authWarning);
+        return;
+      }
+      toast.success(t('students.softDeletedToast'));
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const restoreStudent = useMutation({
+    mutationFn: runStudentDeletion('restore'),
+    onSuccess: (_data, variables) => {
+      invalidateStudentQueries(queryClient, tenantId, variables.profileId, activeYearId);
+      void queryClient.invalidateQueries({ queryKey: ['deleted-students'] });
+      toast.success(t('students.restoredToast'));
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
+  const purgeStudent = useMutation({
+    mutationFn: runStudentDeletion('purge'),
+    onSuccess: (data, variables) => {
+      invalidateStudentQueries(queryClient, tenantId, variables.profileId, activeYearId);
+      void queryClient.invalidateQueries({ queryKey: ['deleted-students'] });
+      if (data?.authWarning) {
+        toast.warning(data.authWarning);
+        return;
+      }
+      toast.success(t('students.purgedToast'));
+    },
+    onError: (error) => toast.error(mutationErrorMessage(error)),
+  });
+
   return {
     updateStudentProfile,
     migrateStudentClass,
     withdrawStudent,
+    softDeleteStudent,
+    restoreStudent,
+    purgeStudent,
   };
 }

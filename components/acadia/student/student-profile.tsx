@@ -6,6 +6,10 @@ import {
   getStudentFullName,
   type StudentListItem,
 } from '@/lib/acadia/student-list-item';
+import {
+  formatStudentEmailForDisplay,
+  isStudentSystemAuthEmail,
+} from '@/lib/acadia/student-system-auth-email';
 import { Badge, BadgeDot, BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,6 +53,9 @@ export function StudentProfile({
   const fullName = getStudentFullName(student);
   const statusProps = getStudentEnrollmentStatusProps(student.enrollment_status);
   const statusVariant = statusProps.variant as keyof BadgeProps['variant'];
+  const displayEmail = formatStudentEmailForDisplay(student.email);
+  const showVerified =
+    Boolean(student.email?.trim()) && !isStudentSystemAuthEmail(student.email);
 
   return (
     <Card>
@@ -61,10 +68,12 @@ export function StudentProfile({
           <div className="col-span-2 grid grid-cols-subgrid items-baseline">
             <dt>Email address:</dt>
             <dd className="flex items-center gap-2.5">
-              <span>{student.email}</span>
-              <Badge variant="secondary" appearance="light">
-                Verified
-              </Badge>
+              <span>{displayEmail}</span>
+              {showVerified ? (
+                <Badge variant="secondary" appearance="light">
+                  Verified
+                </Badge>
+              ) : null}
             </dd>
           </div>
           <div className="col-span-2 grid grid-cols-subgrid items-baseline">

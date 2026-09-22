@@ -5,6 +5,7 @@
  * authenticated session role is not granted on `public.users`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { formatLocalDateInputValue } from '@/lib/acadia/dates';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizeMatriculeNumber } from '@/lib/acadia/student-ids';
 import { generateTemporaryPassword } from '@/lib/acadia/generate-temporary-password';
@@ -17,6 +18,9 @@ import {
   type ProvisionStudentProfileInput,
 } from '@/lib/acadia/provision-student-profile';
 import { provisionGuardianProfileAndLink } from '@/lib/acadia/provision-guardian';
+import { buildStudentSystemAuthEmail } from '@/lib/acadia/student-system-auth-email';
+
+export { buildStudentSystemAuthEmail } from '@/lib/acadia/student-system-auth-email';
 
 export function buildParentSystemAuthEmail(
   tenantId: string,
@@ -25,11 +29,13 @@ export function buildParentSystemAuthEmail(
   return `parent.${tenantId}.${normalizedPhone}@guardian.acadia.local`;
 }
 
-export function buildStudentSystemAuthEmail(
-  tenantId: string,
-  uniqueKey: string,
-): string {
-  return `student.${tenantId}.${uniqueKey}@student.acadia.local`;
+function blankDateToNull(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function enrollmentDateOrToday(value: string | undefined): string {
+  return blankDateToNull(value) ?? formatLocalDateInputValue();
 }
 
 export type ProvisionResult =
@@ -123,7 +129,7 @@ export async function provisionStudentAndParent(
     status: 'active',
     phone: input.phone ?? null,
     address: input.address ?? null,
-    date_of_birth: input.date_of_birth ?? null,
+    date_of_birth: blankDateToNull(input.date_of_birth),
     gender: input.gender ?? null,
     tenant_id: tenantId,
     created_at: now,
@@ -148,7 +154,7 @@ export async function provisionStudentAndParent(
     last_name: input.last_name.trim(),
     email: providedEmail || null,
     phone: input.phone ?? null,
-    date_of_birth: input.date_of_birth ?? null,
+    date_of_birth: blankDateToNull(input.date_of_birth),
     gender: input.gender ?? null,
     place_of_birth: input.place_of_birth ?? null,
     nationality: input.nationality ?? 'Cameroonian',
@@ -165,7 +171,7 @@ export async function provisionStudentAndParent(
     previous_class: input.previous_class ?? null,
     is_new_student: input.is_new_student ?? true,
     academic_year: input.academic_year ?? null,
-    enrollment_date: input.enrollment_date ?? new Date().toISOString().slice(0, 10),
+    enrollment_date: enrollmentDateOrToday(input.enrollment_date),
     matricule_number: matriculeNumber,
     enrollment_status: 'active',
     status: 'active',

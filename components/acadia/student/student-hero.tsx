@@ -8,6 +8,10 @@ import {
   getStudentFullName,
   type StudentListItem,
 } from '@/lib/acadia/student-list-item';
+import {
+  formatStudentEmailForDisplay,
+  isStudentSystemAuthEmail,
+} from '@/lib/acadia/student-system-auth-email';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,6 +62,9 @@ function StudentHeroContent({
 
   const studentId =
     student.registration_number ?? student.student_id;
+  const displayEmail = formatStudentEmailForDisplay(student.email);
+  const showEmail =
+    Boolean(student.email?.trim()) && !isStudentSystemAuthEmail(student.email);
 
   const handleStudentIdCopy = () => {
     copyToClipboard(studentId);
@@ -75,7 +82,9 @@ function StudentHeroContent({
       </Avatar>
       <div className="space-y-px">
         <div className="text-base font-medium">{fullName}</div>
-        <div className="text-sm text-muted-foreground">{student.email}</div>
+        {showEmail ? (
+          <div className="text-sm text-muted-foreground">{displayEmail}</div>
+        ) : null}
         <div>
           <TooltipProvider>
             <Tooltip delayDuration={50}>

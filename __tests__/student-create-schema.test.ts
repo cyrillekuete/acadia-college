@@ -10,6 +10,10 @@ import {
 } from '@/lib/acadia/cameroon-locations';
 import { normalizePhoneForLookup } from '@/lib/acadia/phone';
 import { buildStudentSystemAuthEmail } from '@/lib/acadia/provision-accounts';
+import {
+  formatStudentEmailForDisplay,
+  isStudentSystemAuthEmail,
+} from '@/lib/acadia/student-system-auth-email';
 import { studentCreateSchema } from '@/lib/acadia/student-create-schemas';
 
 const basePayload = {
@@ -146,6 +150,62 @@ describe('studentCreateSchema parent contact', () => {
     ).toBe(false);
   });
 
+  it('omits a blank enrollment date', () => {
+    const omitted = studentCreateSchema.safeParse(basePayload);
+    expect(omitted.success).toBe(true);
+    if (omitted.success) {
+      expect(omitted.data.enrollment_date).toBeUndefined();
+    }
+
+    const empty = studentCreateSchema.safeParse({
+      ...basePayload,
+      enrollment_date: '',
+    });
+    expect(empty.success).toBe(true);
+    if (empty.success) {
+      expect(empty.data.enrollment_date).toBeUndefined();
+    }
+
+    const whitespace = studentCreateSchema.safeParse({
+      ...basePayload,
+      enrollment_date: '   ',
+    });
+    expect(whitespace.success).toBe(true);
+    if (whitespace.success) {
+      expect(whitespace.data.enrollment_date).toBeUndefined();
+    }
+  });
+
+  it('keeps a valid ISO enrollment date', () => {
+    const result = studentCreateSchema.safeParse({
+      ...basePayload,
+      enrollment_date: '2026-09-01',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.enrollment_date).toBe('2026-09-01');
+    }
+  });
+
+  it('rejects enrollment dates that are not YYYY-MM-DD', () => {
+    for (const enrollment_date of ['01-09-2026', 'not-a-date']) {
+      const result = studentCreateSchema.safeParse({
+        ...basePayload,
+        enrollment_date,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(
+          result.error.issues.some(
+            (issue) =>
+              issue.path.includes('enrollment_date') &&
+              issue.message === 'validation.invalid.date',
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+
   it('skips student vs parent email check when parent email is empty', () => {
     const result = studentCreateSchema.safeParse({
       ...basePayload,
@@ -258,6 +318,48 @@ describe('buildStudentSystemAuthEmail', () => {
     expect(buildStudentSystemAuthEmail('tenant-1', 'STU-123')).toBe(
       'student.tenant-1.STU-123@student.acadia.local',
     );
+  });
+});
+
+describe('isStudentSystemAuthEmail', () => {
+  it('detects synthetic student login emails', () => {
+    expect(
+      isStudentSystemAuthEmail(
+        'student.117b136b-002f-4833-bc31-08f47da658bd.stu-2026-70722@student.acadia.local',
+      ),
+    ).toBe(true);
+    expect(isStudentSystemAuthEmail('student.tenant-1.STU-123@student.acadia.local')).toBe(
+      true,
+    );
+  });
+
+  it('rejects real contact emails and empty values', () => {
+    expect(isStudentSystemAuthEmail('kongyuy.regency@school.test')).toBe(false);
+    expect(isStudentSystemAuthEmail('')).toBe(false);
+    expect(isStudentSystemAuthEmail(null)).toBe(false);
+    expect(isStudentSystemAuthEmail(undefined)).toBe(false);
+  });
+});
+
+describe('formatStudentEmailForDisplay', () => {
+  it('hides synthetic system login emails', () => {
+    expect(
+      formatStudentEmailForDisplay(
+        'student.tenant-1.STU-123@student.acadia.local',
+      ),
+    ).toBe('—');
+  });
+
+  it('returns real contact emails unchanged', () => {
+    expect(formatStudentEmailForDisplay('kongyuy.regency@school.test')).toBe(
+      'kongyuy.regency@school.test',
+    );
+  });
+
+  it('returns a dash for empty values', () => {
+    expect(formatStudentEmailForDisplay('')).toBe('—');
+    expect(formatStudentEmailForDisplay('   ')).toBe('—');
+    expect(formatStudentEmailForDisplay(null)).toBe('—');
   });
 });
 

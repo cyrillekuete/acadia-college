@@ -39,6 +39,7 @@ export type RegistryCreateWizardShellProps = {
   submitLabel: string;
   onBack: () => void;
   onContinue: () => void;
+  onSubmitClick: () => void;
   onCancel: () => void;
   isLastStep: boolean;
   isSubmitting?: boolean;
@@ -59,6 +60,7 @@ export function RegistryCreateWizardShell({
   submitLabel,
   onBack,
   onContinue,
+  onSubmitClick,
   onCancel,
   isLastStep,
   isSubmitting = false,
@@ -150,9 +152,10 @@ export function RegistryCreateWizardShell({
                 ) : null}
                 {isLastStep ? (
                   <Button
-                    type="submit"
+                    type="button"
                     className="w-full sm:w-auto active:scale-[0.96] transition-transform"
                     disabled={isSubmitting || submitDisabled}
+                    onClick={onSubmitClick}
                   >
                     {submitLabel}
                   </Button>

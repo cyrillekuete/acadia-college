@@ -20,6 +20,7 @@ import {
   studentFeesStatusLabel,
   studentFeesStatusVariant,
 } from '@/lib/acadia/student-list';
+import { formatStudentEmailForDisplay } from '@/lib/acadia/student-system-auth-email';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge, BadgeDot, BadgeProps } from '@/components/ui/badge';
 import { Card, CardFooter, CardTable } from '@/components/ui/card';
@@ -76,7 +77,7 @@ export function StudentList({
               <div className="space-y-px">
                 <div className="text-sm font-medium">{fullName}</div>
                 <div className="text-xs text-muted-foreground">
-                  {student.email}
+                  {formatStudentEmailForDisplay(student.email)}
                 </div>
               </div>
             </div>

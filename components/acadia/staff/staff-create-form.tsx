@@ -338,12 +338,14 @@ export function StaffCreateForm() {
   }
 
   function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (activeStep !== stepCount) {
-      event.preventDefault();
       void handleContinue();
-      return;
     }
-    void form.handleSubmit(onSubmit)(event);
+  }
+
+  function handleCreateClick() {
+    void form.handleSubmit(onSubmit)();
   }
 
   return (
@@ -364,6 +366,7 @@ export function StaffCreateForm() {
           }
           onBack={() => setActiveStep((s) => Math.max(1, s - 1))}
           onContinue={() => void handleContinue()}
+          onSubmitClick={handleCreateClick}
           onCancel={() => router.push('/staff')}
           isLastStep={activeStep === stepCount}
           isSubmitting={mutation.isPending}

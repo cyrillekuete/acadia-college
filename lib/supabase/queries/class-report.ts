@@ -23,6 +23,7 @@ const STUDENT_PROFILE_SELECT = `
   id,
   matriculeNumber,
   registrationNumber,
+  deletedAt,
   ${embed('User', FK.StudentProfile_user, 'id, name')}
 `;
 
@@ -255,6 +256,7 @@ export async function fetchClassReportBundle(
     string,
     { name: string; matricule: string }
   >();
+  const deletedProfileIds = new Set<string>();
   for (const chunk of chunkIds(cohortIds)) {
     if (chunk.length === 0) {
       continue;
@@ -271,8 +273,13 @@ export async function fetchClassReportBundle(
       id: string;
       matriculeNumber: string | null;
       registrationNumber: string;
+      deletedAt?: string | null;
       User?: unknown;
     }>) {
+      if (row.deletedAt) {
+        deletedProfileIds.add(row.id);
+        continue;
+      }
       const user = unwrapRelation<{ name?: string | null }>(row.User);
       const { first, last } = splitStudentName(user?.name);
       profileById.set(row.id, {
@@ -292,6 +299,7 @@ export async function fetchClassReportBundle(
         matricule: profile?.matricule ?? '',
       };
     })
+    .filter((student) => !deletedProfileIds.has(student.studentProfileId))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   let classMaster = '';

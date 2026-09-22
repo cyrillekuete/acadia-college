@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { dobInputToIsoDate, optionalDobField } from '@/lib/acadia/dates';
+import {
+  dobInputToIsoDate,
+  formatLocalDateInputValue,
+  optionalDobField,
+  parseLocalDateInputValue,
+} from '@/lib/acadia/dates';
 import {
   phoneCountryField,
   phoneNationalField,
@@ -10,6 +15,32 @@ export const subsystemEnum = z.enum(['english', 'french']);
 export const branchEnum = z.enum(['grammar', 'technical', 'commercial']);
 export const genderEnum = z.enum(['male', 'female']);
 export const relationshipEnum = z.enum(['father', 'mother', 'guardian', 'other']);
+
+/** Optional YYYY-MM-DD. Blank and whitespace become undefined. */
+function optionalIsoDateField() {
+  return z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .transform((value) => value?.trim() ?? '')
+    .pipe(
+      z
+        .string()
+        .superRefine((value, ctx) => {
+          if (!value) {
+            return;
+          }
+          const parsed = parseLocalDateInputValue(value);
+          if (!parsed || formatLocalDateInputValue(parsed) !== value) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'validation.invalid.date',
+            });
+          }
+        })
+        .transform((value) => (value ? value : undefined)),
+    );
+}
 
 export const studentCreateSchema = z
   .object({
@@ -50,7 +81,7 @@ export const studentCreateSchema = z
     previous_class: z.string().optional(),
     override_enrollment_window: z.boolean().optional(),
     is_new_student: z.boolean().optional().default(true),
-    enrollment_date: z.string().optional(),
+    enrollment_date: optionalIsoDateField(),
     matricule_number: z
       .string()
       .max(40, 'validation.matriculeMax')

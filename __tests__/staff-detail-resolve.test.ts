@@ -230,6 +230,7 @@ const PROFILE: StaffDetailRecord = {
   officePhone: null,
   bio: null,
   isActive: true,
+  deletedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-02T00:00:00.000Z',
   departmentId: 'dept-missing',

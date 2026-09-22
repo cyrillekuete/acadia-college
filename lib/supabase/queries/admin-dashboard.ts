@@ -53,7 +53,8 @@ async function countStudentProfiles(
   let query = supabase
     .from('StudentProfile')
     .select('*', { count: 'exact', head: true })
-    .eq('tenantId', tenantId);
+    .eq('tenantId', tenantId)
+    .is('deletedAt', null);
   if (createdBefore) {
     query = query.lt('createdAt', createdBefore);
   }
@@ -72,7 +73,8 @@ async function countStaffProfiles(
   let query = supabase
     .from('StaffProfile')
     .select('*', { count: 'exact', head: true })
-    .eq('tenantId', tenantId);
+    .eq('tenantId', tenantId)
+    .is('deletedAt', null);
   if (createdSince) {
     query = query.gte('createdAt', createdSince);
   }

@@ -44,7 +44,7 @@ export type TimetableSlotListRow = {
   academicYearId: string;
   classId: string | null;
   subjectId: string;
-  staffProfileId: string;
+  staffProfileId: string | null;
   roomId: string;
   dayOfWeek: number;
   startMinutes: number;
@@ -75,7 +75,7 @@ export type TimetableSlotWritePayload = {
 function mapInterval(row: {
   id: string;
   classId?: string | null;
-  staffProfileId: string;
+  staffProfileId: string | null;
   roomId: string;
   dayOfWeek: number;
   startMinutes: number;
@@ -84,7 +84,7 @@ function mapInterval(row: {
   return {
     id: row.id,
     classId: row.classId ?? null,
-    staffProfileId: row.staffProfileId,
+    staffProfileId: row.staffProfileId ?? '',
     roomId: row.roomId,
     dayOfWeek: row.dayOfWeek,
     startMinutes: row.startMinutes,
@@ -201,7 +201,7 @@ async function assertStaffProfileIsActive(
 ): Promise<void> {
   const { data, error } = await supabase
     .from('StaffProfile')
-    .select('isActive')
+    .select('isActive, deletedAt')
     .eq('tenantId', tenantId)
     .eq('id', staffProfileId)
     .maybeSingle();
@@ -210,7 +210,7 @@ async function assertStaffProfileIsActive(
     throw error;
   }
 
-  if (!data?.isActive) {
+  if (!data?.isActive || data.deletedAt) {
     throw new Error('The selected teacher is inactive or no longer available.');
   }
 }

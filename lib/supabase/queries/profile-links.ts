@@ -17,6 +17,7 @@ export async function fetchStaffProfileIdForUser(
     .eq('tenantId', tenantId)
     .eq('userId', userId)
     .eq('isActive', true)
+    .is('deletedAt', null)
     .maybeSingle();
 
   if (error) {
@@ -37,6 +38,7 @@ export async function fetchStudentProfileIdForUser(
     .eq('tenantId', tenantId)
     .eq('userId', userId)
     .eq('isActive', true)
+    .is('deletedAt', null)
     .maybeSingle();
 
   if (error) {
@@ -139,7 +141,8 @@ export async function fetchLinkedStudentsForGuardian(
     )
     .eq('tenantId', tenantId)
     .in('id', studentProfileIds)
-    .eq('isActive', true);
+    .eq('isActive', true)
+    .is('deletedAt', null);
 
   if (profilesError) {
     throw profilesError;

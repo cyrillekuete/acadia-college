@@ -16,6 +16,7 @@ export type StudentListItem = {
   matricule_number: string | null;
   enrollment_status: StudentEnrollmentStatus;
   status: 'active' | 'inactive';
+  deletedAt?: string | null;
   enrollment_date: string;
   email_verified: boolean;
   total_fees: number;

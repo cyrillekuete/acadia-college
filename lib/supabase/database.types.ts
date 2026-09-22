@@ -3127,6 +3127,7 @@ export type Database = {
           id: string
           idNumber: string | null
           isActive: boolean
+          deletedAt: string | null
           lastName: string | null
           monthlySalary: number | null
           nationality: string | null
@@ -3162,6 +3163,7 @@ export type Database = {
           id: string
           idNumber?: string | null
           isActive?: boolean
+          deletedAt?: string | null
           lastName?: string | null
           monthlySalary?: number | null
           nationality?: string | null
@@ -3197,6 +3199,7 @@ export type Database = {
           id?: string
           idNumber?: string | null
           isActive?: boolean
+          deletedAt?: string | null
           lastName?: string | null
           monthlySalary?: number | null
           nationality?: string | null
@@ -3593,6 +3596,7 @@ export type Database = {
           currentLevelId: string
           id: string
           isActive: boolean
+          deletedAt: string | null
           matriculeNumber: string | null
           registrationNumber: string
           subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -3608,6 +3612,7 @@ export type Database = {
           currentLevelId: string
           id: string
           isActive?: boolean
+          deletedAt?: string | null
           matriculeNumber?: string | null
           registrationNumber: string
           subSystem: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -3623,6 +3628,7 @@ export type Database = {
           currentLevelId?: string
           id?: string
           isActive?: boolean
+          deletedAt?: string | null
           matriculeNumber?: string | null
           registrationNumber?: string
           subSystem?: Database["public"]["Enums"]["AcademicSubSystem"]
@@ -4690,7 +4696,7 @@ export type Database = {
           ipAddress: string | null
           meta: string | null
           tenantId: string | null
-          userId: string
+          userId: string | null
         }
         Insert: {
           createdAt?: string
@@ -4702,7 +4708,7 @@ export type Database = {
           ipAddress?: string | null
           meta?: string | null
           tenantId?: string | null
-          userId: string
+          userId?: string | null
         }
         Update: {
           createdAt?: string
@@ -4714,7 +4720,7 @@ export type Database = {
           ipAddress?: string | null
           meta?: string | null
           tenantId?: string | null
-          userId?: string
+          userId?: string | null
         }
         Relationships: [
           {
@@ -5147,7 +5153,7 @@ export type Database = {
           endMinutes: number
           id: string
           roomId: string
-          staffProfileId: string
+          staffProfileId: string | null
           startMinutes: number
           subjectId: string
           tenantId: string
@@ -5161,7 +5167,7 @@ export type Database = {
           endMinutes: number
           id: string
           roomId: string
-          staffProfileId: string
+          staffProfileId?: string | null
           startMinutes: number
           subjectId: string
           tenantId: string
@@ -5910,6 +5916,14 @@ export type Database = {
       acadia_is_registry_writer: { Args: never; Returns: boolean }
       acadia_is_staff_or_teacher: { Args: never; Returns: boolean }
       acadia_is_student: { Args: never; Returns: boolean }
+      acadia_purge_staff_profile: {
+        Args: { p_profile_id: string; p_tenant_id: string }
+        Returns: Json
+      }
+      acadia_purge_student_profile: {
+        Args: { p_profile_id: string; p_tenant_id: string }
+        Returns: Json
+      }
       acadia_migrate_student_class: {
         Args: {
           p_academic_year_id: string

@@ -43,7 +43,7 @@ export function mapTimetableRowToGridSlot(
     academicYearId: row.academicYearId,
     classId: row.classId,
     subjectId: row.subjectId,
-    staffProfileId: row.staffProfileId,
+    staffProfileId: row.staffProfileId ?? '',
     roomId: row.roomId,
     dayOfWeek: row.dayOfWeek,
     startMinutes: row.startMinutes,

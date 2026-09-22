@@ -1,11 +1,13 @@
-import nextEnv from '@next/env';
+import type { NextConfig } from 'next';
+import { loadEnvConfig } from '@next/env';
 import {
   resolveSupabaseKey,
   resolveSupabaseUrl,
-} from './lib/supabase/project.ts';
-import { ACADIA_DEMO_LAYOUT_REDIRECTS, ACADIA_DEMO_REDIRECTS } from './lib/acadia/demo-routes.ts';
-
-const { loadEnvConfig } = nextEnv;
+} from './lib/supabase/project';
+import {
+  ACADIA_DEMO_LAYOUT_REDIRECTS,
+  ACADIA_DEMO_REDIRECTS,
+} from './lib/acadia/demo-routes';
 
 // Last-resort dev defaults when env files are missing (publishable key is client-public).
 // Prefer NEXT_PUBLIC_* in .env.local / .env.development / platform env.
@@ -15,12 +17,15 @@ const FALLBACK_SUPABASE_PUBLISHABLE_KEY =
 
 loadEnvConfig(process.cwd());
 
-/** @type {import('next').NextConfig} */
 // basePath must start with / (path only); assetPrefix can be full URL
 const basePathEnv = process.env.NEXT_PUBLIC_BASE_PATH || '';
 let basePath = basePathEnv;
 if (basePathEnv.startsWith('http')) {
-  try { basePath = new URL(basePathEnv).pathname.replace(/\/$/, ''); } catch { basePath = ''; }
+  try {
+    basePath = new URL(basePathEnv).pathname.replace(/\/$/, '');
+  } catch {
+    basePath = '';
+  }
 }
 
 const supabaseUrl =
@@ -30,7 +35,7 @@ const supabaseKey =
   resolveSupabaseKey(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ||
   FALLBACK_SUPABASE_PUBLISHABLE_KEY;
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   basePath: basePath || '',
   assetPrefix: basePathEnv || '',
   images: {},
@@ -41,7 +46,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   allowedDevOrigins: ['127.0.0.1'],
-  serverExternalPackages: ['puppeteer', 'puppeteer-core', '@sparticuz/chromium-min'],
+  serverExternalPackages: [
+    'puppeteer',
+    'puppeteer-core',
+    '@sparticuz/chromium-min',
+  ],
   async redirects() {
     return [
       {

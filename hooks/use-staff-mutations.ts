@@ -88,5 +88,78 @@ export function useStaffMutations() {
     },
   });
 
-  return { updateStaff, deactivateStaff, canWrite };
+  const runStaffDeletion = (path: 'delete' | 'restore' | 'purge') => {
+    return async ({ profileId }: { profileId: string }) => {
+      if (!canWrite) {
+        throw new Error('You do not have permission to modify registry records.');
+      }
+      const res = await fetch(`/api/acadia/staff/${profileId}/${path}`, {
+        method: 'POST',
+      });
+      const json = (await res.json().catch(() => null)) as {
+        message?: string;
+        authWarning?: string;
+      } | null;
+      if (!res.ok) {
+        throw new Error(json?.message || `Request failed (${res.status}).`);
+      }
+      return json;
+    };
+  };
+
+  const softDeleteStaff = useMutation({
+    mutationFn: runStaffDeletion('delete'),
+    onSuccess: (data, variables) => {
+      invalidate(variables.profileId);
+      void queryClient.invalidateQueries({ queryKey: ['staff-detail'] });
+      void queryClient.invalidateQueries({ queryKey: ['deleted-staff'] });
+      if (data?.authWarning) {
+        toast.warning(data.authWarning);
+        return;
+      }
+      toast.success(t('staff.softDeletedToast'));
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : t('staff.softDeleteFailed'));
+    },
+  });
+
+  const restoreStaff = useMutation({
+    mutationFn: runStaffDeletion('restore'),
+    onSuccess: (_data, variables) => {
+      invalidate(variables.profileId);
+      void queryClient.invalidateQueries({ queryKey: ['staff-detail'] });
+      void queryClient.invalidateQueries({ queryKey: ['deleted-staff'] });
+      toast.success(t('staff.restoredToast'));
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : t('staff.restoreFailed'));
+    },
+  });
+
+  const purgeStaff = useMutation({
+    mutationFn: runStaffDeletion('purge'),
+    onSuccess: (data, variables) => {
+      invalidate(variables.profileId);
+      void queryClient.invalidateQueries({ queryKey: ['staff-detail'] });
+      void queryClient.invalidateQueries({ queryKey: ['deleted-staff'] });
+      if (data?.authWarning) {
+        toast.warning(data.authWarning);
+        return;
+      }
+      toast.success(t('staff.purgedToast'));
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : t('staff.purgeFailed'));
+    },
+  });
+
+  return {
+    updateStaff,
+    deactivateStaff,
+    softDeleteStaff,
+    restoreStaff,
+    purgeStaff,
+    canWrite,
+  };
 }

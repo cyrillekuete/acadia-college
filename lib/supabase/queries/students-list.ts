@@ -21,12 +21,18 @@ const ENROLLMENT_LIST_SELECT = `
     registrationNumber,
     matriculeNumber,
     isActive,
+    deletedAt,
     User!StudentProfile_userId_tenantId_fkey ( name, email ),
     subSystem,
     branch
   ),
   Class!StudentEnrollment_classId_tenantId_fkey ( name )
 `;
+
+function isDeletedProfile(row: Record<string, unknown>): boolean {
+  const profile = unwrapRelation<{ deletedAt?: string | null }>(row.StudentProfile);
+  return Boolean(profile?.deletedAt);
+}
 
 function collapseListEnrollmentRows(
   rows: Array<Record<string, unknown>>,
@@ -106,7 +112,9 @@ async function fetchStudentsFromEnrollments(
   }
 
   const rows = collapseListEnrollmentRows(
-    (data ?? []) as Array<Record<string, unknown>>,
+    ((data ?? []) as Array<Record<string, unknown>>).filter(
+      (row) => !isDeletedProfile(row),
+    ),
   );
   const profileIds = rows
     .map((row) => row.profileId)
@@ -153,7 +161,9 @@ export async function fetchStudentsFromEnrollmentsForClassIds(
     throw error;
   }
 
-  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const rows = ((data ?? []) as Array<Record<string, unknown>>).filter(
+    (row) => !isDeletedProfile(row),
+  );
   const collapsed = new Map<string, Record<string, unknown>>();
   for (const row of rows) {
     const profileId = unwrapRelation<{ id?: string }>(row.StudentProfile)?.id ?? '';
@@ -187,4 +197,44 @@ export async function fetchStudentsList(
   academicYearId: string,
 ): Promise<StudentListItem[]> {
   return fetchStudentsFromEnrollments(supabase, tenantId, academicYearId);
+}
+
+export type DeletedStudentRow = {
+  id: string;
+  name: string;
+  studentId: string;
+  deletedAt: string;
+};
+
+export async function fetchDeletedStudents(
+  supabase: SupabaseClient,
+  tenantId: string,
+): Promise<DeletedStudentRow[]> {
+  const { data, error } = await supabase
+    .from('StudentProfile')
+    .select(
+      `
+      id,
+      registrationNumber,
+      deletedAt,
+      User!StudentProfile_userId_tenantId_fkey ( name )
+    `,
+    )
+    .eq('tenantId', tenantId)
+    .not('deletedAt', 'is', null)
+    .order('deletedAt', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => {
+    const user = unwrapRelation<{ name?: string | null }>(row.User);
+    return {
+      id: row.id as string,
+      name: user?.name?.trim() || (row.registrationNumber as string) || 'Student',
+      studentId: row.registrationNumber as string,
+      deletedAt: row.deletedAt as string,
+    };
+  });
 }

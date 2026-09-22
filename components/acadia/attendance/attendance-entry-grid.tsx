@@ -88,6 +88,7 @@ export function AttendanceEntryGrid({
           StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             id,
             registrationNumber,
+            deletedAt,
             User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
@@ -101,14 +102,19 @@ export function AttendanceEntryGrid({
         throw enrollError;
       }
 
-      const students: StudentRow[] = (enrollments ?? []).map((row) => {
-        const profile = unwrapRelation<StudentRow>(row.StudentProfile);
-        return (
+      const students: StudentRow[] = (enrollments ?? []).flatMap((row) => {
+        const profile = unwrapRelation<StudentRow & { deletedAt?: string | null }>(
+          row.StudentProfile,
+        );
+        if (profile?.deletedAt) {
+          return [];
+        }
+        return [
           profile ?? {
             id: row.studentProfileId as string,
             registrationNumber: '—',
-          }
-        );
+          },
+        ];
       });
 
       const { data: records, error: recordsError } = await supabase

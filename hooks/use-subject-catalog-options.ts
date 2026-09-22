@@ -40,6 +40,7 @@ export function useStaffOptions(options?: { enabled?: boolean }) {
         .select('id, staffCode, User!StaffProfile_userId_tenantId_fkey ( name )')
         .eq('tenantId', tenantId!)
         .eq('isActive', true)
+        .is('deletedAt', null)
         .order('id', { ascending: true });
       if (error) {
         throw error;

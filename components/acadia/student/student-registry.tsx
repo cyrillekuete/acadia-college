@@ -45,10 +45,14 @@ export function StudentRegistry({
   extraActions,
   initialStudents,
   seedYearId,
+  sectionTabs,
+  deletedSection,
 }: {
   extraActions?: ReactNode;
   initialStudents?: StudentListItem[];
   seedYearId?: string | null;
+  sectionTabs?: ReactNode;
+  deletedSection?: ReactNode;
 }) {
   const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
@@ -221,6 +225,7 @@ export function StudentRegistry({
               : t('students.description')
           }
           actions={
+            deletedSection ? undefined : (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -234,9 +239,13 @@ export function StudentRegistry({
               </Button>
               {extraActions}
             </div>
+            )
           }
         >
           <div className="space-y-7.5">
+            {sectionTabs}
+            {deletedSection ?? (
+            <>
             <StudentRegistryStats
               mode={isTeacherView ? 'teacher' : 'admin'}
               adminStats={adminStats}
@@ -265,6 +274,8 @@ export function StudentRegistry({
                   : undefined
               }
             />
+            </>
+            )}
           </div>
           <StudentClassExportDialog
             open={exportOpen}

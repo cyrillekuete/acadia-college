@@ -52,6 +52,7 @@ export async function POST(request: Request) {
     .select('userId, User!StaffProfile_userId_tenantId_fkey ( email )')
     .eq('staffCode', normalizedCode)
     .eq('isActive', true)
+    .is('deletedAt', null)
     .limit(2);
 
   if (staffError) {

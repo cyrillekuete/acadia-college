@@ -171,6 +171,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
           StudentProfile!StudentEnrollment_studentProfileId_tenantId_fkey (
             id,
             registrationNumber,
+            deletedAt,
             User!StudentProfile_userId_tenantId_fkey ( name )
           )
         `,
@@ -186,14 +187,21 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
         throw enrollError;
       }
 
-      const students: StudentRow[] = (enrollments ?? []).map((row) => {
-        const profile = unwrapRelation<StudentRow>(row.StudentProfile);
-        return {
-          id: profile?.id ?? (row.studentProfileId as string),
-          registrationNumber: profile?.registrationNumber ?? '—',
-          classId: (row.classId as string | null) ?? null,
-          User: profile?.User,
-        };
+      const students: StudentRow[] = (enrollments ?? []).flatMap((row) => {
+        const profile = unwrapRelation<StudentRow & { deletedAt?: string | null }>(
+          row.StudentProfile,
+        );
+        if (profile?.deletedAt) {
+          return [];
+        }
+        return [
+          {
+            id: profile?.id ?? (row.studentProfileId as string),
+            registrationNumber: profile?.registrationNumber ?? '—',
+            classId: (row.classId as string | null) ?? null,
+            User: profile?.User,
+          },
+        ];
       });
 
       const { data: subBranches, error: branchError } = await supabase
