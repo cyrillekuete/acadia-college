@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useActiveAcademicYear } from '@/components/acadia/academics/academic-year-provider';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
 import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
+import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
 import { canWriteAcademicAdmin, canWriteOperations } from '@/lib/acadia/roles';
 import type { SchemeOfWorkStatus } from '@/lib/acadia/scheme-of-work';
 import { nextTopicSortOrder } from '@/lib/acadia/scheme-of-work';
@@ -24,12 +25,6 @@ import {
   upsertSchemeOfWork,
 } from '@/lib/supabase/queries/scheme-of-work';
 
-function mutationErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return 'Operation failed.';
-}
 
 function invalidateSchemeQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ['scheme-of-work-detail'] });
@@ -69,7 +64,7 @@ export function useSchemeOfWorkMutations() {
       invalidateSchemeQueries(queryClient);
     },
     onError: (error) => {
-      toast.error(mutationErrorMessage(error));
+      toast.error(getMutationErrorMessage(error));
     },
   });
 
@@ -93,7 +88,7 @@ export function useSchemeOfWorkMutations() {
       );
     },
     onError: (error) => {
-      toast.error(mutationErrorMessage(error));
+      toast.error(getMutationErrorMessage(error));
     },
   });
 
@@ -136,7 +131,7 @@ export function useSchemeOfWorkMutations() {
       toast.success(input.topicId ? 'Topic updated.' : 'Topic added.');
     },
     onError: (error) => {
-      toast.error(mutationErrorMessage(error));
+      toast.error(getMutationErrorMessage(error));
     },
   });
 
@@ -156,7 +151,7 @@ export function useSchemeOfWorkMutations() {
       toast.success('Topic deleted.');
     },
     onError: (error) => {
-      toast.error(mutationErrorMessage(error));
+      toast.error(getMutationErrorMessage(error));
     },
   });
 
@@ -175,7 +170,7 @@ export function useSchemeOfWorkMutations() {
       invalidateSchemeQueries(queryClient);
     },
     onError: (error) => {
-      toast.error(mutationErrorMessage(error));
+      toast.error(getMutationErrorMessage(error));
     },
   });
 
@@ -224,7 +219,7 @@ export function useSchemeOfWorkMutations() {
       invalidateSchemeQueries(queryClient);
     },
     onError: (error) => {
-      toast.error(mutationErrorMessage(error));
+      toast.error(getMutationErrorMessage(error));
     },
   });
 
@@ -257,7 +252,7 @@ export function useSchemeOfWorkMutations() {
       );
     },
     onError: (error) => {
-      toast.error(mutationErrorMessage(error));
+      toast.error(getMutationErrorMessage(error));
     },
   });
 

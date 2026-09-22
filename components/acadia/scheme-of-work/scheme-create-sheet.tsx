@@ -24,6 +24,7 @@ import {
 import { useSchemeOfWorkMutations } from '@/hooks/use-scheme-of-work-mutations';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
+import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { countSchemeProgressRows } from '@/lib/supabase/queries/scheme-of-work';
 
@@ -67,6 +68,7 @@ export function SchemeCreateSheet({
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setSchemeId(null);
+      openOrCreateScheme.reset();
     }
     onOpenChange(next);
   };
@@ -105,6 +107,10 @@ export function SchemeCreateSheet({
     setSchemeStatus.mutate({ schemeId: scheme.id, status: 'PUBLISHED' });
   };
 
+  const createErrorMessage = openOrCreateScheme.isError
+    ? getMutationErrorMessage(openOrCreateScheme.error)
+    : null;
+
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent className="inset-5 start-auto h-auto gap-0 rounded-lg p-0 sm:w-[840px] sm:max-w-none [&_[data-slot=sheet-close]]:top-4.5 [&_[data-slot=sheet-close]]:end-5">
@@ -142,9 +148,10 @@ export function SchemeCreateSheet({
                   >
                     {t('schemeOfWork.createScheme')}
                   </Button>
-                  {openOrCreateScheme.isError ? (
+                  {createErrorMessage ? (
                     <p className="text-destructive text-sm">
-                      {t('schemeOfWork.loadFailed')}
+                      {t('schemeOfWork.createFailed')}{' '}
+                      {createErrorMessage}
                     </p>
                   ) : null}
                 </div>

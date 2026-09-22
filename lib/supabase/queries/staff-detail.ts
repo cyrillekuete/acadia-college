@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+/** Scalar StaffProfile columns. Related User and Department are loaded separately. */
 export const STAFF_DETAIL_SELECT = `
   id,
+  userId,
   staffCode,
   title,
   firstName,
@@ -26,13 +28,17 @@ export const STAFF_DETAIL_SELECT = `
   isActive,
   createdAt,
   updatedAt,
-  departmentId,
-  User!StaffProfile_userId_tenantId_fkey ( id, email, name, status, country, timezone, lastSignInAt ),
-  Department!StaffProfile_departmentId_tenantId_fkey ( code, nameEn, nameFr )
+  departmentId
 `;
+
+const STAFF_USER_SELECT =
+  'id, email, name, status, country, timezone, lastSignInAt';
+
+const STAFF_DEPARTMENT_SELECT = 'code, nameEn, nameFr';
 
 export type StaffDetailRecord = {
   id: string;
+  userId: string;
   staffCode: string | null;
   title: string | null;
   firstName: string | null;
@@ -61,6 +67,33 @@ export type StaffDetailRecord = {
   User: unknown;
   Department: unknown;
 };
+
+type StaffProfilePick = {
+  id: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
+/**
+ * Prefer an active profile, then the most recently created one.
+ * Used when several StaffProfile rows share a userId.
+ */
+function pickPreferredStaffProfile<T extends StaffProfilePick>(
+  rows: T[],
+): T | null {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    if (a.isActive !== b.isActive) {
+      return a.isActive ? -1 : 1;
+    }
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+
+  return sorted[0] ?? null;
+}
 
 /**
  * Resolve any supported staff identifier to a `StaffProfile.id`.
@@ -93,19 +126,19 @@ export async function resolveStaffProfileId(
 
   const { data: byUserId, error: byUserIdError } = await supabase
     .from('StaffProfile')
-    .select('id')
+    .select('id, isActive, createdAt')
     .eq('tenantId', tenantId)
-    .eq('userId', trimmed)
-    .order('isActive', { ascending: false })
-    .order('createdAt', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq('userId', trimmed);
 
   if (byUserIdError) {
     throw byUserIdError;
   }
-  if (byUserId?.id) {
-    return byUserId.id as string;
+
+  const preferred = pickPreferredStaffProfile(
+    (byUserId ?? []) as StaffProfilePick[],
+  );
+  if (preferred?.id) {
+    return preferred.id;
   }
 
   const { data: byStaffCode, error: byStaffCodeError } = await supabase
@@ -120,6 +153,27 @@ export async function resolveStaffProfileId(
   }
 
   return (byStaffCode?.id as string | undefined) ?? null;
+}
+
+async function fetchRelatedRow(
+  supabase: SupabaseClient,
+  table: 'User' | 'Department',
+  columns: string,
+  tenantId: string,
+  id: string,
+): Promise<unknown> {
+  const { data, error } = await supabase
+    .from(table)
+    .select(columns)
+    .eq('tenantId', tenantId)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? null;
 }
 
 export async function fetchStaffDetail(
@@ -146,5 +200,23 @@ export async function fetchStaffDetail(
     return null;
   }
 
-  return data as unknown as StaffDetailRecord;
+  const row = data as StaffDetailRecord;
+  const user = row.userId
+    ? await fetchRelatedRow(supabase, 'User', STAFF_USER_SELECT, tenantId, row.userId)
+    : null;
+  const department = row.departmentId
+    ? await fetchRelatedRow(
+        supabase,
+        'Department',
+        STAFF_DEPARTMENT_SELECT,
+        tenantId,
+        row.departmentId,
+      )
+    : null;
+
+  return {
+    ...row,
+    User: user,
+    Department: department,
+  };
 }

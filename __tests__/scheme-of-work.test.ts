@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   attachTopicProgress,
   buildAdminSchemeCatalog,
@@ -17,6 +19,7 @@ import {
 } from '@/lib/acadia/scheme-of-work';
 import { schemeOfWorkTopicSchema } from '@/lib/acadia/scheme-of-work-schemas';
 import { ACADEMIC_YEAR_SCOPED_TABLES } from '@/lib/acadia/academic-year-scope';
+import { getMutationErrorMessage } from '@/lib/acadia/query-errors';
 import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
 import { getMenuForRole } from '@/config/menu.acadia';
 
@@ -398,5 +401,61 @@ describe('scheme of work menu', () => {
   it('does not let bursar write schemes of work', () => {
     expect(canWriteAcademicAdmin('bursar')).toBe(false);
     expect(canWriteAcademicAdmin('registrar')).toBe(true);
+  });
+});
+
+describe('scheme of work SELECT RLS admin short-circuit', () => {
+  function readMigration(name: string): string {
+    return readFileSync(join(process.cwd(), 'supabase', 'migrations', name), 'utf8');
+  }
+
+  it('previously gated admin inside EXISTS on SchemeOfWork', () => {
+    const previous = readMigration('20260820220000_coursework_scheme_edge_cases.sql');
+    const fnStart = previous.indexOf(
+      'CREATE OR REPLACE FUNCTION public.acadia_can_view_scheme_of_work',
+    );
+    expect(fnStart).toBeGreaterThanOrEqual(0);
+    const fnBody = previous.slice(fnStart, fnStart + 1200);
+    expect(fnBody).toMatch(
+      /SELECT EXISTS\s*\(\s*SELECT 1\s*FROM public\."SchemeOfWork"/,
+    );
+    expect(fnBody).toMatch(
+      /FROM public\."SchemeOfWork" s[\s\S]*acadia_is_admin_or_registrar\(\)/,
+    );
+  });
+
+  it('short-circuits admin before EXISTS so INSERT RETURNING can pass', () => {
+    const fix = readMigration(
+      '20260922000000_scheme_of_work_select_admin_short_circuit.sql',
+    );
+    const fnStart = fix.indexOf(
+      'CREATE OR REPLACE FUNCTION public.acadia_can_view_scheme_of_work',
+    );
+    expect(fnStart).toBeGreaterThanOrEqual(0);
+    const fnBody = fix.slice(fnStart);
+    const adminIdx = fnBody.indexOf('acadia_is_admin_or_registrar()');
+    const existsIdx = fnBody.indexOf('EXISTS (');
+    expect(adminIdx).toBeGreaterThanOrEqual(0);
+    expect(existsIdx).toBeGreaterThan(adminIdx);
+    expect(fnBody).toMatch(
+      /SELECT\s+public\.acadia_is_admin_or_registrar\(\)\s+OR EXISTS/s,
+    );
+  });
+});
+
+describe('scheme of work mutation error surfacing', () => {
+  it('surfaces PostgREST-shaped error objects instead of a generic fallback', () => {
+    expect(
+      getMutationErrorMessage({
+        message: 'new row violates row-level security policy',
+        code: '42501',
+      }),
+    ).not.toBe('Operation failed.');
+    expect(
+      getMutationErrorMessage({
+        message: 'insert or update on table "SchemeOfWork" violates foreign key constraint',
+        code: '23503',
+      }),
+    ).toMatch(/in use|Level|record/i);
   });
 });

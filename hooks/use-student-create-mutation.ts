@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { StudentCreateInput } from '@/lib/acadia/student-create-schemas';
+import type { StudentCreateFormValues } from '@/lib/acadia/student-create-schemas';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { classListTags, studentListTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -33,7 +33,7 @@ export function useStudentCreateMutation() {
   const tenantId = session?.tenantId ?? null;
 
   return useMutation({
-    mutationFn: async (input: StudentCreateInput): Promise<CreateStudentResult> => {
+    mutationFn: async (input: StudentCreateFormValues): Promise<CreateStudentResult> => {
       const res = await fetch('/api/acadia/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -25,6 +25,13 @@ export function buildParentSystemAuthEmail(
   return `parent.${tenantId}.${normalizedPhone}@guardian.acadia.local`;
 }
 
+export function buildStudentSystemAuthEmail(
+  tenantId: string,
+  uniqueKey: string,
+): string {
+  return `student.${tenantId}.${uniqueKey}@student.acadia.local`;
+}
+
 export type ProvisionResult =
   | {
       ok: true;
@@ -70,7 +77,12 @@ export async function provisionStudentAndParent(
 ): Promise<ProvisionResult> {
   const admin = createAdminClient();
   const now = new Date().toISOString();
-  const studentEmail = input.email.trim().toLowerCase();
+  const providedEmail = input.email.trim()
+    ? input.email.trim().toLowerCase()
+    : '';
+  const studentId = generateStudentId();
+  const studentLoginEmail =
+    providedEmail || buildStudentSystemAuthEmail(tenantId, studentId);
   const parentEmailRaw = input.parent_email.trim()
     ? input.parent_email.trim().toLowerCase()
     : '';
@@ -81,7 +93,7 @@ export async function provisionStudentAndParent(
   // -- Step 1: Create student auth user --
   const { data: studentAuthData, error: studentAuthError } =
     await admin.auth.admin.createUser({
-      email: studentEmail,
+      email: studentLoginEmail,
       password: studentTemporaryPassword,
       email_confirm: true,
       user_metadata: {
@@ -105,7 +117,7 @@ export async function provisionStudentAndParent(
   // session role, and `created_by` cannot reference PascalCase `User` ids.
   const { error: studentUserError } = await admin.from('users').insert({
     id: studentAuthId,
-    email: studentEmail,
+    email: studentLoginEmail,
     name: `${input.first_name.trim()} ${input.last_name.trim()}`,
     role: 'student',
     status: 'active',
@@ -128,14 +140,13 @@ export async function provisionStudentAndParent(
   }
 
   // -- Step 3: Insert students row --
-  const studentId = generateStudentId();
   const matriculeNumber = normalizeMatriculeNumber(input.matricule_number);
 
   const { error: studentInsertError } = await admin.from('students').insert({
     student_id: studentId,
     first_name: input.first_name.trim(),
     last_name: input.last_name.trim(),
-    email: studentEmail,
+    email: providedEmail || null,
     phone: input.phone ?? null,
     date_of_birth: input.date_of_birth ?? null,
     gender: input.gender ?? null,
@@ -428,7 +439,7 @@ export async function provisionStudentAndParent(
 
   const profileInput: ProvisionStudentProfileInput = {
     authUserId: studentAuthId,
-    email: studentEmail,
+    email: studentLoginEmail,
     name: `${input.first_name.trim()} ${input.last_name.trim()}`,
     registrationNumber,
     matriculeNumber,
@@ -493,7 +504,7 @@ export async function provisionStudentAndParent(
     studentUuid,
     studentProfileId: profileResult.studentProfileId,
     enrollmentId: profileResult.enrollmentId,
-    studentLoginEmail: studentEmail,
+    studentLoginEmail,
     studentTemporaryPassword,
     parentCode,
     parentUuid: parentAuthId,

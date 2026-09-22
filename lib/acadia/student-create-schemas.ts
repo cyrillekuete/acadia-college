@@ -23,7 +23,14 @@ export const studentCreateSchema = z
     religion: z.string().optional(),
 
     // Contact
-    email: z.string().email('validation.email'),
+    email: z
+      .string()
+      .optional()
+      .transform((value) => (value?.trim() ? value.trim() : ''))
+      .refine(
+        (value) => !value || z.string().email().safeParse(value).success,
+        'validation.email',
+      ),
     phone_country: phoneCountryField(),
     phone: phoneNationalField(),
     address: z.string().optional(),
@@ -124,11 +131,12 @@ export const studentCreateSchema = z
   })
   .refine(
     (d) => {
+      const studentEmail = d.email.trim().toLowerCase();
       const parentEmail = d.parent_email.trim().toLowerCase();
-      if (!parentEmail) {
+      if (!studentEmail || !parentEmail) {
         return true;
       }
-      return d.email.trim().toLowerCase() !== parentEmail;
+      return studentEmail !== parentEmail;
     },
     {
       message: 'validation.emailsMustDiffer',

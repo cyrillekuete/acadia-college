@@ -18,6 +18,7 @@ import {
 import type { SchemeOfWorkTopicFormValues } from '@/lib/acadia/scheme-of-work-schemas';
 import { localizedText } from '@/lib/acadia/locale';
 import { normalizeRichText } from '@/lib/acadia/sanitize-html';
+import { throwMutationError } from '@/lib/acadia/query-errors';
 import type { Database } from '@/lib/supabase/database.types';
 import { embed, FK } from '@/lib/supabase/embed-selects';
 import { fetchClassSubjectDisplayRows } from '@/lib/supabase/queries/class-subjects';
@@ -315,18 +316,14 @@ export async function upsertSchemeOfWork(
     updatedAt: now,
   };
 
-  const { data, error } = await supabase
-    .from('SchemeOfWork')
-    .insert(row)
-    .select(
-      'id, tenantId, academicYearId, subjectId, levelId, status, createdAt, updatedAt',
-    )
-    .single();
+  // Omit RETURNING: SELECT RLS via acadia_can_view_scheme_of_work re-reads the
+  // row and can miss the in-flight insert, aborting the whole statement.
+  const { error } = await supabase.from('SchemeOfWork').insert(row);
 
   if (error) {
-    throw error;
+    throwMutationError(error);
   }
-  return mapSchemeRow(data);
+  return mapSchemeRow(row);
 }
 
 export async function updateSchemeStatus(

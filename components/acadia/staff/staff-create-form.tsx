@@ -234,7 +234,7 @@ export function StaffCreateForm() {
   const [maxStepReached, setMaxStepReached] = useState(1);
   const stepCount = 5;
 
-  async function onSubmit(values: StaffCreateInput) {
+  async function onSubmit() {
     if (activeStep !== stepCount) {
       return;
     }
@@ -244,13 +244,16 @@ export function StaffCreateForm() {
       return;
     }
 
-    const payload: StaffCreateInput = {
-      ...values,
+    const payload: StaffCreateFormValues = {
+      ...form.getValues(),
       academicYearId: activeYearId,
     };
 
     const result = await mutation.mutateAsync(payload).catch((err: Error) => {
-      toast.error(err.message ?? t('staff.createFailed'));
+      const message = err.message;
+      toast.error(
+        message ? t(message, { defaultValue: message }) : t('staff.createFailed'),
+      );
       return null;
     });
 

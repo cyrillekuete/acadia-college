@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ComponentProps, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -53,7 +53,6 @@ import { CityAutocomplete } from '@/components/acadia/location/city-autocomplete
 import { CountryCombobox } from '@/components/acadia/location/country-combobox';
 import { RegionSelect } from '@/components/acadia/location/region-select';
 import { PhoneFieldGroup } from '@/components/acadia/phone/phone-field-group';
-import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { DEFAULT_COUNTRY_NAME } from '@/lib/acadia/countries';
 import {
   CREDENTIALS_DOWNLOAD_NAVIGATION_DELAY_MS,
@@ -183,15 +182,27 @@ export function StudentCreateForm() {
 
   const [activeStep, setActiveStep] = useState(1);
   const [maxStepReached, setMaxStepReached] = useState(1);
+  const [focusField, setFocusField] = useState<keyof StudentCreateFormValues | null>(
+    null,
+  );
   const stepCount = 5;
 
-  async function onSubmit(values: StudentCreateInput) {
+  useEffect(() => {
+    if (!focusField) return;
+    form.setFocus(focusField);
+    setFocusField(null);
+  }, [focusField, form]);
+
+  async function onSubmit() {
     if (activeStep !== stepCount) {
       return;
     }
 
-    const result = await mutation.mutateAsync(values).catch((err: Error) => {
-      toast.error(err.message ?? t('students.createFailed'));
+    const result = await mutation.mutateAsync(form.getValues()).catch((err: Error) => {
+      const message = err.message;
+      toast.error(
+        message ? t(message, { defaultValue: message }) : t('students.createFailed'),
+      );
       return null;
     });
 
@@ -286,13 +297,35 @@ export function StudentCreateForm() {
     setMaxStepReached((prev) => Math.max(prev, next));
   }
 
+  function onInvalid(errors: FieldErrors<StudentCreateFormValues>) {
+    for (const [stepId, fields] of Object.entries(STUDENT_CREATE_STEP_FIELDS)) {
+      const firstInvalid = fields.find((name) => errors[name]);
+      if (!firstInvalid) continue;
+
+      const step = Number(stepId);
+      setActiveStep(step);
+      setMaxStepReached((prev) => Math.max(prev, step));
+      setFocusField(firstInvalid);
+
+      const fieldError = errors[firstInvalid];
+      const message =
+        fieldError && 'message' in fieldError && typeof fieldError.message === 'string'
+          ? fieldError.message
+          : undefined;
+      if (message) {
+        toast.error(t(message, { defaultValue: message }));
+      }
+      return;
+    }
+  }
+
   function handleFormSubmit(event: FormEvent<HTMLFormElement>) {
     if (activeStep !== stepCount) {
       event.preventDefault();
       void handleContinue();
       return;
     }
-    void form.handleSubmit(onSubmit)(event);
+    void form.handleSubmit(onSubmit, onInvalid)(event);
   }
 
   return (
@@ -358,7 +391,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.gender')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('students.selectGender')} />
@@ -405,10 +438,10 @@ export function StudentCreateForm() {
             )} />
           </StepperContent>
 
-          <StepperContent value={2} className={SECTION_GRID}>
+          <StepperContent value={2} className={ROW_GRID_2}>
             <FormField control={form.control} name="email" render={({ field }) => (
               <StudentFieldItem>
-                <StudentFieldLabel>{t('common.labels.email')} <span className="text-destructive">*</span></StudentFieldLabel>
+                <StudentFieldLabel>{t('common.labels.email')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl><Input className="w-full" type="email" {...field} /></FormControl>
                   <FormMessage />
@@ -517,7 +550,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('catalog.subSystemLabel')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('catalog.selectSubSystem')} />
@@ -537,7 +570,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('catalog.branchLabel')}</StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('catalog.selectBranch')} />
@@ -572,7 +605,7 @@ export function StudentCreateForm() {
                 <StudentFieldControl>
                   <Select
                     onValueChange={field.onChange}
-                    value={field.value || undefined}
+                    value={field.value ?? ''}
                     disabled={!catalogSubSystem || !catalogBranch}
                   >
                     <FormControl>
@@ -736,7 +769,7 @@ export function StudentCreateForm() {
               <StudentFieldItem>
                 <StudentFieldLabel>{t('common.labels.relationship')} <span className="text-destructive">*</span></StudentFieldLabel>
                 <StudentFieldControl>
-                  <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={t('students.selectRelationship')} />
@@ -834,85 +867,102 @@ export function StudentCreateForm() {
           </StepperContent>
 
           <StepperContent value={5} className="space-y-4">
-            <div className={ROW_GRID_2}>
-              <FormField control={form.control} name="emergency_contact_name" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>{t('students.contactName')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" {...field} /></FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium">{t('students.emergencyContact')}</h3>
+              <div className={ROW_GRID_2}>
+                <FormField control={form.control} name="emergency_contact_name" render={({ field }) => (
+                  <StudentFieldItem>
+                    <StudentFieldLabel>{t('students.contactName')}</StudentFieldLabel>
+                    <StudentFieldControl>
+                      <FormControl><Input className="w-full" {...field} /></FormControl>
+                      <FormMessage />
+                    </StudentFieldControl>
+                  </StudentFieldItem>
+                )} />
 
-              <FormField control={form.control} name="emergency_contact_phone_country" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>{t('common.labels.country')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl>
-                      <CountryCombobox
-                        className="w-full"
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+                <FormField control={form.control} name="emergency_contact_relationship" render={({ field }) => (
+                  <StudentFieldItem>
+                    <StudentFieldLabel>{t('common.labels.relationship')}</StudentFieldLabel>
+                    <StudentFieldControl>
+                      <FormControl><Input className="w-full" {...field} /></FormControl>
+                      <FormMessage />
+                    </StudentFieldControl>
+                  </StudentFieldItem>
+                )} />
 
-              <PhoneFormFields
-                control={form.control}
-                countryName="emergency_contact_phone_country"
-                phoneName="emergency_contact_phone"
-                phoneLabel={t('common.labels.phone')}
-                hideCountry
-                className={cn(FIELD_ITEM, 'space-y-0')}
-              />
+                <FormField control={form.control} name="emergency_contact_phone_country" render={({ field }) => (
+                  <StudentFieldItem>
+                    <StudentFieldLabel>{t('common.labels.country')}</StudentFieldLabel>
+                    <StudentFieldControl>
+                      <FormControl>
+                        <CountryCombobox
+                          className="w-full"
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </StudentFieldControl>
+                  </StudentFieldItem>
+                )} />
 
-              <FormField control={form.control} name="emergency_contact_relationship" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>{t('common.labels.relationship')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" {...field} /></FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+                <FormField control={form.control} name="emergency_contact_phone" render={({ field }) => (
+                  <StudentFieldItem>
+                    <StudentFieldLabel>{t('common.labels.phone')}</StudentFieldLabel>
+                    <StudentFieldControl>
+                      <FormControl>
+                        <PhoneFieldGroup
+                          country={form.watch('emergency_contact_phone_country') ?? ''}
+                          onCountryChange={() => {}}
+                          phone={field.value ?? ''}
+                          onPhoneChange={field.onChange}
+                          hideCountry
+                          hideLabel
+                          phoneId={field.name}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </StudentFieldControl>
+                  </StudentFieldItem>
+                )} />
+              </div>
             </div>
 
             <Separator />
 
-            <div className={SECTION_GRID}>
-              <FormField control={form.control} name="blood_group" render={({ field }) => (
-                <StudentFieldItem>
-                  <StudentFieldLabel>{t('students.bloodGroup')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" placeholder={t('students.bloodGroupPlaceholder')} {...field} /></FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium">{t('students.medicalInformation')}</h3>
+              <div className={ROW_GRID_2}>
+                <FormField control={form.control} name="blood_group" render={({ field }) => (
+                  <StudentFieldItem>
+                    <StudentFieldLabel>{t('students.bloodGroup')}</StudentFieldLabel>
+                    <StudentFieldControl>
+                      <FormControl><Input className="w-full" placeholder={t('students.bloodGroupPlaceholder')} {...field} /></FormControl>
+                      <FormMessage />
+                    </StudentFieldControl>
+                  </StudentFieldItem>
+                )} />
 
-              <FormField control={form.control} name="allergies" render={({ field }) => (
-                <StudentFieldItem className="sm:col-span-2">
-                  <StudentFieldLabel>{t('students.allergies')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" placeholder={t('students.allergiesPlaceholder')} {...field} /></FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+                <FormField control={form.control} name="allergies" render={({ field }) => (
+                  <StudentFieldItem>
+                    <StudentFieldLabel>{t('students.allergies')}</StudentFieldLabel>
+                    <StudentFieldControl>
+                      <FormControl><Input className="w-full" placeholder={t('students.allergiesPlaceholder')} {...field} /></FormControl>
+                      <FormMessage />
+                    </StudentFieldControl>
+                  </StudentFieldItem>
+                )} />
 
-              <FormField control={form.control} name="medical_conditions" render={({ field }) => (
-                <StudentFieldItem className="sm:col-span-2">
-                  <StudentFieldLabel>{t('students.medicalConditions')}</StudentFieldLabel>
-                  <StudentFieldControl>
-                    <FormControl><Input className="w-full" placeholder={t('students.conditionsPlaceholder')} {...field} /></FormControl>
-                    <FormMessage />
-                  </StudentFieldControl>
-                </StudentFieldItem>
-              )} />
+                <FormField control={form.control} name="medical_conditions" render={({ field }) => (
+                  <StudentFieldItem className="sm:col-span-2">
+                    <StudentFieldLabel>{t('students.medicalConditions')}</StudentFieldLabel>
+                    <StudentFieldControl>
+                      <FormControl><Input className="w-full" placeholder={t('students.conditionsPlaceholder')} {...field} /></FormControl>
+                      <FormMessage />
+                    </StudentFieldControl>
+                  </StudentFieldItem>
+                )} />
+              </div>
             </div>
           </StepperContent>
         </RegistryCreateWizardShell>

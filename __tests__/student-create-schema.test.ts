@@ -9,6 +9,7 @@ import {
   isCityInRegion,
 } from '@/lib/acadia/cameroon-locations';
 import { normalizePhoneForLookup } from '@/lib/acadia/phone';
+import { buildStudentSystemAuthEmail } from '@/lib/acadia/provision-accounts';
 import { studentCreateSchema } from '@/lib/acadia/student-create-schemas';
 
 const basePayload = {
@@ -113,6 +114,23 @@ describe('studentCreateSchema parent contact', () => {
     }
   });
 
+  it('rejects an already-converted ISO date of birth', () => {
+    const result = studentCreateSchema.safeParse({
+      ...basePayload,
+      date_of_birth: '2010-03-15',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some(
+          (issue) =>
+            issue.path.includes('date_of_birth') &&
+            issue.message === 'validation.invalidDateOfBirth',
+        ),
+      ).toBe(true);
+    }
+  });
+
   it('rejects invalid date of birth formats', () => {
     expect(
       studentCreateSchema.safeParse({
@@ -133,6 +151,50 @@ describe('studentCreateSchema parent contact', () => {
       ...basePayload,
       email: 'same@school.test',
       parent_email: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts empty student email', () => {
+    const result = studentCreateSchema.safeParse({
+      ...basePayload,
+      email: '',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe('');
+    }
+  });
+
+  it('accepts valid optional student email', () => {
+    const result = studentCreateSchema.safeParse({
+      ...basePayload,
+      email: 'student@school.test',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe('student@school.test');
+    }
+  });
+
+  it('rejects invalid student email when provided', () => {
+    const result = studentCreateSchema.safeParse({
+      ...basePayload,
+      email: 'not-an-email',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('email'))).toBe(
+        true,
+      );
+    }
+  });
+
+  it('skips emailsMustDiffer when student email is empty', () => {
+    const result = studentCreateSchema.safeParse({
+      ...basePayload,
+      email: '',
+      parent_email: 'parent@school.test',
     });
     expect(result.success).toBe(true);
   });
@@ -188,6 +250,14 @@ describe('studentCreateSchema parent contact', () => {
     if (result.success) {
       expect(result.data.matricule_number).toBe('MIN-2026-001');
     }
+  });
+});
+
+describe('buildStudentSystemAuthEmail', () => {
+  it('builds a synthetic student login email', () => {
+    expect(buildStudentSystemAuthEmail('tenant-1', 'STU-123')).toBe(
+      'student.tenant-1.STU-123@student.acadia.local',
+    );
   });
 });
 

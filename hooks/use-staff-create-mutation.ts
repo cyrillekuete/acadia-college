@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { StaffCreateInput } from '@/lib/acadia/staff-create-schemas';
+import type { StaffCreateFormValues } from '@/lib/acadia/staff-create-schemas';
 import { invalidateAcadiaCache } from '@/lib/acadia/cache/invalidate-client';
 import { staffListTags } from '@/lib/acadia/cache/tags';
 import { useAcadiaCollegeSession } from '@/hooks/use-acadia-college-session';
@@ -19,7 +19,7 @@ export function useStaffCreateMutation() {
   const tenantId = session?.tenantId ?? null;
 
   return useMutation({
-    mutationFn: async (input: StaffCreateInput): Promise<CreateStaffResult> => {
+    mutationFn: async (input: StaffCreateFormValues): Promise<CreateStaffResult> => {
       const res = await fetch('/api/acadia/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
