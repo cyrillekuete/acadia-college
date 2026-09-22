@@ -30,6 +30,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
+import { DobTextInput } from '@/components/acadia/forms/dob-text-input';
 import { PhoneFormFields } from '@/components/acadia/phone/phone-form-field';
 import { CityAutocomplete } from '@/components/acadia/location/city-autocomplete';
 import { RegionSelect } from '@/components/acadia/location/region-select';
@@ -445,14 +446,10 @@ export function StaffCreateForm() {
                 <FormItem>
                   <FormLabel>{t('common.labels.dateOfBirth')}</FormLabel>
                   <FormControl>
-                    <DatePickerInput
+                    <DobTextInput
                       value={field.value ?? ''}
                       onChange={field.onChange}
-                      placeholder={t('staff.pickDateOfBirth')}
-                      captionLayout="dropdown"
-                      startMonth={new Date(1920, 0)}
-                      endMonth={new Date()}
-                      disabledDates={{ after: new Date() }}
+                      placeholder={t('common.placeholders.dob')}
                     />
                   </FormControl>
                   <FormMessage />

@@ -1,3 +1,124 @@
+import { z } from 'zod';
+
+/** Manual date-of-birth entry format (DD-MM-YYYY). */
+export const DOB_INPUT_PATTERN = /^\d{2}-\d{2}-\d{4}$/;
+
+function parseDobCalendar(value: string): Date | undefined {
+  const trimmed = value.trim();
+  if (!DOB_INPUT_PATTERN.test(trimmed)) {
+    return undefined;
+  }
+  const [dayStr, monthStr, yearStr] = trimmed.split('-');
+  const day = Number(dayStr);
+  const month = Number(monthStr);
+  const year = Number(yearStr);
+  const date = new Date(year, month - 1, day);
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return undefined;
+  }
+  return date;
+}
+
+function isCalendarDateAfterToday(date: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date > today;
+}
+
+/** Parse DD-MM-YYYY; rejects empty, invalid, and future dates. */
+export function parseDobInput(
+  value: string | null | undefined,
+): Date | undefined {
+  if (!value?.trim()) {
+    return undefined;
+  }
+  const date = parseDobCalendar(value);
+  if (!date || isCalendarDateAfterToday(date)) {
+    return undefined;
+  }
+  return date;
+}
+
+/** DD-MM-YYYY → YYYY-MM-DD for Postgres `date` columns. */
+export function dobInputToIsoDate(value: string): string | undefined {
+  const date = parseDobCalendar(value);
+  if (!date) {
+    return undefined;
+  }
+  return formatLocalDateInputValue(date);
+}
+
+/** DB/API YYYY-MM-DD (or ISO date prefix) → DD-MM-YYYY for form prefill. */
+export function formatDobInputFromIso(
+  value: string | null | undefined,
+): string {
+  const parsed = parseLocalDateInputValue(value?.trim().slice(0, 10));
+  if (!parsed) {
+    return '';
+  }
+  const day = String(parsed.getDate()).padStart(2, '0');
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const year = String(parsed.getFullYear());
+  return `${day}-${month}-${year}`;
+}
+
+/** Strip non-digits and insert dashes while typing (max DD-MM-YYYY). */
+export function formatDobWhileTyping(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) {
+    return digits;
+  }
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  }
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+}
+
+/** Optional DOB: empty allowed; valid input transformed to YYYY-MM-DD. */
+export function optionalDobField() {
+  return z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .transform((val) => val?.trim() ?? '')
+    .pipe(
+      z
+        .string()
+        .superRefine((val, ctx) => {
+          if (!val) {
+            return;
+          }
+          if (!DOB_INPUT_PATTERN.test(val)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'validation.invalidDateOfBirth',
+            });
+            return;
+          }
+          const date = parseDobCalendar(val);
+          if (!date) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'validation.invalidDateOfBirth',
+            });
+            return;
+          }
+          if (isCalendarDateAfterToday(date)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'validation.dateOfBirthFuture',
+            });
+          }
+        })
+        .transform((val) => (val ? val : undefined)),
+    );
+}
+
 /**
  * Formats a Date as YYYY-MM-DD in the local timezone (for `<input type="date">`).
  */

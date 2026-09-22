@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/acadia/forms/date-picker-input';
+import { DobTextInput } from '@/components/acadia/forms/dob-text-input';
 import {
   Select,
   SelectContent,
@@ -342,13 +343,10 @@ export function StudentCreateForm() {
                 <StudentFieldLabel>{t('common.labels.dateOfBirth')}</StudentFieldLabel>
                 <StudentFieldControl>
                   <FormControl>
-                    <DatePickerInput
+                    <DobTextInput
                       value={field.value ?? ''}
                       onChange={field.onChange}
-                      captionLayout="dropdown"
-                      startMonth={new Date(1920, 0)}
-                      endMonth={new Date()}
-                      disabledDates={{ after: new Date() }}
+                      placeholder={t('common.placeholders.dob')}
                     />
                   </FormControl>
                   <FormMessage />

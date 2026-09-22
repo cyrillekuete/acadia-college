@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dobInputToIsoDate, optionalDobField } from '@/lib/acadia/dates';
 import { ACADEMIC_SUB_SYSTEMS } from '@/lib/acadia/education-system';
 import {
   phoneCountryField,
@@ -40,7 +41,7 @@ export const staffCreateSchema = z
     title: staffTitleEnum,
     firstName: z.string().min(1, 'validation.required.firstName').max(80),
     lastName: z.string().min(1, 'validation.required.lastName').max(80),
-    dateOfBirth: z.string().optional().or(z.literal('')),
+    dateOfBirth: optionalDobField(),
     gender: staffGenderEnum.optional(),
     nationality: z.string().max(80).optional().or(z.literal('')),
     idNumber: z.string().max(80).optional().or(z.literal('')),
@@ -117,6 +118,9 @@ export const staffCreateSchema = z
 
     return {
       ...rest,
+      dateOfBirth: rest.dateOfBirth
+        ? dobInputToIsoDate(rest.dateOfBirth)
+        : undefined,
       subjectIds: rest.subjectIds ?? [],
       classIds: rest.classIds ?? [],
       classMasterClassIds: rest.classMasterClassIds ?? [],

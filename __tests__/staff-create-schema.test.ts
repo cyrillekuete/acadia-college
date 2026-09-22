@@ -128,6 +128,26 @@ describe('staffCreateSchema', () => {
       ).toBe(true);
     }
   });
+
+  it('accepts DD-MM-YYYY date of birth and stores ISO date', () => {
+    const result = staffCreateSchema.safeParse({
+      ...basePayload,
+      dateOfBirth: '15-03-2010',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dateOfBirth).toBe('2010-03-15');
+    }
+  });
+
+  it('rejects invalid date of birth formats', () => {
+    expect(
+      staffCreateSchema.safeParse({
+        ...basePayload,
+        dateOfBirth: '32-01-2010',
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe('staffUpdateSchema', () => {

@@ -102,6 +102,32 @@ describe('studentCreateSchema parent contact', () => {
     }
   });
 
+  it('accepts DD-MM-YYYY date of birth and stores ISO date', () => {
+    const result = studentCreateSchema.safeParse({
+      ...basePayload,
+      date_of_birth: '15-03-2010',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.date_of_birth).toBe('2010-03-15');
+    }
+  });
+
+  it('rejects invalid date of birth formats', () => {
+    expect(
+      studentCreateSchema.safeParse({
+        ...basePayload,
+        date_of_birth: '32-01-2010',
+      }).success,
+    ).toBe(false);
+    expect(
+      studentCreateSchema.safeParse({
+        ...basePayload,
+        date_of_birth: '15/03/2010',
+      }).success,
+    ).toBe(false);
+  });
+
   it('skips student vs parent email check when parent email is empty', () => {
     const result = studentCreateSchema.safeParse({
       ...basePayload,

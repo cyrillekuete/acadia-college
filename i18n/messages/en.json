@@ -85,6 +85,9 @@
       "male": "Male",
       "female": "Female"
     },
+    "placeholders": {
+      "dob": "DD-MM-YYYY"
+    },
     "messages": {
       "welcome": "Welcome",
       "loading": "Loading...",
@@ -1923,6 +1926,8 @@
     "invalid": {
       "date": "Enter a valid date (YYYY-MM-DD)."
     },
+    "invalidDateOfBirth": "Enter a valid date of birth (DD-MM-YYYY).",
+    "dateOfBirthFuture": "Date of birth cannot be in the future.",
     "email": "Please enter a valid email address.",
     "emailShort": "Please enter a valid email.",
     "identifierFormat": "Enter a valid email or Teacher ID (e.g. TCH-2026-12345).",

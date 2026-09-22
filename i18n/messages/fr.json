@@ -85,6 +85,9 @@
       "male": "Masculin",
       "female": "Féminin"
     },
+    "placeholders": {
+      "dob": "JJ-MM-AAAA"
+    },
     "messages": {
       "welcome": "Bienvenue",
       "loading": "Chargement...",
@@ -1924,6 +1927,8 @@
     "invalid": {
       "date": "Saisissez une date valide (AAAA-MM-JJ)."
     },
+    "invalidDateOfBirth": "Saisissez une date de naissance valide (JJ-MM-AAAA).",
+    "dateOfBirthFuture": "La date de naissance ne peut pas être dans le futur.",
     "email": "Veuillez saisir une adresse e-mail valide.",
     "emailShort": "Veuillez saisir un e-mail valide.",
     "identifierFormat": "Saisissez un e-mail ou un identifiant enseignant valide (ex. TCH-2026-12345).",

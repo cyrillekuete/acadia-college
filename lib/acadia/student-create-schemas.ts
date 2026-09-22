@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dobInputToIsoDate, optionalDobField } from '@/lib/acadia/dates';
 import {
   phoneCountryField,
   phoneNationalField,
@@ -15,7 +16,7 @@ export const studentCreateSchema = z
     // Identity
     first_name: z.string().min(1, 'validation.required.firstName'),
     last_name: z.string().min(1, 'validation.required.lastName'),
-    date_of_birth: z.string().optional(),
+    date_of_birth: optionalDobField(),
     gender: genderEnum.optional(),
     place_of_birth: z.string().optional(),
     nationality: z.string().optional(),
@@ -112,6 +113,9 @@ export const studentCreateSchema = z
 
     return {
       ...rest,
+      date_of_birth: rest.date_of_birth
+        ? dobInputToIsoDate(rest.date_of_birth)
+        : undefined,
       phone: rest.phone?.trim() ? rest.phone : undefined,
       emergency_contact_phone: rest.emergency_contact_phone?.trim()
         ? rest.emergency_contact_phone
