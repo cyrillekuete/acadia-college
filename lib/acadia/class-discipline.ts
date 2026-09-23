@@ -8,6 +8,7 @@ export type ClassDisciplineTerm = `${number}`;
 export type ClassDisciplineRow = {
   termNumber: number;
   absenceHours: number;
+  justifiedAbsences?: number;
   suspensions: number;
   warnings: number;
 };
@@ -17,17 +18,21 @@ export type ClassDisciplineStudent = {
   name: string;
   matricule: string;
   registrationNumber: string;
+  isRepeater: boolean;
 };
 
 export type ClassDisciplineDraft = {
   studentProfileId: string;
   absenceHours: number;
+  justifiedAbsences: number;
   suspensions: number;
   warnings: number;
+  isRepeater: boolean;
 };
 
 const EMPTY_DISCIPLINE: DisciplineInfo = {
   absences: 0,
+  justifiedAbsences: 0,
   suspensions: 0,
   warnings: 0,
 };
@@ -104,6 +109,8 @@ export function aggregateDiscipline(
   return relevant.reduce(
     (acc, row) => ({
       absences: acc.absences + normalizeDisciplineCount(row.absenceHours, 999),
+      justifiedAbsences:
+        acc.justifiedAbsences + normalizeDisciplineCount(row.justifiedAbsences, 999),
       suspensions: acc.suspensions + normalizeDisciplineCount(row.suspensions, 99),
       warnings: acc.warnings + normalizeDisciplineCount(row.warnings, 99),
     }),

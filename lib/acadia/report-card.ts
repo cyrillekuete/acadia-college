@@ -51,6 +51,7 @@ export type ReportCardSubjectDef = {
   groupingLabelFr?: string | null;
   groupingSortOrder?: number | null;
   requiredSubBranchIds: string[];
+  teacherName?: string;
 };
 
 export type ReportCardSubjectGroup = {
@@ -82,6 +83,7 @@ export type ReportCardStudentRow = {
   pob: string;
   photoUrl?: string;
   speciality?: string;
+  isRepeater?: boolean;
 };
 
 export type ReportCardBundle = {
@@ -329,6 +331,7 @@ function toSubjectGrade(
     grade,
     rank,
     remarks,
+    teacherName: subject.teacherName?.trim() || undefined,
   };
 }
 
@@ -514,6 +517,7 @@ export function buildReportCardData(
       enrollment: bundle.classSize,
       photoUrl: bundle.student.photoUrl,
       speciality: bundle.student.speciality || branchLabel(undefined),
+      isRepeater: bundle.student.isRepeater === true,
     },
     academic: {
       year: bundle.academicYearLabel,

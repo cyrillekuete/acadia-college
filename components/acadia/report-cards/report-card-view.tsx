@@ -1,6 +1,7 @@
 'use client';
 
 import { AnnualReportCard } from '@/components/acadia/report-cards/annual-report-card';
+import { ClassicTermReportCard } from '@/components/acadia/report-cards/classic-term-report-card';
 import { TermReportCard } from '@/components/acadia/report-cards/term-report-card';
 import {
   reportCardTermFromAcademic,
@@ -17,6 +18,10 @@ export function ReportCardView({
 }) {
   const layout = resolveReportCardLayout(data);
   const period = reportCardTermFromAcademic(data.academic.term);
+
+  if (layout === 'classicTerm' && (period === '1' || period === '2')) {
+    return <ClassicTermReportCard data={data} variant={variant} />;
+  }
 
   if (layout === 'yearSummary' && period === 'annual') {
     return <AnnualReportCard data={data} variant={variant} />;

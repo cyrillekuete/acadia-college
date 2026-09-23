@@ -19,6 +19,7 @@ import {
   SheetBody,
   SheetContent,
   SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { SidebarMenu } from './sidebar-menu';
@@ -50,7 +51,9 @@ export function HeaderLogo() {
             side="left"
             close={false}
           >
-            <SheetHeader className="p-0 space-y-0" />
+            <SheetHeader className="p-0 space-y-0">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+            </SheetHeader>
             <SheetBody className="p-0 overflow-y-auto">
               <SidebarMenu />
             </SheetBody>

@@ -80,11 +80,13 @@ describe('aggregateDiscipline', () => {
   it('returns zeros when a term has no row', () => {
     expect(aggregateDiscipline(rows, '2')).toEqual({
       absences: 0,
+      justifiedAbsences: 0,
       suspensions: 0,
       warnings: 0,
     });
     expect(aggregateDiscipline(undefined, '1')).toEqual({
       absences: 0,
+      justifiedAbsences: 0,
       suspensions: 0,
       warnings: 0,
     });
@@ -93,13 +95,32 @@ describe('aggregateDiscipline', () => {
   it('uses the matching term and sums annual totals', () => {
     expect(aggregateDiscipline(rows, '1')).toEqual({
       absences: 4,
+      justifiedAbsences: 0,
       suspensions: 1,
       warnings: 2,
     });
     expect(aggregateDiscipline(rows, 'annual')).toEqual({
       absences: 7,
+      justifiedAbsences: 0,
       suspensions: 1,
       warnings: 3,
+    });
+  });
+
+  it('sums justified absences separately from unjustified hours', () => {
+    expect(
+      aggregateDiscipline(
+        [
+          { termNumber: 1, absenceHours: 1, justifiedAbsences: 2, suspensions: 0, warnings: 0 },
+          { termNumber: 1, absenceHours: 3, justifiedAbsences: 1, suspensions: 0, warnings: 0 },
+        ],
+        '1',
+      ),
+    ).toEqual({
+      absences: 4,
+      justifiedAbsences: 3,
+      suspensions: 0,
+      warnings: 0,
     });
   });
 
@@ -111,11 +132,13 @@ describe('aggregateDiscipline', () => {
     ];
     expect(aggregateDiscipline(migrated, '1')).toEqual({
       absences: 7,
+      justifiedAbsences: 0,
       suspensions: 1,
       warnings: 3,
     });
     expect(aggregateDiscipline(migrated, 'annual')).toEqual({
       absences: 8,
+      justifiedAbsences: 0,
       suspensions: 1,
       warnings: 3,
     });

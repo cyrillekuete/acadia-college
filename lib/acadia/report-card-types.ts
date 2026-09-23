@@ -1,6 +1,6 @@
 export type ReportCardTerm = `${number}` | 'annual';
 
-export type ReportCardTemplateId = 'sequence' | 'yearSummary';
+export type ReportCardTemplateId = 'sequence' | 'yearSummary' | 'classicTerm';
 
 export type ReportCardCategory =
   | 'languages'
@@ -43,6 +43,7 @@ export type SubjectGrade = {
   grade?: string;
   rank?: number;
   remarks?: string;
+  teacherName?: string;
 };
 
 export type StudentInfo = {
@@ -60,6 +61,7 @@ export type StudentInfo = {
   enrollment: number;
   photoUrl?: string;
   speciality?: string;
+  isRepeater?: boolean;
 };
 
 export type AcademicInfo = {
@@ -88,7 +90,9 @@ export type StatsInfo = {
 };
 
 export type DisciplineInfo = {
+  /** Unjustified absences. Existing bulletins show this count. */
   absences: number;
+  justifiedAbsences: number;
   suspensions: number;
   warnings: number;
 };
@@ -121,13 +125,100 @@ export type ReportCardBranding = {
   displayNameEn: string;
   displayNameFr: string;
   logoUrl: string | null;
+  /** Report-card crest only. No institution-logo fallback. */
+  reportCardLogoUrl?: string | null;
   contactLine: string;
+  ministryEn?: string;
+  ministryFr?: string;
   regionEn: string;
   regionFr: string;
+  /** Exact English regional line when configured. Empty means the classic bulletin uses regionName. */
+  regionalDelegationEn?: string;
+  regionName?: string;
+  divisionalDelegation?: string;
+  divisionalDelegationFr?: string;
+  addressLine?: string;
+  poBox?: string;
+  phone?: string;
   principalName: string;
 };
 
 const FALLBACK_INSTITUTION_NAME = 'Acadia College';
+const FALLBACK_REGION = 'Littoral';
+
+export const DEFAULT_MINISTRY_NAME_EN = 'Ministry of Secondary Education';
+export const DEFAULT_MINISTRY_NAME_FR = 'Ministère des Enseignements Secondaires';
+
+export type ReportCardLetterheadSource = {
+  ministryNameEn?: string | null;
+  ministryNameFr?: string | null;
+  regionalDelegationEn?: string | null;
+  regionalDelegationFr?: string | null;
+  divisionalDelegation?: string | null;
+  divisionalDelegationFr?: string | null;
+  region?: string | null;
+  poBox?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  institutionPhone?: string | null;
+};
+
+export type ResolvedReportCardLetterhead = {
+  ministryEn: string;
+  ministryFr: string;
+  regionEn: string;
+  regionFr: string;
+  regionalDelegationEn: string;
+  regionName: string;
+  divisionalDelegation: string;
+  divisionalDelegationFr: string;
+  addressLine: string;
+  poBox: string;
+  phone: string;
+  contactLine: string;
+};
+
+/** Print a P.O. Box as entered, prefixing a bare number or code. */
+export function formatPoBoxLine(poBox: string | null | undefined): string {
+  const value = poBox?.trim() || '';
+  if (!value) return '';
+  if (/\b(p\.?\s*o\.?\s*box|b\.?\s*p\.?)\b/i.test(value)) return value;
+  return `P.O. Box ${value}`;
+}
+
+export function resolveReportCardLetterhead(
+  tenant: ReportCardLetterheadSource | null | undefined,
+): ResolvedReportCardLetterhead {
+  const regionName = tenant?.region?.trim() || '';
+  const region = regionName || FALLBACK_REGION;
+  const regionalDelegationEn = tenant?.regionalDelegationEn?.trim() || '';
+  const regionalDelegationFr = tenant?.regionalDelegationFr?.trim() || '';
+  const addressLine = [tenant?.addressLine1, tenant?.addressLine2, tenant?.city]
+    .filter((part) => part && part.trim())
+    .join(', ');
+  const phone = tenant?.institutionPhone?.trim() || '';
+  const poBox = formatPoBoxLine(tenant?.poBox);
+  const contactLine = [poBox, addressLine, phone ? `Tel: ${phone}` : null]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  return {
+    ministryEn: tenant?.ministryNameEn?.trim() || DEFAULT_MINISTRY_NAME_EN,
+    ministryFr: tenant?.ministryNameFr?.trim() || DEFAULT_MINISTRY_NAME_FR,
+    regionEn: regionalDelegationEn || `Regional Delegation of ${region}`,
+    regionFr: regionalDelegationFr || `Délégation Régionale de ${region}`,
+    regionalDelegationEn,
+    regionName,
+    divisionalDelegation: tenant?.divisionalDelegation?.trim() || '',
+    divisionalDelegationFr: tenant?.divisionalDelegationFr?.trim() || '',
+    addressLine,
+    poBox,
+    phone,
+    contactLine,
+  };
+}
 
 /** Bulletin header names come from Institution Name (EN) / Name (FR), not PDF issuer. */
 export function resolveReportCardInstitutionNames(tenant: {

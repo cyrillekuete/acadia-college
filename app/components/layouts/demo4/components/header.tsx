@@ -11,6 +11,7 @@ import {
   SheetBody,
   SheetContent,
   SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Container } from '@/components/common/container';
@@ -53,7 +54,9 @@ export function Header() {
             side="left"
             close={false}
           >
-            <SheetHeader className="p-0 space-y-0" />
+            <SheetHeader className="p-0 space-y-0">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+            </SheetHeader>
             <SheetBody className="p-0 flex items-stretch shrink-0 overflow-y-auto">
               <SidebarPrimary />
               <SidebarSecondary />

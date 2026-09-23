@@ -49,8 +49,10 @@ function emptyDraft(studentProfileId: string): ClassDisciplineDraft {
   return {
     studentProfileId,
     absenceHours: 0,
+    justifiedAbsences: 0,
     suspensions: 0,
     warnings: 0,
+    isRepeater: false,
   };
 }
 
@@ -112,8 +114,10 @@ export function ClassAbsencesGrid() {
         ? {
             studentProfileId: student.studentProfileId,
             absenceHours: existing.absenceHours,
+            justifiedAbsences: existing.justifiedAbsences ?? 0,
             suspensions: existing.suspensions,
             warnings: existing.warnings,
+            isRepeater: student.isRepeater,
           }
         : emptyDraft(student.studentProfileId);
     }
@@ -122,7 +126,7 @@ export function ClassAbsencesGrid() {
 
   const updateDraft = (
     studentProfileId: string,
-    field: keyof Omit<ClassDisciplineDraft, 'studentProfileId'>,
+    field: 'absenceHours' | 'justifiedAbsences' | 'suspensions' | 'warnings',
     raw: string,
     max: number,
   ) => {
@@ -175,6 +179,73 @@ export function ClassAbsencesGrid() {
           </div>
         ),
         size: 240,
+      },
+      {
+        id: 'repeater',
+        accessorFn: (row) => (drafts[row.studentProfileId]?.isRepeater ? 1 : 0),
+        header: ({ column }) => (
+          <DataGridColumnHeader title={t('reports.repeater')} visibility column={column} />
+        ),
+        cell: ({ row }) => (
+          <Select
+            value={drafts[row.original.studentProfileId]?.isRepeater ? 'yes' : 'no'}
+            disabled={!canWrite}
+            onValueChange={(value) =>
+              setDrafts((prev) => {
+                const current = prev[row.original.studentProfileId] ?? emptyDraft(row.original.studentProfileId);
+                return {
+                  ...prev,
+                  [row.original.studentProfileId]: {
+                    ...current,
+                    isRepeater: value === 'yes',
+                  },
+                };
+              })
+            }
+          >
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no">{t('reports.repeaterNo')}</SelectItem>
+              <SelectItem value="yes">{t('reports.repeaterYes')}</SelectItem>
+            </SelectContent>
+          </Select>
+        ),
+        size: 140,
+        enableSorting: false,
+      },
+      {
+        id: 'justifiedAbsences',
+        accessorFn: (row) => drafts[row.studentProfileId]?.justifiedAbsences ?? 0,
+        header: ({ column }) => (
+          <DataGridColumnHeader
+            title={t('reports.justifiedAbsences')}
+            visibility
+            column={column}
+          />
+        ),
+        cell: ({ row }) => (
+          <Input
+            type="number"
+            min={0}
+            max={999}
+            step={1}
+            className="w-24"
+            disabled={!canWrite}
+            value={drafts[row.original.studentProfileId]?.justifiedAbsences ?? 0}
+            onChange={(event) =>
+              updateDraft(
+                row.original.studentProfileId,
+                'justifiedAbsences',
+                event.target.value,
+                999,
+              )
+            }
+          />
+        ),
+        size: 160,
+        enableSorting: false,
       },
       {
         id: 'absenceHours',

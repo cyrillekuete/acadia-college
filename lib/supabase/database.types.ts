@@ -3353,6 +3353,7 @@ export type Database = {
           classId: string | null
           createdAt: string
           id: string
+          isRepeater: boolean
           levelId: string
           status: Database["public"]["Enums"]["StudentEnrollmentStatus"]
           studentProfileId: string
@@ -3366,6 +3367,7 @@ export type Database = {
           classId?: string | null
           createdAt?: string
           id: string
+          isRepeater?: boolean
           levelId: string
           status?: Database["public"]["Enums"]["StudentEnrollmentStatus"]
           studentProfileId: string
@@ -3379,6 +3381,7 @@ export type Database = {
           classId?: string | null
           createdAt?: string
           id?: string
+          isRepeater?: boolean
           levelId?: string
           status?: Database["public"]["Enums"]["StudentEnrollmentStatus"]
           studentProfileId?: string
@@ -3987,6 +3990,7 @@ export type Database = {
           classId: string
           createdAt: string
           id: string
+          justifiedAbsences: number
           recordedByStaffProfileId: string | null
           studentProfileId: string
           suspensions: number
@@ -4001,6 +4005,7 @@ export type Database = {
           classId: string
           createdAt?: string
           id: string
+          justifiedAbsences?: number
           recordedByStaffProfileId?: string | null
           studentProfileId: string
           suspensions?: number
@@ -4015,6 +4020,7 @@ export type Database = {
           classId?: string
           createdAt?: string
           id?: string
+          justifiedAbsences?: number
           recordedByStaffProfileId?: string | null
           studentProfileId?: string
           suspensions?: number
@@ -4861,6 +4867,13 @@ export type Database = {
           country: string | null
           createdAt: string
           customDomain: string | null
+          divisionalDelegation: string | null
+          divisionalDelegationFr: string | null
+          ministryNameEn: string | null
+          ministryNameFr: string | null
+          poBox: string | null
+          regionalDelegationEn: string | null
+          regionalDelegationFr: string | null
           customDomainVerificationToken: string | null
           customDomainVerifiedAt: string | null
           defaultGradingMode: Database["public"]["Enums"]["GradingMode"] | null
@@ -4910,6 +4923,13 @@ export type Database = {
           country?: string | null
           createdAt?: string
           customDomain?: string | null
+          divisionalDelegation?: string | null
+          divisionalDelegationFr?: string | null
+          ministryNameEn?: string | null
+          ministryNameFr?: string | null
+          poBox?: string | null
+          regionalDelegationEn?: string | null
+          regionalDelegationFr?: string | null
           customDomainVerificationToken?: string | null
           customDomainVerifiedAt?: string | null
           defaultGradingMode?: Database["public"]["Enums"]["GradingMode"] | null
@@ -4959,6 +4979,13 @@ export type Database = {
           country?: string | null
           createdAt?: string
           customDomain?: string | null
+          divisionalDelegation?: string | null
+          divisionalDelegationFr?: string | null
+          ministryNameEn?: string | null
+          ministryNameFr?: string | null
+          poBox?: string | null
+          regionalDelegationEn?: string | null
+          regionalDelegationFr?: string | null
           customDomainVerificationToken?: string | null
           customDomainVerifiedAt?: string | null
           defaultGradingMode?: Database["public"]["Enums"]["GradingMode"] | null
@@ -5857,6 +5884,14 @@ export type Database = {
     }
     Functions: {
       acadia_can_manage_users: { Args: never; Returns: boolean }
+      acadia_set_class_repeaters: {
+        Args: {
+          p_academic_year_id: string
+          p_class_id: string
+          p_rows: Json
+        }
+        Returns: undefined
+      }
       acadia_is_active_manager_account: {
         Args: {
           role_id: string

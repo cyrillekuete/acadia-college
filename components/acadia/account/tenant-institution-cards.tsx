@@ -93,6 +93,71 @@ export function TenantInstitutionCards() {
             ]}
           />
           <EditableSettingsCard
+            title={t('account.officialLetterhead', { defaultValue: 'Official letterhead' })}
+            canEdit={canEdit}
+            pending={updateField.isPending}
+            onSave={(field, value) => updateField.mutateAsync({ field, value })}
+            rows={[
+              {
+                key: 'ministryNameEn',
+                label: t('account.ministryEn', { defaultValue: 'Ministry (EN)' }),
+                display: formatRecordValue(tenant.ministryNameEn),
+                rawValue: tenant.ministryNameEn,
+                field: 'ministryNameEn',
+              },
+              {
+                key: 'ministryNameFr',
+                label: t('account.ministryFr', { defaultValue: 'Ministry (FR)' }),
+                display: formatRecordValue(tenant.ministryNameFr),
+                rawValue: tenant.ministryNameFr,
+                field: 'ministryNameFr',
+              },
+              {
+                key: 'regionalDelegationEn',
+                label: t('account.regionalDelegationEn', {
+                  defaultValue: 'Regional delegation (EN)',
+                }),
+                display: formatRecordValue(tenant.regionalDelegationEn),
+                rawValue: tenant.regionalDelegationEn,
+                field: 'regionalDelegationEn',
+              },
+              {
+                key: 'regionalDelegationFr',
+                label: t('account.regionalDelegationFr', {
+                  defaultValue: 'Regional delegation (FR)',
+                }),
+                display: formatRecordValue(tenant.regionalDelegationFr),
+                rawValue: tenant.regionalDelegationFr,
+                field: 'regionalDelegationFr',
+              },
+              {
+                key: 'divisionalDelegation',
+                label: t('account.divisionalDelegation', {
+                  defaultValue: 'Divisional delegation (EN)',
+                }),
+                display: formatRecordValue(tenant.divisionalDelegation),
+                rawValue: tenant.divisionalDelegation,
+                field: 'divisionalDelegation',
+              },
+              {
+                key: 'divisionalDelegationFr',
+                label: t('account.divisionalDelegationFr', {
+                  defaultValue: 'Divisional delegation (FR)',
+                }),
+                display: formatRecordValue(tenant.divisionalDelegationFr),
+                rawValue: tenant.divisionalDelegationFr,
+                field: 'divisionalDelegationFr',
+              },
+              {
+                key: 'poBox',
+                label: t('account.poBox', { defaultValue: 'P.O. Box' }),
+                display: formatRecordValue(tenant.poBox),
+                rawValue: tenant.poBox,
+                field: 'poBox',
+              },
+            ]}
+          />
+          <EditableSettingsCard
             title={t('account.contactAddress', { defaultValue: 'Contact & address' })}
             canEdit={canEdit}
             pending={updateField.isPending}

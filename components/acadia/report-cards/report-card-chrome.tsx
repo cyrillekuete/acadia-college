@@ -4,13 +4,17 @@ import { useMemo, useState, type ReactNode } from 'react';
 import QRCode from 'react-qr-code';
 import { GraduationCap, Star } from '@/lib/icons';
 import { formatGceCount } from '@/lib/acadia/report-card';
-import type { ReportCardData } from '@/lib/acadia/report-card-types';
+import {
+  buildReportCardQrValue,
+  DEFAULT_MINISTRY_NAME_EN,
+  DEFAULT_MINISTRY_NAME_FR,
+  type ReportCardData,
+} from '@/lib/acadia/report-card-types';
 import { REPORT_CARD_PDF_STYLES } from '@/components/acadia/report-cards/report-card-pdf-styles';
 import {
   REPORT_CARD_THEME,
   reportCardPeriodLabel,
 } from '@/components/acadia/report-cards/report-card-theme';
-import { buildReportCardQrValue } from '@/lib/acadia/report-card-types';
 
 const { navy, gold, grouping, green, red, border } = REPORT_CARD_THEME;
 
@@ -75,8 +79,9 @@ export function ReportCardHeader({
         <div className="flex flex-col justify-center text-center md:text-left text-[10px] print:text-[8pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem] w-full">
           <p>République du Cameroun</p>
           <p>Paix - Travail - Patrie</p>
-          <p>Ministère des Enseignements Secondaires</p>
+          <p>{branding.ministryFr || DEFAULT_MINISTRY_NAME_FR}</p>
           <p>{branding.regionFr}</p>
+          {branding.divisionalDelegationFr ? <p>{branding.divisionalDelegationFr}</p> : null}
           <p className="text-black">{branding.displayNameFr}</p>
         </div>
 
@@ -104,8 +109,9 @@ export function ReportCardHeader({
         <div className="flex flex-col justify-center text-right text-[10px] print:text-[8pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem]">
           <p>Republic of Cameroon</p>
           <p>Peace - Work - Fatherland</p>
-          <p>Ministry of Secondary Education</p>
+          <p>{branding.ministryEn || DEFAULT_MINISTRY_NAME_EN}</p>
           <p>{branding.regionEn}</p>
+          {branding.divisionalDelegation ? <p>{branding.divisionalDelegation}</p> : null}
           <p className="text-black">{branding.displayNameEn}</p>
         </div>
       </header>

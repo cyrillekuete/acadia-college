@@ -17,6 +17,7 @@ type Client = SupabaseClient;
 
 const ROSTER_SELECT = `
   studentProfileId,
+  isRepeater,
   ${embed('StudentProfile', FK.StudentEnrollment_studentProfile, `
     id,
     matriculeNumber,
@@ -64,7 +65,7 @@ export async function fetchClassDisciplineRoster(
     supabase
       .from('StudentTermDiscipline')
       .select(
-        'id, studentProfileId, termNumber, absenceHours, suspensions, warnings',
+        'id, studentProfileId, termNumber, absenceHours, justifiedAbsences, suspensions, warnings',
       )
       .eq('tenantId', tenantId)
       .eq('academicYearId', academicYearId)
@@ -97,6 +98,7 @@ export async function fetchClassDisciplineRoster(
         name,
         matricule: profile?.matriculeNumber?.trim() || profile?.registrationNumber || '—',
         registrationNumber: profile?.registrationNumber ?? '—',
+        isRepeater: row.isRepeater === true,
       };
     })
     .filter((student) => student.studentProfileId)
@@ -107,6 +109,7 @@ export async function fetchClassDisciplineRoster(
     studentProfileId: row.studentProfileId,
     termNumber: row.termNumber,
     absenceHours: normalizeDisciplineCount(row.absenceHours, 999),
+    justifiedAbsences: normalizeDisciplineCount(row.justifiedAbsences, 999),
     suspensions: normalizeDisciplineCount(row.suspensions, 99),
     warnings: normalizeDisciplineCount(row.warnings, 99),
   }));
@@ -122,7 +125,7 @@ export async function fetchStudentTermDiscipline(
 ): Promise<ClassDisciplineRow[]> {
   const { data, error } = await supabase
     .from('StudentTermDiscipline')
-    .select('termNumber, absenceHours, suspensions, warnings')
+    .select('termNumber, absenceHours, justifiedAbsences, suspensions, warnings')
     .eq('tenantId', tenantId)
     .eq('studentProfileId', studentProfileId)
     .eq('academicYearId', academicYearId);
@@ -134,6 +137,7 @@ export async function fetchStudentTermDiscipline(
   return (data ?? []).map((row) => ({
     termNumber: row.termNumber,
     absenceHours: normalizeDisciplineCount(row.absenceHours, 999),
+    justifiedAbsences: normalizeDisciplineCount(row.justifiedAbsences, 999),
     suspensions: normalizeDisciplineCount(row.suspensions, 99),
     warnings: normalizeDisciplineCount(row.warnings, 99),
   }));
@@ -208,6 +212,7 @@ export async function upsertClassDisciplineRows(
     studentProfileId: row.studentProfileId,
     termNumber: input.termNumber,
     absenceHours: normalizeDisciplineCount(row.absenceHours, 999),
+    justifiedAbsences: normalizeDisciplineCount(row.justifiedAbsences, 999),
     suspensions: normalizeDisciplineCount(row.suspensions, 99),
     warnings: normalizeDisciplineCount(row.warnings, 99),
     recordedByStaffProfileId: input.recordedByStaffProfileId,
@@ -220,5 +225,18 @@ export async function upsertClassDisciplineRows(
 
   if (error) {
     throw new Error(getQueryErrorMessage(error));
+  }
+
+  const { error: repeaterError } = await supabase.rpc('acadia_set_class_repeaters', {
+    p_academic_year_id: input.academicYearId,
+    p_class_id: input.classId,
+    p_rows: input.rows.map((row) => ({
+      studentProfileId: row.studentProfileId,
+      isRepeater: row.isRepeater,
+    })),
+  });
+
+  if (repeaterError) {
+    throw new Error(getQueryErrorMessage(repeaterError));
   }
 }

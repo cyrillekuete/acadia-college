@@ -17,6 +17,7 @@ import {
 } from '@/lib/acadia/report-card';
 import {
   resolveReportCardInstitutionNames,
+  resolveReportCardLetterhead,
   type ReportCardData,
   type ReportCardTerm,
 } from '@/lib/acadia/report-card-types';
@@ -26,7 +27,7 @@ import { fetchStudentTermDiscipline } from '@/lib/supabase/queries/class-discipl
 import { fetchReportCardTemplatePreference } from '@/lib/supabase/queries/report-card-templates';
 import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 import { fetchAcadiaTenant } from '@/lib/supabase/queries/tenant';
-import { resolveReportCardLogoUrl } from '@/lib/supabase/storage';
+import { resolveReportCardLogoUrl, getTenantAssetPublicUrl } from '@/lib/supabase/storage';
 
 const STUDENT_PROFILE_SELECT = `
   id,
@@ -42,6 +43,7 @@ const ENROLLMENT_SELECT = `
   status,
   createdAt,
   branch,
+  isRepeater,
   ${embed('Class', FK.StudentEnrollment_class, 'id, name, staffProfileId, branch, subSystem')}
 `;
 
@@ -72,6 +74,15 @@ const MARK_SELECT = `
 `;
 
 const STAFF_SELECT = `id, ${embed('User', FK.StaffProfile_user, 'name')}`;
+
+const SUBJECT_TEACHER_SELECT = `
+  subjectId,
+  ${embed(
+    'StaffProfile',
+    FK.StaffClassSubjectAssignment_staffProfile,
+    `id, ${embed('User', FK.StaffProfile_user, 'name')}`,
+  )}
+`;
 
 function formatDob(value: string | null | undefined): string {
   if (!value) {
@@ -148,6 +159,7 @@ export async function fetchReportCardBundle(
     status: string | null;
     createdAt: string | null;
     branch: string | null;
+    isRepeater?: boolean | null;
     Class?: unknown;
   }>;
   const enrollment =
@@ -191,6 +203,7 @@ export async function fetchReportCardBundle(
     cohortResult,
     tenant,
     disciplineByTerm,
+    teacherResult,
   ] = await Promise.all([
     supabase
       .from('AcademicYear')
@@ -227,6 +240,12 @@ export async function fetchReportCardBundle(
       studentProfileId,
       academicYearId,
     ),
+    supabase
+      .from('StaffClassSubjectAssignment')
+      .select(SUBJECT_TEACHER_SELECT)
+      .eq('tenantId', tenantId)
+      .eq('academicYearId', academicYearId)
+      .eq('classId', resolvedClassId),
   ]);
 
   let legacyUserResult: {
@@ -243,6 +262,27 @@ export async function fetchReportCardBundle(
     legacyUserResult = data;
   } catch {
     legacyUserResult = null;
+  }
+
+  let placeOfBirth = '';
+  try {
+    const { data: profileLink } = await supabase
+      .from('user_profiles')
+      .select('role_specific_id')
+      .eq('user_id', profile.userId)
+      .maybeSingle();
+    const legacyStudentId = (profileLink?.role_specific_id as string | null)?.trim();
+    if (legacyStudentId) {
+      const { data: studentRow } = await supabase
+        .from('students')
+        .select('place_of_birth')
+        .eq('tenant_id', tenantId)
+        .eq('student_id', legacyStudentId)
+        .maybeSingle();
+      placeOfBirth = (studentRow?.place_of_birth as string | null)?.trim() || '';
+    }
+  } catch {
+    placeOfBirth = '';
   }
 
   if (yearResult.error) {
@@ -262,6 +302,31 @@ export async function fetchReportCardBundle(
   }
   if (cohortResult.error) {
     throw new Error(getQueryErrorMessage(cohortResult.error));
+  }
+  if (teacherResult.error) {
+    throw new Error(getQueryErrorMessage(teacherResult.error));
+  }
+
+  const teacherNames = new Map<string, string[]>();
+  for (const row of (teacherResult.data ?? []) as unknown as Array<{
+    subjectId?: string;
+    StaffProfile?: unknown;
+  }>) {
+    const subjectId = row.subjectId?.trim();
+    if (!subjectId) {
+      continue;
+    }
+    const staff = unwrapRelation<{ User?: unknown }>(row.StaffProfile);
+    const staffUser = unwrapRelation<{ name?: string | null }>(staff?.User);
+    const name = staffUser?.name?.trim();
+    if (!name) {
+      continue;
+    }
+    const list = teacherNames.get(subjectId) ?? [];
+    if (!list.includes(name)) {
+      list.push(name);
+    }
+    teacherNames.set(subjectId, list);
   }
 
   const structure: AcademicYearStructure = {
@@ -319,6 +384,7 @@ export async function fetchReportCardBundle(
         groupingLabelFr: grouping.groupingLabelFr,
         groupingSortOrder: grouping.groupingSortOrder,
         requiredSubBranchIds: requiredBySubject.get(subject.id) ?? [],
+        teacherName: (teacherNames.get(subject.id) ?? []).join(', ') || undefined,
         fromCurrentClass: row.classId === resolvedClassId,
       },
     ];
@@ -452,19 +518,8 @@ export async function fetchReportCardBundle(
   const dob = formatDob((legacy?.date_of_birth as string | null) ?? null);
   const sex = formatSex(legacy?.gender as string | null);
   const logoUrl = resolveReportCardLogoUrl(tenant);
-  const addressParts = [
-    tenant?.addressLine1,
-    tenant?.addressLine2,
-    tenant?.city,
-  ].filter((part) => part && part.trim());
-  const contactLine = [
-    addressParts.join(', '),
-    tenant?.institutionPhone ? `Tel: ${tenant.institutionPhone}` : null,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-  const region = tenant?.region?.trim() || 'Littoral';
+  const reportCardLogoUrl = getTenantAssetPublicUrl(tenant?.reportCardLogoStorageKey);
+  const letterhead = resolveReportCardLetterhead(tenant);
 
   return {
     student: {
@@ -478,7 +533,7 @@ export async function fetchReportCardBundle(
         '',
       sex,
       dob,
-      pob: '—',
+      pob: placeOfBirth || '—',
       photoUrl:
         (user?.avatar as string | null) ??
         (legacy?.avatar_url as string | null) ??
@@ -486,6 +541,7 @@ export async function fetchReportCardBundle(
       speciality: branchLabel(
         (classRow?.branch as string | null) ?? (enrollment?.branch as string | null),
       ),
+      isRepeater: enrollment?.isRepeater === true,
     },
     classId: resolvedClassId,
     className: classRow?.name?.trim() || '—',
@@ -501,9 +557,19 @@ export async function fetchReportCardBundle(
     branding: {
       ...resolveReportCardInstitutionNames(tenant),
       logoUrl,
-      contactLine: contactLine || '—',
-      regionEn: `Regional Delegation of ${region}`,
-      regionFr: `Délégation Régionale de ${region}`,
+      reportCardLogoUrl,
+      contactLine: letterhead.contactLine || '—',
+      ministryEn: letterhead.ministryEn,
+      ministryFr: letterhead.ministryFr,
+      regionEn: letterhead.regionEn,
+      regionFr: letterhead.regionFr,
+      regionalDelegationEn: letterhead.regionalDelegationEn,
+      regionName: letterhead.regionName,
+      divisionalDelegation: letterhead.divisionalDelegation,
+      divisionalDelegationFr: letterhead.divisionalDelegationFr,
+      addressLine: letterhead.addressLine,
+      poBox: letterhead.poBox,
+      phone: letterhead.phone,
       principalName: tenant?.secondaryContactName?.trim() || '',
     },
   };

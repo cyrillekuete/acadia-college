@@ -43,11 +43,13 @@ export function useClassDisciplineMutations() {
       academicYearId: string;
       classId: string;
       termNumber: number;
-      rows: Array<{
+        rows: Array<{
         studentProfileId: string;
         absenceHours: number;
+        justifiedAbsences: number;
         suspensions: number;
         warnings: number;
+        isRepeater: boolean;
       }>;
     }) => {
       await ensureAcademicYearWriteAllowed(confirmWrite);

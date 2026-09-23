@@ -8,6 +8,10 @@ import type {
   ClassReportRankedStudent,
 } from '@/lib/acadia/class-report';
 import {
+  DEFAULT_MINISTRY_NAME_EN,
+  DEFAULT_MINISTRY_NAME_FR,
+} from '@/lib/acadia/report-card-types';
+import {
   ReportCardPdfStyleTag,
   ReportCardSheet,
 } from '@/components/acadia/report-cards/report-card-chrome';
@@ -124,8 +128,9 @@ export function ClassReportDocument({
         <div className="flex flex-col justify-center text-center md:text-left text-[0.55rem] print:text-[7pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem] w-full">
           <p>République du Cameroun</p>
           <p>Paix - Travail - Patrie</p>
-          <p>Ministère des Enseignements Secondaires</p>
+          <p>{branding.ministryFr || DEFAULT_MINISTRY_NAME_FR}</p>
           <p>{branding.regionFr}</p>
+          {branding.divisionalDelegationFr ? <p>{branding.divisionalDelegationFr}</p> : null}
           <p className="text-black">{branding.displayNameFr}</p>
         </div>
         <div className="flex flex-col items-center justify-center gap-1.5 print:gap-1 min-h-[6.5rem]">
@@ -151,8 +156,9 @@ export function ClassReportDocument({
         <div className="flex flex-col justify-center text-right text-[0.55rem] print:text-[7pt] uppercase font-medium leading-tight gap-1 print:gap-0.5 min-h-[6.5rem]">
           <p>Republic of Cameroon</p>
           <p>Peace - Work - Fatherland</p>
-          <p>Ministry of Secondary Education</p>
+          <p>{branding.ministryEn || DEFAULT_MINISTRY_NAME_EN}</p>
           <p>{branding.regionEn}</p>
+          {branding.divisionalDelegation ? <p>{branding.divisionalDelegation}</p> : null}
           <p className="text-black">{branding.displayNameEn}</p>
         </div>
       </header>

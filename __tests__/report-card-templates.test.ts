@@ -3,6 +3,7 @@ import { getMenuForRole } from '@/config/menu.acadia';
 import { ACADEMIC_YEAR_SCOPED_TABLES } from '@/lib/acadia/academic-year-scope';
 import {
   applyReportCardTemplateToAll,
+  assignReportCardTemplate,
   defaultReportCardTemplate,
   DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE,
   normalizeReportCardTemplatePreference,
@@ -15,9 +16,10 @@ import {
 } from '@/lib/acadia/report-card-templates';
 
 describe('report-card template ids', () => {
-  it('accepts sequence and yearSummary and rejects anything else', () => {
+  it('accepts sequence, yearSummary, and classicTerm', () => {
     expect(parseReportCardTemplateId('sequence')).toBe('sequence');
     expect(parseReportCardTemplateId('yearSummary')).toBe('yearSummary');
+    expect(parseReportCardTemplateId('classicTerm')).toBe('classicTerm');
     expect(parseReportCardTemplateId('annual')).toBeNull();
     expect(parseReportCardTemplateId('term')).toBeNull();
     expect(parseReportCardTemplateId(undefined)).toBeNull();
@@ -42,6 +44,31 @@ describe('report-card template ids', () => {
     expect(preference.term2Template).toBe('sequence');
     expect(preference.term3Template).toBe('sequence');
     expect(preference.annualTemplate).toBe('yearSummary');
+  });
+
+  it('keeps classic term on the first two terms only', () => {
+    const preference = normalizeReportCardTemplatePreference({
+      term1Template: 'classicTerm',
+      term2Template: 'classicTerm',
+      term3Template: 'classicTerm',
+      annualTemplate: 'classicTerm',
+    });
+    expect(preference.term1Template).toBe('classicTerm');
+    expect(preference.term2Template).toBe('classicTerm');
+    expect(preference.term3Template).toBe('yearSummary');
+    expect(preference.annualTemplate).toBe('yearSummary');
+    expect(assignReportCardTemplate(preference, 'classicTerm')).toEqual({
+      term1Template: 'classicTerm',
+      term2Template: 'classicTerm',
+      term3Template: 'yearSummary',
+      annualTemplate: 'yearSummary',
+    });
+    expect(
+      periodsUsingReportCardTemplate(
+        assignReportCardTemplate(DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE, 'classicTerm'),
+        'classicTerm',
+      ),
+    ).toEqual(['1', '2']);
   });
 
   it('resolves a saved preference per period', () => {
@@ -112,11 +139,33 @@ describe('report-card template ids', () => {
     const sequence = sampleReportCardPreviewData('sequence');
     expect(sequence.templateId).toBe('sequence');
     expect(sequence.academic.term).toBe(1);
-    expect(sequence.subjects.length).toBeGreaterThan(0);
+    expect(sequence.subjects.length).toBeGreaterThanOrEqual(8);
+    expect(sequence.totals.coefficient).toBe(
+      sequence.subjects.reduce((sum, subject) => sum + subject.coefficient, 0),
+    );
+    expect(sequence.history.term1).toBe(sequence.totals.average);
+    expect(sequence.subjects.map((subject) => subject.subjectName)).toEqual(
+      sampleReportCardPreviewData('sequence').subjects.map((subject) => subject.subjectName),
+    );
 
     const annual = sampleReportCardPreviewData('yearSummary');
     expect(annual.templateId).toBe('yearSummary');
     expect(annual.academic.term).toBe('annual');
+    expect(annual.history.annualAvg).toBe(annual.totals.average);
+
+    const term2 = sampleReportCardPreviewData('sequence', { period: '2' });
+    expect(term2.academic.term).toBe(2);
+    expect(term2.templateId).toBe('sequence');
+    expect(term2.sequenceSlots).toEqual([3, 4]);
+    expect(term2.history.term2).toBe(term2.totals.average);
+
+    const yearOnTerm = sampleReportCardPreviewData('yearSummary', { period: '3' });
+    expect(yearOnTerm.templateId).toBe('yearSummary');
+    expect(yearOnTerm.academic.term).toBe(3);
+
+    const french = sampleReportCardPreviewData('sequence', { french: true });
+    expect(french.subjects.some((subject) => subject.subjectName === 'Français')).toBe(true);
+
     const fiveSeq = sampleReportCardPreviewData('sequence', {
       structure: { termsPerYear: 3, sequencesPerTerm: 2, sequencesPerYear: 5 },
     });

@@ -6,8 +6,10 @@ const countField = (max: number) =>
 export const classDisciplineDraftSchema = z.object({
   studentProfileId: z.string().min(1),
   absenceHours: countField(999),
+  justifiedAbsences: countField(999),
   suspensions: countField(99),
   warnings: countField(99),
+  isRepeater: z.boolean(),
 });
 
 export const classDisciplineSaveSchema = z.object({

@@ -21,6 +21,13 @@ export type AcadiaTenant = {
   addressLine2: string | null;
   city: string | null;
   region: string | null;
+  divisionalDelegation: string | null;
+  divisionalDelegationFr: string | null;
+  ministryNameEn: string | null;
+  ministryNameFr: string | null;
+  regionalDelegationEn: string | null;
+  regionalDelegationFr: string | null;
+  poBox: string | null;
   websiteUrl: string | null;
   secondaryContactName: string | null;
   secondaryContactEmail: string | null;
@@ -60,6 +67,13 @@ export const ACADIA_TENANT_SELECT = `
   addressLine2,
   city,
   region,
+  divisionalDelegation,
+  divisionalDelegationFr,
+  ministryNameEn,
+  ministryNameFr,
+  regionalDelegationEn,
+  regionalDelegationFr,
+  poBox,
   websiteUrl,
   secondaryContactName,
   secondaryContactEmail,

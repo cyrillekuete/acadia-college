@@ -13,7 +13,10 @@ import {
   type ReportCardMarkRow,
   type ReportCardSubjectDef,
 } from '@/lib/acadia/report-card';
-import { resolveReportCardInstitutionNames } from '@/lib/acadia/report-card-types';
+import {
+  resolveReportCardInstitutionNames,
+  resolveReportCardLetterhead,
+} from '@/lib/acadia/report-card-types';
 import { splitStudentName } from '@/lib/supabase/queries/student-query-helpers';
 import { fetchAcadiaTenant } from '@/lib/supabase/queries/tenant';
 import { embed, FK } from '@/lib/supabase/embed-selects';
@@ -402,19 +405,7 @@ export async function fetchClassReportBundle(
   }
 
   const logoUrl = resolveReportCardLogoUrl(tenant);
-  const addressParts = [
-    tenant?.addressLine1,
-    tenant?.addressLine2,
-    tenant?.city,
-  ].filter((part) => part && part.trim());
-  const contactLine = [
-    addressParts.join(', '),
-    tenant?.institutionPhone ? `Tel: ${tenant.institutionPhone}` : null,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-  const region = tenant?.region?.trim() || 'Littoral';
+  const letterhead = resolveReportCardLetterhead(tenant);
 
   return {
     classId: classRow.id,
@@ -428,9 +419,18 @@ export async function fetchClassReportBundle(
     branding: {
       ...resolveReportCardInstitutionNames(tenant),
       logoUrl,
-      contactLine: contactLine || '—',
-      regionEn: `Regional Delegation of ${region}`,
-      regionFr: `Délégation Régionale de ${region}`,
+      contactLine: letterhead.contactLine || '—',
+      ministryEn: letterhead.ministryEn,
+      ministryFr: letterhead.ministryFr,
+      regionEn: letterhead.regionEn,
+      regionFr: letterhead.regionFr,
+      regionalDelegationEn: letterhead.regionalDelegationEn,
+      regionName: letterhead.regionName,
+      divisionalDelegation: letterhead.divisionalDelegation,
+      divisionalDelegationFr: letterhead.divisionalDelegationFr,
+      addressLine: letterhead.addressLine,
+      poBox: letterhead.poBox,
+      phone: letterhead.phone,
       principalName: tenant?.secondaryContactName?.trim() || '',
     },
   };

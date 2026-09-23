@@ -29,7 +29,10 @@ import {
 } from '@/lib/acadia/report-card-grading';
 import {
   buildReportCardQrValue,
+  DEFAULT_MINISTRY_NAME_EN,
+  DEFAULT_MINISTRY_NAME_FR,
   resolveReportCardInstitutionNames,
+  resolveReportCardLetterhead,
   type ReportCardBranding,
   type SubjectGrade,
 } from '@/lib/acadia/report-card-types';
@@ -62,6 +65,58 @@ describe('buildReportCardQrValue', () => {
       year: '2025/2026',
       term: 1,
     });
+  });
+});
+
+describe('resolveReportCardLetterhead', () => {
+  it('keeps the current ministry and regional wording when letterhead fields are empty', () => {
+    expect(
+      resolveReportCardLetterhead({
+        region: 'West',
+        addressLine1: 'Bafoussam',
+        institutionPhone: '+237675614470',
+      }),
+    ).toMatchObject({
+      ministryEn: DEFAULT_MINISTRY_NAME_EN,
+      ministryFr: DEFAULT_MINISTRY_NAME_FR,
+      regionEn: 'Regional Delegation of West',
+      regionFr: 'Délégation Régionale de West',
+      regionalDelegationEn: '',
+      regionName: 'West',
+      divisionalDelegation: '',
+      divisionalDelegationFr: '',
+      poBox: '',
+      contactLine: 'Bafoussam Tel: +237675614470',
+    });
+  });
+
+  it('prints configured ministry, delegation, and P.O. Box lines as entered', () => {
+    expect(
+      resolveReportCardLetterhead({
+        ministryNameEn: 'Ministry of Secondary Education',
+        ministryNameFr: 'Ministère des Enseignements Secondaires',
+        regionalDelegationEn: 'West Regional Delegation',
+        regionalDelegationFr: "Délégation Régionale de l'Ouest",
+        divisionalDelegation: 'Mifi Divisional Delegation',
+        divisionalDelegationFr: 'Délégation Départementale du Mifi',
+        poBox: 'BP 1234',
+        institutionPhone: '675614470',
+      }),
+    ).toMatchObject({
+      ministryEn: 'Ministry of Secondary Education',
+      ministryFr: 'Ministère des Enseignements Secondaires',
+      regionEn: 'West Regional Delegation',
+      regionFr: "Délégation Régionale de l'Ouest",
+      regionalDelegationEn: 'West Regional Delegation',
+      divisionalDelegation: 'Mifi Divisional Delegation',
+      divisionalDelegationFr: 'Délégation Départementale du Mifi',
+      poBox: 'BP 1234',
+      contactLine: 'BP 1234 Tel: 675614470',
+    });
+  });
+
+  it('prefixes a bare P.O. Box number', () => {
+    expect(resolveReportCardLetterhead({ poBox: '100' }).poBox).toBe('P.O. Box 100');
   });
 });
 
@@ -396,7 +451,12 @@ describe('buildReportCardData', () => {
     expect(card.stats.failPercent).toBe(50);
     expect(card.subjects).toHaveLength(2);
     expect(rankStudents([{ studentProfileId: 's1', average: 14 }])[0]?.rank).toBe(1);
-    expect(card.discipline).toEqual({ absences: 0, suspensions: 0, warnings: 0 });
+    expect(card.discipline).toEqual({
+      absences: 0,
+      justifiedAbsences: 0,
+      suspensions: 0,
+      warnings: 0,
+    });
   });
 
   it('carries configured grouping onto subject grades in sort order', () => {
@@ -476,16 +536,19 @@ describe('buildReportCardData', () => {
 
     expect(buildReportCardData(bundle, '1').discipline).toEqual({
       absences: 4,
+      justifiedAbsences: 0,
       suspensions: 1,
       warnings: 0,
     });
     expect(buildReportCardData(bundle, '2').discipline).toEqual({
       absences: 2,
+      justifiedAbsences: 0,
       suspensions: 0,
       warnings: 1,
     });
     expect(buildReportCardData(bundle, 'annual').discipline).toEqual({
       absences: 7,
+      justifiedAbsences: 0,
       suspensions: 1,
       warnings: 1,
     });
@@ -525,6 +588,7 @@ describe('buildReportCardData', () => {
 
     expect(buildReportCardData(bundle, '1').discipline).toEqual({
       absences: 6,
+      justifiedAbsences: 0,
       suspensions: 1,
       warnings: 1,
     });
