@@ -1,6 +1,6 @@
 export type ReportCardTerm = `${number}` | 'annual';
 
-export type ReportCardTemplateId = 'sequence' | 'yearSummary' | 'classicTerm';
+export type ReportCardTemplateId = 'sequence' | 'yearSummary' | 'classicTerm' | 'classicAnnual';
 
 export type ReportCardCategory =
   | 'languages'

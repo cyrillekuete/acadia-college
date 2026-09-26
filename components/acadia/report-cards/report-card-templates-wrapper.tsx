@@ -59,6 +59,11 @@ const TEMPLATE_OPTIONS = [
     descriptionKey: 'reports.templateClassicTermDescription',
   },
   {
+    id: 'classicAnnual' as const,
+    titleKey: 'reports.templateClassicAnnual',
+    descriptionKey: 'reports.templateClassicAnnualDescription',
+  },
+  {
     id: 'yearSummary' as const,
     titleKey: 'reports.templateYearSummary',
     descriptionKey: 'reports.templateYearSummaryDescription',
@@ -69,9 +74,10 @@ function assignmentFor(
   templateId: ReportCardTemplateId,
   draft: ReportCardTemplatePreference,
 ): ReportCardTemplatePreference {
-  return templateId === 'classicTerm'
-    ? assignReportCardTemplate(draft, 'classicTerm')
-    : applyReportCardTemplateToAll(templateId);
+  if (templateId === 'classicTerm' || templateId === 'classicAnnual') {
+    return assignReportCardTemplate(draft, templateId);
+  }
+  return applyReportCardTemplateToAll(templateId);
 }
 
 function periodLabelKey(period: ReportCardTerm): string {
@@ -90,11 +96,22 @@ function previewStructure(sequencesPerYear: number) {
 }
 
 function defaultPreviewPeriod(templateId: ReportCardTemplateId): ReportCardTerm {
-  return templateId === 'yearSummary' ? 'annual' : '1';
+  if (templateId === 'yearSummary' || templateId === 'classicAnnual') return 'annual';
+  return '1';
 }
 
 function periodsForTemplate(templateId: ReportCardTemplateId): ReportCardTerm[] {
-  return templateId === 'classicTerm' ? ['1', '2'] : PERIODS;
+  if (templateId === 'classicTerm') return ['1', '2'];
+  if (templateId === 'classicAnnual') return ['annual'];
+  if (templateId === 'sequence') return ['1', '2', 'annual'];
+  return PERIODS;
+}
+
+function assignButtonLabelKey(templateId: ReportCardTemplateId): string {
+  if (templateId === 'classicTerm') return 'reports.useForFirstTwoTerms';
+  if (templateId === 'classicAnnual') return 'reports.useForAnnual';
+  if (templateId === 'sequence') return 'reports.useForFirstSecondAndAnnual';
+  return 'reports.useForAllTerms';
 }
 
 function TemplatePreview({
@@ -193,9 +210,7 @@ function TemplatePreviewDialog({
         {canWrite ? (
           <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-end">
             <Button type="button" disabled={saving} onClick={onAssign}>
-              {templateId === 'classicTerm'
-                ? t('reports.useForFirstTwoTerms')
-                : t('reports.useForAllTerms')}
+              {t(assignButtonLabelKey(templateId))}
             </Button>
           </DialogFooter>
         ) : null}
@@ -286,9 +301,7 @@ export function ReportCardTemplatesWrapper() {
                     disabled={savePreference.isPending}
                     onClick={() => void save(assignmentFor(template.id, draft))}
                   >
-                    {template.id === 'classicTerm'
-                      ? t('reports.useForFirstTwoTerms')
-                      : t('reports.useForAllTerms')}
+                    {t(assignButtonLabelKey(template.id))}
                   </Button>
                 ) : null}
               </CardContent>
@@ -356,12 +369,19 @@ export function ReportCardTemplatesWrapper() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="sequence">
-                            {t('reports.templateSequence')}
-                          </SelectItem>
+                          {period === '3' ? null : (
+                            <SelectItem value="sequence">
+                              {t('reports.templateSequence')}
+                            </SelectItem>
+                          )}
                           {period === '1' || period === '2' ? (
                             <SelectItem value="classicTerm">
                               {t('reports.templateClassicTerm')}
+                            </SelectItem>
+                          ) : null}
+                          {period === 'annual' ? (
+                            <SelectItem value="classicAnnual">
+                              {t('reports.templateClassicAnnual')}
                             </SelectItem>
                           ) : null}
                           <SelectItem value="yearSummary">

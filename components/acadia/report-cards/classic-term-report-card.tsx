@@ -8,6 +8,7 @@ import {
   disciplineAbsenceTotal,
   formatClassicAverage,
   subjectSequenceMark,
+  subjectTermMark,
 } from '@/lib/acadia/classic-term-bulletin';
 import {
   DEFAULT_MINISTRY_NAME_EN,
@@ -94,6 +95,10 @@ const CLASSIC_TERM_STYLES = `
   color: #fff !important;
   font-weight: 700 !important;
   font-family: var(--classic-display) !important;
+}
+.pdf-report-card.classic-term-sheet table.classic-term-subjects tr.classic-term-fill th,
+.pdf-report-card.classic-term-sheet table.classic-term-subjects tr.classic-term-summary td {
+  font-size: 11px !important;
 }
 .pdf-report-card.classic-term-sheet .classic-mono {
   font-family: var(--classic-mono) !important;
@@ -277,19 +282,30 @@ function FooterMetricRow({
 export function ClassicTermReportCard({
   data,
   variant = 'default',
+  mode = 'term',
 }: {
   data: ReportCardData;
   variant?: 'default' | 'pdfRender';
+  mode?: 'term' | 'annual';
 }) {
+  const annual = mode === 'annual';
   const [logoError, setLogoError] = useState(false);
   const logoSrc = data.branding.reportCardLogoUrl?.trim() || '';
   const showLogo = Boolean(logoSrc) && !logoError;
   const termNumber = typeof data.academic.term === 'number' ? data.academic.term : 1;
-  const copy = TERM_COPY[termNumber] ?? {
-    title: `TERM ${termNumber}`,
-    bulletin: 'BULLETIN',
-  };
-  const slots = data.sequenceSlots?.length ? data.sequenceSlots : [1, 2];
+  const copy = annual
+    ? { title: 'ANNUAL REPORT CARD', bulletin: 'BULLETIN ANNUEL' }
+    : (TERM_COPY[termNumber] ?? {
+        title: `TERM ${termNumber}`,
+        bulletin: 'BULLETIN',
+      });
+  const slots = annual
+    ? data.termSlots?.length
+      ? data.termSlots
+      : [1, 2, 3]
+    : data.sequenceSlots?.length
+      ? data.sequenceSlots
+      : [1, 2];
   const groupedSubjects = useMemo(
     () => groupSubjectsForReportCard(data.subjects),
     [data.subjects],
@@ -298,14 +314,18 @@ export function ClassicTermReportCard({
   const subjectRows = useMemo(
     () =>
       data.subjects.map((subject) => {
-        const cells = classicTermSubjectCells(slots.map((slot) => subjectSequenceMark(subject, slot)));
+        const cells = classicTermSubjectCells(
+          slots.map((slot) =>
+            annual ? subjectTermMark(subject, slot) : subjectSequenceMark(subject, slot),
+          ),
+        );
         return {
           subject,
           coefficient: subjectCoefficient(subject),
           ...cells,
         };
       }),
-    [data.subjects, slots],
+    [annual, data.subjects, slots],
   );
   const grand = classicTermGroupRollup(subjectRows);
   const justified = data.discipline.justifiedAbsences ?? 0;
@@ -428,17 +448,19 @@ export function ClassicTermReportCard({
             <div style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '0.12em', lineHeight: 1 }}>
               {copy.title}
             </div>
-            <div
-              style={{
-                fontSize: '16px',
-                fontWeight: 800,
-                letterSpacing: '0.28em',
-                marginTop: 2,
-                lineHeight: 1.1,
-              }}
-            >
-              REPORT CARD
-            </div>
+            {annual ? null : (
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: 800,
+                  letterSpacing: '0.28em',
+                  marginTop: 2,
+                  lineHeight: 1.1,
+                }}
+              >
+                REPORT CARD
+              </div>
+            )}
             <div
               style={{
                 display: 'flex',
@@ -453,7 +475,7 @@ export function ClassicTermReportCard({
               }}
             >
               <span style={{ flex: '0 0 42px', height: 2, background: PRIMARY_DARK }} />
-              <span>* {copy.bulletin} *</span>
+              <span>{annual ? `• ${copy.bulletin} •` : `* ${copy.bulletin} *`}</span>
               <span style={{ flex: '0 0 42px', height: 2, background: PRIMARY_DARK }} />
             </div>
           </div>
@@ -496,8 +518,8 @@ export function ClassicTermReportCard({
               <tr className="classic-term-fill">
                 <th style={{ textAlign: 'left', width: '24%' }}>SUBJECTS</th>
                 <th>COEF</th>
-                {slots.map((_, index) => (
-                  <th key={slots[index]}>SEQ {index + 1}</th>
+                {slots.map((slot, index) => (
+                  <th key={slot}>{annual ? `TERM ${slot}` : `SEQ ${index + 1}`}</th>
                 ))}
                 <th>AVERAGE</th>
                 <th>TOTAL</th>
@@ -510,7 +532,9 @@ export function ClassicTermReportCard({
               {groupedSubjects.map((group) => {
                 const rows = group.subjects.map((subject) => {
                   const cells = classicTermSubjectCells(
-                    slots.map((slot) => subjectSequenceMark(subject, slot)),
+                    slots.map((slot) =>
+                      annual ? subjectTermMark(subject, slot) : subjectSequenceMark(subject, slot),
+                    ),
                   );
                   return {
                     subject,
@@ -638,10 +662,13 @@ export function ClassicTermReportCard({
                 </tr>
               </thead>
               <tbody>
-                <FooterMetricRow label="TERM" value={String(termNumber)} />
+                {annual ? null : <FooterMetricRow label="TERM" value={String(termNumber)} />}
                 <FooterMetricRow
                   label="AVERAGE"
-                  value={data.totals.average.toFixed(2)}
+                  value={(annual
+                    ? (data.history.annualAvg ?? data.totals.average)
+                    : data.totals.average
+                  ).toFixed(2)}
                   accent
                 />
                 <FooterMetricRow label="RANK" value={formatRank(data.history.rank)} accent />
@@ -667,7 +694,7 @@ export function ClassicTermReportCard({
               <thead>
                 <tr className="classic-term-fill">
                   <th colSpan={4} style={{ textAlign: 'left', fontSize: '8px' }}>
-                    CLASS STATISTICS
+                    {annual ? 'CLASS ENROLLMENT' : 'CLASS STATISTICS'}
                   </th>
                 </tr>
               </thead>

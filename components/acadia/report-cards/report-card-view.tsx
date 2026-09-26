@@ -23,6 +23,10 @@ export function ReportCardView({
     return <ClassicTermReportCard data={data} variant={variant} />;
   }
 
+  if (layout === 'classicAnnual' && period === 'annual') {
+    return <ClassicTermReportCard data={data} variant={variant} mode="annual" />;
+  }
+
   if (layout === 'yearSummary' && period === 'annual') {
     return <AnnualReportCard data={data} variant={variant} />;
   }

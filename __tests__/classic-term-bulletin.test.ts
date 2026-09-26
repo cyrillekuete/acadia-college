@@ -4,7 +4,9 @@ import {
   classicTermSubjectCells,
   disciplineAbsenceTotal,
   formatClassicAverage,
+  subjectTermMark,
 } from '@/lib/acadia/classic-term-bulletin';
+import type { SubjectGrade } from '@/lib/acadia/report-card-types';
 
 describe('classic term bulletin totals', () => {
   it('averages sequence marks and sums them for the total column', () => {
@@ -27,6 +29,19 @@ describe('classic term bulletin totals', () => {
     expect(rollup.total).toBe(66);
     expect(rollup.weightedAverage).toBe(16.5);
     expect(rollup.passed).toBe(true);
+  });
+
+  it('reads a term average from the map, then the term field', () => {
+    const subject = {
+      subjectName: 'English',
+      coefficient: 4,
+      term1: 12,
+      termAverages: { term1: 15, term2: 14 },
+    } as SubjectGrade;
+    expect(subjectTermMark(subject, 1)).toBe(15);
+    expect(subjectTermMark(subject, 2)).toBe(14);
+    expect(subjectTermMark({ ...subject, termAverages: undefined, term3: 16 }, 3)).toBe(16);
+    expect(subjectTermMark(subject, 4)).toBeNull();
   });
 
   it('adds justified and unjustified absences', () => {

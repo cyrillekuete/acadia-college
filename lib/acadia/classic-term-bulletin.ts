@@ -14,6 +14,22 @@ export type ClassicTermRollup = {
   passed: boolean | null;
 };
 
+export function subjectTermMark(subject: SubjectGrade, termNumber: number): number | null {
+  const fromMap = subject.termAverages?.[`term${termNumber}`];
+  if (typeof fromMap === 'number' && Number.isFinite(fromMap)) {
+    return fromMap;
+  }
+  const keyed =
+    termNumber === 1
+      ? subject.term1
+      : termNumber === 2
+        ? subject.term2
+        : termNumber === 3
+          ? subject.term3
+          : undefined;
+  return typeof keyed === 'number' && Number.isFinite(keyed) ? keyed : null;
+}
+
 export function subjectSequenceMark(subject: SubjectGrade, slot: number): number | null {
   const key = `seq${slot}` as keyof SubjectGrade;
   const fromRoot = subject[key];

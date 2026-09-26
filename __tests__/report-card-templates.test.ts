@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getMenuForRole } from '@/config/menu.acadia';
 import { ACADEMIC_YEAR_SCOPED_TABLES } from '@/lib/acadia/academic-year-scope';
+import { classicTermSubjectCells } from '@/lib/acadia/classic-term-bulletin';
 import {
   applyReportCardTemplateToAll,
   assignReportCardTemplate,
@@ -16,10 +17,11 @@ import {
 } from '@/lib/acadia/report-card-templates';
 
 describe('report-card template ids', () => {
-  it('accepts sequence, yearSummary, and classicTerm', () => {
+  it('accepts sequence, yearSummary, classicTerm, and classicAnnual', () => {
     expect(parseReportCardTemplateId('sequence')).toBe('sequence');
     expect(parseReportCardTemplateId('yearSummary')).toBe('yearSummary');
     expect(parseReportCardTemplateId('classicTerm')).toBe('classicTerm');
+    expect(parseReportCardTemplateId('classicAnnual')).toBe('classicAnnual');
     expect(parseReportCardTemplateId('annual')).toBeNull();
     expect(parseReportCardTemplateId('term')).toBeNull();
     expect(parseReportCardTemplateId(undefined)).toBeNull();
@@ -42,7 +44,7 @@ describe('report-card template ids', () => {
     });
     expect(preference.term1Template).toBe('yearSummary');
     expect(preference.term2Template).toBe('sequence');
-    expect(preference.term3Template).toBe('sequence');
+    expect(preference.term3Template).toBe('yearSummary');
     expect(preference.annualTemplate).toBe('yearSummary');
   });
 
@@ -71,6 +73,37 @@ describe('report-card template ids', () => {
     ).toEqual(['1', '2']);
   });
 
+  it('keeps classic annual on the annual period only', () => {
+    const preference = normalizeReportCardTemplatePreference({
+      term1Template: 'classicAnnual',
+      term2Template: 'classicAnnual',
+      term3Template: 'classicAnnual',
+      annualTemplate: 'classicAnnual',
+    });
+    expect(preference.term1Template).toBe('sequence');
+    expect(preference.term2Template).toBe('sequence');
+    expect(preference.term3Template).toBe('yearSummary');
+    expect(preference.annualTemplate).toBe('classicAnnual');
+    expect(assignReportCardTemplate(preference, 'classicAnnual')).toEqual({
+      term1Template: 'sequence',
+      term2Template: 'sequence',
+      term3Template: 'yearSummary',
+      annualTemplate: 'classicAnnual',
+    });
+    expect(applyReportCardTemplateToAll('classicAnnual')).toEqual({
+      ...DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE,
+      annualTemplate: 'classicAnnual',
+    });
+    expect(
+      periodsUsingReportCardTemplate(
+        assignReportCardTemplate(DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE, 'classicAnnual'),
+        'classicAnnual',
+      ),
+    ).toEqual(['annual']);
+    expect(resolveReportCardTemplate(preference, 'annual')).toBe('classicAnnual');
+    expect(resolveReportCardTemplate(preference, '1')).toBe('sequence');
+  });
+
   it('resolves a saved preference per period', () => {
     const preference = {
       term1Template: 'yearSummary' as const,
@@ -80,17 +113,28 @@ describe('report-card template ids', () => {
     };
     expect(resolveReportCardTemplate(preference, '1')).toBe('yearSummary');
     expect(resolveReportCardTemplate(preference, '2')).toBe('sequence');
-    expect(resolveReportCardTemplate(preference, '3')).toBe('sequence');
+    expect(resolveReportCardTemplate(preference, '3')).toBe('yearSummary');
     expect(resolveReportCardTemplate(preference, 'annual')).toBe('sequence');
   });
 
-  it('applies one template to every period', () => {
+  it('keeps the sequence bulletin on first term, second term, and annual', () => {
     expect(applyReportCardTemplateToAll('sequence')).toEqual({
       term1Template: 'sequence',
       term2Template: 'sequence',
-      term3Template: 'sequence',
+      term3Template: 'yearSummary',
       annualTemplate: 'sequence',
     });
+    expect(
+      assignReportCardTemplate(DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE, 'sequence'),
+    ).toEqual({
+      term1Template: 'sequence',
+      term2Template: 'sequence',
+      term3Template: 'yearSummary',
+      annualTemplate: 'sequence',
+    });
+  });
+
+  it('applies the year-summary template to every period', () => {
     expect(applyReportCardTemplateToAll('yearSummary')).toEqual({
       term1Template: 'yearSummary',
       term2Template: 'yearSummary',
@@ -174,6 +218,23 @@ describe('report-card template ids', () => {
       structure: { termsPerYear: 3, sequencesPerTerm: 2, sequencesPerYear: 5 },
     });
     expect(fiveAnnual.sequenceSlots).toEqual([1, 2, 3, 4, 5]);
+
+    const classicAnnual = sampleReportCardPreviewData('classicAnnual');
+    expect(classicAnnual.templateId).toBe('classicAnnual');
+    expect(classicAnnual.academic.term).toBe('annual');
+    expect(classicAnnual.termSlots).toEqual([1, 2, 3]);
+    const english = classicAnnual.subjects.find((subject) => subject.subjectName === 'English');
+    expect(english?.term1).toBe(15);
+    expect(english?.term2).toBe(14);
+    expect(english?.term3).toBe(16);
+    expect(
+      classicTermSubjectCells([english?.term1, english?.term2, english?.term3]),
+    ).toEqual({
+      sequences: [15, 14, 16],
+      average: 15,
+      total: 45,
+    });
+    expect(classicAnnual.history.annualAvg).toBe(classicAnnual.totals.average);
   });
 });
 

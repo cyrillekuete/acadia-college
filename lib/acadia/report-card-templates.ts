@@ -37,7 +37,12 @@ export const DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE: ReportCardTemplatePreferen
 export function parseReportCardTemplateId(
   raw: unknown,
 ): ReportCardTemplateId | null {
-  if (raw === 'sequence' || raw === 'yearSummary' || raw === 'classicTerm') {
+  if (
+    raw === 'sequence' ||
+    raw === 'yearSummary' ||
+    raw === 'classicTerm' ||
+    raw === 'classicAnnual'
+  ) {
     return raw;
   }
   return null;
@@ -50,6 +55,12 @@ function templateForPeriod(
 ): ReportCardTemplateId {
   const parsed = parseReportCardTemplateId(raw) ?? fallback;
   if (parsed === 'classicTerm' && period !== '1' && period !== '2') {
+    return fallback;
+  }
+  if (parsed === 'classicAnnual' && period !== 'annual') {
+    return fallback;
+  }
+  if (parsed === 'sequence' && period === '3') {
     return fallback;
   }
   return parsed;
@@ -111,6 +122,15 @@ export function resolveReportCardTemplate(
   return normalized.term3Template;
 }
 
+function sequenceReportCardTemplatePreference(): ReportCardTemplatePreference {
+  return {
+    term1Template: 'sequence',
+    term2Template: 'sequence',
+    term3Template: DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE.term3Template,
+    annualTemplate: 'sequence',
+  };
+}
+
 export function applyReportCardTemplateToAll(
   templateId: ReportCardTemplateId,
 ): ReportCardTemplatePreference {
@@ -120,6 +140,15 @@ export function applyReportCardTemplateToAll(
       term1Template: 'classicTerm',
       term2Template: 'classicTerm',
     };
+  }
+  if (templateId === 'classicAnnual') {
+    return {
+      ...DEFAULT_REPORT_CARD_TEMPLATE_PREFERENCE,
+      annualTemplate: 'classicAnnual',
+    };
+  }
+  if (templateId === 'sequence') {
+    return sequenceReportCardTemplatePreference();
   }
   return {
     term1Template: templateId,
@@ -140,6 +169,15 @@ export function assignReportCardTemplate(
       term1Template: 'classicTerm',
       term2Template: 'classicTerm',
     };
+  }
+  if (templateId === 'classicAnnual') {
+    return {
+      ...current,
+      annualTemplate: 'classicAnnual',
+    };
+  }
+  if (templateId === 'sequence') {
+    return sequenceReportCardTemplatePreference();
   }
   return applyReportCardTemplateToAll(templateId);
 }
@@ -475,7 +513,8 @@ function previewPeriod(
   templateId: ReportCardTemplateId,
   period: ReportCardTerm | undefined,
 ): ReportCardTerm {
-  return period ?? (templateId === 'yearSummary' ? 'annual' : '1');
+  if (period) return period;
+  return templateId === 'yearSummary' || templateId === 'classicAnnual' ? 'annual' : '1';
 }
 
 function previewSequenceSlots(
