@@ -50,6 +50,19 @@ describe('validateAcadiaProfile', () => {
     }
   });
 
+  it.each([
+    ['parent', '/dashboard/guardian'],
+    ['guardian', '/dashboard/guardian'],
+  ])('allows %s accounts to sign in and routes to %s', (slug, path) => {
+    const result = validateAcadiaProfile(
+      activeProfile({
+        UserRole: { slug, name: slug, isTrashed: false },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.dashboardPath).toBe(path);
+  });
+
   it('fails when profile query failed without signing out', () => {
     const result = validateAcadiaProfile(null, { queryFailed: true });
     expect(result.ok).toBe(false);

@@ -18,7 +18,7 @@ import {
   type ProvisionStudentProfileInput,
 } from '@/lib/acadia/provision-student-profile';
 import { provisionGuardianProfileAndLink } from '@/lib/acadia/provision-guardian';
-import { buildStudentSystemAuthEmail } from '@/lib/acadia/student-system-auth-email';
+import { resolveContactOrSystemLoginEmail } from '@/lib/acadia/system-login-email';
 
 export { buildStudentSystemAuthEmail } from '@/lib/acadia/student-system-auth-email';
 
@@ -28,6 +28,8 @@ export function buildParentSystemAuthEmail(
 ): string {
   return `parent.${tenantId}.${normalizedPhone}@guardian.acadia.local`;
 }
+
+const authLoginEmailCache = new WeakMap<SupabaseClient, Promise<Set<string>>>();
 
 function blankDateToNull(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -87,8 +89,11 @@ export async function provisionStudentAndParent(
     ? input.email.trim().toLowerCase()
     : '';
   const studentId = generateStudentId();
-  const studentLoginEmail =
-    providedEmail || buildStudentSystemAuthEmail(tenantId, studentId);
+  const studentLoginEmail = await resolveContactOrSystemLoginEmail(
+    providedEmail,
+    `${input.first_name.trim()} ${input.last_name.trim()}`,
+    (email) => isLoginEmailTaken(admin, email),
+  );
   const parentEmailRaw = input.parent_email.trim()
     ? input.parent_email.trim().toLowerCase()
     : '';
@@ -117,6 +122,7 @@ export async function provisionStudentAndParent(
   }
 
   const studentAuthId = studentAuthData.user.id;
+  rememberLoginEmail(admin, studentLoginEmail);
 
   // -- Step 2: Insert users row for student --
   // Service role is required: `public.users` is not granted to the authenticated
@@ -363,9 +369,11 @@ export async function provisionStudentAndParent(
       parentEmailRaw ||
       buildParentSystemAuthEmail(tenantId, parentPhoneNormalized);
   } else {
-    parentLoginEmail =
-      parentEmailRaw ||
-      buildParentSystemAuthEmail(tenantId, parentPhoneNormalized);
+    parentLoginEmail = await resolveContactOrSystemLoginEmail(
+      parentEmailRaw,
+      input.parent_name.trim(),
+      (email) => isLoginEmailTaken(admin, email),
+    );
     parentTemporaryPassword = generateTemporaryPassword();
 
     const { data: parentAuthData, error: parentAuthError } =
@@ -389,6 +397,7 @@ export async function provisionStudentAndParent(
     }
 
     parentAuthId = parentAuthData.user.id;
+    rememberLoginEmail(admin, parentLoginEmail);
     newParentAuthCreated = true;
 
     const { error: parentUserError } = await admin.from('users').insert({
@@ -519,6 +528,48 @@ export async function provisionStudentAndParent(
     newParentAuthCreated,
     feeWarning: profileResult.feeWarning,
   };
+}
+
+async function isLoginEmailTaken(
+  admin: SupabaseClient,
+  email: string,
+): Promise<boolean> {
+  let cachedEmails = authLoginEmailCache.get(admin);
+  if (!cachedEmails) {
+    cachedEmails = loadAuthLoginEmails(admin);
+    authLoginEmailCache.set(admin, cachedEmails);
+  }
+  if ((await cachedEmails).has(email.toLowerCase())) return true;
+
+  const [{ data: appUsers, error: appUsersError }, { data: legacyUsers, error: legacyUsersError }] =
+    await Promise.all([
+      admin.from('users').select('id').eq('email', email).limit(1),
+      admin.from('User').select('id').eq('email', email).limit(1),
+    ]);
+  if (appUsersError) throw appUsersError;
+  if (legacyUsersError) throw legacyUsersError;
+  return Boolean(appUsers?.length || legacyUsers?.length);
+}
+
+function rememberLoginEmail(admin: SupabaseClient, email: string): void {
+  const cachedEmails = authLoginEmailCache.get(admin);
+  if (cachedEmails) {
+    void cachedEmails.then((emails) => emails.add(email.toLowerCase()));
+  }
+}
+
+async function loadAuthLoginEmails(admin: SupabaseClient): Promise<Set<string>> {
+  const perPage = 1000;
+  const emails = new Set<string>();
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    for (const user of data.users) {
+      if (user.email) emails.add(user.email.toLowerCase());
+    }
+    if (data.users.length < perPage) break;
+  }
+  return emails;
 }
 
 async function rollbackStudent(

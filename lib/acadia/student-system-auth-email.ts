@@ -1,11 +1,14 @@
-/** Domain used for synthetic student login emails when no contact email is provided. */
+import { buildSystemLoginEmail } from '@/lib/acadia/system-login-email';
+
+/** Legacy domain retained only for recognizing addresses during migration. */
 export const STUDENT_SYSTEM_AUTH_EMAIL_DOMAIN = 'student.acadia.local';
 
+/** Backwards-compatible name for the generated student login format. */
 export function buildStudentSystemAuthEmail(
-  tenantId: string,
-  uniqueKey: string,
+  firstName: string,
+  lastName: string,
 ): string {
-  return `student.${tenantId}.${uniqueKey}@${STUDENT_SYSTEM_AUTH_EMAIL_DOMAIN}`;
+  return buildSystemLoginEmail(`${firstName} ${lastName}`);
 }
 
 /** True when the address is a synthetic system login, not a real contact email. */

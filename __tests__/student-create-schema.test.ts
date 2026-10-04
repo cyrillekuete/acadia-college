@@ -314,9 +314,9 @@ describe('studentCreateSchema parent contact', () => {
 });
 
 describe('buildStudentSystemAuthEmail', () => {
-  it('builds a synthetic student login email', () => {
-    expect(buildStudentSystemAuthEmail('tenant-1', 'STU-123')).toBe(
-      'student.tenant-1.STU-123@student.acadia.local',
+  it('builds a readable student login email', () => {
+    expect(buildStudentSystemAuthEmail('Marie', 'Étoile')).toBe(
+      'marie.etoile@acadia.com',
     );
   });
 });
