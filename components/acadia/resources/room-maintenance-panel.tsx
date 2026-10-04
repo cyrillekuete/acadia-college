@@ -64,7 +64,7 @@ export function RoomMaintenancePanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canManageResources(session?.roleSlug);
+  const canManage = canManageResources(session?.roleSlugs);
   const { data: rooms = [] } = useRoomOptions();
   const { scheduleRoomMaintenance } = useResourceMutations();
 

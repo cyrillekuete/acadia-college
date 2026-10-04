@@ -43,7 +43,7 @@ describe('resolveChromiumPackUrl', () => {
 
 describe('Vercel Chromium packaging', () => {
   it('externalizes chromium-min instead of bundling a local bin directory', () => {
-    const nextConfig = readFileSync(join(process.cwd(), 'next.config.mjs'), 'utf8');
+    const nextConfig = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8');
     const pdfSource = readFileSync(
       join(process.cwd(), 'lib/acadia/report-card-pdf.ts'),
       'utf8',
@@ -70,7 +70,7 @@ describe('local PDF hang safeguards', () => {
   });
 
   it('allows headless Chrome on 127.0.0.1 during next dev', () => {
-    const nextConfig = readFileSync(join(process.cwd(), 'next.config.mjs'), 'utf8');
+    const nextConfig = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8');
     expect(nextConfig).toMatch(/allowedDevOrigins:\s*\[\s*'127\.0\.0\.1'\s*\]/);
   });
 

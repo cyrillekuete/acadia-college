@@ -81,7 +81,7 @@ export function useAssessmentMutations() {
   const { confirmWrite } = useAcademicYearWriteGuard();
   const tenantId = session?.tenantId ?? null;
   const actorUserId = session?.authUser?.id ?? null;
-  const skipExamPeriodDates = canManageInstitution(session?.roleSlug);
+  const skipExamPeriodDates = canManageInstitution(session?.roleSlugs);
 
   const createExamSession = useMutation({
     mutationFn: async (values: ExamSessionFormValues) => {
@@ -329,7 +329,7 @@ export function useAssessmentMutations() {
           startsOn: (examSession.startsOn as string | null) ?? null,
           endsOn: (examSession.endsOn as string | null) ?? null,
         },
-        bypass: canManageInstitution(session?.roleSlug),
+        bypass: canManageInstitution(session?.roleSlugs),
       });
 
       for (const mark of input.marks) {

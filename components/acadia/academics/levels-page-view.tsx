@@ -57,7 +57,7 @@ export function LevelsPageView({
   const [editingLevel, setEditingLevel] = useState<LevelListRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LevelListRow | null>(null);
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteRegistry(session?.roleSlugs);
   const { deleteLevel, importLevelCatalog } = useAcademicStructureMutations();
   const { data: deleteBlockers, isLoading: deleteBlockersLoading } =
     useLevelDeleteBlockers(deleteTarget?.id ?? null);

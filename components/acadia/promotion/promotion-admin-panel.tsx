@@ -81,7 +81,7 @@ export function PromotionAdminPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canManagePromotion(session?.roleSlug);
+  const canManage = canManagePromotion(session?.roleSlugs);
   const {
     computeAutomaticPromotion,
     savePromotionOverride,

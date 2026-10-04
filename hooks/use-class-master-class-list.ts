@@ -7,7 +7,12 @@ import {
   useAcadiaCollegeSession,
 } from '@/hooks/use-acadia-college-session';
 import { useLinkedAcadiaProfile } from '@/hooks/use-linked-acadia-profile';
-import { canWriteAcademicAdmin } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin, isDisciplineMaster } from '@/lib/acadia/roles';
+import {
+  classMatchesDisciplineScopes,
+  type DisciplineScopeClassLink,
+  type DisciplineScopeGroup,
+} from '@/lib/acadia/discipline-scopes';
 import { requireBrowserClient } from '@/lib/supabase/client';
 import { fetchClassList, type ClassListRow } from '@/lib/supabase/queries/class-list';
 import { fetchClassMasterAccessibleClassIds } from '@/lib/supabase/queries/class-report';
@@ -15,8 +20,9 @@ import { fetchClassMasterAccessibleClassIds } from '@/lib/supabase/queries/class
 export function useClassMasterClassList() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const admin = canWriteAcademicAdmin(roleSlug);
+  const disciplineMaster = isDisciplineMaster(roleSlug);
   const { activeYearId } = useActiveAcademicYear();
   const { data: linked, isSuccess: linkedReady } = useLinkedAcadiaProfile();
   const staffProfileId = linked?.staffProfileId ?? null;
@@ -28,9 +34,10 @@ export function useClassMasterClassList() {
       activeYearId,
       admin,
       staffProfileId,
+      disciplineMaster,
     ],
     queryFn: async (): Promise<ClassListRow[]> => {
-      if (!admin && !staffProfileId) {
+      if (!admin && !staffProfileId && !disciplineMaster) {
         return [];
       }
       const supabase = requireBrowserClient();
@@ -38,20 +45,35 @@ export function useClassMasterClassList() {
       if (admin) {
         return classes;
       }
-      const allowed = new Set(
-        await fetchClassMasterAccessibleClassIds(
-          supabase,
-          tenantId!,
-          activeYearId!,
-          staffProfileId!,
-        ),
-      );
+      const allowed = new Set<string>();
+      if (staffProfileId) {
+        const classMasterIds = await fetchClassMasterAccessibleClassIds(
+          supabase, tenantId!, activeYearId!, staffProfileId,
+        );
+        classMasterIds.forEach((id) => allowed.add(id));
+      }
+      if (disciplineMaster && session?.authUser?.id) {
+        const [{ data: groups, error: groupsError }, { data: links, error: linksError }] = await Promise.all([
+          supabase.from('DisciplineScopeGroup').select('id,wholeSchool,subSystem,branch,minLevel,maxLevel')
+            .eq('tenantId', tenantId!).eq('staffUserId', session.authUser.id),
+          supabase.from('DisciplineScopeClass').select('scopeGroupId,classId'),
+        ]);
+        if (groupsError) throw groupsError;
+        if (linksError) throw linksError;
+        const scoped = classes.filter((row) => classMatchesDisciplineScopes({
+          id: row.id,
+          subSystem: row.subSystem,
+          branch: row.branch,
+          levelNumber: row.Level?.number ?? null,
+        }, (groups ?? []) as unknown as DisciplineScopeGroup[], (links ?? []) as unknown as DisciplineScopeClassLink[]));
+        scoped.forEach((row) => allowed.add(row.id));
+      }
       return classes.filter((row) => allowed.has(row.id));
     },
     staleTime: 60_000,
     enabled:
       isAcadiaTenantQueryEnabled(isLoading, isError, session, tenantId) &&
       Boolean(activeYearId) &&
-      (admin || linkedReady),
+      (admin || linkedReady || disciplineMaster),
   });
 }

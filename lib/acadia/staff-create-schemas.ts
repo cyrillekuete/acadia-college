@@ -81,6 +81,7 @@ export const staffCreateSchema = z
     bio: z.string().max(2000).optional().or(z.literal('')),
     isActive: z.boolean().default(true),
     roleId: z.string().optional().or(z.literal('')),
+    roleIds: z.array(z.string()).default([]),
   })
   .superRefine((data, ctx) => {
     refinePhoneWithCountry(

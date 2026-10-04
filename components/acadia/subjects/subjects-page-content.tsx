@@ -43,7 +43,7 @@ export function SubjectsPageContent({
     );
   }
 
-  const mode = resolveSubjectsViewMode(session?.roleSlug);
+  const mode = resolveSubjectsViewMode(session?.roleSlugs);
   if (mode === 'student') {
     return <StudentSubjectsView />;
   }

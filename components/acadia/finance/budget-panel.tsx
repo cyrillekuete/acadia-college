@@ -50,7 +50,7 @@ export function BudgetPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canWriteFinance(session?.roleSlug);
+  const canManage = canWriteFinance(session?.roleSlugs);
   const yearClosed = useFinanceYearClosed();
   const { activeYearId } = useActiveAcademicYear();
   const { deleteBudgetLine } = useFinanceMutations();

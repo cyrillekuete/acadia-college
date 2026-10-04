@@ -6,12 +6,14 @@ import {
 } from '@/lib/acadia/roles';
 
 describe('canViewStudentRegistry', () => {
-  it('allows administrators and teaching staff', () => {
+  it('allows administrators, teaching staff, and Secretaries', () => {
     expect(canViewStudentRegistry('admin')).toBe(true);
     expect(canViewStudentRegistry('registrar')).toBe(true);
-    expect(canViewStudentRegistry('bursar')).toBe(true);
+    expect(canViewStudentRegistry('bursar')).toBe(false);
+    expect(canWriteRegistry('bursar')).toBe(false);
     expect(canViewStudentRegistry('teacher')).toBe(true);
     expect(canViewStudentRegistry('staff')).toBe(true);
+    expect(canViewStudentRegistry('secretary')).toBe(true);
   });
 
   it('denies parents, guardians, and students', () => {

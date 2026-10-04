@@ -1,4 +1,5 @@
-import { canWriteAcademicAdmin, isStaffOrTeacher } from '@/lib/acadia/roles';
+import { canWriteAcademicAdmin, isDisciplineMaster, isStaffOrTeacher } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 import type { DisciplineInfo, ReportCardTerm } from '@/lib/acadia/report-card-types';
 
 export const CLASS_DISCIPLINE_TERMS = ['1', '2', '3', '4', '5', '6'] as const;
@@ -81,11 +82,15 @@ export function unenrolledDisciplineStudentIds(
 }
 
 export function canWriteClassDiscipline(input: {
-  roleSlug: string;
+  roleSlug: RoleInput;
   staffProfileId?: string | null;
   classMasterStaffProfileId?: string | null;
+  disciplineScopeMatch?: boolean;
 }): boolean {
   if (canWriteAcademicAdmin(input.roleSlug)) {
+    return true;
+  }
+  if (isDisciplineMaster(input.roleSlug) && input.disciplineScopeMatch) {
     return true;
   }
   if (!isStaffOrTeacher(input.roleSlug)) {

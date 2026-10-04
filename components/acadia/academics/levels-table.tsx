@@ -60,7 +60,7 @@ export function LevelsTable({
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteRegistry(session?.roleSlugs);
   const { data = [], isLoading, isError, error } = useLevelList(
     {
       subSystem: filters.subSystem,

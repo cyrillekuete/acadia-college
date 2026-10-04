@@ -49,7 +49,7 @@ export function SchemeDetailView({ schemeId }: { schemeId: string }) {
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
-  const roleSlug = session?.roleSlug;
+  const roleSlug = session?.roleSlugs;
   const admin = canWriteAcademicAdmin(roleSlug);
   const teacherOps = canWriteOperations(roleSlug) && !admin;
   const studentView = isStudent(roleSlug);

@@ -17,7 +17,7 @@ import { appendSystemLog } from '@/lib/acadia/system-log';
 import { assertEnrollmentWindowForYear } from '@/lib/acadia/enrollment-window';
 
 export async function POST(request: Request) {
-  const auth = await requireRegistryApi();
+  const auth = await requireRegistryApi({ allowSecretaryRegistration: true });
   if (!auth.ok) {
     return NextResponse.json({ message: auth.message }, { status: auth.status });
   }

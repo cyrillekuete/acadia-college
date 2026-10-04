@@ -18,7 +18,7 @@ export function TenantInstitutionCards() {
   const { data: session } = useAcadiaCollegeSession();
   const { data: tenant, isLoading, isError, error } = useAcadiaTenant();
   const { updateField } = useTenantProfileMutations();
-  const canEdit = canWriteAcademicAdmin(session?.roleSlug);
+  const canEdit = canWriteAcademicAdmin(session?.roleSlugs);
 
   return (
     <AccountDataState

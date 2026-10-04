@@ -9,12 +9,13 @@ import {
   canViewAttendanceAnalytics,
   canViewAttendanceReports,
 } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 import {
   ACADIA_DEFAULT_LANDING_PATH,
   getDashboardPathForRole,
 } from '@/lib/auth/dashboard-routes';
 
-function pathAllowed(pathname: string, roleSlug: string | null | undefined): boolean {
+function pathAllowed(pathname: string, roleSlug: RoleInput): boolean {
   if (!canViewAttendance(roleSlug)) {
     return false;
   }
@@ -31,7 +32,7 @@ export function AttendanceAccessGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, isLoading } = useAcadiaCollegeSession();
-  const allowed = pathAllowed(pathname, session?.roleSlug);
+  const allowed = pathAllowed(pathname, session?.roleSlugs);
 
   useEffect(() => {
     if (isLoading || !session) {

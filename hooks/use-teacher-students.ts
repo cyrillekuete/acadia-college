@@ -23,7 +23,7 @@ export function useTeacherStudents() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const {
     data: linkedProfile,

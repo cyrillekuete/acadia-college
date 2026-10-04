@@ -222,7 +222,7 @@ function TemplatePreviewDialog({
 export function ReportCardTemplatesWrapper() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canWrite = canWriteAcademicAdmin(session?.roleSlug);
+  const canWrite = canWriteAcademicAdmin(session?.roleSlugs);
   const { activeYearId } = useActiveAcademicYear();
   const { data: yearStructure } = useAcademicYearStructure(activeYearId ?? null);
   const { confirmWrite } = useAcademicYearWriteGuard();

@@ -74,7 +74,7 @@ export function FeeAccountInstallments({
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canWriteFinance(session?.roleSlug) && !readOnly;
+  const canManage = canWriteFinance(session?.roleSlugs) && !readOnly;
   const yearClosed = useFinanceYearClosed();
   const { recordFeePayment } = useFinanceMutations();
   const [payingInstallment, setPayingInstallment] =

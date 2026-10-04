@@ -32,7 +32,7 @@ export function StaffTeachingAssignmentsPanel({
 }) {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteRegistry(session?.roleSlugs);
   const { activeYearId } = useActiveAcademicYear();
   const { data: assignments = [], isLoading } = useStaffTeachingAssignments(
     staffProfileId,

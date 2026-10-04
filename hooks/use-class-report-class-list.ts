@@ -15,7 +15,7 @@ import { fetchClassList, type ClassListRow } from '@/lib/supabase/queries/class-
 export function useClassReportClassList() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const admin = isAdmin(roleSlug);
   const { activeYearId } = useActiveAcademicYear();
   const { data: linked, isSuccess: linkedReady } = useLinkedAcadiaProfile();

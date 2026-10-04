@@ -7,7 +7,7 @@ import { isAdminClientConfigured } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
-  const auth = await requireRegistryApi();
+  const auth = await requireRegistryApi({ allowSecretaryRegistration: true });
   if (!auth.ok) {
     return NextResponse.json({ message: auth.message }, { status: auth.status });
   }
@@ -39,6 +39,16 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
+  if (auth.ctx.roleSlugs.includes('secretary')) {
+    const requestedRoleIds = [...new Set([...(parsed.data.roleIds ?? []), parsed.data.roleId].filter((id): id is string => Boolean(id)))];
+    const { data: selectedRoles, error: roleError } = await supabase
+      .from('UserRole')
+      .select('id, slug')
+      .in('id', requestedRoleIds);
+    if (roleError || !selectedRoles?.length || selectedRoles.length !== requestedRoleIds.length || selectedRoles.some((role) => role.slug !== 'teacher')) {
+      return NextResponse.json({ message: 'Secretaries can assign the Teacher duty only.' }, { status: 403 });
+    }
+  }
   const result = await provisionStaff(
     supabase,
     parsed.data,

@@ -75,16 +75,16 @@ export function StaffOnboardingForm() {
   useEffect(() => {
     if (!isLoading && status && !status.needsOnboarding) {
       const destination =
-        getDashboardPathForRole(session?.roleSlug) ?? '/dashboard/staff';
+        getDashboardPathForRole(session?.roleSlugs) ?? '/dashboard/staff';
       router.replace(destination);
     }
-  }, [isLoading, router, session?.roleSlug, status]);
+  }, [isLoading, router, session?.roleSlugs, status]);
 
   async function onSubmit(values: StaffOnboardingInput) {
     try {
       await mutation.mutateAsync(values);
       toast.success(t('staff.profileCompleted'));
-      router.replace(getDashboardPathForRole(session?.roleSlug) ?? '/dashboard/staff');
+      router.replace(getDashboardPathForRole(session?.roleSlugs) ?? '/dashboard/staff');
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t('staff.profileSaveFailed'),

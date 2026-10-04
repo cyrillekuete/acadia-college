@@ -13,7 +13,7 @@ import {
 export function TenantApiKeysAccessGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data: session, isLoading } = useAcadiaCollegeSession();
-  const allowed = canManageTenantApiKeys(session?.roleSlug);
+  const allowed = canManageTenantApiKeys(session?.roleSlugs);
 
   useEffect(() => {
     if (isLoading || !session) {

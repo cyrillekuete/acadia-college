@@ -191,10 +191,10 @@ describe('WhatsApp send toast', () => {
 });
 
 describe('canSendWhatsAppMessages', () => {
-  it('allows staff and administrators only', () => {
+  it('allows teaching staff and administrators, but not office-only roles', () => {
     expect(canSendWhatsAppMessages('admin')).toBe(true);
     expect(canSendWhatsAppMessages('teacher')).toBe(true);
-    expect(canSendWhatsAppMessages('bursar')).toBe(true);
+    expect(canSendWhatsAppMessages('bursar')).toBe(false);
     expect(canSendWhatsAppMessages('student')).toBe(false);
     expect(canSendWhatsAppMessages('guardian')).toBe(false);
     expect(canSendWhatsAppMessages('parent')).toBe(false);

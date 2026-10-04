@@ -13,7 +13,7 @@ import {
 export function StudentRegistryAccessGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data: session, isLoading } = useAcadiaCollegeSession();
-  const allowed = canViewStudentRegistry(session?.roleSlug);
+  const allowed = canViewStudentRegistry(session?.roleSlugs);
 
   useEffect(() => {
     if (isLoading || !session) {

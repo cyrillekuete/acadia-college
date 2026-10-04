@@ -73,7 +73,7 @@ export function MarksEntryGrid({ preset }: { preset?: MarksEntryPreset }) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const academicYearId = preset?.academicYearId ?? activeYearId ?? '';
   const [sequenceId, setSequenceId] = useState(preset?.sequenceId ?? '');

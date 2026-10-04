@@ -1,5 +1,6 @@
 import { localizedText } from '@/lib/acadia/locale';
 import { isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 
 export const SCHEME_OF_WORK_STATUSES = ['DRAFT', 'PUBLISHED'] as const;
 export type SchemeOfWorkStatus = (typeof SCHEME_OF_WORK_STATUSES)[number];
@@ -265,7 +266,7 @@ export function previousAcademicYearId(
 
 export function resolveAllowedSchemeClassId(input: {
   requestedClassId: string | null | undefined;
-  roleSlug: string | null | undefined;
+  roleSlug: RoleInput;
   studentClassId: string | null | undefined;
   teacherClassIds: string[];
   isAcademicAdmin: boolean;

@@ -13,7 +13,7 @@ import {
 export function UserManagementAccessGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data: session, isLoading } = useAcadiaCollegeSession();
-  const allowed = canManageUsers(session?.roleSlug);
+  const allowed = canManageUsers(session?.roleSlugs);
 
   useEffect(() => {
     if (isLoading || !session) {

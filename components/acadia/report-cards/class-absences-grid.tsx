@@ -157,9 +157,11 @@ export function ClassAbsencesGrid() {
   const students = rosterQuery.data?.students ?? [];
   const selectedClassRow = classes.find((row) => row.id === selectedClass);
   const canWrite = canWriteClassDiscipline({
-    roleSlug: session?.roleSlug ?? '',
+    roleSlug: session?.roleSlugs ?? '',
     staffProfileId: linked?.staffProfileId,
     classMasterStaffProfileId: selectedClassRow?.staffProfileId,
+    disciplineScopeMatch:
+      session?.roleSlugs.includes('discipline-master') === true && Boolean(selectedClassRow),
   });
   const termNumbers =
     terms.length > 0 ? terms.map((term) => term.number) : [1, 2, 3];

@@ -37,7 +37,7 @@ export function DataRetentionSettingsForm() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canManagePromotion(session?.roleSlug);
+  const canManage = canManagePromotion(session?.roleSlugs);
   const { saveRetentionPolicy, runRetentionArchive } = usePromotionMutations();
 
   const policyQuery = useQuery({

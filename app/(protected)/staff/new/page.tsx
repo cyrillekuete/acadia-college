@@ -10,7 +10,7 @@ import { canWriteRegistry } from '@/lib/acadia/roles';
 export default function NewStaffPage() {
   const router = useRouter();
   const { data: session, isLoading } = useAcadiaCollegeSession();
-  const canAdd = canWriteRegistry(session?.roleSlug);
+  const canAdd = canWriteRegistry(session?.roleSlugs) || session?.roleSlugs.includes('secretary') === true;
 
   useEffect(() => {
     if (!isLoading && !canAdd) {

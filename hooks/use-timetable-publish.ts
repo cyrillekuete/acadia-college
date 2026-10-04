@@ -32,8 +32,8 @@ export function useActiveYearTimetablePublish() {
     activeYearId,
     publishedAt,
     isPublished: !!publishedAt,
-    canView: canViewTimetableSlots(session?.roleSlug, publishedAt),
-    canManage: canWriteRegistry(session?.roleSlug),
+    canView: canViewTimetableSlots(session?.roleSlugs, publishedAt),
+    canManage: canWriteRegistry(session?.roleSlugs),
     isLoading: isLoading || yearLoading,
     isReady:
       !isLoading &&

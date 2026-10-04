@@ -113,7 +113,7 @@ export function SubjectsTable({
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteAcademicAdmin(session?.roleSlug);
+  const canManage = canWriteAcademicAdmin(session?.roleSlugs);
   const defaultColumnOrder = useMemo(
     () => subjectTableColumnOrder(canManage),
     [canManage],

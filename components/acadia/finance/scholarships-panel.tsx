@@ -54,7 +54,7 @@ export function ScholarshipsPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canWriteFinance(session?.roleSlug);
+  const canManage = canWriteFinance(session?.roleSlugs);
   const { deleteScholarshipType } = useFinanceMutations();
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);

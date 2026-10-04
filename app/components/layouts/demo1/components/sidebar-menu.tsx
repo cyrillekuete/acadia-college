@@ -37,7 +37,7 @@ export function SidebarMenu() {
   const pathname = usePathname();
   const { data: session } = useAcadiaCollegeSession();
   const { t } = useTranslation();
-  const menuItems = getMenuForRole(session?.roleSlug);
+  const menuItems = getMenuForRole(session?.roleSlugs);
   const label = (item: AcadiaMenuItem) => menuItemLabel(item, t);
 
   // Memoize matchPath to prevent unnecessary re-renders

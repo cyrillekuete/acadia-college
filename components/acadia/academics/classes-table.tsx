@@ -80,7 +80,7 @@ export function ClassesTable({
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteRegistry(session?.roleSlugs);
   const { data = [], isLoading, isError, error } = useClassList(
     {
       subSystem: filters.subSystem,

@@ -33,9 +33,9 @@ export function useAlertTargets() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const { activeYearId } = useActiveAcademicYear();
-  const canBroadcastAll = canBroadcastAllGuardians(session?.roleSlug);
+  const canBroadcastAll = canBroadcastAllGuardians(session?.roleSlugs);
   const teacherView =
-    isStaffOrTeacher(session?.roleSlug) && !isAdmin(session?.roleSlug);
+    isStaffOrTeacher(session?.roleSlugs) && !isAdmin(session?.roleSlugs);
   const teacherStudents = useTeacherStudents();
   const allowedClassIds = canBroadcastAll
     ? null

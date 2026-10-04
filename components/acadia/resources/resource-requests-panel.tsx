@@ -61,8 +61,8 @@ export function ResourceRequestsPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canManageResources(session?.roleSlug);
-  const canRequest = canRequestResources(session?.roleSlug);
+  const canManage = canManageResources(session?.roleSlugs);
+  const canRequest = canRequestResources(session?.roleSlugs);
   const { submitResourceRequest, reviewResourceRequest } = useResourceMutations();
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 

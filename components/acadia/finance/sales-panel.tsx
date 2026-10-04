@@ -78,7 +78,7 @@ export function SalesPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canWriteFinance(session?.roleSlug);
+  const canManage = canWriteFinance(session?.roleSlugs);
   const { activeYearId } = useActiveAcademicYear();
   const { deleteSale, cancelSale } = useFinanceMutations();
   const yearClosed = useFinanceYearClosed();

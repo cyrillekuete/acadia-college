@@ -31,7 +31,7 @@ export default function StaffDetailPage({
   const router = useRouter();
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canEdit = canWriteRegistry(session?.roleSlug);
+  const canEdit = canWriteRegistry(session?.roleSlugs) || session?.roleSlugs.includes('secretary') === true;
   const { data, isLoading, isError, error } = useStaffDetailQuery(id);
 
   useEffect(() => {

@@ -18,7 +18,7 @@ export function useStaffOnboardingStatus() {
   const { data: session, isLoading, isError } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
   const userId = session?.authUser?.id ?? null;
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const isTeacherStaff =
     isStaffOrTeacher(roleSlug) && !isAdmin(roleSlug);
 

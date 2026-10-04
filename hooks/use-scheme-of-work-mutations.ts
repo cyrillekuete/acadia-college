@@ -40,7 +40,7 @@ export function useSchemeOfWorkMutations() {
   const queryClient = useQueryClient();
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const profileQuery = useLinkedAcadiaProfile();
   const staffProfileId = profileQuery.data?.staffProfileId ?? null;

@@ -6,9 +6,12 @@ export type RegistryApiContext = {
   actorUserId: string;
   tenantId: string;
   roleSlug: string;
+  roleSlugs: string[];
 };
 
-export async function requireRegistryApi(): Promise<
+export type RegistryApiOptions = { allowSecretaryRegistration?: boolean };
+
+export async function requireRegistryApi(options: RegistryApiOptions = {}): Promise<
   | { ok: true; ctx: RegistryApiContext }
   | { ok: false; status: number; message: string }
 > {
@@ -28,7 +31,9 @@ export async function requireRegistryApi(): Promise<
   }
 
   const roleSlug = profileResult.profile.UserRole?.slug ?? '';
-  if (!canWriteRegistry(roleSlug)) {
+  const roleSlugs = profileResult.profile.roleSlugs?.length ? profileResult.profile.roleSlugs : [roleSlug];
+  const secretaryRegistration = options.allowSecretaryRegistration && roleSlugs.includes('secretary');
+  if (!secretaryRegistration && !canWriteRegistry(roleSlugs)) {
     return {
       ok: false,
       status: 403,
@@ -47,6 +52,7 @@ export async function requireRegistryApi(): Promise<
       actorUserId: user.id,
       tenantId,
       roleSlug,
+      roleSlugs,
     },
   };
 }

@@ -251,6 +251,7 @@ const STUDENT_MENU: AcadiaMenuConfig = [
     ],
   },
   { title: 'Learning materials', titleKey: 'nav.learningMaterials', icon: 'folder', path: '/resources/materials' },
+  { title: 'Library', titleKey: 'nav.library', icon: 'book', path: '/library' },
   { title: 'Resource requests', titleKey: 'nav.resourceRequests', icon: 'folder', path: '/resources/requests' },
   buildMyAccountMenu(),
 ];
@@ -288,6 +289,7 @@ const STAFF_MENU: AcadiaMenuConfig = [
   { title: 'Promotion', titleKey: 'nav.promotion', icon: 'file-sheet', path: '/reports/promotion' },
   { title: 'Coursework', titleKey: 'nav.coursework', icon: 'clipboard', path: '/coursework' },
   { title: 'Scheme of work', titleKey: 'nav.schemeOfWork', icon: 'book', path: '/scheme-of-work' },
+  { title: 'Library', titleKey: 'nav.library', icon: 'book', path: '/library' },
   {
     title: 'Exams',
     titleKey: 'nav.exams',
@@ -339,19 +341,7 @@ const BURSAR_MENU: AcadiaMenuConfig = [
       { title: 'Scholarships', titleKey: 'nav.scholarships', path: '/finance/scholarships' },
     ],
   },
-  {
-    title: 'Transcripts',
-    titleKey: 'nav.transcripts',
-    icon: 'document',
-    children: [
-      { title: 'Transcripts', titleKey: 'nav.transcripts', path: '/transcripts' },
-      { title: 'Copy requests', titleKey: 'nav.copyRequests', path: '/transcripts/requests' },
-    ],
-  },
-  { title: 'Students', titleKey: 'nav.students', icon: 'users', path: '/students' },
-  { title: 'Messages', titleKey: 'nav.messages', icon: 'message-text', path: '/messages' },
-  { title: 'Announcements', titleKey: 'nav.announcements', icon: 'notification', path: '/announcements' },
-  buildMyAccountMenu({ institution: true }),
+  buildMyAccountMenu(),
 ];
 
 const GUARDIAN_MENU: AcadiaMenuConfig = [
@@ -411,16 +401,43 @@ function filterAdministrationModuleItems(
     .filter((item): item is AcadiaMenuItem => item != null);
 }
 
-export function getMenuForRole(roleSlug: string | null | undefined): AcadiaMenuConfig {
-  const slug = roleSlug?.toLowerCase() ?? '';
-
-  if (slug === 'bursar') {
-    return BURSAR_MENU.filter((item) => item.path !== '/announcements');
+export function getMenuForRole(roleSlug: string | readonly string[] | null | undefined): AcadiaMenuConfig {
+  const slugs = (Array.isArray(roleSlug) ? roleSlug : [roleSlug]).filter((slug): slug is string => Boolean(slug)).map((slug) => slug.toLowerCase());
+  const slug = slugs[0] ?? '';
+  const hasTeacherDuty = slugs.some((role) => ['lecturer', 'staff', 'teacher'].includes(role));
+  const hasOfficeDuty = slugs.some((role) => ['discipline-master', 'bursar', 'library-attendant', 'secretary'].includes(role));
+  if (hasTeacherDuty) {
+    const officeItems = hasOfficeDuty
+      ? [
+          ...(slugs.includes('bursar') ? BURSAR_MENU.filter((item) => item.titleKey === 'nav.finance') : []),
+          ...(slugs.includes('library-attendant') ? [{ title: 'Library', titleKey: 'nav.library', icon: 'book', path: '/library' }] : []),
+          ...(slugs.includes('secretary') ? [{ title: 'Staff', titleKey: 'nav.staff', icon: 'users', path: '/staff' }] : []),
+        ]
+      : [];
+    return [...new Map([...STAFF_MENU, ...officeItems].map((item) => [item.path ?? item.titleKey ?? item.title, item])).values()];
+  }
+  if (hasOfficeDuty) {
+    const officeItems: AcadiaMenuConfig = [
+      { title: 'Dashboard', titleKey: 'nav.dashboard', icon: 'element-11', path: '/' },
+      ...(slugs.includes('discipline-master') ? [
+        { title: 'Students', titleKey: 'nav.students', icon: 'users', path: '/students' },
+        STAFF_MENU.find((item) => item.titleKey === 'nav.attendance')!,
+        { title: 'Class absences', titleKey: 'nav.classAbsences', icon: 'calendar-tick', path: '/reports/absences' },
+      ] : []),
+      ...(slugs.includes('secretary') ? [
+        { title: 'Students', titleKey: 'nav.students', icon: 'users', path: '/students' },
+        { title: 'Staff', titleKey: 'nav.staff', icon: 'users', path: '/staff' },
+      ] : []),
+      ...(slugs.includes('library-attendant') ? [{ title: 'Library', titleKey: 'nav.library', icon: 'book', path: '/library' }] : []),
+      ...(slugs.includes('bursar') ? BURSAR_MENU.filter((item) => item.titleKey === 'nav.finance') : []),
+      buildMyAccountMenu(),
+    ];
+    return [...new Map(officeItems.map((item) => [item.path ?? item.titleKey ?? item.title, item])).values()];
   }
   if (slug === 'financial-director') {
     return filterAdministrationModuleItems(
-      filterUserManagementAdminItems(MENU_ACADIA, roleSlug),
-      roleSlug,
+      filterUserManagementAdminItems(MENU_ACADIA, slug),
+      slug,
     );
   }
   if (slug === 'student') {
@@ -434,8 +451,8 @@ export function getMenuForRole(roleSlug: string | null | undefined): AcadiaMenuC
   }
 
   return filterAdministrationModuleItems(
-    filterUserManagementAdminItems(MENU_ACADIA, roleSlug),
-    roleSlug,
+    filterUserManagementAdminItems(MENU_ACADIA, slug),
+    slug,
   );
 }
 
@@ -486,10 +503,11 @@ function resolveNavbarRoleKey(
 }
 
 export function getNavbarQuickLinksForRole(
-  roleSlug: string | null | undefined,
+  roleSlug: string | readonly string[] | null | undefined,
 ): AcadiaMenuItem[] {
   const menu = getMenuForRole(roleSlug);
-  const keys = NAVBAR_QUICK_LINK_KEYS[resolveNavbarRoleKey(roleSlug)];
+  const roleSlugs = Array.isArray(roleSlug) ? roleSlug : [roleSlug];
+  const keys = [...new Set(roleSlugs.flatMap((slug) => NAVBAR_QUICK_LINK_KEYS[resolveNavbarRoleKey(slug)]))];
 
   return keys
     .map((key) => menu.find((item) => item.titleKey === key))

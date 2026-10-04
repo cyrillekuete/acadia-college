@@ -42,7 +42,7 @@ export function YearRolloverWizard({ sourceYearId }: { sourceYearId: string }) {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canManagePromotion(session?.roleSlug);
+  const canManage = canManagePromotion(session?.roleSlugs);
   const { data: years = [] } = useAcademicYearOptions(undefined, {
     includeInactive: true,
   });

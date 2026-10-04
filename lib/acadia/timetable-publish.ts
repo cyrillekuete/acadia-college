@@ -1,4 +1,5 @@
 import { canWriteRegistry } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 
 export function isTimetablePublished(
   publishedAt: string | null | undefined,
@@ -8,7 +9,7 @@ export function isTimetablePublished(
 
 /** Administrators always bypass; everyone else needs a published timetable. */
 export function canViewTimetableSlots(
-  roleSlug: string | null | undefined,
+  roleSlug: RoleInput,
   publishedAt: string | null | undefined,
 ): boolean {
   if (canWriteRegistry(roleSlug)) {

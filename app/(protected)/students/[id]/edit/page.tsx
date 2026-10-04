@@ -14,7 +14,7 @@ export default function StudentEditPage() {
   const { student, isLoading } = useStudent();
   const { data: session } = useAcadiaCollegeSession();
   const router = useRouter();
-  const canEdit = canWriteRegistry(session?.roleSlug);
+  const canEdit = canWriteRegistry(session?.roleSlugs) || session?.roleSlugs.includes('secretary') === true;
 
   useEffect(() => {
     if (!canEdit && session) {

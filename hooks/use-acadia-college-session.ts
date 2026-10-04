@@ -18,6 +18,7 @@ export type AcadiaCollegeSession = {
   authUser: User | null;
   profile: AcadiaUserProfile | null;
   roleSlug: string | null;
+  roleSlugs: string[];
   tenantId: string | null;
   /** Profile query failed (network/RLS), distinct from a missing row. */
   profileLoadFailed: boolean;
@@ -29,6 +30,7 @@ export const EMPTY_ACADIA_SESSION: AcadiaCollegeSession = {
   authUser: null,
   profile: null,
   roleSlug: null,
+  roleSlugs: [],
   tenantId: null,
   profileLoadFailed: false,
   gateFailure: null,
@@ -100,6 +102,7 @@ export function useAcadiaCollegeSession() {
           authUser: user,
           profile: null,
           roleSlug: null,
+          roleSlugs: [],
           tenantId: null,
           profileLoadFailed: true,
           gateFailure: null,
@@ -115,6 +118,7 @@ export function useAcadiaCollegeSession() {
           authUser: user,
           profile: profile ?? null,
           roleSlug: null,
+          roleSlugs: [],
           tenantId: profile?.tenantId ?? null,
           profileLoadFailed: false,
           gateFailure: {
@@ -129,6 +133,7 @@ export function useAcadiaCollegeSession() {
         authUser: user,
         profile: gate.profile,
         roleSlug: gate.roleSlug,
+        roleSlugs: gate.roleSlugs,
         tenantId: gate.profile.tenantId,
         profileLoadFailed: false,
         gateFailure: null,

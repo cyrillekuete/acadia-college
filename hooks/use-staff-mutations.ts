@@ -19,7 +19,7 @@ export function useStaffMutations() {
   const { data: session } = useAcadiaCollegeSession();
   const { t } = useTranslation();
   const tenantId = session?.tenantId ?? null;
-  const canWrite = canWriteRegistry(session?.roleSlug);
+  const canWrite = canWriteRegistry(session?.roleSlugs);
 
   const invalidate = (profileId?: string) => {
     void queryClient.invalidateQueries({ queryKey: ['staff-list'] });

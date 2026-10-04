@@ -53,9 +53,9 @@ function StudentSchemeList() {
 export function SchemeOfWorkPage() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const admin = canWriteAcademicAdmin(session?.roleSlug);
-  const teacher = isStaffOrTeacher(session?.roleSlug) && !admin;
-  const student = isStudent(session?.roleSlug);
+  const admin = canWriteAcademicAdmin(session?.roleSlugs);
+  const teacher = isStaffOrTeacher(session?.roleSlugs) && !admin;
+  const student = isStudent(session?.roleSlugs);
 
   return (
     <AcadiaPageShell

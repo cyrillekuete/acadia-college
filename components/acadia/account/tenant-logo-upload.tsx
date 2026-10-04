@@ -31,7 +31,7 @@ export function TenantLogoUpload({ kind = 'institution' }: TenantLogoUploadProps
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: session } = useAcadiaCollegeSession();
   const { mutate, isPending } = useTenantLogoUpload(kind);
-  const canUpload = canWriteAcademicAdmin(session?.roleSlug);
+  const canUpload = canWriteAcademicAdmin(session?.roleSlugs);
   const copy = COPY[kind];
 
   if (!canUpload) {

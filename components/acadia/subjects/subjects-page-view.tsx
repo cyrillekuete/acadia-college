@@ -14,7 +14,7 @@ export function SubjectsPageView({
 }) {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const mode = resolveSubjectsViewMode(session?.roleSlug);
+  const mode = resolveSubjectsViewMode(session?.roleSlugs);
   const isStudentView = mode === 'student';
 
   return (

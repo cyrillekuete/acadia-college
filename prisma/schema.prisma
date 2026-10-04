@@ -33,6 +33,7 @@ model User {
   invitedByUserId String?
   isProtected     Boolean     @default(false) // Prevents deletion/modification
   role            UserRole    @relation(fields: [roleId], references: [id])
+  roleAssignments UserRoleAssignment[]
   systemLog       SystemLog[]
   accounts        Account[]
   Session         Session[]
@@ -55,6 +56,21 @@ model UserRole {
   isDefault       Boolean              @default(false)
   users           User[]
   permissions     UserRolePermission[]
+  assignments     UserRoleAssignment[]
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      UserRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@index([userId, isPrimary])
 }
 
 model UserPermission {

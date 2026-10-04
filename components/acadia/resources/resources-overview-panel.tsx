@@ -74,7 +74,7 @@ export function ResourcesOverviewPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canManageResources(session?.roleSlug);
+  const canManage = canManageResources(session?.roleSlugs);
   const { data: users = [] } = useTenantUserOptions();
   const {
     createSchoolResource,

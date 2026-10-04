@@ -86,7 +86,7 @@ export function AcadiaNavbarMenu() {
   const { isActive } = useMenu(pathname);
   const { data: session } = useAcadiaCollegeSession();
   const { t } = useTranslation();
-  const quickLinks = getNavbarQuickLinksForRole(session?.roleSlug);
+  const quickLinks = getNavbarQuickLinksForRole(session?.roleSlugs);
 
   return (
     <NavigationMenu viewport={false}>

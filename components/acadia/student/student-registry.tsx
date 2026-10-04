@@ -58,7 +58,7 @@ export function StudentRegistry({
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const isTeacherView = isStaffOrTeacher(roleSlug) && !isAdmin(roleSlug);
   const { activeYear, activeYearId } = useActiveAcademicYear();
 

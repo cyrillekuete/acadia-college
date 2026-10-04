@@ -13,7 +13,7 @@ import {
 export function PromotionAccessGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data: session, isLoading } = useAcadiaCollegeSession();
-  const allowed = canManagePromotion(session?.roleSlug);
+  const allowed = canManagePromotion(session?.roleSlugs);
 
   useEffect(() => {
     if (isLoading || !session) {

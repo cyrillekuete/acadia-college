@@ -18,7 +18,7 @@ export function StaffOnboardingGate({ children }: { children: React.ReactNode })
   const { t } = useTranslation();
   const { data: session, isLoading: sessionLoading, isError } =
     useAcadiaCollegeSession();
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const isTeacherStaff =
     isStaffOrTeacher(roleSlug) && !isAdmin(roleSlug);
   const sessionReady = isAcadiaSessionReady(sessionLoading, isError, session);

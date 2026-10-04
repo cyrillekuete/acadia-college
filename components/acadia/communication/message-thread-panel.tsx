@@ -69,7 +69,7 @@ export function MessageThreadPanel({ threadId }: { threadId: string }) {
   );
   const canManageMembers = Boolean(
     data?.kind === 'GROUP' &&
-      (canManageMessageGroups(session?.roleSlug) ||
+      (canManageMessageGroups(session?.roleSlugs) ||
         data.createdByUserId === currentUserId),
   );
   const activeMembers = data?.members.filter((member) => member.status !== 'INACTIVE' && member.status !== 'BLOCKED') ?? [];
@@ -148,7 +148,7 @@ export function MessageThreadPanel({ threadId }: { threadId: string }) {
                         removeUserIds: currentUserId ? [currentUserId] : [],
                       })
                       .then(() => {
-                        if (!canManageMessageGroups(session?.roleSlug)) {
+                        if (!canManageMessageGroups(session?.roleSlugs)) {
                           router.replace('/messages');
                         }
                       })

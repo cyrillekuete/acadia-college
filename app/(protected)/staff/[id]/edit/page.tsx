@@ -20,7 +20,7 @@ export default function StaffEditPage({
   const { t } = useTranslation();
   const router = useRouter();
   const { data: session } = useAcadiaCollegeSession();
-  const canEdit = canWriteRegistry(session?.roleSlug);
+  const canEdit = canWriteRegistry(session?.roleSlugs) || session?.roleSlugs.includes('secretary') === true;
   const { data, isLoading, isError, error } = useStaffDetailQuery(id);
 
   useEffect(() => {

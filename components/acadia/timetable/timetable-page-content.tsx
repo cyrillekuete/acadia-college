@@ -41,11 +41,11 @@ export function TimetablePageContent() {
     );
   }
 
-  const mode = resolveTimetableViewMode(session?.roleSlug);
+  const mode = resolveTimetableViewMode(session?.roleSlugs);
 
   switch (mode) {
     case 'admin':
-      return <ClassTimetableView canManage={canWriteRegistry(session?.roleSlug)} />;
+      return <ClassTimetableView canManage={canWriteRegistry(session?.roleSlugs)} />;
     case 'teacher':
       return <TeacherTimetableView />;
     case 'student':

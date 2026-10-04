@@ -50,9 +50,9 @@ function collectMenuPaths(
 }
 
 describe('transcript access', () => {
-  it('lets admins and teaching staff view, not students or parents', () => {
+  it('lets academic admins and teaching staff view, not bursars or students', () => {
     expect(canViewTranscripts('admin')).toBe(true);
-    expect(canViewTranscripts('bursar')).toBe(true);
+    expect(canViewTranscripts('bursar')).toBe(false);
     expect(canViewTranscripts('financial-director')).toBe(true);
     expect(canViewTranscripts('teacher')).toBe(true);
     expect(canViewTranscripts('student')).toBe(false);
@@ -79,9 +79,9 @@ describe('transcript access', () => {
 });
 
 describe('transcript menu', () => {
-  it('keeps transcripts in bursar and financial-director menus, not student or parent', () => {
-    expect(collectMenuPaths(getMenuForRole('bursar'))).toContain('/transcripts');
-    expect(collectMenuPaths(getMenuForRole('bursar'))).toContain(
+  it('keeps transcripts in the financial-director menu, not bursar or student menus', () => {
+    expect(collectMenuPaths(getMenuForRole('bursar'))).not.toContain('/transcripts');
+    expect(collectMenuPaths(getMenuForRole('bursar'))).not.toContain(
       '/transcripts/requests',
     );
     expect(collectMenuPaths(getMenuForRole('financial-director'))).toContain(

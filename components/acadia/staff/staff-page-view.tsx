@@ -25,9 +25,10 @@ export function StaffPageView({
 }) {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canAdd = canWriteRegistry(session?.roleSlug);
+  const canManageRecords = canWriteRegistry(session?.roleSlugs);
+  const canAdd = canManageRecords || session?.roleSlugs.includes('secretary') === true;
   const [section, setSection] = useState<RegistrySection>('directory');
-  const showingDirectory = !canAdd || section === 'directory';
+  const showingDirectory = !canManageRecords || section === 'directory';
 
   return (
     <AcadiaPageShell
@@ -45,7 +46,7 @@ export function StaffPageView({
       }
     >
       <div className="space-y-7.5">
-        {canAdd ? (
+        {canManageRecords ? (
           <RegistrySectionTabs value={section} onChange={setSection} />
         ) : null}
         {showingDirectory ? (

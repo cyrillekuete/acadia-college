@@ -26,7 +26,7 @@ export function StudentProfile({
   isLoading: boolean;
 }) {
   const { data: session } = useAcadiaCollegeSession();
-  const canEdit = canWriteRegistry(session?.roleSlug);
+  const canEdit = canWriteRegistry(session?.roleSlugs) || session?.roleSlugs.includes('secretary') === true;
 
   if (isLoading || !student) {
     return (

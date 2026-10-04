@@ -27,7 +27,7 @@ export function TenantSessionSettingsForm() {
   const { data: session } = useAcadiaCollegeSession();
   const { data: tenant, isLoading } = useAcadiaTenant();
   const { updateSessionSettings } = useUserManagementMutations();
-  const canEdit = canManageUsers(session?.roleSlug);
+  const canEdit = canManageUsers(session?.roleSlugs);
 
   const form = useForm<TenantSessionSettingsValues>({
     resolver: zodResolver(tenantSessionSettingsSchema),

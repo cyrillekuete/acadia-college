@@ -20,7 +20,7 @@ export type ProvisionStaffResult =
     }
   | { ok: false; message: string; status: number };
 
-export const STAFF_ROLE_SLUGS = ['teacher', 'lecturer', 'staff'] as const;
+export const STAFF_ROLE_SLUGS = ['teacher', 'lecturer', 'staff', 'discipline-master', 'bursar', 'library-attendant', 'secretary'] as const;
 
 export type ResolveStaffRoleResult =
   | { ok: true; roleId: string }
@@ -143,6 +143,10 @@ async function rollbackStaff(
           .delete()
           .eq('staffProfileId', authId)
           .eq('tenantId', tenantId),
+    },
+    {
+      label: 'DisciplineScopeGroup',
+      run: async () => admin.from('DisciplineScopeGroup').delete().eq('staffUserId', authId),
     },
     {
       label: 'StaffClassAssignment',
@@ -305,9 +309,13 @@ export async function provisionStaff(
   const displayName = formatStaffDisplayName(input.title, firstName, lastName);
   const personalEmail = emptyToNull(input.personalEmail.trim().toLowerCase());
 
-  const roleResult = await resolveStaffRoleId(admin, input.roleId);
-  if (!roleResult.ok) {
-    if (roleResult.reason === 'invalid') {
+  const requestedRoleIds = [...new Set(input.roleIds?.length ? input.roleIds : [input.roleId ?? ''].filter(Boolean))];
+  const roleResults = requestedRoleIds.length
+    ? await Promise.all(requestedRoleIds.map((id) => resolveStaffRoleId(admin, id)))
+    : [await resolveStaffRoleId(admin, input.roleId)];
+  const invalidRole = roleResults.find((result) => !result.ok);
+  if (invalidRole && !invalidRole.ok) {
+    if (invalidRole.reason === 'invalid') {
       return {
         ok: false,
         message: 'Selected role is not a staff or teacher role.',
@@ -320,7 +328,16 @@ export async function provisionStaff(
       status: 500,
     };
   }
-  const roleId = roleResult.roleId;
+  const roleIds = roleResults.flatMap((result) => result.ok ? [result.roleId] : []);
+  if (!roleIds.length || (requestedRoleIds.length > 0 && roleIds.length !== requestedRoleIds.length)) {
+    return { ok: false, message: 'One or more selected staff duties are invalid.', status: 400 };
+  }
+  const teacherRole = await admin.from('UserRole').select('id').eq('slug', 'teacher').maybeSingle();
+  const primaryRole = roleResults.find((result) => result.ok && result.roleId === input.roleId) ?? roleResults.find((result) => result.ok);
+  if (!primaryRole?.ok) return { ok: false, message: 'No teacher/staff role is configured.', status: 500 };
+  const roleId = teacherRole.data?.id && roleIds.includes(String(teacherRole.data.id))
+    ? String(teacherRole.data.id)
+    : primaryRole.roleId;
 
   const codeResult = await resolveUniqueStaffCode(admin, tenantId, input.staffCode);
   if (!codeResult.ok) {
@@ -423,6 +440,19 @@ export async function provisionStaff(
     };
   }
 
+  const { error: assignmentError } = await admin.from('UserRoleAssignment').upsert(
+    roleIds.map((assignedRoleId) => ({
+      userId: authId!,
+      roleId: assignedRoleId,
+      isPrimary: assignedRoleId === roleId,
+    })),
+    { onConflict: 'userId,roleId' },
+  );
+  if (assignmentError) {
+    await rollbackStaff(admin, authId, tenantId);
+    return { ok: false, message: assignmentError.message ?? 'Failed to assign staff duties.', status: 400 };
+  }
+
   const { error: staffError } = await admin.from('StaffProfile').insert({
     id: authId,
     userId: authId,
@@ -518,6 +548,27 @@ export async function provisionStaff(
   if (!classMasterResult.ok) {
     await rollbackStaff(admin, authId, tenantId);
     return { ok: false, message: classMasterResult.message, status: 400 };
+  }
+
+  const disciplineRole = await admin.from('UserRole').select('id').eq('slug', 'discipline-master').maybeSingle();
+  if (disciplineRole.data?.id && roleIds.includes(String(disciplineRole.data.id)) && input.classMasterClassIds.length > 0) {
+    const { data: scope, error: scopeError } = await admin.from('DisciplineScopeGroup').insert({
+      tenantId,
+      staffUserId: authId,
+      wholeSchool: false,
+      createdAt: now,
+    }).select('id').single();
+    if (scopeError || !scope) {
+      await rollbackStaff(admin, authId, tenantId);
+      return { ok: false, message: scopeError?.message ?? 'Failed to create discipline scope.', status: 400 };
+    }
+    const { error: scopeClassError } = await admin.from('DisciplineScopeClass').insert(
+      input.classMasterClassIds.map((classId) => ({ scopeGroupId: scope.id, classId })),
+    );
+    if (scopeClassError) {
+      await rollbackStaff(admin, authId, tenantId);
+      return { ok: false, message: scopeClassError.message ?? 'Failed to assign discipline classes.', status: 400 };
+    }
   }
 
   return {

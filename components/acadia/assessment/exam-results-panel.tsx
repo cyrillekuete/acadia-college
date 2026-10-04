@@ -51,7 +51,7 @@ type ExamForResults = {
 export function ExamResultsPanel({ examSessionId }: { examSessionId: string }) {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteOperations(session?.roleSlug);
+  const canManage = canWriteOperations(session?.roleSlugs);
   const { finalizeExamSession } = useAssessmentMutations();
 
   const { data, isLoading, isError, error } = useSupabaseRecord<ExamForResults>(

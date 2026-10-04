@@ -3,10 +3,9 @@ const ADMIN_ROLES = new Set([
   'super-admin',
   'financial-director',
   'registrar',
-  'bursar',
 ]);
 
-const STAFF_ROLES = new Set(['lecturer', 'staff', 'teacher']);
+const STAFF_ROLES = new Set(['lecturer', 'staff', 'teacher', 'discipline-master', 'library-attendant', 'secretary']);
 
 // 'parent' is the new-schema value; 'guardian' is the legacy slug kept
 // for backward compat during the migration window.
@@ -18,6 +17,9 @@ const KNOWN_ROLE_SLUGS = new Set<string>([
   'financial-director',
   'registrar',
   'bursar',
+  'discipline-master',
+  'library-attendant',
+  'secretary',
   'lecturer',
   'staff',
   'teacher',
@@ -41,24 +43,28 @@ export function isKnownAcadiaRole(roleSlug: string | null | undefined): boolean 
  * Callers must handle `null` — do not assume a default admin route.
  */
 export function getDashboardPathForRole(
-  roleSlug: string | null | undefined,
+  roleSlug: string | readonly string[] | null | undefined,
 ): string | null {
   if (!roleSlug) {
     return null;
   }
 
-  const slug = roleSlug.toLowerCase();
+  const slugs = (Array.isArray(roleSlug) ? roleSlug : [roleSlug]).filter((slug): slug is string => Boolean(slug)).map((slug) => slug.toLowerCase());
+  const has = (...values: string[]) => slugs.some((slug) => values.includes(slug));
 
-  if (ADMIN_ROLES.has(slug)) {
+  if (has(...ADMIN_ROLES)) {
     return '/dashboard/admin';
   }
-  if (STAFF_ROLES.has(slug)) {
+  if (has('teacher', 'lecturer', 'staff', 'discipline-master', 'library-attendant', 'secretary')) {
     return '/dashboard/staff';
   }
-  if (slug === 'student') {
+  if (has('bursar')) {
+    return '/finance/fees';
+  }
+  if (has('student')) {
     return '/dashboard/student';
   }
-  if (GUARDIAN_ROLES.has(slug)) {
+  if (has(...GUARDIAN_ROLES)) {
     return '/dashboard/guardian';
   }
 

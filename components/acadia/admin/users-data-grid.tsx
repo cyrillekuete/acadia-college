@@ -101,7 +101,7 @@ export function UsersDataGrid() {
 
   const { data: session } = useAcadiaCollegeSession();
   const { setUserStatus, sendPasswordReset } = useUserManagementMutations();
-  const canManage = canManageUsers(session?.roleSlug);
+  const canManage = canManageUsers(session?.roleSlugs);
   const { data: roleList = [], isLoading: rolesLoading } = useUserRoleOptions({
     directoryOnly: true,
   });

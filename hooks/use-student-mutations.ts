@@ -69,7 +69,7 @@ export function useStudentMutations() {
   const { data: session } = useAcadiaCollegeSession();
   const { activeYearId } = useActiveAcademicYear();
   const tenantId = session?.tenantId ?? null;
-  const canWrite = canWriteRegistry(session?.roleSlug);
+  const canWrite = canWriteRegistry(session?.roleSlugs);
   const { t } = useTranslation();
 
   const updateStudentProfile = useMutation({

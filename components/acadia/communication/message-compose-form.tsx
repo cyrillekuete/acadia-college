@@ -37,7 +37,7 @@ export function MessageComposeForm({ onCancelHref }: { onCancelHref: string }) {
     session?.profile?.id,
   );
   const { createDirectMessage } = useCommunicationMutations();
-  const canSendWhatsApp = canSendWhatsAppMessages(session?.roleSlug);
+  const canSendWhatsApp = canSendWhatsAppMessages(session?.roleSlugs);
   const whatsappQuery = useQuery({
     queryKey: ['whatsapp-configured'],
     queryFn: fetchWhatsAppConfigured,

@@ -24,16 +24,17 @@ export function StudentsPageView({
 }) {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canAdd = canWriteRegistry(session?.roleSlug);
+  const canManageRecords = canWriteRegistry(session?.roleSlugs);
+  const canAdd = canManageRecords || session?.roleSlugs.includes('secretary') === true;
   const [section, setSection] = useState<RegistrySection>('directory');
-  const showingDirectory = !canAdd || section === 'directory';
+  const showingDirectory = !canManageRecords || section === 'directory';
 
   return (
     <StudentRegistry
       initialStudents={initialStudents}
       seedYearId={seedYearId}
       sectionTabs={
-        canAdd ? (
+        canManageRecords ? (
           <RegistrySectionTabs value={section} onChange={setSection} />
         ) : null
       }

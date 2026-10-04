@@ -54,7 +54,7 @@ import { useUserRoleOptions } from '@/hooks/use-user-role-options';
 import { useTranslation } from '@/hooks/useTranslation';
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'ADJUNCT', 'VISITING'] as const;
-const STAFF_ROLE_SLUGS = new Set(['teacher', 'lecturer', 'staff']);
+const STAFF_ROLE_SLUGS = new Set(['teacher', 'lecturer', 'staff', 'discipline-master', 'bursar', 'library-attendant', 'secretary']);
 const TITLE_OPTIONS = ['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Prof', 'Rev', 'Other'] as const;
 const RELATIONSHIP_OPTIONS = [
   { value: 'spouse', label: 'Spouse' },
@@ -153,6 +153,7 @@ export function StaffCreateForm() {
       employmentType: 'FULL_TIME',
       isActive: true,
       roleId: defaultRoleId,
+      roleIds: defaultRoleId ? [defaultRoleId] : [],
       emergencyContactPhoneCountry: DEFAULT_COUNTRY_NAME,
       emergencyContactPhone: '',
       emergencyContactName: '',
@@ -206,6 +207,9 @@ export function StaffCreateForm() {
   useEffect(() => {
     if (defaultRoleId) {
       form.setValue('roleId', defaultRoleId, { shouldDirty: false });
+      if ((form.getValues('roleIds') ?? []).length === 0) {
+        form.setValue('roleIds', [defaultRoleId], { shouldDirty: false });
+      }
     }
   }, [defaultRoleId, form]);
 
@@ -439,6 +443,26 @@ export function StaffCreateForm() {
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="roleIds"
+              render={({ field }) => (
+                <FormItem className="sm:col-span-2 lg:col-span-3">
+                  <FormLabel>Staff duties</FormLabel>
+                  <FormDescription>Select every duty assigned to this staff member. Teacher is selected by default.</FormDescription>
+                  <FormControl>
+                    <CheckboxMultiSelect
+                      options={staffRoles.map((role) => ({ id: role.id, label: role.name }))}
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      emptyMessage="No staff duties are available."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

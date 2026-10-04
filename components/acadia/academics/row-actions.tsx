@@ -19,7 +19,7 @@ export function RegistryRowActions({
 }) {
   const { data: session } = useAcadiaCollegeSession();
   const { t } = useTranslation();
-  if (!(canManageOverride ?? canWriteRegistry(session?.roleSlug))) {
+  if (!(canManageOverride ?? canWriteRegistry(session?.roleSlugs))) {
     return null;
   }
 

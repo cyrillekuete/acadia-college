@@ -18,10 +18,10 @@ import {
 import { canComposeMessages, canManageMessageGroups } from '@/lib/acadia/roles';
 
 describe('message group access', () => {
-  it('lets staff and admins manage groups, not students or guardians', () => {
+  it('lets staff and admins manage groups, not office-only roles or students', () => {
     expect(canManageMessageGroups('admin')).toBe(true);
     expect(canManageMessageGroups('teacher')).toBe(true);
-    expect(canManageMessageGroups('bursar')).toBe(true);
+    expect(canManageMessageGroups('bursar')).toBe(false);
     expect(canManageMessageGroups('student')).toBe(false);
     expect(canManageMessageGroups('guardian')).toBe(false);
     expect(canManageMessageGroups('parent')).toBe(false);

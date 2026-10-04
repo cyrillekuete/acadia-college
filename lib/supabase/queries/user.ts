@@ -25,12 +25,30 @@ export type AcadiaUserProfile = {
     isProtected?: boolean;
     isDefault?: boolean;
   } | null;
+  roleSlugs?: string[];
 };
 
 export type FetchAcadiaProfileResult =
   | { status: 'ok'; profile: AcadiaUserProfile }
   | { status: 'not_found' }
   | { status: 'error' };
+
+async function fetchAssignedRoleSlugs(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from('UserRoleAssignment')
+    .select('UserRole:roleId(slug)')
+    .eq('userId', userId);
+  return (data ?? []).flatMap((assignment) => {
+    const raw = (assignment as { UserRole?: unknown }).UserRole;
+    const candidate = Array.isArray(raw) ? raw[0] : raw;
+    return candidate && typeof candidate === 'object' && 'slug' in candidate
+      ? [String((candidate as { slug: unknown }).slug)]
+      : [];
+  });
+}
 
 /**
  * Fetch user profile for auth gate and session hook.
@@ -65,7 +83,7 @@ export async function fetchAcadiaUserProfile(
   if (newRow) {
     const row = newRow as unknown as UsersTableRow;
     const roleSlug = String(row.role ?? '');
-    const [{ data: legacy }, { data: roleBySlug }] = await Promise.all([
+    const [{ data: legacy }, { data: roleBySlug }, assignedRoleSlugs] = await Promise.all([
       supabase
         .from('User')
         .select(
@@ -83,15 +101,17 @@ export async function fetchAcadiaUserProfile(
             .eq('isTrashed', false)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      fetchAssignedRoleSlugs(supabase, userId),
     ]);
 
+    const profile = mergeDualTableUserProfile(
+      row,
+      legacy as Record<string, unknown> | null,
+      roleBySlug as AcadiaUserProfile['UserRole'],
+    );
     return {
       status: 'ok',
-      profile: mergeDualTableUserProfile(
-        row,
-        legacy as Record<string, unknown> | null,
-        roleBySlug as AcadiaUserProfile['UserRole'],
-      ),
+      profile: { ...profile, roleSlugs: assignedRoleSlugs.length ? assignedRoleSlugs : roleSlug ? [roleSlug] : [] },
     };
   }
 
@@ -124,12 +144,15 @@ export async function fetchAcadiaUserProfile(
       ? (roleCandidate as AcadiaUserProfile['UserRole'])
       : null;
 
+  const roleSlugs = await fetchAssignedRoleSlugs(supabase, userId);
+
   return {
     status: 'ok',
     profile: {
       ...(row as Omit<AcadiaUserProfile, 'UserRole' | 'isTrashed'>),
       isTrashed: Boolean(row.isTrashed),
       UserRole: role,
+      roleSlugs: roleSlugs.length ? roleSlugs : role ? [role.slug] : [],
     },
   };
 }

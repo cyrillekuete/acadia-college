@@ -69,7 +69,7 @@ export function LearningMaterialsLibraryPanel() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } =
     useAcadiaCollegeSession();
   const tenantId = session?.tenantId ?? null;
-  const canManage = canManageResources(session?.roleSlug);
+  const canManage = canManageResources(session?.roleSlugs);
   const { data: subjects = [] } = useSubjectOptions();
   const { uploadLearningMaterial } = useResourceMutations();
 

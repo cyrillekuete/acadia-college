@@ -1,4 +1,5 @@
 import { isAdmin, isGuardian, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 
 export type MarksViewerScope = {
   /** Unrestricted tenant-wide view (admins). */
@@ -9,7 +10,7 @@ export type MarksViewerScope = {
 };
 
 export function buildMarksViewerScope(input: {
-  roleSlug: string | null | undefined;
+  roleSlug: RoleInput;
   teacherSubjectIds?: string[];
   teacherClassIds?: string[];
   teacherStudentProfileIds?: string[];

@@ -22,7 +22,7 @@ export function AdminToolbar({
 }) {
   const { data: session } = useAcadiaCollegeSession();
   const canManage =
-    canManageOverride ?? canWriteRegistry(session?.roleSlug);
+    canManageOverride ?? canWriteRegistry(session?.roleSlugs);
 
   if (!canManage) {
     return null;

@@ -56,7 +56,7 @@ export function useCommunicationMutations() {
   const { data: session } = useAcadiaCollegeSession();
   const tenantId = session?.tenantId;
   const userId = session?.profile?.id;
-  const roleSlug = session?.roleSlug;
+  const roleSlug = session?.roleSlugs;
 
   const createDirectMessage = useMutation({
     mutationFn: async (values: DirectMessageFormValues) => {

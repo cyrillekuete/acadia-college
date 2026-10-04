@@ -1,9 +1,10 @@
 import { canWriteRegistry, isGuardian, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 
 export type TimetableViewMode = 'admin' | 'teacher' | 'student' | 'guardian' | 'browse';
 
 export function resolveTimetableViewMode(
-  roleSlug: string | null | undefined,
+  roleSlug: RoleInput,
 ): TimetableViewMode {
   if (canWriteRegistry(roleSlug)) {
     return 'admin';

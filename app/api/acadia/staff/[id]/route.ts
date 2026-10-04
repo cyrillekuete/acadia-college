@@ -8,7 +8,7 @@ import { resolveStaffProfileId } from '@/lib/supabase/queries/staff-detail';
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const auth = await requireRegistryApi();
+  const auth = await requireRegistryApi({ allowSecretaryRegistration: true });
   if (!auth.ok) {
     return NextResponse.json({ message: auth.message }, { status: auth.status });
   }

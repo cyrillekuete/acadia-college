@@ -16,6 +16,7 @@ export type AcadiaProfileGateSuccess = {
   ok: true;
   profile: AcadiaUserProfile;
   roleSlug: string;
+  roleSlugs: string[];
   dashboardPath: string;
 };
 
@@ -105,8 +106,9 @@ export function validateAcadiaProfile(
   }
 
   const roleSlug = profile.UserRole?.slug ?? null;
+  const roleSlugs = profile.roleSlugs?.length ? profile.roleSlugs : roleSlug ? [roleSlug] : [];
 
-  if (!roleSlug || profile.UserRole?.isTrashed || !isKnownAcadiaRole(roleSlug)) {
+  if (!roleSlug || profile.UserRole?.isTrashed || !roleSlugs.some(isKnownAcadiaRole)) {
     return {
       ok: false,
       errorCode: 'profile_role',
@@ -116,7 +118,7 @@ export function validateAcadiaProfile(
     };
   }
 
-  const dashboardPath = getDashboardPathForRole(roleSlug);
+  const dashboardPath = getDashboardPathForRole(roleSlugs);
   if (!dashboardPath) {
     return {
       ok: false,
@@ -131,6 +133,7 @@ export function validateAcadiaProfile(
     ok: true,
     profile,
     roleSlug,
+    roleSlugs,
     dashboardPath,
   };
 }

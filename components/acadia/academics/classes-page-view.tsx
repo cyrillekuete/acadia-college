@@ -66,7 +66,7 @@ export function ClassesPageView({
     null,
   );
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteRegistry(session?.roleSlug);
+  const canManage = canWriteRegistry(session?.roleSlugs);
   const { deleteClass } = useAcademicStructureMutations();
   const { data: deleteBlockers, isLoading: deleteBlockersLoading } =
     useClassDeleteBlockers(deleteTarget?.id ?? null);

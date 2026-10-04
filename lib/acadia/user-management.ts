@@ -1,5 +1,6 @@
 import { UserStatus } from '@/app/models/user';
 import { canManageUsers } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 import type { SystemLogEvent } from '@/lib/acadia/system-log';
 
 export const USER_MANAGER_ROLE_SLUGS = [
@@ -115,7 +116,7 @@ export function canChangeProtectedRoleOrStatus(isProtected: boolean): boolean {
 }
 
 export function validateRoleAssignment(
-  actorSlug: string | null | undefined,
+  actorSlug: RoleInput,
   targetSlug: string | null | undefined,
 ): { ok: true } | { ok: false; reason: RoleAssignmentDenial } {
   const target = normalizeSlug(targetSlug);
@@ -129,8 +130,10 @@ export function validateRoleAssignment(
     return { ok: false, reason: 'forbidden' };
   }
   if (target === 'super-admin') {
-    const actor = normalizeSlug(actorSlug);
-    if (actor !== 'admin' && actor !== 'super-admin') {
+    const actors = Array.isArray(actorSlug)
+      ? Array.from(actorSlug as readonly string[], normalizeSlug)
+      : [normalizeSlug(actorSlug as string | null | undefined)];
+    if (!actors.includes('admin') && !actors.includes('super-admin')) {
       return { ok: false, reason: 'forbidden' };
     }
   }

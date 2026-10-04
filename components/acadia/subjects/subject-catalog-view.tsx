@@ -72,7 +72,7 @@ export function SubjectCatalogView({
 }) {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const canManage = canWriteAcademicAdmin(session?.roleSlug);
+  const canManage = canWriteAcademicAdmin(session?.roleSlugs);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [catalogFilters, setCatalogFilters] =
     useState<CatalogFilters>(EMPTY_CATALOG_FILTERS);

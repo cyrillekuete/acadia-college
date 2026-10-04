@@ -51,7 +51,7 @@ const ALL = '__all__';
 export function MarksYearScopedList() {
   const { t } = useTranslation();
   const { data: session } = useAcadiaCollegeSession();
-  const roleSlug = session?.roleSlug ?? null;
+  const roleSlug = session?.roleSlugs ?? null;
   const { activeYearId } = useActiveAcademicYear();
   const { data: examSessionIds = [], isLoading } = useExamSessionIdsForActiveYear();
   const { data: sequences = [] } = useSequenceOptions(activeYearId);

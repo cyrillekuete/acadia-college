@@ -1,9 +1,10 @@
 import { isAdmin, isStaffOrTeacher, isStudent } from '@/lib/acadia/roles';
+import type { RoleInput } from '@/lib/acadia/roles';
 
 export type SubjectsViewMode = 'student' | 'catalog' | 'restricted';
 
 export function resolveSubjectsViewMode(
-  roleSlug: string | null | undefined,
+  roleSlug: RoleInput,
 ): SubjectsViewMode {
   if (isStudent(roleSlug)) {
     return 'student';
