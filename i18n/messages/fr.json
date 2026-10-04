@@ -1983,7 +1983,8 @@
       "sourceYear": "L’année source est obligatoire.",
       "newYearLabel": "Le libellé de la nouvelle année est obligatoire.",
       "targetYear": "L’année cible est obligatoire.",
-      "activeAcademicYear": "L’année académique active est obligatoire."
+      "activeAcademicYear": "L’année académique active est obligatoire.",
+      "staffRole": "Veuillez sélectionner au moins une fonction pour ce membre du personnel."
     },
     "invalid": {
       "date": "Saisissez une date valide (AAAA-MM-JJ)."

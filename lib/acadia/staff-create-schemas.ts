@@ -81,7 +81,7 @@ export const staffCreateSchema = z
     bio: z.string().max(2000).optional().or(z.literal('')),
     isActive: z.boolean().default(true),
     roleId: z.string().optional().or(z.literal('')),
-    roleIds: z.array(z.string()).default([]),
+    roleIds: z.array(z.string()).min(1, 'validation.required.staffRole'),
   })
   .superRefine((data, ctx) => {
     refinePhoneWithCountry(
@@ -137,7 +137,7 @@ export type StaffCreateFormValues = z.input<typeof staffCreateSchema>;
 
 /** Fields validated when leaving each wizard step (1-based). Step 5 is optional — not used for trigger. */
 export const STAFF_CREATE_STEP_FIELDS: Record<number, (keyof StaffCreateFormValues)[]> = {
-  1: ['title', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'nationality', 'idNumber'],
+  1: ['title', 'firstName', 'lastName', 'dateOfBirth', 'gender', 'nationality', 'idNumber', 'roleIds'],
   2: ['personalEmail', 'phoneCountry', 'phone'],
   3: ['address', 'city', 'region', 'qualifications', 'teachingExperience'],
   4: [

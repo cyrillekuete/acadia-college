@@ -54,7 +54,8 @@ import { useUserRoleOptions } from '@/hooks/use-user-role-options';
 import { useTranslation } from '@/hooks/useTranslation';
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'ADJUNCT', 'VISITING'] as const;
-const STAFF_ROLE_SLUGS = new Set(['teacher', 'lecturer', 'staff', 'discipline-master', 'bursar', 'library-attendant', 'secretary']);
+const ROLE_SORT_ORDER = ['teacher', 'lecturer', 'staff', 'discipline-master', 'bursar', 'library-attendant', 'secretary'] as const;
+const STAFF_ROLE_SLUGS = new Set<string>(ROLE_SORT_ORDER);
 const TITLE_OPTIONS = ['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Prof', 'Rev', 'Other'] as const;
 const RELATIONSHIP_OPTIONS = [
   { value: 'spouse', label: 'Spouse' },
@@ -127,7 +128,13 @@ export function StaffCreateForm() {
   const { activeYear, activeYearId } = useActiveAcademicYear();
   const { data: roles = [] } = useUserRoleOptions();
 
-  const staffRoles = roles.filter((r) => STAFF_ROLE_SLUGS.has(r.slug.toLowerCase()));
+  const staffRoles = roles
+    .filter((r) => STAFF_ROLE_SLUGS.has(r.slug.toLowerCase()))
+    .sort((a, b) => {
+      const ai = ROLE_SORT_ORDER.indexOf(a.slug.toLowerCase() as (typeof ROLE_SORT_ORDER)[number]);
+      const bi = ROLE_SORT_ORDER.indexOf(b.slug.toLowerCase() as (typeof ROLE_SORT_ORDER)[number]);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
   const defaultRoleId =
     staffRoles.find((r) => r.slug.toLowerCase() === 'teacher')?.id ??
     staffRoles[0]?.id ??

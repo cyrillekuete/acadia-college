@@ -6,6 +6,7 @@ import {
   canWriteOperations,
   canWriteRegistry,
   isAdmin,
+  isStaffOrTeacher,
 } from '@/lib/acadia/roles';
 import { classMatchesDisciplineScopes } from '@/lib/acadia/discipline-scopes';
 
@@ -16,9 +17,15 @@ describe('staff duty access', () => {
     expect(canWriteRegistry('bursar')).toBe(false);
     expect(canWriteOperations('bursar')).toBe(false);
     expect(canWriteOperations('teacher')).toBe(true);
+    expect(isStaffOrTeacher('teacher')).toBe(true);
+    expect(isStaffOrTeacher('lecturer')).toBe(true);
+    expect(isStaffOrTeacher('staff')).toBe(true);
   });
 
   it('recognizes office duties and routes them by their assigned duties', () => {
+    expect(isKnownAcadiaRole('teacher')).toBe(true);
+    expect(isKnownAcadiaRole('lecturer')).toBe(true);
+    expect(isKnownAcadiaRole('staff')).toBe(true);
     expect(isKnownAcadiaRole('discipline-master')).toBe(true);
     expect(isKnownAcadiaRole('library-attendant')).toBe(true);
     expect(isKnownAcadiaRole('secretary')).toBe(true);

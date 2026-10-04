@@ -1982,7 +1982,8 @@
       "sourceYear": "Source year is required.",
       "newYearLabel": "New year label is required.",
       "targetYear": "Target year is required.",
-      "activeAcademicYear": "Active academic year is required."
+      "activeAcademicYear": "Active academic year is required.",
+      "staffRole": "Please select at least one duty for this staff member."
     },
     "invalid": {
       "date": "Enter a valid date (YYYY-MM-DD)."

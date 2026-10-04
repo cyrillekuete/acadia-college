@@ -20,6 +20,7 @@ const basePayload = {
   emergencyContactPhoneCountry: 'Cameroon',
   emergencyContactPhone: '',
   isActive: true,
+  roleIds: ['role-teacher'],
 };
 
 const updatePayload = {
@@ -55,6 +56,42 @@ describe('staffCreateSchema', () => {
           (i) => i.message === 'validation.required.firstName',
         ),
       ).toBe(true);
+    }
+  });
+
+  it('requires at least one duty (roleIds)', () => {
+    const emptyRolesResult = staffCreateSchema.safeParse({
+      ...basePayload,
+      roleIds: [],
+    });
+    expect(emptyRolesResult.success).toBe(false);
+    if (!emptyRolesResult.success) {
+      expect(
+        emptyRolesResult.error.issues.some(
+          (i) => i.message === 'validation.required.staffRole',
+        ),
+      ).toBe(true);
+    }
+
+    const missingRolesResult = staffCreateSchema.safeParse({
+      ...basePayload,
+      roleIds: undefined as unknown as string[],
+    });
+    expect(missingRolesResult.success).toBe(false);
+  });
+
+  it('accepts multiple roles in roleIds', () => {
+    const result = staffCreateSchema.safeParse({
+      ...basePayload,
+      roleIds: ['role-teacher', 'role-bursar', 'role-discipline-master'],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.roleIds).toEqual([
+        'role-teacher',
+        'role-bursar',
+        'role-discipline-master',
+      ]);
     }
   });
 
